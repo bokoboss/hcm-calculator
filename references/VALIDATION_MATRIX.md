@@ -1,10 +1,10 @@
-﻿# Validation Matrix
+# Validation Matrix
 
 This matrix defines the validation work required before calculation outputs are considered correct and before UI expansion proceeds.
 
 | ID | Facility Type | HCM Source | Example Problem | Inputs Fixture | Expected Outputs Fixture | Status | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| TLH-CH15-001 | Two-Lane Highway | HCM 7th Edition Chapter 26 | TBD | `references/example_inputs.yaml` | `references/expected_outputs.yaml` | Not started | Required before UI expansion |
+| TLH-CH15-001 | Two-Lane Highway | HCM 7th Edition Chapter 26 | Example Problem 1 | `references/example_inputs.yaml` | `references/expected_outputs.yaml` | Implemented example only | Level, straight Passing Constrained segment only |
 | MLH-LOS-001 | Multilane Highway LOS | HCM 7th Edition Chapter 26 | TBD | TBD | TBD | Future | Future method target |
 
 ## Required Validation Gates

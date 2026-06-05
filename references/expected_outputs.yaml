@@ -1,18 +1,36 @@
-﻿metadata:
-  fixture_version: 0.1.0
-  purpose: placeholder validation expected output structure
-  status: scaffold_only
-  note: Replace with expected values from HCM Chapter 26 examples and documented tolerances.
+metadata:
+  fixture_version: 0.2.0
+  purpose: HCM Chapter 26 Two-Lane Highway validation expected outputs
+  status: validation_fixture
+  note: Expected values are published Example Problem 1 validation targets.
 
 cases:
   - id: TLH-CH15-001
     facility_type: two_lane_highway
-    method: hcm_7th_edition_chapter_15_motorized_vehicle
+    method: hcm7_ch15_two_lane_motorized
     expected_outputs:
-      level_of_service: null
-      performance_measures: {}
-      intermediate_values: {}
+      demand_flow_rate_veh_h: 800.0
+      capacity_veh_h: 1700.0
+      vertical_class: 1
+      base_free_flow_speed_mph: 57.0
+      lane_shoulder_adjustment_mph: 0.0
+      access_point_adjustment_mph: 0.0
+      free_flow_speed_mph: 56.83
+      average_speed_slope_coefficient: 3.626
+      average_speed_power_coefficient: 0.41676
+      average_speed_mph: 53.7
+      percent_followers_at_capacity: 86.41
+      percent_followers_at_25_percent_capacity: 50.52
+      percent_followers_slope_coefficient: -1.337
+      percent_followers_power_coefficient: 0.7524
+      percent_followers: 67.7
+      follower_density_followers_mi_ln: 10.1
+      level_of_service: D
     tolerances:
-      default_numeric_absolute: null
-      default_numeric_relative: null
-    validation_status: not_started
+      demand_flow_rate_veh_h_absolute: 0.0
+      capacity_veh_h_absolute: 0.0
+      speed_mph_absolute: 0.1
+      percent_followers_absolute: 0.2
+      follower_density_followers_mi_ln_absolute: 0.1
+      level_of_service_exact: true
+    validation_status: implemented_example_only

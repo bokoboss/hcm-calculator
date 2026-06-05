@@ -1,31 +1,31 @@
-﻿metadata:
-  fixture_version: 0.1.0
-  purpose: placeholder validation input structure
-  status: scaffold_only
-  note: Replace with mapped HCM Chapter 26 example problem inputs before implementing validated calculations.
+metadata:
+  fixture_version: 0.2.0
+  purpose: HCM Chapter 26 Two-Lane Highway validation input structure
+  status: validation_fixture
+  note: Inputs are scoped to Example Problem 1 only.
 
 cases:
   - id: TLH-CH15-001
     facility_type: two_lane_highway
-    method: hcm_7th_edition_chapter_15_motorized_vehicle
+    method: hcm7_ch15_two_lane_motorized
     source:
       edition: HCM 7th Edition
+      methodology_chapter: Chapter 15
       validation_chapter: Chapter 26
-      example_problem: TBD
+      example_problem: Two-Lane Highway Example Problem 1
+      segment_description: level, straight Passing Constrained segment
     inputs:
-      project:
-        name: Placeholder two-lane highway case
-        analyst: TBD
-      traffic:
-        demand_flow_rate_vph: null
-        directional_distribution_percent: null
-        heavy_vehicle_percent: null
-      geometry:
-        segment_length_mi: null
-        terrain_class: null
-        lane_width_ft: null
-        shoulder_width_ft: null
-      operations:
-        posted_speed_mph: null
-        passing_zone_percent: null
-    validation_status: not_started
+      case_id: TLH-CH15-001
+      segment_length_mi: 0.75
+      segment_type: passing_constrained
+      analysis_direction_volume_veh_h: 752.0
+      peak_hour_factor: 0.94
+      posted_speed_mph: 50.0
+      heavy_vehicle_percent: 5.0
+      grade_percent: 0.0
+      horizontal_alignment: straight
+      lane_width_ft: 12.0
+      shoulder_width_ft: 6.0
+      access_point_density_per_mi: 0.0
+      upstream_passing_lane: false
+    validation_status: implemented_example_only
