@@ -16,14 +16,16 @@ cases:
       segment_description: level, straight Passing Constrained segment
     inputs:
       case_id: TLH-CH15-001
-      analysis_hour_volume_veh: 760.0
-      peak_hour_factor: 0.95
+      segment_length_mi: 0.75
       segment_type: passing_constrained
-      terrain: level
+      analysis_direction_volume_veh_h: 752.0
+      peak_hour_factor: 0.94
+      posted_speed_mph: 50.0
+      heavy_vehicle_percent: 5.0
+      grade_percent: 0.0
       horizontal_alignment: straight
-      posted_speed_mph: 55.0
-      base_speed_over_posted_mph: 2.0
-      lane_shoulder_adjustment_mph: 0.17
-      speed_demand_coefficient: 0.0039125
-      percent_followers_coefficient: 0.00141262869469935
+      lane_width_ft: 12.0
+      shoulder_width_ft: 6.0
+      access_point_density_per_mi: 0.0
+      upstream_passing_lane: false
     validation_status: implemented_example_only
