@@ -33,14 +33,49 @@ def test_example_problem_1_matches_hcm_chapter_26_expected_values() -> None:
     assert result.outputs["capacity_veh_h"] == expected["capacity_veh_h"]
     assert result.outputs["demand_capacity_ratio"] < 1.0
     assert result.outputs["vertical_class"] == expected["vertical_class"]
-    assert result.outputs["base_free_flow_speed_mph"] == expected["base_free_flow_speed_mph"]
+    assert result.outputs["base_free_flow_speed_mph"] == pytest.approx(
+        expected["base_free_flow_speed_mph"],
+        abs=tolerances["speed_mph_absolute"],
+    )
+    assert (
+        result.outputs["lane_shoulder_adjustment_mph"]
+        == expected["lane_shoulder_adjustment_mph"]
+    )
+    assert (
+        result.outputs["access_point_adjustment_mph"]
+        == expected["access_point_adjustment_mph"]
+    )
     assert result.outputs["free_flow_speed_mph"] == pytest.approx(
         expected["free_flow_speed_mph"],
         abs=tolerances["speed_mph_absolute"],
     )
+    assert result.outputs["average_speed_slope_coefficient"] == pytest.approx(
+        expected["average_speed_slope_coefficient"],
+        abs=0.001,
+    )
+    assert result.outputs["average_speed_power_coefficient"] == pytest.approx(
+        expected["average_speed_power_coefficient"],
+        abs=0.0001,
+    )
     assert result.outputs["average_speed_mph"] == pytest.approx(
         expected["average_speed_mph"],
         abs=tolerances["speed_mph_absolute"],
+    )
+    assert result.outputs["percent_followers_at_capacity"] == pytest.approx(
+        expected["percent_followers_at_capacity"],
+        abs=0.01,
+    )
+    assert result.outputs["percent_followers_at_25_percent_capacity"] == pytest.approx(
+        expected["percent_followers_at_25_percent_capacity"],
+        abs=0.01,
+    )
+    assert result.outputs["percent_followers_slope_coefficient"] == pytest.approx(
+        expected["percent_followers_slope_coefficient"],
+        abs=0.001,
+    )
+    assert result.outputs["percent_followers_power_coefficient"] == pytest.approx(
+        expected["percent_followers_power_coefficient"],
+        abs=0.0001,
     )
     assert result.outputs["percent_followers"] == pytest.approx(
         expected["percent_followers"],
@@ -51,4 +86,4 @@ def test_example_problem_1_matches_hcm_chapter_26_expected_values() -> None:
         abs=tolerances["follower_density_followers_mi_ln_absolute"],
     )
     assert result.outputs["level_of_service"] == expected["level_of_service"]
-    assert len(result.intermediate_values) >= 9
+    assert len(result.intermediate_values) >= 18
