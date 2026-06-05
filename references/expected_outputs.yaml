@@ -13,8 +13,16 @@ cases:
       capacity_veh_h: 1700.0
       vertical_class: 1
       base_free_flow_speed_mph: 57.0
+      lane_shoulder_adjustment_mph: 0.0
+      access_point_adjustment_mph: 0.0
       free_flow_speed_mph: 56.83
+      average_speed_slope_coefficient: 3.626
+      average_speed_power_coefficient: 0.41676
       average_speed_mph: 53.7
+      percent_followers_at_capacity: 86.41
+      percent_followers_at_25_percent_capacity: 50.52
+      percent_followers_slope_coefficient: -1.337
+      percent_followers_power_coefficient: 0.7524
       percent_followers: 67.7
       follower_density_followers_mi_ln: 10.1
       level_of_service: D
