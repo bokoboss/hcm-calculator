@@ -146,5 +146,83 @@ def test_example_problem_2_matches_hcm_chapter_26_expected_values() -> None:
     assert len(result.intermediate_values) >= 40
 
 
+def test_example_problem_3_matches_hcm_chapter_26_expected_values() -> None:
+    inputs_fixture = load_yaml_fixture(ROOT / "references" / "example_inputs.yaml")
+    expected_fixture = load_yaml_fixture(ROOT / "references" / "expected_outputs.yaml")
+
+    case = _case_by_id(inputs_fixture, "TLH-CH15-003")
+    expected_case = _case_by_id(expected_fixture, "TLH-CH15-003")
+    expected = expected_case["expected_outputs"]
+    tolerances = expected_case["tolerances"]
+
+    result = TwoLaneHighwayChapter15Method().calculate(case["inputs"])
+    actual_segments = {
+        segment["segment_id"]: segment for segment in result.outputs["segments"]
+    }
+
+    for expected_segment in expected["segments"]:
+        actual = actual_segments[expected_segment["segment_id"]]
+        assert actual["segment_type"] == expected_segment["segment_type"]
+        assert actual["demand_flow_rate_veh_h"] == pytest.approx(
+            expected_segment["demand_flow_rate_veh_h"],
+            abs=tolerances["demand_flow_rate_veh_h_absolute"],
+        )
+        assert actual["capacity_veh_h"] == expected_segment["capacity_veh_h"]
+        assert actual["free_flow_speed_mph"] == pytest.approx(
+            expected_segment["free_flow_speed_mph"],
+            abs=tolerances["speed_mph_absolute"],
+        )
+        assert actual["average_speed_mph"] == pytest.approx(
+            expected_segment["average_speed_mph"],
+            abs=tolerances["speed_mph_absolute"],
+        )
+        assert actual["percent_followers"] == pytest.approx(
+            expected_segment["percent_followers"],
+            abs=tolerances["percent_followers_absolute"],
+        )
+        assert actual["follower_density_followers_mi_ln"] == pytest.approx(
+            expected_segment["follower_density_followers_mi_ln"],
+            abs=tolerances["follower_density_followers_mi_ln_absolute"],
+        )
+        assert actual["level_of_service"] == expected_segment["level_of_service"]
+
+    segment_2 = actual_segments[2]
+    expected_segment_2 = expected["segments"][1]
+    assert segment_2["faster_lane_flow_rate_veh_h_ln"] == pytest.approx(
+        expected_segment_2["faster_lane_flow_rate_veh_h_ln"],
+        abs=tolerances["demand_flow_rate_veh_h_absolute"],
+    )
+    assert segment_2["slower_lane_flow_rate_veh_h_ln"] == pytest.approx(
+        expected_segment_2["slower_lane_flow_rate_veh_h_ln"],
+        abs=tolerances["demand_flow_rate_veh_h_absolute"],
+    )
+    assert segment_2["faster_lane_midpoint_average_speed_mph"] == pytest.approx(
+        expected_segment_2["faster_lane_midpoint_average_speed_mph"],
+        abs=tolerances["speed_mph_absolute"],
+    )
+    assert segment_2["slower_lane_midpoint_average_speed_mph"] == pytest.approx(
+        expected_segment_2["slower_lane_midpoint_average_speed_mph"],
+        abs=tolerances["speed_mph_absolute"],
+    )
+    assert segment_2["midpoint_follower_density_followers_mi_ln"] == pytest.approx(
+        expected_segment_2["midpoint_follower_density_followers_mi_ln"],
+        abs=tolerances["follower_density_followers_mi_ln_absolute"],
+    )
+    assert segment_2["downstream_effective_length_mi"] == pytest.approx(
+        expected_segment_2["downstream_effective_length_mi"],
+        abs=0.1,
+    )
+
+    assert result.outputs["facility_follower_density_followers_mi_ln"] == pytest.approx(
+        expected["facility_follower_density_followers_mi_ln"],
+        abs=tolerances["follower_density_followers_mi_ln_absolute"],
+    )
+    assert (
+        result.outputs["facility_level_of_service"]
+        == expected["facility_level_of_service"]
+    )
+    assert len(result.intermediate_values) >= 40
+
+
 def _case_by_id(fixture: dict, case_id: str) -> dict:
     return next(case for case in fixture["cases"] if case["id"] == case_id)

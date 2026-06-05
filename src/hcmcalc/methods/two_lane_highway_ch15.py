@@ -20,6 +20,12 @@ from hcmcalc.methods.two_lane_highway_coefficients import (
     HORIZONTAL_CURVE_CLASS_SPEED_SLOPE,
     HORIZONTAL_CURVE_HEAVY_VEHICLE_COEFFICIENT,
     HORIZONTAL_CURVE_SPEED_COEFFICIENTS,
+    PASSING_LANE_PF_25_CAPACITY_COEFFICIENTS,
+    PASSING_LANE_PF_CAPACITY_COEFFICIENTS,
+    PASSING_LANE_SPEED_POWER_COEFFICIENTS,
+    PASSING_LANE_SPEED_SLOPE_B3_C1,
+    PASSING_LANE_SPEED_SLOPE_B4_D1,
+    PASSING_LANE_SPEED_SLOPE_BASE_COEFFICIENTS,
     PF_25_CAPACITY_COEFFICIENTS,
     PF_CAPACITY_COEFFICIENTS,
     PF_POWER_COEFFICIENTS,
@@ -32,10 +38,14 @@ from hcmcalc.methods.two_lane_highway_models import (
     HORIZONTAL_CURVES_ALIGNMENT,
     OPPOSING_FLOW_EXAMPLE_1_VEH_H,
     PASSING_CONSTRAINED,
+    PASSING_LANE,
+    PASSING_ZONE,
     STRAIGHT_ALIGNMENT,
     HorizontalAlignmentSubsegment,
     TwoLaneExampleProblem1Inputs,
     TwoLaneExampleProblem2Inputs,
+    TwoLaneExampleProblem3Inputs,
+    TwoLaneFacilitySegmentInputs,
 )
 
 
@@ -49,12 +59,17 @@ class TwoLaneHighwayChapter15Method:
         """Run the validated Chapter 26 Example Problem 1 or 2 calculation path."""
 
         case_id = inputs.get("case_id")
-        if case_id not in {"TLH-CH15-001", "TLH-CH15-002"}:
+        if case_id not in {"TLH-CH15-001", "TLH-CH15-002", "TLH-CH15-003"}:
             raise MethodNotImplementedError(
-                "Only HCM Chapter 26 Two-Lane Highway Example Problems 1 and 2 "
+                "Only HCM Chapter 26 Two-Lane Highway Example Problems 1, 2, and 3 "
                 "are implemented. Additional Chapter 15 cases require "
                 "methodology mapping and validation before implementation."
             )
+
+        if case_id == "TLH-CH15-003":
+            parsed_inputs = _parse_example_problem_3_inputs(inputs)
+            _validate_example_problem_3_scope(parsed_inputs)
+            return _calculate_example_problem_3_result(parsed_inputs)
 
         if case_id == "TLH-CH15-001":
             parsed_inputs = _parse_example_problem_1_inputs(inputs)
@@ -417,6 +432,394 @@ def _calculate_example_problem_2_result(
     )
 
 
+def _calculate_example_problem_3_result(
+    parsed_inputs: TwoLaneExampleProblem3Inputs,
+) -> CalculationResult:
+    segment_results = [
+        _calculate_facility_segment(segment) for segment in parsed_inputs.segments
+    ]
+    passing_lane_result = segment_results[1]
+    upstream_result = segment_results[0]
+
+    effective_length = passing_lane_effective_length(
+        upstream_follower_density_followers_mi_ln=float(
+            upstream_result["follower_density_followers_mi_ln"]
+        ),
+        upstream_percent_followers=float(upstream_result["percent_followers"]),
+        upstream_demand_flow_rate_veh_h=float(upstream_result["demand_flow_rate_veh_h"]),
+        upstream_average_speed_mph=float(upstream_result["average_speed_mph"]),
+        passing_lane_length_mi=float(passing_lane_result["segment_length_mi"]),
+    )
+    passing_lane_result["downstream_effective_length_mi"] = effective_length[
+        "effective_length_mi"
+    ]
+    passing_lane_result["effective_length_percent_followers_zero_mi"] = (
+        effective_length["percent_followers_zero_mi"]
+    )
+    passing_lane_result["effective_length_95_percent_density_mi"] = effective_length[
+        "density_95_percent_mi"
+    ]
+
+    passing_lane_start_distance = float(segment_results[0]["segment_length_mi"])
+    downstream_distance = float(passing_lane_result["segment_length_mi"])
+    for result in segment_results[2:]:
+        downstream_distance += float(result["segment_length_mi"])
+        distance_from_passing_lane_start = (
+            passing_lane_start_distance + downstream_distance
+        )
+        within_effective_length = downstream_distance <= float(
+            effective_length["effective_length_mi"]
+        )
+        result["downstream_distance_mi"] = downstream_distance
+        result["distance_from_facility_start_mi"] = distance_from_passing_lane_start
+        result["within_passing_lane_effective_length"] = within_effective_length
+        if within_effective_length:
+            adjustment = downstream_follower_density_adjustment(
+                percent_followers_value=float(result["percent_followers"]),
+                demand_flow_rate_veh_h=float(result["demand_flow_rate_veh_h"]),
+                average_speed_mph=float(result["average_speed_mph"]),
+                downstream_distance_mi=downstream_distance,
+                upstream_percent_followers=float(upstream_result["percent_followers"]),
+                passing_lane_length_mi=float(passing_lane_result["segment_length_mi"]),
+            )
+            result["unadjusted_follower_density_followers_mi_ln"] = result[
+                "follower_density_followers_mi_ln"
+            ]
+            result["percent_followers_improvement_percent"] = adjustment[
+                "percent_followers_improvement_percent"
+            ]
+            result["speed_improvement_percent"] = adjustment[
+                "speed_improvement_percent"
+            ]
+            result["follower_density_followers_mi_ln"] = adjustment[
+                "adjusted_follower_density_followers_mi_ln"
+            ]
+            result["level_of_service"] = level_of_service(
+                float(result["follower_density_followers_mi_ln"]),
+                float(result["posted_speed_mph"]),
+            )
+
+    facility_density = length_weighted_average(
+        [
+            (
+                float(result["follower_density_followers_mi_ln"]),
+                float(result["segment_length_mi"]),
+            )
+            for result in segment_results
+        ]
+    )
+    facility_speed = length_weighted_average(
+        [
+            (float(result["average_speed_mph"]), float(result["segment_length_mi"]))
+            for result in segment_results
+        ]
+    )
+    facility_los = level_of_service(
+        facility_density,
+        parsed_inputs.segments[0].posted_speed_mph,
+    )
+
+    outputs = {
+        "facility_length_mi": parsed_inputs.facility_length_mi,
+        "segments": segment_results,
+        "facility_follower_density_followers_mi_ln": facility_density,
+        "facility_average_speed_mph": facility_speed,
+        "facility_level_of_service": facility_los,
+    }
+    intermediate_values = _facility_intermediate_values(segment_results, outputs)
+
+    return CalculationResult(
+        method=TwoLaneHighwayChapter15Method.method_name,
+        facility_type=TwoLaneHighwayChapter15Method.facility_type,
+        outputs=outputs,
+        intermediate_values=intermediate_values,
+        assumptions=[
+            "Validated only for HCM Chapter 26 Two-Lane Highway Example Problem 3.",
+            "Applies to a straight, level-terrain five-segment facility.",
+            "Passing Constrained FFS and percent-followers calculations use the HCM-required 1,500 veh/h opposing flow assumption.",
+            "Passing Zone calculations use actual opposing demand flow from the fixture.",
+            "Passing Lane calculations are scoped to the Example Problem 3 level-terrain path.",
+        ],
+    )
+
+
+def _calculate_facility_segment(
+    segment: TwoLaneFacilitySegmentInputs,
+) -> dict[str, Any]:
+    demand = demand_flow_rate(
+        segment.analysis_direction_volume_veh_h,
+        segment.peak_hour_factor,
+    )
+    opposing_flow = _facility_segment_opposing_flow(segment)
+    capacity = facility_segment_capacity(
+        segment.segment_type,
+        segment.heavy_vehicle_percent,
+    )
+    vertical_class = vertical_alignment_class(segment.segment_length_mi, segment.grade_percent)
+    bffs = base_free_flow_speed(segment.posted_speed_mph)
+    f_ls = lane_shoulder_adjustment(segment.lane_width_ft, segment.shoulder_width_ft)
+    f_a = access_point_adjustment(segment.access_point_density_per_mi)
+    hv_coefficient = heavy_vehicle_ffs_coefficient(
+        vertical_class,
+        bffs,
+        segment.segment_length_mi,
+        opposing_flow,
+    )
+    ffs = estimated_free_flow_speed(
+        bffs,
+        hv_coefficient,
+        segment.heavy_vehicle_percent,
+        f_ls,
+        f_a,
+    )
+
+    if segment.segment_type == PASSING_LANE:
+        speed_m = passing_lane_average_speed_slope_coefficient(
+            vertical_class,
+            ffs,
+            opposing_flow,
+            segment.segment_length_mi,
+            segment.heavy_vehicle_percent,
+        )
+        speed_p = passing_lane_average_speed_power_coefficient(
+            vertical_class,
+            ffs,
+            opposing_flow,
+            segment.segment_length_mi,
+            segment.heavy_vehicle_percent,
+        )
+        pf_cap = passing_lane_percent_followers_at_capacity(
+            vertical_class,
+            segment.segment_length_mi,
+            ffs,
+            segment.heavy_vehicle_percent,
+        )
+        pf_25_cap = passing_lane_percent_followers_at_25_percent_capacity(
+            vertical_class,
+            segment.segment_length_mi,
+            ffs,
+            segment.heavy_vehicle_percent,
+        )
+    else:
+        speed_m = average_speed_slope_coefficient(
+            vertical_class,
+            ffs,
+            opposing_flow,
+            segment.segment_length_mi,
+            segment.heavy_vehicle_percent,
+        )
+        speed_p = average_speed_power_coefficient(
+            vertical_class,
+            ffs,
+            opposing_flow,
+            segment.segment_length_mi,
+            segment.heavy_vehicle_percent,
+        )
+        pf_cap = percent_followers_at_capacity(
+            vertical_class,
+            segment.segment_length_mi,
+            ffs,
+            segment.heavy_vehicle_percent,
+            opposing_flow,
+        )
+        pf_25_cap = percent_followers_at_25_percent_capacity(
+            vertical_class,
+            segment.segment_length_mi,
+            ffs,
+            segment.heavy_vehicle_percent,
+            opposing_flow,
+        )
+
+    speed = average_speed(ffs, demand, speed_m, speed_p)
+    pf_m = percent_followers_slope_coefficient(segment.segment_type, pf_cap, pf_25_cap, capacity)
+    pf_p = percent_followers_power_coefficient(segment.segment_type, pf_cap, pf_25_cap, capacity)
+    followers = percent_followers(demand, pf_m, pf_p)
+    density = follower_density(demand, speed, followers)
+    los = level_of_service(density, segment.posted_speed_mph)
+
+    result: dict[str, Any] = {
+        "segment_id": segment.segment_id,
+        "segment_type": segment.segment_type,
+        "segment_length_mi": segment.segment_length_mi,
+        "posted_speed_mph": segment.posted_speed_mph,
+        "demand_flow_rate_veh_h": demand,
+        "opposing_flow_rate_veh_h": opposing_flow,
+        "capacity_veh_h": capacity,
+        "demand_capacity_ratio": demand / capacity,
+        "vertical_class": vertical_class,
+        "base_free_flow_speed_mph": bffs,
+        "lane_shoulder_adjustment_mph": f_ls,
+        "access_point_adjustment_mph": f_a,
+        "heavy_vehicle_ffs_coefficient": hv_coefficient,
+        "free_flow_speed_mph": ffs,
+        "average_speed_slope_coefficient": speed_m,
+        "average_speed_power_coefficient": speed_p,
+        "average_speed_mph": speed,
+        "percent_followers_at_capacity": pf_cap,
+        "percent_followers_at_25_percent_capacity": pf_25_cap,
+        "percent_followers_slope_coefficient": pf_m,
+        "percent_followers_power_coefficient": pf_p,
+        "percent_followers": followers,
+        "follower_density_followers_mi_ln": density,
+        "level_of_service": los,
+    }
+
+    if segment.segment_type == PASSING_LANE:
+        passing_lane_values = passing_lane_midpoint_values(
+            demand_flow_rate_veh_h=demand,
+            base_free_flow_speed_mph=bffs,
+            heavy_vehicle_coefficient=hv_coefficient,
+            lane_shoulder_adjustment_mph=f_ls,
+            access_point_adjustment_mph=f_a,
+            vertical_class=vertical_class,
+            segment_length_mi=segment.segment_length_mi,
+            heavy_vehicle_percent=segment.heavy_vehicle_percent,
+            capacity_veh_h=capacity,
+        )
+        result.update(passing_lane_values)
+        result["follower_density_endpoint_followers_mi_ln"] = density
+        result["follower_density_followers_mi_ln"] = passing_lane_values[
+            "midpoint_follower_density_followers_mi_ln"
+        ]
+        result["level_of_service"] = level_of_service(
+            float(result["follower_density_followers_mi_ln"]),
+            segment.posted_speed_mph,
+        )
+
+    return result
+
+
+def _facility_segment_opposing_flow(segment: TwoLaneFacilitySegmentInputs) -> float:
+    if segment.segment_type == PASSING_LANE:
+        return 0.0
+    if segment.segment_type == PASSING_ZONE:
+        if segment.opposing_direction_volume_veh_h is None:
+            raise HCMCalcError("Passing Zone segment requires opposing flow.")
+        return demand_flow_rate(
+            segment.opposing_direction_volume_veh_h,
+            segment.peak_hour_factor,
+        )
+    return OPPOSING_FLOW_EXAMPLE_1_VEH_H
+
+
+def _facility_intermediate_values(
+    segment_results: list[dict[str, Any]],
+    outputs: dict[str, Any],
+) -> list[IntermediateValue]:
+    intermediate_values: list[IntermediateValue] = []
+    for segment in segment_results:
+        segment_id = segment["segment_id"]
+        intermediate_values.extend(
+            [
+                IntermediateValue(
+                    f"segment_{segment_id}_demand_flow_rate",
+                    segment["demand_flow_rate_veh_h"],
+                    "veh/h",
+                    "HCM Eq. 15-1",
+                ),
+                IntermediateValue(
+                    f"segment_{segment_id}_capacity",
+                    segment["capacity_veh_h"],
+                    "veh/h",
+                    "HCM Ch. 15 Step 2",
+                ),
+                IntermediateValue(
+                    f"segment_{segment_id}_free_flow_speed",
+                    segment["free_flow_speed_mph"],
+                    "mph",
+                    "HCM Eq. 15-3",
+                ),
+                IntermediateValue(
+                    f"segment_{segment_id}_average_speed",
+                    segment["average_speed_mph"],
+                    "mph",
+                    "HCM Eq. 15-7",
+                ),
+                IntermediateValue(
+                    f"segment_{segment_id}_percent_followers",
+                    segment["percent_followers"],
+                    "%",
+                    "HCM Eq. 15-17",
+                ),
+                IntermediateValue(
+                    f"segment_{segment_id}_follower_density",
+                    segment["follower_density_followers_mi_ln"],
+                    "followers/mi/ln",
+                    "HCM Eq. 15-35 or Eq. 15-34 for Passing Lane midpoint",
+                ),
+            ]
+        )
+        if segment["segment_type"] == PASSING_LANE:
+            intermediate_values.extend(
+                [
+                    IntermediateValue(
+                        "segment_2_faster_lane_flow_rate",
+                        segment["faster_lane_flow_rate_veh_h_ln"],
+                        "veh/h/ln",
+                        "HCM Eq. 15-26",
+                    ),
+                    IntermediateValue(
+                        "segment_2_slower_lane_flow_rate",
+                        segment["slower_lane_flow_rate_veh_h_ln"],
+                        "veh/h/ln",
+                        "HCM Eq. 15-27",
+                    ),
+                    IntermediateValue(
+                        "segment_2_midpoint_follower_density",
+                        segment["midpoint_follower_density_followers_mi_ln"],
+                        "followers/mi/ln",
+                        "HCM Eq. 15-34",
+                    ),
+                    IntermediateValue(
+                        "passing_lane_effective_length",
+                        segment["downstream_effective_length_mi"],
+                        "mi",
+                        "HCM Eq. 15-36 through Eq. 15-38",
+                    ),
+                ]
+            )
+        if "percent_followers_improvement_percent" in segment:
+            intermediate_values.extend(
+                [
+                    IntermediateValue(
+                        f"segment_{segment_id}_percent_followers_improvement",
+                        segment["percent_followers_improvement_percent"],
+                        "%",
+                        "HCM Eq. 15-36",
+                    ),
+                    IntermediateValue(
+                        f"segment_{segment_id}_speed_improvement",
+                        segment["speed_improvement_percent"],
+                        "%",
+                        "HCM Eq. 15-37",
+                    ),
+                    IntermediateValue(
+                        f"segment_{segment_id}_adjusted_follower_density",
+                        segment["follower_density_followers_mi_ln"],
+                        "followers/mi/ln",
+                        "HCM Eq. 15-38",
+                    ),
+                ]
+            )
+    intermediate_values.extend(
+        [
+            IntermediateValue(
+                "facility_follower_density",
+                outputs["facility_follower_density_followers_mi_ln"],
+                "followers/mi/ln",
+                "HCM Eq. 15-39",
+            ),
+            IntermediateValue(
+                "facility_average_speed",
+                outputs["facility_average_speed_mph"],
+                "mph",
+                "Length-weighted segment average speed",
+            ),
+        ]
+    )
+    return intermediate_values
+
+
 def _parse_example_problem_1_inputs(
     inputs: dict[str, Any],
 ) -> TwoLaneExampleProblem1Inputs:
@@ -468,6 +871,46 @@ def _parse_example_problem_2_inputs(
         )
     except KeyError as exc:
         raise HCMCalcError(f"Missing Example Problem 2 input: {exc.args[0]}") from exc
+
+
+def _parse_example_problem_3_inputs(
+    inputs: dict[str, Any],
+) -> TwoLaneExampleProblem3Inputs:
+    try:
+        return TwoLaneExampleProblem3Inputs(
+            case_id=str(inputs["case_id"]),
+            facility_length_mi=float(inputs["facility_length_mi"]),
+            upstream_passing_lane=bool(inputs["upstream_passing_lane"]),
+            segments=tuple(
+                _parse_facility_segment(segment) for segment in inputs["segments"]
+            ),
+        )
+    except KeyError as exc:
+        raise HCMCalcError(f"Missing Example Problem 3 input: {exc.args[0]}") from exc
+
+
+def _parse_facility_segment(
+    segment: dict[str, Any],
+) -> TwoLaneFacilitySegmentInputs:
+    return TwoLaneFacilitySegmentInputs(
+        segment_id=int(segment["segment_id"]),
+        segment_type=str(segment["segment_type"]),
+        segment_length_mi=float(segment["segment_length_mi"]),
+        posted_speed_mph=float(segment["posted_speed_mph"]),
+        analysis_direction_volume_veh_h=float(
+            segment["analysis_direction_volume_veh_h"]
+        ),
+        opposing_direction_volume_veh_h=_optional_float(
+            segment.get("opposing_direction_volume_veh_h")
+        ),
+        peak_hour_factor=float(segment["peak_hour_factor"]),
+        heavy_vehicle_percent=float(segment["heavy_vehicle_percent"]),
+        grade_percent=float(segment["grade_percent"]),
+        horizontal_alignment=str(segment["horizontal_alignment"]),
+        lane_width_ft=float(segment["lane_width_ft"]),
+        shoulder_width_ft=float(segment["shoulder_width_ft"]),
+        access_point_density_per_mi=float(segment["access_point_density_per_mi"]),
+    )
 
 
 def _parse_horizontal_alignment_subsegment(
@@ -549,6 +992,54 @@ def _validate_example_problem_2_scope(inputs: TwoLaneExampleProblem2Inputs) -> N
         )
 
 
+def _validate_example_problem_3_scope(inputs: TwoLaneExampleProblem3Inputs) -> None:
+    if inputs.case_id != "TLH-CH15-003":
+        raise HCMCalcError("Example Problem 3 case_id must be TLH-CH15-003.")
+    if inputs.upstream_passing_lane:
+        raise MethodNotImplementedError(
+            "Example Problem 3 requires no upstream passing lane."
+        )
+    if len(inputs.segments) != 5:
+        raise HCMCalcError("Example Problem 3 requires five facility segments.")
+    expected_types = (
+        PASSING_CONSTRAINED,
+        PASSING_LANE,
+        PASSING_CONSTRAINED,
+        PASSING_ZONE,
+        PASSING_CONSTRAINED,
+    )
+    if tuple(segment.segment_type for segment in inputs.segments) != expected_types:
+        raise MethodNotImplementedError(
+            "Only the Example Problem 3 segment sequence is implemented."
+        )
+    if [segment.segment_id for segment in inputs.segments] != [1, 2, 3, 4, 5]:
+        raise HCMCalcError("Example Problem 3 segment IDs must be 1 through 5.")
+    total_length = sum(segment.segment_length_mi for segment in inputs.segments)
+    if abs(total_length - inputs.facility_length_mi) > 0.001:
+        raise HCMCalcError("Segment lengths must sum to facility_length_mi.")
+
+    for segment in inputs.segments:
+        if segment.horizontal_alignment != STRAIGHT_ALIGNMENT:
+            raise MethodNotImplementedError(
+                "Example Problem 3 is implemented only for straight segments."
+            )
+        if segment.grade_percent != 0.0:
+            raise MethodNotImplementedError(
+                "Example Problem 3 is implemented only for level terrain."
+            )
+        if segment.peak_hour_factor <= 0.0:
+            raise HCMCalcError("peak_hour_factor must be greater than zero.")
+        if segment.segment_type == PASSING_ZONE:
+            if segment.opposing_direction_volume_veh_h is None:
+                raise HCMCalcError(
+                    "Passing Zone segments require opposing_direction_volume_veh_h."
+                )
+        elif segment.opposing_direction_volume_veh_h is not None:
+            raise HCMCalcError(
+                "Example Problem 3 only supplies opposing flow for Passing Zone segments."
+            )
+
+
 def _validate_horizontal_curve_subsegment(
     subsegment: HorizontalAlignmentSubsegment,
 ) -> None:
@@ -575,6 +1066,20 @@ def passing_constrained_capacity() -> float:
     """HCM Ch. 15 Passing Constrained segment capacity."""
 
     return 1700.0
+
+
+def facility_segment_capacity(segment_type: str, heavy_vehicle_percent: float) -> float:
+    """HCM Ch. 15 capacity for the Example Problem 3 segment types."""
+
+    if segment_type in {PASSING_CONSTRAINED, PASSING_ZONE}:
+        return passing_constrained_capacity()
+    if segment_type == PASSING_LANE:
+        if heavy_vehicle_percent != 8.0:
+            raise MethodNotImplementedError(
+                "Passing Lane capacity is implemented only for Example Problem 3."
+            )
+        return 1500.0
+    raise MethodNotImplementedError(f"Unsupported two-lane segment type: {segment_type}")
 
 
 def vertical_alignment_class(segment_length_mi: float, grade_percent: float) -> int:
@@ -855,6 +1360,469 @@ def length_weighted_adjusted_average_speed(
         for subsegment in subsegment_results
     )
     return speed_distance_sum / total_length
+
+
+def length_weighted_average(values_and_lengths: list[tuple[float, float]]) -> float:
+    """HCM Eq. 15-39 length-weighted facility average pattern."""
+
+    total_length = sum(length for _, length in values_and_lengths)
+    if total_length <= 0:
+        raise HCMCalcError("Total length must be positive.")
+    return sum(value * length for value, length in values_and_lengths) / total_length
+
+
+def passing_lane_average_speed_slope_coefficient(
+    vertical_class: int,
+    free_flow_speed_mph: float,
+    opposing_flow_veh_h: float,
+    segment_length_mi: float,
+    heavy_vehicle_percent: float,
+) -> float:
+    """HCM Eq. 15-8 with Passing Lane coefficients from Exhibits 15-14/16/18."""
+
+    coefficients = PASSING_LANE_SPEED_SLOPE_BASE_COEFFICIENTS[vertical_class]
+    b3 = PASSING_LANE_SPEED_SLOPE_B3_C1[vertical_class] * sqrt(segment_length_mi)
+    b4 = PASSING_LANE_SPEED_SLOPE_B4_D1[vertical_class] * sqrt(heavy_vehicle_percent)
+    modeled = (
+        coefficients.b0
+        + coefficients.b1 * free_flow_speed_mph
+        + coefficients.b2 * sqrt(opposing_flow_veh_h / 1000.0)
+        + max(0.0, b3) * sqrt(segment_length_mi)
+        + max(0.0, b4) * sqrt(heavy_vehicle_percent)
+    )
+    return max(coefficients.b5, modeled)
+
+
+def passing_lane_average_speed_power_coefficient(
+    vertical_class: int,
+    free_flow_speed_mph: float,
+    opposing_flow_veh_h: float,
+    segment_length_mi: float,
+    heavy_vehicle_percent: float,
+) -> float:
+    """HCM Eq. 15-11 with Passing Lane coefficients from Exhibit 15-20."""
+
+    coefficients = PASSING_LANE_SPEED_POWER_COEFFICIENTS[vertical_class]
+    opposing_flow_thousands = opposing_flow_veh_h / 1000.0
+    modeled = (
+        coefficients.f0
+        + coefficients.f1 * free_flow_speed_mph
+        + coefficients.f2 * segment_length_mi
+        + coefficients.f3 * opposing_flow_thousands
+        + coefficients.f4 * sqrt(opposing_flow_thousands)
+        + coefficients.f5 * heavy_vehicle_percent
+        + coefficients.f6 * sqrt(heavy_vehicle_percent)
+        + coefficients.f7 * (segment_length_mi * heavy_vehicle_percent)
+    )
+    return max(coefficients.f8, modeled)
+
+
+def passing_lane_percent_followers_at_capacity(
+    vertical_class: int,
+    segment_length_mi: float,
+    free_flow_speed_mph: float,
+    heavy_vehicle_percent: float,
+) -> float:
+    """HCM Eq. 15-19 PF at capacity for Passing Lane segments."""
+
+    coefficients = PASSING_LANE_PF_CAPACITY_COEFFICIENTS[vertical_class]
+    return _passing_lane_percent_followers_capacity_value(
+        coefficients,
+        segment_length_mi,
+        free_flow_speed_mph,
+        heavy_vehicle_percent,
+    )
+
+
+def passing_lane_percent_followers_at_25_percent_capacity(
+    vertical_class: int,
+    segment_length_mi: float,
+    free_flow_speed_mph: float,
+    heavy_vehicle_percent: float,
+) -> float:
+    """HCM Eq. 15-21 PF at 25 percent capacity for Passing Lane segments."""
+
+    coefficients = PASSING_LANE_PF_25_CAPACITY_COEFFICIENTS[vertical_class]
+    return _passing_lane_percent_followers_capacity_value(
+        coefficients,
+        segment_length_mi,
+        free_flow_speed_mph,
+        heavy_vehicle_percent,
+    )
+
+
+def _passing_lane_percent_followers_capacity_value(
+    coefficients: PercentFollowersCapacityCoefficients,
+    segment_length_mi: float,
+    free_flow_speed_mph: float,
+    heavy_vehicle_percent: float,
+) -> float:
+    return (
+        coefficients.c0
+        + coefficients.c1 * segment_length_mi
+        + coefficients.c2 * sqrt(segment_length_mi)
+        + coefficients.c3 * free_flow_speed_mph
+        + coefficients.c4 * sqrt(free_flow_speed_mph)
+        + coefficients.c5 * heavy_vehicle_percent
+        + coefficients.c6 * sqrt(heavy_vehicle_percent)
+        + coefficients.c7 * (free_flow_speed_mph * heavy_vehicle_percent)
+    )
+
+
+def passing_lane_midpoint_values(
+    demand_flow_rate_veh_h: float,
+    base_free_flow_speed_mph: float,
+    heavy_vehicle_coefficient: float,
+    lane_shoulder_adjustment_mph: float,
+    access_point_adjustment_mph: float,
+    vertical_class: int,
+    segment_length_mi: float,
+    heavy_vehicle_percent: float,
+    capacity_veh_h: float,
+) -> dict[str, float]:
+    """HCM Eq. 15-24 through Eq. 15-34 for Example Problem 3 Passing Lane."""
+
+    heavy_vehicle_count = demand_flow_rate_veh_h * heavy_vehicle_percent / 100.0
+    faster_lane_proportion = passing_lane_faster_lane_flow_proportion(
+        demand_flow_rate_veh_h,
+        heavy_vehicle_count,
+    )
+    faster_lane_flow = demand_flow_rate_veh_h * faster_lane_proportion
+    slower_lane_flow = demand_flow_rate_veh_h * (1.0 - faster_lane_proportion)
+    faster_lane_hv_percent = passing_lane_faster_lane_heavy_vehicle_percent(
+        heavy_vehicle_percent
+    )
+    slower_lane_hv_count = heavy_vehicle_count - (
+        faster_lane_flow * faster_lane_hv_percent / 100.0
+    )
+    slower_lane_hv_percent = slower_lane_hv_count / slower_lane_flow * 100.0
+
+    faster_lane_ffs = estimated_free_flow_speed(
+        base_free_flow_speed_mph,
+        heavy_vehicle_coefficient,
+        faster_lane_hv_percent,
+        lane_shoulder_adjustment_mph,
+        access_point_adjustment_mph,
+    )
+    slower_lane_ffs = estimated_free_flow_speed(
+        base_free_flow_speed_mph,
+        heavy_vehicle_coefficient,
+        slower_lane_hv_percent,
+        lane_shoulder_adjustment_mph,
+        access_point_adjustment_mph,
+    )
+    faster_lane_initial_speed = _passing_lane_lane_average_speed(
+        vertical_class,
+        faster_lane_ffs,
+        faster_lane_flow,
+        segment_length_mi,
+        faster_lane_hv_percent,
+    )
+    slower_lane_initial_speed = _passing_lane_lane_average_speed(
+        vertical_class,
+        slower_lane_ffs,
+        slower_lane_flow,
+        segment_length_mi,
+        slower_lane_hv_percent,
+    )
+    speed_difference = passing_lane_average_speed_differential_adjustment(
+        demand_flow_rate_veh_h,
+        heavy_vehicle_percent,
+    )
+    faster_lane_midpoint_speed = faster_lane_initial_speed + speed_difference / 2.0
+    slower_lane_midpoint_speed = slower_lane_initial_speed - speed_difference / 2.0
+    faster_lane_pf = _passing_lane_lane_percent_followers(
+        vertical_class,
+        segment_length_mi,
+        faster_lane_ffs,
+        faster_lane_hv_percent,
+        faster_lane_flow,
+        capacity_veh_h,
+    )
+    slower_lane_pf = _passing_lane_lane_percent_followers(
+        vertical_class,
+        segment_length_mi,
+        slower_lane_ffs,
+        slower_lane_hv_percent,
+        slower_lane_flow,
+        capacity_veh_h,
+    )
+    midpoint_density = passing_lane_midpoint_follower_density(
+        faster_lane_flow,
+        faster_lane_midpoint_speed,
+        faster_lane_pf,
+        slower_lane_flow,
+        slower_lane_midpoint_speed,
+        slower_lane_pf,
+    )
+    return {
+        "heavy_vehicle_count_veh_h": heavy_vehicle_count,
+        "faster_lane_flow_proportion": faster_lane_proportion,
+        "faster_lane_flow_rate_veh_h_ln": faster_lane_flow,
+        "slower_lane_flow_rate_veh_h_ln": slower_lane_flow,
+        "faster_lane_heavy_vehicle_percent": faster_lane_hv_percent,
+        "slower_lane_heavy_vehicle_count_veh_h": slower_lane_hv_count,
+        "slower_lane_heavy_vehicle_percent": slower_lane_hv_percent,
+        "faster_lane_free_flow_speed_mph": faster_lane_ffs,
+        "slower_lane_free_flow_speed_mph": slower_lane_ffs,
+        "faster_lane_initial_average_speed_mph": faster_lane_initial_speed,
+        "slower_lane_initial_average_speed_mph": slower_lane_initial_speed,
+        "average_speed_differential_adjustment_mph": speed_difference,
+        "faster_lane_midpoint_average_speed_mph": faster_lane_midpoint_speed,
+        "slower_lane_midpoint_average_speed_mph": slower_lane_midpoint_speed,
+        "faster_lane_midpoint_percent_followers": faster_lane_pf,
+        "slower_lane_midpoint_percent_followers": slower_lane_pf,
+        "midpoint_follower_density_followers_mi_ln": midpoint_density,
+    }
+
+
+def passing_lane_faster_lane_flow_proportion(
+    demand_flow_rate_veh_h: float,
+    heavy_vehicle_count_veh_h: float,
+) -> float:
+    """HCM Eq. 15-25 faster-lane flow proportion."""
+
+    return 0.92183 - 0.05022 * log(demand_flow_rate_veh_h) - (
+        0.00030 * heavy_vehicle_count_veh_h
+    )
+
+
+def passing_lane_faster_lane_heavy_vehicle_percent(
+    heavy_vehicle_percent: float,
+) -> float:
+    """HCM Eq. 15-28 faster-lane heavy vehicle percentage."""
+
+    return heavy_vehicle_percent * 0.4
+
+
+def passing_lane_average_speed_differential_adjustment(
+    demand_flow_rate_veh_h: float,
+    heavy_vehicle_percent: float,
+) -> float:
+    """HCM Eq. 15-31 midpoint lane speed differential adjustment."""
+
+    return 2.750 + 0.00056 * demand_flow_rate_veh_h + (
+        3.8521 * heavy_vehicle_percent / 100.0
+    )
+
+
+def passing_lane_midpoint_follower_density(
+    faster_lane_flow_rate_veh_h_ln: float,
+    faster_lane_midpoint_speed_mph: float,
+    faster_lane_midpoint_percent_followers: float,
+    slower_lane_flow_rate_veh_h_ln: float,
+    slower_lane_midpoint_speed_mph: float,
+    slower_lane_midpoint_percent_followers: float,
+) -> float:
+    """HCM Eq. 15-34 Passing Lane midpoint follower density."""
+
+    faster_lane_density = (
+        faster_lane_midpoint_percent_followers
+        / 100.0
+        * faster_lane_flow_rate_veh_h_ln
+        / faster_lane_midpoint_speed_mph
+    )
+    slower_lane_density = (
+        slower_lane_midpoint_percent_followers
+        / 100.0
+        * slower_lane_flow_rate_veh_h_ln
+        / slower_lane_midpoint_speed_mph
+    )
+    return (faster_lane_density + slower_lane_density) / 2.0
+
+
+def downstream_follower_density_adjustment(
+    percent_followers_value: float,
+    demand_flow_rate_veh_h: float,
+    average_speed_mph: float,
+    downstream_distance_mi: float,
+    upstream_percent_followers: float,
+    passing_lane_length_mi: float,
+) -> dict[str, float]:
+    """HCM Eq. 15-36 through Eq. 15-38 downstream passing-lane adjustment."""
+
+    pf_improvement = downstream_percent_followers_improvement(
+        downstream_distance_mi,
+        upstream_percent_followers,
+        passing_lane_length_mi,
+        demand_flow_rate_veh_h,
+    )
+    speed_improvement = downstream_speed_improvement(
+        downstream_distance_mi,
+        upstream_percent_followers,
+        passing_lane_length_mi,
+        demand_flow_rate_veh_h,
+    )
+    adjusted_density = (
+        percent_followers_value
+        / 100.0
+        * (1.0 - pf_improvement / 100.0)
+        * demand_flow_rate_veh_h
+        / (average_speed_mph * (1.0 + speed_improvement / 100.0))
+    )
+    return {
+        "percent_followers_improvement_percent": pf_improvement,
+        "speed_improvement_percent": speed_improvement,
+        "adjusted_follower_density_followers_mi_ln": adjusted_density,
+    }
+
+
+def downstream_percent_followers_improvement(
+    downstream_distance_mi: float,
+    upstream_percent_followers: float,
+    passing_lane_length_mi: float,
+    demand_flow_rate_veh_h: float,
+) -> float:
+    """HCM Eq. 15-36 percent-followers improvement downstream of a passing lane."""
+
+    return max(
+        0.0,
+        27.0
+        - 8.75 * log(max(0.1, downstream_distance_mi))
+        + 0.1 * max(0.0, upstream_percent_followers - 30.0)
+        + 3.5 * log(max(0.3, passing_lane_length_mi))
+        - 0.01 * demand_flow_rate_veh_h,
+    )
+
+
+def downstream_speed_improvement(
+    downstream_distance_mi: float,
+    upstream_percent_followers: float,
+    passing_lane_length_mi: float,
+    demand_flow_rate_veh_h: float,
+) -> float:
+    """HCM Eq. 15-37 speed improvement downstream of a passing lane."""
+
+    return max(
+        0.0,
+        3.0
+        - 0.8 * downstream_distance_mi
+        + 0.1 * max(0.0, upstream_percent_followers - 30.0)
+        + 0.75 * passing_lane_length_mi
+        - 0.005 * demand_flow_rate_veh_h,
+    )
+
+
+def passing_lane_effective_length(
+    upstream_follower_density_followers_mi_ln: float,
+    upstream_percent_followers: float,
+    upstream_demand_flow_rate_veh_h: float,
+    upstream_average_speed_mph: float,
+    passing_lane_length_mi: float,
+) -> dict[str, float]:
+    """Determine the Example Problem 3 downstream passing-lane effective length."""
+
+    zero_distance = _solve_monotonic_distance(
+        lambda distance: downstream_percent_followers_improvement(
+            distance,
+            upstream_percent_followers,
+            passing_lane_length_mi,
+            upstream_demand_flow_rate_veh_h,
+        ),
+        target=0.0,
+    )
+    target_density = 0.95 * upstream_follower_density_followers_mi_ln
+    density_distance = _solve_increasing_distance(
+        lambda distance: downstream_follower_density_adjustment(
+            percent_followers_value=upstream_percent_followers,
+            demand_flow_rate_veh_h=upstream_demand_flow_rate_veh_h,
+            average_speed_mph=upstream_average_speed_mph,
+            downstream_distance_mi=distance,
+            upstream_percent_followers=upstream_percent_followers,
+            passing_lane_length_mi=passing_lane_length_mi,
+        )["adjusted_follower_density_followers_mi_ln"],
+        target=target_density,
+    )
+    return {
+        "percent_followers_zero_mi": zero_distance,
+        "density_95_percent_mi": density_distance,
+        "effective_length_mi": min(zero_distance, density_distance),
+    }
+
+
+def _solve_monotonic_distance(
+    function,
+    target: float,
+    lower: float = 0.1,
+    upper: float = 30.0,
+) -> float:
+    low = lower
+    high = upper
+    for _ in range(80):
+        midpoint = (low + high) / 2.0
+        value = function(midpoint)
+        if value > target:
+            low = midpoint
+        else:
+            high = midpoint
+    return (low + high) / 2.0
+
+
+def _solve_increasing_distance(
+    function,
+    target: float,
+    lower: float = 0.1,
+    upper: float = 30.0,
+) -> float:
+    low = lower
+    high = upper
+    for _ in range(80):
+        midpoint = (low + high) / 2.0
+        value = function(midpoint)
+        if value < target:
+            low = midpoint
+        else:
+            high = midpoint
+    return (low + high) / 2.0
+
+
+def _passing_lane_lane_average_speed(
+    vertical_class: int,
+    free_flow_speed_mph: float,
+    lane_flow_rate_veh_h_ln: float,
+    segment_length_mi: float,
+    lane_heavy_vehicle_percent: float,
+) -> float:
+    speed_m = passing_lane_average_speed_slope_coefficient(
+        vertical_class,
+        free_flow_speed_mph,
+        0.0,
+        segment_length_mi,
+        lane_heavy_vehicle_percent,
+    )
+    speed_p = passing_lane_average_speed_power_coefficient(
+        vertical_class,
+        free_flow_speed_mph,
+        0.0,
+        segment_length_mi,
+        lane_heavy_vehicle_percent,
+    )
+    return average_speed(free_flow_speed_mph, lane_flow_rate_veh_h_ln, speed_m, speed_p)
+
+
+def _passing_lane_lane_percent_followers(
+    vertical_class: int,
+    segment_length_mi: float,
+    free_flow_speed_mph: float,
+    lane_heavy_vehicle_percent: float,
+    lane_flow_rate_veh_h_ln: float,
+    capacity_veh_h: float,
+) -> float:
+    pf_cap = passing_lane_percent_followers_at_capacity(
+        vertical_class,
+        segment_length_mi,
+        free_flow_speed_mph,
+        lane_heavy_vehicle_percent,
+    )
+    pf_25_cap = passing_lane_percent_followers_at_25_percent_capacity(
+        vertical_class,
+        segment_length_mi,
+        free_flow_speed_mph,
+        lane_heavy_vehicle_percent,
+    )
+    pf_m = percent_followers_slope_coefficient(PASSING_LANE, pf_cap, pf_25_cap, capacity_veh_h)
+    pf_p = percent_followers_power_coefficient(PASSING_LANE, pf_cap, pf_25_cap, capacity_veh_h)
+    return percent_followers(lane_flow_rate_veh_h_ln, pf_m, pf_p)
 
 
 def percent_followers_at_capacity(
