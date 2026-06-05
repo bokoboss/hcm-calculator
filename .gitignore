@@ -17,3 +17,6 @@ build/
 
 .DS_Store
 Thumbs.db
+
+# Local reference documents not committed to Git
+local_references/
