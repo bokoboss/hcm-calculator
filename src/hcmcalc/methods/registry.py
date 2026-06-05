@@ -1,4 +1,4 @@
-﻿"""Method registry scaffold."""
+"""Method registry scaffold."""
 
 from dataclasses import dataclass
 
@@ -21,7 +21,7 @@ def available_methods() -> list[MethodMetadata]:
             key="hcm7_ch15_two_lane_motorized",
             facility_type="two_lane_highway",
             hcm_reference="HCM 7th Edition Chapter 15",
-            status="planned",
+            status="implemented_example_only",
         ),
         MethodMetadata(
             key="hcm7_multilane_los",
