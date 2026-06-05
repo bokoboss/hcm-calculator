@@ -20,3 +20,6 @@ Thumbs.db
 
 # Local reference documents not committed to Git
 local_references/
+
+# Temporary local files
+.tmp/
