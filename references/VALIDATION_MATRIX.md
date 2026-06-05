@@ -5,6 +5,7 @@ This matrix defines the validation work required before calculation outputs are 
 | ID | Facility Type | HCM Source | Example Problem | Inputs Fixture | Expected Outputs Fixture | Status | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | TLH-CH15-001 | Two-Lane Highway | HCM 7th Edition Chapter 26 | Example Problem 1 | `references/example_inputs.yaml` | `references/expected_outputs.yaml` | Implemented example only | Level, straight Passing Constrained segment only |
+| TLH-CH15-002 | Two-Lane Highway | HCM 7th Edition Chapter 26 | Example Problem 2 | `references/example_inputs.yaml` | `references/expected_outputs.yaml` | Implemented example only | Passing Constrained segment with horizontal curve speed adjustment only |
 | MLH-LOS-001 | Multilane Highway LOS | HCM 7th Edition Chapter 26 | TBD | TBD | TBD | Future | Future method target |
 
 ## Required Validation Gates

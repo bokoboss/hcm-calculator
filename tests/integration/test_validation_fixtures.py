@@ -15,7 +15,9 @@ def test_example_problem_1_validation_fixtures_load() -> None:
 
     assert inputs["metadata"]["status"] == "validation_fixture"
     assert expected["metadata"]["status"] == "validation_fixture"
-    assert inputs["cases"][0]["id"] == expected["cases"][0]["id"]
+    assert {case["id"] for case in inputs["cases"]} == {
+        case["id"] for case in expected["cases"]
+    }
 
 
 def test_example_problem_1_matches_hcm_chapter_26_expected_values() -> None:
@@ -87,3 +89,62 @@ def test_example_problem_1_matches_hcm_chapter_26_expected_values() -> None:
     )
     assert result.outputs["level_of_service"] == expected["level_of_service"]
     assert len(result.intermediate_values) >= 18
+
+
+def test_example_problem_2_matches_hcm_chapter_26_expected_values() -> None:
+    inputs_fixture = load_yaml_fixture(ROOT / "references" / "example_inputs.yaml")
+    expected_fixture = load_yaml_fixture(ROOT / "references" / "expected_outputs.yaml")
+
+    case = _case_by_id(inputs_fixture, "TLH-CH15-002")
+    expected_case = _case_by_id(expected_fixture, "TLH-CH15-002")
+    expected = expected_case["expected_outputs"]
+    tolerances = expected_case["tolerances"]
+
+    result = TwoLaneHighwayChapter15Method().calculate(case["inputs"])
+
+    assert result.outputs["base_free_flow_speed_mph"] == pytest.approx(
+        expected["base_free_flow_speed_mph"],
+        abs=tolerances["speed_mph_absolute"],
+    )
+    assert result.outputs["tangent_free_flow_speed_mph"] == pytest.approx(
+        expected["tangent_free_flow_speed_mph"],
+        abs=tolerances["speed_mph_absolute"],
+    )
+    assert result.outputs["tangent_average_speed_mph"] == pytest.approx(
+        expected["tangent_average_speed_mph"],
+        abs=tolerances["speed_mph_absolute"],
+    )
+    assert result.outputs["adjusted_average_speed_mph"] == pytest.approx(
+        expected["adjusted_average_speed_mph"],
+        abs=tolerances["speed_mph_absolute"],
+    )
+
+    curve_outputs = {
+        subsegment["index"]: subsegment
+        for subsegment in result.outputs["horizontal_curve_subsegments"]
+        if subsegment["subsegment_type"] == "horizontal_curve"
+    }
+    for expected_subsegment in expected["horizontal_curve_subsegments"]:
+        actual = curve_outputs[expected_subsegment["index"]]
+        assert actual["base_free_flow_speed_mph"] == pytest.approx(
+            expected_subsegment["base_free_flow_speed_mph"],
+            abs=tolerances["speed_mph_absolute"],
+        )
+        assert actual["free_flow_speed_mph"] == pytest.approx(
+            expected_subsegment["free_flow_speed_mph"],
+            abs=tolerances["speed_mph_absolute"],
+        )
+        assert actual["speed_coefficient_m"] == pytest.approx(
+            expected_subsegment["speed_coefficient_m"],
+            abs=tolerances["coefficient_absolute"],
+        )
+        assert actual["average_speed_mph"] == pytest.approx(
+            expected_subsegment["average_speed_mph"],
+            abs=tolerances["speed_mph_absolute"],
+        )
+
+    assert len(result.intermediate_values) >= 40
+
+
+def _case_by_id(fixture: dict, case_id: str) -> dict:
+    return next(case for case in fixture["cases"] if case["id"] == case_id)

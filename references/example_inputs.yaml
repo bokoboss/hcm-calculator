@@ -1,8 +1,8 @@
 metadata:
-  fixture_version: 0.2.0
+  fixture_version: 0.3.0
   purpose: HCM Chapter 26 Two-Lane Highway validation input structure
   status: validation_fixture
-  note: Inputs are scoped to Example Problem 1 only.
+  note: Inputs are scoped to Example Problems 1 and 2 only.
 
 cases:
   - id: TLH-CH15-001
@@ -28,4 +28,72 @@ cases:
       shoulder_width_ft: 6.0
       access_point_density_per_mi: 0.0
       upstream_passing_lane: false
+    validation_status: implemented_example_only
+
+  - id: TLH-CH15-002
+    facility_type: two_lane_highway
+    method: hcm7_ch15_two_lane_motorized
+    source:
+      edition: HCM 7th Edition
+      methodology_chapter: Chapter 15
+      validation_chapter: Chapter 26
+      example_problem: Two-Lane Highway Example Problem 2
+      segment_description: Passing Constrained segment with horizontal curves
+    inputs:
+      case_id: TLH-CH15-002
+      segment_length_mi: 0.75
+      segment_type: passing_constrained
+      analysis_direction_volume_veh_h: 752.0
+      peak_hour_factor: 0.94
+      posted_speed_mph: 50.0
+      heavy_vehicle_percent: 5.0
+      grade_percent: 0.0
+      horizontal_alignment: horizontal_curves
+      lane_width_ft: 12.0
+      shoulder_width_ft: 6.0
+      access_point_density_per_mi: 0.0
+      upstream_passing_lane: false
+      horizontal_alignment_subsegments:
+        - type: tangent
+          length_ft: 280.0
+        - type: horizontal_curve
+          length_ft: 432.0
+          superelevation_percent: 3.0
+          radius_ft: 450.0
+          central_angle_deg: 55.0
+          horizontal_class: 3
+        - type: tangent
+          length_ft: 260.0
+        - type: horizontal_curve
+          length_ft: 366.5
+          superelevation_percent: 2.0
+          radius_ft: 300.0
+          central_angle_deg: 70.0
+          horizontal_class: 4
+        - type: tangent
+          length_ft: 250.0
+        - type: horizontal_curve
+          length_ft: 216.0
+          superelevation_percent: 5.0
+          radius_ft: 275.0
+          central_angle_deg: 45.0
+          horizontal_class: 5
+        - type: tangent
+          length_ft: 275.6
+        - type: horizontal_curve
+          length_ft: 458.0
+          superelevation_percent: 0.0
+          radius_ft: 750.0
+          central_angle_deg: 35.0
+          horizontal_class: 2
+        - type: tangent
+          length_ft: 285.0
+        - type: horizontal_curve
+          length_ft: 767.9
+          superelevation_percent: 4.0
+          radius_ft: 1100.0
+          central_angle_deg: 40.0
+          horizontal_class: 1
+        - type: tangent
+          length_ft: 369.0
     validation_status: implemented_example_only
