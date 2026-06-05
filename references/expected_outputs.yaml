@@ -1,0 +1,18 @@
+﻿metadata:
+  fixture_version: 0.1.0
+  purpose: placeholder validation expected output structure
+  status: scaffold_only
+  note: Replace with expected values from HCM Chapter 26 examples and documented tolerances.
+
+cases:
+  - id: TLH-CH15-001
+    facility_type: two_lane_highway
+    method: hcm_7th_edition_chapter_15_motorized_vehicle
+    expected_outputs:
+      level_of_service: null
+      performance_measures: {}
+      intermediate_values: {}
+    tolerances:
+      default_numeric_absolute: null
+      default_numeric_relative: null
+    validation_status: not_started
