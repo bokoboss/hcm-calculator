@@ -1537,7 +1537,7 @@ def passing_lane_midpoint_values(
         faster_lane_ffs,
         faster_lane_hv_percent,
         faster_lane_flow,
-        capacity_veh_h,
+        _passing_lane_lane_capacity(vertical_class, faster_lane_hv_percent),
     )
     slower_lane_pf = _passing_lane_lane_percent_followers(
         vertical_class,
@@ -1545,7 +1545,7 @@ def passing_lane_midpoint_values(
         slower_lane_ffs,
         slower_lane_hv_percent,
         slower_lane_flow,
-        capacity_veh_h,
+        _passing_lane_lane_capacity(vertical_class, slower_lane_hv_percent),
     )
     midpoint_density = passing_lane_midpoint_follower_density(
         faster_lane_flow,
@@ -1823,6 +1823,25 @@ def _passing_lane_lane_percent_followers(
     pf_m = percent_followers_slope_coefficient(PASSING_LANE, pf_cap, pf_25_cap, capacity_veh_h)
     pf_p = percent_followers_power_coefficient(PASSING_LANE, pf_cap, pf_25_cap, capacity_veh_h)
     return percent_followers(lane_flow_rate_veh_h_ln, pf_m, pf_p)
+
+
+def _passing_lane_lane_capacity(
+    vertical_class: int,
+    lane_heavy_vehicle_percent: float,
+) -> float:
+    """HCM Exhibit 15-5 capacity reapplied to a Passing Lane lane."""
+
+    if vertical_class != 1:
+        raise MethodNotImplementedError(
+            "Passing Lane lane-level capacity is implemented only for vertical class 1."
+        )
+    if lane_heavy_vehicle_percent < 10.0:
+        return 1500.0
+    if lane_heavy_vehicle_percent < 15.0:
+        return 1400.0
+    if lane_heavy_vehicle_percent < 25.0:
+        return 1300.0
+    return 1100.0
 
 
 def percent_followers_at_capacity(

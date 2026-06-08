@@ -128,6 +128,12 @@ def test_passing_lane_formula_level_intermediates() -> None:
         44.5,
         abs=0.2,
     )
+    # Step 7d reapplies Exhibit 15-5: the 14.2% HV slower lane has
+    # 1,400 veh/h capacity.
+    assert values["slower_lane_midpoint_percent_followers"] == pytest.approx(
+        35.6,
+        abs=0.2,
+    )
     assert values["midpoint_follower_density_followers_mi_ln"] == pytest.approx(
         2.9,
         abs=0.1,

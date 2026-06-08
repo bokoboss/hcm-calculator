@@ -204,6 +204,14 @@ def test_example_problem_3_matches_hcm_chapter_26_expected_values() -> None:
         expected_segment_2["slower_lane_midpoint_average_speed_mph"],
         abs=tolerances["speed_mph_absolute"],
     )
+    assert segment_2["faster_lane_midpoint_percent_followers"] == pytest.approx(
+        expected_segment_2["faster_lane_midpoint_percent_followers"],
+        abs=tolerances["percent_followers_absolute"],
+    )
+    assert segment_2["slower_lane_midpoint_percent_followers"] == pytest.approx(
+        expected_segment_2["slower_lane_midpoint_percent_followers"],
+        abs=tolerances["percent_followers_absolute"],
+    )
     assert segment_2["midpoint_follower_density_followers_mi_ln"] == pytest.approx(
         expected_segment_2["midpoint_follower_density_followers_mi_ln"],
         abs=tolerances["follower_density_followers_mi_ln_absolute"],
