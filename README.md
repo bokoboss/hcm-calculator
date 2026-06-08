@@ -17,12 +17,14 @@ Implemented:
 
 - Project package scaffold
 - Documentation scaffold
-- Placeholder methodology and validation references
-- Placeholder tests
+- Methodology and validation references
+- HCM Chapter 26 Example Problems 1, 2, and 3
+- Unit and validation fixture tests
 
 Not implemented yet:
 
 - Full HCM Chapter 15 calculation engine
+- HCM Chapter 26 Example Problem 4
 - Streamlit worksheet UI
 - Multilane Highway LOS calculations
 - Production validation dataset
@@ -32,11 +34,20 @@ Not implemented yet:
 Requires Python 3.12.
 
 ```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 python -m pip install -e .[dev]
-pytest
 ```
 
 Streamlit is listed as an optional UI dependency only. Calculation logic must remain usable without Streamlit installed.
+
+## Running Tests
+
+Run the full test suite from the repository root:
+
+```powershell
+py -m pytest
+```
 
 ## Repository Layout
 
@@ -44,9 +55,11 @@ Streamlit is listed as an optional UI dependency only. Calculation logic must re
 docs/                       Product, architecture, UI, and methodology docs
 references/                 Validation fixtures and example data
 src/hcmcalc/                Python package
-tests/                      Placeholder test structure
+tests/                      Unit and validation fixture tests
 ```
 
 ## Validation Requirement
 
-Before UI expansion or any production use, calculation correctness must be validated against relevant HCM 7th Edition Chapter 26 example problems. Validation artifacts should document source examples, input mappings, expected outputs, tolerances, and reviewer sign-off.
+HCM 7th Edition Chapter 26 Example Problems 1, 2, and 3 are implemented as the current validation baseline. Additional example problems, including Example Problem 4, are not yet implemented.
+
+Before UI expansion or any production use, calculation correctness must continue to be validated against relevant HCM Chapter 26 example problems. Validation artifacts should document source examples, input mappings, expected outputs, tolerances, and reviewer sign-off.
