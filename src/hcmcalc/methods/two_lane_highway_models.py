@@ -4,6 +4,8 @@ from dataclasses import dataclass
 
 
 PASSING_CONSTRAINED = "passing_constrained"
+PASSING_LANE = "passing_lane"
+PASSING_ZONE = "passing_zone"
 OPPOSING_FLOW_EXAMPLE_1_VEH_H = 1500.0
 STRAIGHT_ALIGNMENT = "straight"
 HORIZONTAL_CURVES_ALIGNMENT = "horizontal_curves"
@@ -44,3 +46,32 @@ class TwoLaneExampleProblem2Inputs(TwoLaneExampleProblem1Inputs):
     """Validated input shape for HCM Chapter 26 Two-Lane Example Problem 2."""
 
     horizontal_alignment_subsegments: tuple[HorizontalAlignmentSubsegment, ...]
+
+
+@dataclass(frozen=True)
+class TwoLaneFacilitySegmentInputs:
+    """Validated segment input shape for HCM Chapter 26 Example Problem 3."""
+
+    segment_id: int
+    segment_type: str
+    segment_length_mi: float
+    posted_speed_mph: float
+    analysis_direction_volume_veh_h: float
+    opposing_direction_volume_veh_h: float | None
+    peak_hour_factor: float
+    heavy_vehicle_percent: float
+    grade_percent: float
+    horizontal_alignment: str
+    lane_width_ft: float
+    shoulder_width_ft: float
+    access_point_density_per_mi: float
+
+
+@dataclass(frozen=True)
+class TwoLaneExampleProblem3Inputs:
+    """Validated facility input shape for HCM Chapter 26 Two-Lane Example 3."""
+
+    case_id: str
+    facility_length_mi: float
+    upstream_passing_lane: bool
+    segments: tuple[TwoLaneFacilitySegmentInputs, ...]

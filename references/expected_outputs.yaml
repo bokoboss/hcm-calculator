@@ -1,8 +1,8 @@
 metadata:
-  fixture_version: 0.3.0
+  fixture_version: 0.4.0
   purpose: HCM Chapter 26 Two-Lane Highway validation expected outputs
   status: validation_fixture
-  note: Expected values are published Example Problems 1 and 2 validation targets.
+  note: Expected values are published Example Problems 1, 2, and 3 validation targets.
 
 cases:
   - id: TLH-CH15-001
@@ -72,4 +72,85 @@ cases:
     tolerances:
       speed_mph_absolute: 0.1
       coefficient_absolute: 0.0001
+    validation_status: implemented_example_only
+
+  - id: TLH-CH15-003
+    facility_type: two_lane_highway
+    method: hcm7_ch15_two_lane_motorized
+    expected_outputs:
+      segments:
+        - segment_id: 1
+          segment_type: passing_constrained
+          demand_flow_rate_veh_h: 904.0
+          capacity_veh_h: 1700.0
+          free_flow_speed_mph: 62.43
+          average_speed_mph: 58.8
+          percent_followers: 69.7
+          follower_density_followers_mi_ln: 10.7
+          level_of_service: D
+        - segment_id: 2
+          segment_type: passing_lane
+          demand_flow_rate_veh_h: 868.0
+          capacity_veh_h: 1500.0
+          free_flow_speed_mph: 62.43
+          average_speed_mph: 57.9
+          percent_followers: 60.7
+          faster_lane_flow_rate_veh_h_ln: 487.0
+          slower_lane_flow_rate_veh_h_ln: 381.0
+          faster_lane_heavy_vehicle_percent: 3.2
+          slower_lane_heavy_vehicle_percent: 14.2
+          faster_lane_midpoint_average_speed_mph: 62.5
+          slower_lane_midpoint_average_speed_mph: 58.8
+          faster_lane_midpoint_percent_followers: 44.5
+          slower_lane_midpoint_percent_followers: 35.6
+          midpoint_follower_density_followers_mi_ln: 2.9
+          follower_density_endpoint_followers_mi_ln: 9.1
+          follower_density_followers_mi_ln: 2.9
+          downstream_effective_length_mi: 8.1
+          level_of_service: B
+        - segment_id: 3
+          segment_type: passing_constrained
+          demand_flow_rate_veh_h: 863.0
+          capacity_veh_h: 1700.0
+          free_flow_speed_mph: 62.43
+          average_speed_mph: 58.9
+          percent_followers: 68.0
+          unadjusted_follower_density_followers_mi_ln: 10.0
+          percent_followers_improvement_percent: 15.7
+          speed_improvement_percent: 1.8
+          follower_density_followers_mi_ln: 8.2
+          level_of_service: D
+        - segment_id: 4
+          segment_type: passing_zone
+          demand_flow_rate_veh_h: 851.0
+          opposing_flow_rate_veh_h: 532.0
+          capacity_veh_h: 1700.0
+          free_flow_speed_mph: 62.45
+          average_speed_mph: 59.2
+          percent_followers: 67.8
+          unadjusted_follower_density_followers_mi_ln: 9.8
+          percent_followers_improvement_percent: 14.3
+          speed_improvement_percent: 1.4
+          follower_density_followers_mi_ln: 8.2
+          level_of_service: D
+        - segment_id: 5
+          segment_type: passing_constrained
+          demand_flow_rate_veh_h: 850.0
+          capacity_veh_h: 1700.0
+          free_flow_speed_mph: 62.43
+          average_speed_mph: 58.9
+          percent_followers: 67.7
+          unadjusted_follower_density_followers_mi_ln: 9.8
+          percent_followers_improvement_percent: 10.2
+          speed_improvement_percent: 0.0
+          follower_density_followers_mi_ln: 8.8
+          level_of_service: D
+      facility_follower_density_followers_mi_ln: 7.3
+      facility_level_of_service: C
+    tolerances:
+      demand_flow_rate_veh_h_absolute: 1.0
+      speed_mph_absolute: 0.1
+      percent_followers_absolute: 0.2
+      follower_density_followers_mi_ln_absolute: 0.1
+      level_of_service_exact: true
     validation_status: implemented_example_only
