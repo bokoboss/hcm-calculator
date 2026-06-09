@@ -1,8 +1,8 @@
 metadata:
-  fixture_version: 0.4.0
+  fixture_version: 0.5.0
   purpose: HCM Chapter 26 Two-Lane Highway validation expected outputs
   status: validation_fixture
-  note: Expected values are published Example Problems 1, 2, and 3 validation targets.
+  note: Expected values are published Example Problems 1 through 4 validation targets.
 
 cases:
   - id: TLH-CH15-001
@@ -147,6 +147,28 @@ cases:
           level_of_service: D
       facility_follower_density_followers_mi_ln: 7.3
       facility_level_of_service: C
+    tolerances:
+      demand_flow_rate_veh_h_absolute: 1.0
+      speed_mph_absolute: 0.1
+      percent_followers_absolute: 0.2
+      follower_density_followers_mi_ln_absolute: 0.1
+      level_of_service_exact: true
+    validation_status: implemented_example_only
+
+  - id: TLH-CH15-004
+    facility_type: two_lane_highway
+    method: hcm7_ch15_two_lane_motorized
+    source_note: Published Exhibit 26-36 reports facility density 20.0 and Passing Lane Segment 5 LOS C.
+    expected_outputs:
+      segments:
+        - {segment_id: 1, vertical_class: 4, demand_flow_rate_veh_h: 1222.0, capacity_veh_h: 1700.0, free_flow_speed_mph: 60.0, average_speed_mph: 47.9, percent_followers: 86.9, follower_density_followers_mi_ln: 22.2, level_of_service: E}
+        - {segment_id: 2, vertical_class: 5, demand_flow_rate_veh_h: 1222.0, capacity_veh_h: 1700.0, free_flow_speed_mph: 59.0, average_speed_mph: 43.9, percent_followers: 89.3, follower_density_followers_mi_ln: 24.9, level_of_service: E}
+        - {segment_id: 3, vertical_class: 4, demand_flow_rate_veh_h: 1222.0, capacity_veh_h: 1700.0, free_flow_speed_mph: 60.1, average_speed_mph: 50.8, percent_followers: 83.9, follower_density_followers_mi_ln: 20.2, level_of_service: E}
+        - {segment_id: 4, vertical_class: 4, demand_flow_rate_veh_h: 1222.0, capacity_veh_h: 1700.0, free_flow_speed_mph: 60.0, average_speed_mph: 49.2, percent_followers: 86.9, follower_density_followers_mi_ln: 21.6, level_of_service: E}
+        - {segment_id: 5, vertical_class: 1, demand_flow_rate_veh_h: 1222.0, capacity_veh_h: 1500.0, free_flow_speed_mph: 62.4, average_speed_mph: 56.0, percent_followers: 78.2, follower_density_followers_mi_ln: 6.2, level_of_service: C}
+        - {segment_id: 6, vertical_class: 1, demand_flow_rate_veh_h: 1222.0, capacity_veh_h: 1700.0, free_flow_speed_mph: 62.4, average_speed_mph: 58.3, percent_followers: 78.5, follower_density_followers_mi_ln: 13.2, level_of_service: E}
+      facility_follower_density_followers_mi_ln: 20.0
+      facility_level_of_service: E
     tolerances:
       demand_flow_rate_veh_h_absolute: 1.0
       speed_mph_absolute: 0.1

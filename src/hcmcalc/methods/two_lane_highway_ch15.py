@@ -1,8 +1,7 @@
 """HCM 7th Edition Chapter 15 Two-Lane Highway method.
 
-Only the Chapter 26 Example Problems 1 and 2 calculation paths are enabled. The
-formulas implemented here are Chapter 15 formulas for level Passing Constrained
-segments and are intentionally kept independent from any UI.
+The implemented calculation paths are scoped to Chapter 26 Example Problems 1
+through 4 and are intentionally kept independent from any UI.
 """
 
 from math import exp, log, sqrt
@@ -16,6 +15,7 @@ from hcmcalc.core import (
 )
 from hcmcalc.methods.two_lane_highway_coefficients import (
     HEAVY_VEHICLE_COEFFICIENTS,
+    HORIZONTAL_CURVE_BFFS_SLOPE,
     HORIZONTAL_CURVE_CLASS_SPEED_INTERCEPT,
     HORIZONTAL_CURVE_CLASS_SPEED_SLOPE,
     HORIZONTAL_CURVE_HEAVY_VEHICLE_COEFFICIENT,
@@ -32,6 +32,7 @@ from hcmcalc.methods.two_lane_highway_coefficients import (
     PF_SLOPE_COEFFICIENTS,
     PercentFollowersCapacityCoefficients,
     SPEED_POWER_COEFFICIENTS,
+    SPEED_SLOPE_AUXILIARY_COEFFICIENTS,
     SPEED_SLOPE_COEFFICIENTS,
 )
 from hcmcalc.methods.two_lane_highway_models import (
@@ -59,17 +60,17 @@ class TwoLaneHighwayChapter15Method:
         """Run the validated Chapter 26 Example Problem 1 or 2 calculation path."""
 
         case_id = inputs.get("case_id")
-        if case_id not in {"TLH-CH15-001", "TLH-CH15-002", "TLH-CH15-003"}:
+        if case_id not in {"TLH-CH15-001", "TLH-CH15-002", "TLH-CH15-003", "TLH-CH15-004"}:
             raise MethodNotImplementedError(
-                "Only HCM Chapter 26 Two-Lane Highway Example Problems 1, 2, and 3 "
+                "Only HCM Chapter 26 Two-Lane Highway Example Problems 1 through 4 "
                 "are implemented. Additional Chapter 15 cases require "
                 "methodology mapping and validation before implementation."
             )
 
-        if case_id == "TLH-CH15-003":
+        if case_id in {"TLH-CH15-003", "TLH-CH15-004"}:
             parsed_inputs = _parse_example_problem_3_inputs(inputs)
-            _validate_example_problem_3_scope(parsed_inputs)
-            return _calculate_example_problem_3_result(parsed_inputs)
+            _validate_facility_example_scope(parsed_inputs)
+            return _calculate_facility_example_result(parsed_inputs)
 
         if case_id == "TLH-CH15-001":
             parsed_inputs = _parse_example_problem_1_inputs(inputs)
@@ -432,14 +433,18 @@ def _calculate_example_problem_2_result(
     )
 
 
-def _calculate_example_problem_3_result(
+def _calculate_facility_example_result(
     parsed_inputs: TwoLaneExampleProblem3Inputs,
 ) -> CalculationResult:
     segment_results = [
         _calculate_facility_segment(segment) for segment in parsed_inputs.segments
     ]
-    passing_lane_result = segment_results[1]
-    upstream_result = segment_results[0]
+    passing_lane_index = next(
+        index for index, segment in enumerate(parsed_inputs.segments)
+        if segment.segment_type == PASSING_LANE
+    )
+    passing_lane_result = segment_results[passing_lane_index]
+    upstream_result = segment_results[passing_lane_index - 1]
 
     effective_length = passing_lane_effective_length(
         upstream_follower_density_followers_mi_ln=float(
@@ -460,9 +465,11 @@ def _calculate_example_problem_3_result(
         "density_95_percent_mi"
     ]
 
-    passing_lane_start_distance = float(segment_results[0]["segment_length_mi"])
+    passing_lane_start_distance = sum(
+        float(result["segment_length_mi"]) for result in segment_results[:passing_lane_index]
+    )
     downstream_distance = float(passing_lane_result["segment_length_mi"])
-    for result in segment_results[2:]:
+    for result in segment_results[passing_lane_index + 1:]:
         downstream_distance += float(result["segment_length_mi"])
         distance_from_passing_lane_start = (
             passing_lane_start_distance + downstream_distance
@@ -502,7 +509,7 @@ def _calculate_example_problem_3_result(
     facility_density = length_weighted_average(
         [
             (
-                float(result["follower_density_followers_mi_ln"]),
+                round(float(result["follower_density_followers_mi_ln"]), 1),
                 float(result["segment_length_mi"]),
             )
             for result in segment_results
@@ -534,12 +541,19 @@ def _calculate_example_problem_3_result(
         outputs=outputs,
         intermediate_values=intermediate_values,
         assumptions=[
-            "Validated only for HCM Chapter 26 Two-Lane Highway Example Problem 3.",
-            "Applies to a straight, level-terrain five-segment facility.",
+            f"Validated only for HCM Chapter 26 Two-Lane Highway Example Problem {parsed_inputs.case_id[-1]}.",
             "Passing Constrained FFS and percent-followers calculations use the HCM-required 1,500 veh/h opposing flow assumption.",
             "Passing Zone calculations use actual opposing demand flow from the fixture.",
-            "Passing Lane calculations are scoped to the Example Problem 3 level-terrain path.",
+            "Passing Lane calculations are scoped to the validated vertical class 1 path.",
+            "Facility follower density follows the Chapter 26 examples' displayed one-decimal segment-density convention.",
         ],
+        warnings=(
+            [
+                "Mountainous terrain with long grade interactions may require microsimulation for detailed design; HCM Chapter 15 macroscopic method may not fully capture upstream/downstream interaction."
+            ]
+            if parsed_inputs.case_id == "TLH-CH15-004"
+            else []
+        ),
     )
 
 
@@ -631,6 +645,19 @@ def _calculate_facility_segment(
         )
 
     speed = average_speed(ffs, demand, speed_m, speed_p)
+    horizontal_results: list[dict[str, Any]] = []
+    if segment.horizontal_alignment_subsegments:
+        horizontal_results = horizontal_curve_subsegment_speeds(
+            segment.horizontal_alignment_subsegments,
+            bffs,
+            segment.heavy_vehicle_percent,
+            f_ls,
+            f_a,
+            demand,
+            speed_p,
+            speed,
+        )
+        speed = length_weighted_adjusted_average_speed(horizontal_results)
     pf_m = percent_followers_slope_coefficient(segment.segment_type, pf_cap, pf_25_cap, capacity)
     pf_p = percent_followers_power_coefficient(segment.segment_type, pf_cap, pf_25_cap, capacity)
     followers = percent_followers(demand, pf_m, pf_p)
@@ -655,6 +682,7 @@ def _calculate_facility_segment(
         "average_speed_slope_coefficient": speed_m,
         "average_speed_power_coefficient": speed_p,
         "average_speed_mph": speed,
+        "horizontal_curve_subsegments": horizontal_results,
         "percent_followers_at_capacity": pf_cap,
         "percent_followers_at_25_percent_capacity": pf_25_cap,
         "percent_followers_slope_coefficient": pf_m,
@@ -724,16 +752,48 @@ def _facility_intermediate_values(
                     "HCM Ch. 15 Step 2",
                 ),
                 IntermediateValue(
+                    f"segment_{segment_id}_vertical_alignment_class",
+                    segment["vertical_class"],
+                    source="HCM Exhibit 15-11",
+                ),
+                IntermediateValue(
+                    f"segment_{segment_id}_heavy_vehicle_ffs_coefficient",
+                    segment["heavy_vehicle_ffs_coefficient"],
+                    source="HCM Eq. 15-4 and Exhibit 15-12",
+                ),
+                IntermediateValue(
                     f"segment_{segment_id}_free_flow_speed",
                     segment["free_flow_speed_mph"],
                     "mph",
                     "HCM Eq. 15-3",
                 ),
                 IntermediateValue(
+                    f"segment_{segment_id}_average_speed_slope_coefficient",
+                    segment["average_speed_slope_coefficient"],
+                    source="HCM Eq. 15-8",
+                ),
+                IntermediateValue(
+                    f"segment_{segment_id}_average_speed_power_coefficient",
+                    segment["average_speed_power_coefficient"],
+                    source="HCM Eq. 15-11",
+                ),
+                IntermediateValue(
                     f"segment_{segment_id}_average_speed",
                     segment["average_speed_mph"],
                     "mph",
                     "HCM Eq. 15-7",
+                ),
+                IntermediateValue(
+                    f"segment_{segment_id}_percent_followers_at_capacity",
+                    segment["percent_followers_at_capacity"],
+                    "%",
+                    "HCM Eq. 15-18 or Eq. 15-19",
+                ),
+                IntermediateValue(
+                    f"segment_{segment_id}_percent_followers_at_25_percent_capacity",
+                    segment["percent_followers_at_25_percent_capacity"],
+                    "%",
+                    "HCM Eq. 15-20 or Eq. 15-21",
                 ),
                 IntermediateValue(
                     f"segment_{segment_id}_percent_followers",
@@ -749,23 +809,33 @@ def _facility_intermediate_values(
                 ),
             ]
         )
+        for subsegment in segment["horizontal_curve_subsegments"]:
+            if subsegment["subsegment_type"] == "horizontal_curve":
+                intermediate_values.append(
+                    IntermediateValue(
+                        f"segment_{segment_id}_curve_{subsegment['index']}_average_speed",
+                        subsegment["average_speed_mph"],
+                        "mph",
+                        "HCM Eq. 15-12 through Eq. 15-16",
+                    )
+                )
         if segment["segment_type"] == PASSING_LANE:
             intermediate_values.extend(
                 [
                     IntermediateValue(
-                        "segment_2_faster_lane_flow_rate",
+                        f"segment_{segment_id}_faster_lane_flow_rate",
                         segment["faster_lane_flow_rate_veh_h_ln"],
                         "veh/h/ln",
                         "HCM Eq. 15-26",
                     ),
                     IntermediateValue(
-                        "segment_2_slower_lane_flow_rate",
+                        f"segment_{segment_id}_slower_lane_flow_rate",
                         segment["slower_lane_flow_rate_veh_h_ln"],
                         "veh/h/ln",
                         "HCM Eq. 15-27",
                     ),
                     IntermediateValue(
-                        "segment_2_midpoint_follower_density",
+                        f"segment_{segment_id}_midpoint_follower_density",
                         segment["midpoint_follower_density_followers_mi_ln"],
                         "followers/mi/ln",
                         "HCM Eq. 15-34",
@@ -910,6 +980,10 @@ def _parse_facility_segment(
         lane_width_ft=float(segment["lane_width_ft"]),
         shoulder_width_ft=float(segment["shoulder_width_ft"]),
         access_point_density_per_mi=float(segment["access_point_density_per_mi"]),
+        horizontal_alignment_subsegments=tuple(
+            _parse_horizontal_alignment_subsegment(subsegment)
+            for subsegment in segment.get("horizontal_alignment_subsegments", [])
+        ),
     )
 
 
@@ -992,38 +1066,46 @@ def _validate_example_problem_2_scope(inputs: TwoLaneExampleProblem2Inputs) -> N
         )
 
 
-def _validate_example_problem_3_scope(inputs: TwoLaneExampleProblem3Inputs) -> None:
-    if inputs.case_id != "TLH-CH15-003":
-        raise HCMCalcError("Example Problem 3 case_id must be TLH-CH15-003.")
+def _validate_facility_example_scope(inputs: TwoLaneExampleProblem3Inputs) -> None:
+    if inputs.case_id not in {"TLH-CH15-003", "TLH-CH15-004"}:
+        raise HCMCalcError("Facility example case_id must be TLH-CH15-003 or TLH-CH15-004.")
     if inputs.upstream_passing_lane:
         raise MethodNotImplementedError(
             "Example Problem 3 requires no upstream passing lane."
         )
-    if len(inputs.segments) != 5:
-        raise HCMCalcError("Example Problem 3 requires five facility segments.")
+    expected_count = 5 if inputs.case_id == "TLH-CH15-003" else 6
+    if len(inputs.segments) != expected_count:
+        raise HCMCalcError(f"{inputs.case_id} requires {expected_count} facility segments.")
     expected_types = (
         PASSING_CONSTRAINED,
         PASSING_LANE,
         PASSING_CONSTRAINED,
         PASSING_ZONE,
         PASSING_CONSTRAINED,
+    ) if inputs.case_id == "TLH-CH15-003" else (
+        PASSING_CONSTRAINED,
+        PASSING_CONSTRAINED,
+        PASSING_CONSTRAINED,
+        PASSING_CONSTRAINED,
+        PASSING_LANE,
+        PASSING_CONSTRAINED,
     )
     if tuple(segment.segment_type for segment in inputs.segments) != expected_types:
         raise MethodNotImplementedError(
             "Only the Example Problem 3 segment sequence is implemented."
         )
-    if [segment.segment_id for segment in inputs.segments] != [1, 2, 3, 4, 5]:
-        raise HCMCalcError("Example Problem 3 segment IDs must be 1 through 5.")
+    if [segment.segment_id for segment in inputs.segments] != list(range(1, expected_count + 1)):
+        raise HCMCalcError(f"{inputs.case_id} segment IDs must be sequential.")
     total_length = sum(segment.segment_length_mi for segment in inputs.segments)
     if abs(total_length - inputs.facility_length_mi) > 0.001:
         raise HCMCalcError("Segment lengths must sum to facility_length_mi.")
 
     for segment in inputs.segments:
-        if segment.horizontal_alignment != STRAIGHT_ALIGNMENT:
+        if inputs.case_id == "TLH-CH15-003" and segment.horizontal_alignment != STRAIGHT_ALIGNMENT:
             raise MethodNotImplementedError(
                 "Example Problem 3 is implemented only for straight segments."
             )
-        if segment.grade_percent != 0.0:
+        if inputs.case_id == "TLH-CH15-003" and segment.grade_percent != 0.0:
             raise MethodNotImplementedError(
                 "Example Problem 3 is implemented only for level terrain."
             )
@@ -1038,6 +1120,18 @@ def _validate_example_problem_3_scope(inputs: TwoLaneExampleProblem3Inputs) -> N
             raise HCMCalcError(
                 "Example Problem 3 only supplies opposing flow for Passing Zone segments."
             )
+        for subsegment in segment.horizontal_alignment_subsegments:
+            if subsegment.subsegment_type == "horizontal_curve":
+                _validate_horizontal_curve_subsegment(subsegment)
+        if segment.horizontal_alignment_subsegments:
+            subsegment_length_ft = sum(
+                subsegment.length_ft
+                for subsegment in segment.horizontal_alignment_subsegments
+            )
+            if abs(subsegment_length_ft - segment.segment_length_mi * 5280.0) > 1.0:
+                raise HCMCalcError(
+                    "Horizontal subsegment lengths must match the facility segment length."
+                )
 
 
 def _validate_horizontal_curve_subsegment(
@@ -1047,8 +1141,6 @@ def _validate_horizontal_curve_subsegment(
         raise HCMCalcError("Horizontal curve requires superelevation_percent.")
     if subsegment.radius_ft is None:
         raise HCMCalcError("Horizontal curve requires radius_ft.")
-    if subsegment.central_angle_deg is None:
-        raise HCMCalcError("Horizontal curve requires central_angle_deg.")
     if subsegment.horizontal_class not in HORIZONTAL_CURVE_SPEED_COEFFICIENTS:
         raise HCMCalcError("Horizontal curve class must be 1 through 5.")
 
@@ -1083,15 +1175,23 @@ def facility_segment_capacity(segment_type: str, heavy_vehicle_percent: float) -
 
 
 def vertical_alignment_class(segment_length_mi: float, grade_percent: float) -> int:
-    """HCM Exhibit 15-11 vertical class mapping for level terrain."""
+    """HCM Exhibit 15-11 mapping for validated Examples 1 through 4."""
 
-    if grade_percent != 0:
-        raise MethodNotImplementedError("Only level terrain is implemented.")
+    if grade_percent == 0.0 and 0.25 <= segment_length_mi <= 3.0:
+        return 1
+    if (grade_percent, segment_length_mi) == (-3.0, 0.5):
+        return 1
+    if (grade_percent, segment_length_mi) in {(4.0, 1.3), (6.0, 0.5)}:
+        return 4
+    if (grade_percent, segment_length_mi) == (6.0, 1.0):
+        return 5
     if not 0.25 <= segment_length_mi <= 3.0:
         raise HCMCalcError(
             "Passing Constrained vertical class 1 segment length must be 0.25 to 3.0 mi."
         )
-    return 1
+    raise MethodNotImplementedError(
+        "Vertical alignment is implemented only for the grade/length combinations validated by Examples 1 through 4."
+    )
 
 
 def base_free_flow_speed(posted_speed_mph: float) -> float:
@@ -1171,12 +1271,28 @@ def average_speed_slope_coefficient(
     """HCM Eq. 15-8 slope coefficient for Eq. 15-7."""
 
     coefficients = SPEED_SLOPE_COEFFICIENTS[vertical_class]
+    b3 = coefficients.b3
+    b4 = coefficients.b4
+    if vertical_class in SPEED_SLOPE_AUXILIARY_COEFFICIENTS:
+        auxiliary = SPEED_SLOPE_AUXILIARY_COEFFICIENTS[vertical_class]
+        b3 = (
+            auxiliary.c0
+            + auxiliary.c1 * sqrt(segment_length_mi)
+            + auxiliary.c2 * free_flow_speed_mph
+            + auxiliary.c3 * free_flow_speed_mph * sqrt(segment_length_mi)
+        )
+        b4 = (
+            auxiliary.d0
+            + auxiliary.d1 * sqrt(heavy_vehicle_percent)
+            + auxiliary.d2 * free_flow_speed_mph
+            + auxiliary.d3 * free_flow_speed_mph * sqrt(heavy_vehicle_percent)
+        )
     modeled = (
         coefficients.b0
         + coefficients.b1 * free_flow_speed_mph
         + coefficients.b2 * sqrt(opposing_flow_veh_h / 1000.0)
-        + max(0.0, coefficients.b3) * sqrt(segment_length_mi)
-        + max(0.0, coefficients.b4) * sqrt(heavy_vehicle_percent)
+        + max(0.0, b3) * sqrt(segment_length_mi)
+        + max(0.0, b4) * sqrt(heavy_vehicle_percent)
     )
     return max(coefficients.b5, modeled)
 
@@ -1230,6 +1346,7 @@ def horizontal_curve_base_free_flow_speed(
         raise HCMCalcError("Horizontal curve class must be 1 through 5.")
     class_speed = (
         HORIZONTAL_CURVE_CLASS_SPEED_INTERCEPT
+        + HORIZONTAL_CURVE_BFFS_SLOPE * base_free_flow_speed_mph
         - HORIZONTAL_CURVE_CLASS_SPEED_SLOPE * horizontal_class
     )
     return min(base_free_flow_speed_mph, class_speed)
@@ -1992,9 +2109,9 @@ def level_of_service(
     """HCM Exhibit 15-6 LOS thresholds for two-lane highways."""
 
     if posted_speed_mph < 50.0:
-        thresholds = (2.5, 5.0, 10.0, 15.0, 20.0)
+        thresholds = (2.5, 5.0, 10.0, 15.0)
     else:
-        thresholds = (2.0, 4.0, 8.0, 12.0, 18.0)
+        thresholds = (2.0, 4.0, 8.0, 12.0)
 
     if follower_density_followers_mi_ln <= thresholds[0]:
         return "A"
@@ -2004,6 +2121,4 @@ def level_of_service(
         return "C"
     if follower_density_followers_mi_ln <= thresholds[3]:
         return "D"
-    if follower_density_followers_mi_ln <= thresholds[4]:
-        return "E"
-    return "F"
+    return "E"

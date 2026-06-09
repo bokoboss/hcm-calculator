@@ -43,6 +43,18 @@ class SpeedPowerCoefficients:
 
 
 @dataclass(frozen=True)
+class SpeedSlopeAuxiliaryCoefficients:
+    c0: float
+    c1: float
+    c2: float
+    c3: float
+    d0: float
+    d1: float
+    d2: float
+    d3: float
+
+
+@dataclass(frozen=True)
 class PercentFollowersCapacityCoefficients:
     c0: float
     c1: float
@@ -72,12 +84,24 @@ class PercentFollowersPowerCoefficients:
 # HCM Ch. 15 Exhibit 15-12 coefficients for Eq. 15-4.
 HEAVY_VEHICLE_COEFFICIENTS = {
     1: HeavyVehicleCoefficients(0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+    4: HeavyVehicleCoefficients(-0.40902, 0.00975, 0.00767, -0.18363, 0.00423, 0.0),
+    5: HeavyVehicleCoefficients(-0.38360, 0.01074, 0.01945, -0.69848, 0.01069, 0.12700),
 }
 
 # HCM Ch. 15 Exhibit 15-13 coefficients for Eq. 15-8, Passing Zone and
 # Passing Constrained segments.
 SPEED_SLOPE_COEFFICIENTS = {
     1: SpeedSlopeCoefficients(0.0558, 0.0542, 0.3278, 0.1029, 0.0, 0.0),
+    4: SpeedSlopeCoefficients(9.0115, -0.1994, 1.8252, 0.0, 0.0, 3.2685),
+    5: SpeedSlopeCoefficients(23.9144, -0.6925, 1.9473, 0.0, 0.0, 3.5115),
+}
+SPEED_SLOPE_AUXILIARY_COEFFICIENTS = {
+    4: SpeedSlopeAuxiliaryCoefficients(
+        -12.5113, 0.0, 0.2656, 0.0, -5.7775, 0.0, 0.1373, 0.0
+    ),
+    5: SpeedSlopeAuxiliaryCoefficients(
+        -14.8961, 0.0, 0.4370, 0.0, -18.2910, 2.3875, 0.4494, -0.0520
+    ),
 }
 
 # HCM Ch. 15 Exhibits 15-14, 15-16, and 15-18 coefficients for the
@@ -92,6 +116,12 @@ PASSING_LANE_SPEED_SLOPE_B4_D1 = {1: 0.1252}
 # Passing Constrained segments.
 SPEED_POWER_COEFFICIENTS = {
     1: SpeedPowerCoefficients(0.67576, 0.0, 0.0, 0.1206, -0.35919, 0.0, 0.0, 0.0, 0.0),
+    4: SpeedPowerCoefficients(
+        0.67689, 0.00534, -0.13037, 0.25699, -0.68465, -0.00709, 0.07087, 0.0, 0.33950
+    ),
+    5: SpeedPowerCoefficients(
+        1.13262, 0.0, -0.26367, 0.18811, -0.64304, -0.00867, 0.08675, 0.0, 0.30590
+    ),
 }
 
 # HCM Ch. 15 Exhibit 15-20 coefficients for Passing Lane segments.
@@ -121,6 +151,12 @@ PF_CAPACITY_COEFFICIENTS = {
         -0.05500,
         7.13758,
     ),
+    4: PercentFollowersCapacityCoefficients(
+        58.29978, -0.53611, 7.35076, -0.27046, 4.49850, -0.01100, -0.02968, 8.89680
+    ),
+    5: PercentFollowersCapacityCoefficients(
+        3.32968, -0.84377, 7.08952, -1.32089, 19.98477, -0.01250, -0.02960, 9.99450
+    ),
 }
 
 # HCM Ch. 15 Exhibit 15-25 coefficients for Passing Lane segments.
@@ -148,6 +184,12 @@ PF_25_CAPACITY_COEFFICIENTS = {
         -0.00750,
         -0.06700,
         11.60405,
+    ),
+    4: PercentFollowersCapacityCoefficients(
+        103.13534, 14.68459, -23.72704, 0.66444, -11.95763, -0.10000, 0.00172, 14.70074
+    ),
+    5: PercentFollowersCapacityCoefficients(
+        89.00000, 19.02642, -34.54240, 0.29792, -6.62528, -0.16000, 0.00480, 17.56610
     ),
 }
 
@@ -199,7 +241,8 @@ PF_POWER_COEFFICIENTS = {
 
 # HCM Eq. 15-14 horizontal curve base free-flow speed constants for the
 # horizontal classes represented in Chapter 26 Example Problem 2.
-HORIZONTAL_CURVE_CLASS_SPEED_INTERCEPT = 65.5696
+HORIZONTAL_CURVE_CLASS_SPEED_INTERCEPT = 44.32
+HORIZONTAL_CURVE_BFFS_SLOPE = 0.3728
 HORIZONTAL_CURVE_CLASS_SPEED_SLOPE = 6.868
 
 # HCM Eq. 15-13 heavy-vehicle adjustment coefficient for horizontal curves.
