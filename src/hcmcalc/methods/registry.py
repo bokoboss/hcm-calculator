@@ -2,6 +2,10 @@
 
 from dataclasses import dataclass
 
+from hcmcalc.core import CalculationMethod, MethodNotImplementedError
+from hcmcalc.methods.multilane_highway_los import MultilaneHighwayLOSMethod
+from hcmcalc.methods.two_lane_highway_ch15 import TwoLaneHighwayChapter15Method
+
 
 @dataclass(frozen=True)
 class MethodMetadata:
@@ -30,3 +34,20 @@ def available_methods() -> list[MethodMetadata]:
             status="future",
         ),
     ]
+
+
+def get_method(method_key: str, facility_type: str) -> CalculationMethod:
+    """Return the registered calculation method for a fixture case."""
+
+    methods: dict[str, CalculationMethod] = {
+        TwoLaneHighwayChapter15Method.method_name: TwoLaneHighwayChapter15Method(),
+        MultilaneHighwayLOSMethod.method_name: MultilaneHighwayLOSMethod(),
+    }
+    method = methods.get(method_key)
+    if method is None:
+        raise MethodNotImplementedError(f"Unknown calculation method: {method_key}")
+    if method.facility_type != facility_type:
+        raise MethodNotImplementedError(
+            f"Method {method_key} does not support facility type {facility_type}."
+        )
+    return method
