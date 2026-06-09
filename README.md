@@ -48,6 +48,17 @@ Run the full test suite from the repository root:
 py -m pytest
 ```
 
+## CLI Usage
+
+Run a validated fixture case and print its auditable result as JSON:
+
+```powershell
+py -m hcmcalc run references/example_inputs.yaml --case TLH-CH15-001
+py -m hcmcalc run references/example_inputs.yaml --case TLH-CH15-004
+```
+
+The CLI currently supports validated example fixtures only.
+
 ## Repository Layout
 
 ```text
