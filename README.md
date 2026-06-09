@@ -2,7 +2,7 @@
 
 Auditable Python scaffold for Highway Capacity Manual (HCM) calculations.
 
-This project is intentionally in an early scaffold state. It does **not** yet implement the full calculation engine. The first supported analysis target is HCM 7th Edition Chapter 15 Two-Lane Highway motorized vehicle analysis. The architecture is prepared to support additional HCM facility types later, including Multilane Highway LOS.
+This project is intentionally in an early, example-scoped state. It does **not** yet implement a general HCM Chapter 15 calculation engine. The first supported analysis target is HCM 7th Edition Chapter 15 Two-Lane Highway motorized vehicle analysis. The architecture is prepared to support additional HCM facility types later, including Multilane Highway LOS.
 
 ## Goals
 
@@ -18,13 +18,12 @@ Implemented:
 - Project package scaffold
 - Documentation scaffold
 - Methodology and validation references
-- HCM Chapter 26 Example Problems 1, 2, and 3
+- HCM Chapter 26 Two-Lane Highway Example Problems 1 through 4 (`TLH-CH15-001` through `TLH-CH15-004`)
 - Unit and validation fixture tests
 
 Not implemented yet:
 
 - Full HCM Chapter 15 calculation engine
-- HCM Chapter 26 Example Problem 4
 - Streamlit worksheet UI
 - Multilane Highway LOS calculations
 - Production validation dataset
@@ -60,6 +59,6 @@ tests/                      Unit and validation fixture tests
 
 ## Validation Requirement
 
-HCM 7th Edition Chapter 26 Example Problems 1, 2, and 3 are implemented as the current validation baseline. Additional example problems, including Example Problem 4, are not yet implemented.
+HCM 7th Edition Chapter 26 Two-Lane Highway Example Problems 1 through 4 (`TLH-CH15-001` through `TLH-CH15-004`) are implemented and validated as the current baseline. The implementation remains scoped to these exact examples; additional Chapter 15 cases are not yet implemented.
 
 Before UI expansion or any production use, calculation correctness must continue to be validated against relevant HCM Chapter 26 example problems. Validation artifacts should document source examples, input mappings, expected outputs, tolerances, and reviewer sign-off.
