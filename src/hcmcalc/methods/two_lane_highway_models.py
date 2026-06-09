@@ -50,7 +50,7 @@ class TwoLaneExampleProblem2Inputs(TwoLaneExampleProblem1Inputs):
 
 @dataclass(frozen=True)
 class TwoLaneFacilitySegmentInputs:
-    """Validated segment input shape for HCM Chapter 26 Example Problem 3."""
+    """Validated segment input shape for HCM Chapter 26 facility examples."""
 
     segment_id: int
     segment_type: str
@@ -65,11 +65,12 @@ class TwoLaneFacilitySegmentInputs:
     lane_width_ft: float
     shoulder_width_ft: float
     access_point_density_per_mi: float
+    horizontal_alignment_subsegments: tuple[HorizontalAlignmentSubsegment, ...]
 
 
 @dataclass(frozen=True)
 class TwoLaneExampleProblem3Inputs:
-    """Validated facility input shape for HCM Chapter 26 Two-Lane Example 3."""
+    """Validated facility input shape for HCM Chapter 26 Two-Lane facilities."""
 
     case_id: str
     facility_length_mi: float

@@ -48,3 +48,21 @@ Correctness must be validated against HCM Chapter 26 example problems before UI 
 ## Implementation Rule
 
 Calculation code should return auditable result objects containing final outputs and intermediate values. It should not directly render UI elements.
+
+## Implemented Validation Scope
+
+HCM Chapter 26 Two-Lane Highway Example Problem 4 is implemented for its exact
+six-segment mountainous facility. The validated vertical alignment scope is
+limited to level or 3% downgrade Class 1 segments, 4%/1.3-mi and 6%/0.5-mi
+Class 4 segments, and a 6%/1.0-mi Class 5 segment. Other nonlevel grade and
+length combinations raise `MethodNotImplementedError`.
+
+The implementation applies HCM Chapter 15 Equations 15-1 through 15-39 as
+needed by the example, including horizontal-curve speed adjustment, passing
+lane midpoint follower density, downstream adjustment, and facility
+length-weighted follower density. The facility summary follows the Chapter 26
+example's displayed one-decimal segment-density convention.
+
+Known limitation: the macroscopic method may not fully represent interactions
+across the example's long upgrade. Detailed design evaluation may require
+microsimulation.
