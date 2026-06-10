@@ -10,6 +10,7 @@ import streamlit as st
 
 from hcmcalc.cli import find_case, load_input_file, result_to_dict, run_case
 from hcmcalc.core import HCMCalcError
+from hcmcalc.ui.audit import build_manual_calculation_audit_record
 from hcmcalc.ui.manual_segment import run_manual_single_segment
 from hcmcalc.ui.result_view import compact_rows, format_display_metric, los_colors
 from hcmcalc.ui.schematics import get_segment_schematic_path
@@ -346,22 +347,57 @@ def render_manual_single_segment_calculator() -> None:
             "opposing_direction_volume": opposing_volume,
         }
         st.session_state.pop("manual_segment_result", None)
+        st.session_state.pop("manual_segment_error", None)
         try:
             result = run_manual_single_segment(values)
             st.session_state["manual_segment_result"] = result_to_dict(result)
+            st.session_state["manual_segment_audit"] = (
+                build_manual_calculation_audit_record(values, result=result)
+            )
         except HCMCalcError as exc:
-            with result_column:
-                st.error(str(exc))
+            st.session_state["manual_segment_error"] = str(exc)
+            st.session_state["manual_segment_audit"] = (
+                build_manual_calculation_audit_record(values, error=exc)
+            )
 
     with result_column:
         stored_result = st.session_state.get("manual_segment_result")
+        audit_record = st.session_state.get("manual_segment_audit")
+        stored_error = st.session_state.get("manual_segment_error")
+        if stored_error is not None:
+            st.error(stored_error)
+            render_audit_record(audit_record)
+            return
         if stored_result is None:
             st.info("Enter segment inputs and click Run calculation to see results.")
             return
-        render_manual_result(stored_result, unit_system)
+        render_manual_result(
+            stored_result,
+            str(audit_record.get("unit_system", unit_system))
+            if isinstance(audit_record, dict)
+            else unit_system,
+            audit_record,
+        )
 
 
-def render_manual_result(result_data: dict[str, Any], unit_system: str) -> None:
+def render_audit_record(audit_record: dict[str, Any] | None) -> None:
+    """Render a collapsed manual calculation audit record."""
+
+    if audit_record is None:
+        return
+    with st.expander("Audit record"):
+        st.caption(
+            "Submitted values, engine-native imperial inputs, scope status, and "
+            "calculation metadata."
+        )
+        st.json(audit_record)
+
+
+def render_manual_result(
+    result_data: dict[str, Any],
+    unit_system: str,
+    audit_record: dict[str, Any] | None = None,
+) -> None:
     """Render the manual result hierarchy with display-unit conversions."""
 
     outputs = result_data["outputs"]
@@ -407,6 +443,8 @@ def render_manual_result(result_data: dict[str, Any], unit_system: str) -> None:
             use_container_width=True,
         )
 
+    render_audit_record(audit_record)
+
     full_result = {
         "unit_system": unit_system,
         "display_outputs": metrics,
@@ -414,7 +452,10 @@ def render_manual_result(result_data: dict[str, Any], unit_system: str) -> None:
     }
     full_result_json = json.dumps(full_result, indent=2)
     with st.expander("Full result JSON"):
-        st.caption("Engine-native values are imperial.")
+        st.caption(
+            "Engine result JSON with display outputs. Engine-native values are "
+            "imperial; the submitted-input record is in Audit record."
+        )
         st.json(full_result)
         st.download_button(
             "Download JSON",
