@@ -12,6 +12,7 @@ from hcmcalc.cli import find_case, load_input_file, result_to_dict, run_case
 from hcmcalc.core import HCMCalcError
 from hcmcalc.ui.manual_segment import run_manual_single_segment
 from hcmcalc.ui.result_view import compact_rows
+from hcmcalc.ui.units import DEFAULT_UNIT_SYSTEM, display_outputs, manual_defaults
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -21,6 +22,15 @@ IMPLEMENTED_CASE_IDS = (
     "TLH-CH15-002",
     "TLH-CH15-003",
     "TLH-CH15-004",
+)
+SCOPE_NOTICE = (
+    "Current scope: single segment · straight alignment · level and mountainous "
+    "terrain (limited) · prototype v0.1"
+)
+LIMITATIONS_FOOTER = (
+    "Limitations: validated example-scoped implementation; no full facility manual "
+    "input; limited mountainous combinations; no downstream passing-lane effects; "
+    "no report export."
 )
 
 
@@ -130,95 +140,199 @@ def render_validated_case_viewer() -> None:
 def render_manual_single_segment_calculator() -> None:
     """Render the v0.1 manual single-segment worksheet."""
 
-    st.info(
-        "Manual scope: one straight Two-Lane Highway segment, Motorized Vehicle "
-        "LOS only. Results outside the validated scope are rejected."
-    )
-    segment_type = st.selectbox(
-        "Segment type",
-        ["passing_constrained", "passing_zone", "passing_lane"],
-    )
-    terrain_type = st.selectbox("Terrain type", ["level", "mountainous"])
-    if segment_type == "passing_lane":
-        st.warning(
-            "Single-segment passing lane results do not represent downstream "
-            "passing-lane effects or full facility performance. Use facility "
-            "analysis for corridor-level evaluation."
-        )
+    input_column, result_column = st.columns([1, 1.15], gap="large")
 
-    with st.form("manual_single_segment"):
-        columns = st.columns(2)
-        posted_speed = columns[0].number_input(
-            "Posted speed (mph)", min_value=1.0, value=50.0
+    with input_column:
+        st.subheader("Manual single segment")
+        unit_label = st.radio(
+            "Unit system",
+            ["Metric", "Imperial"],
+            index=0 if DEFAULT_UNIT_SYSTEM == "metric" else 1,
+            horizontal=True,
         )
-        segment_length = columns[1].number_input(
-            "Segment length (mi)", min_value=0.01, value=0.75
+        unit_system = str(unit_label).lower()
+        defaults = manual_defaults(unit_system)
+        segment_type = st.selectbox(
+            "Segment type",
+            ["passing_constrained", "passing_zone", "passing_lane"],
+            format_func=lambda value: {
+                "passing_constrained": "Passing constrained",
+                "passing_zone": "Passing zone",
+                "passing_lane": "Passing lane",
+            }[value],
         )
-        lane_width = columns[0].number_input(
-            "Lane width (ft)", min_value=9.0, max_value=12.0, value=12.0
+        terrain_type = st.selectbox(
+            "Terrain type",
+            ["level", "mountainous"],
+            format_func=str.title,
         )
-        shoulder_width = columns[1].number_input(
-            "Shoulder width (ft)", min_value=0.0, max_value=6.0, value=6.0
-        )
-        access_density = columns[0].number_input(
-            "Access point density (per mi)", min_value=0.0, value=0.0
-        )
-        analysis_volume = columns[1].number_input(
-            "Analysis direction volume (veh/h)", min_value=0.0, value=752.0
-        )
-        peak_hour_factor = columns[0].number_input(
-            "Peak hour factor", min_value=0.01, max_value=1.0, value=0.94
-        )
-        heavy_vehicle_percent = columns[1].number_input(
-            "Heavy vehicle percent",
-            min_value=0.0,
-            value=8.0 if segment_type == "passing_lane" else 5.0,
-        )
-        grade_percent = (
-            columns[0].number_input("Grade percent", value=4.0)
-            if terrain_type == "mountainous"
-            else 0.0
-        )
-        opposing_volume = (
-            columns[1].number_input(
-                "Opposing direction volume (veh/h)", min_value=0.0, value=500.0
+        if segment_type == "passing_lane":
+            st.warning(
+                "Single-segment passing lane results do not represent downstream "
+                "passing-lane effects or full facility performance."
             )
-            if segment_type == "passing_zone"
-            else None
-        )
-        run_manual = st.form_submit_button("Run", type="primary")
 
-    st.caption(
-        "Locked assumptions: two_lane_highway; hcm7_ch15_two_lane_motorized; "
-        "straight alignment; no upstream passing lane; single segment only."
-    )
+        metric = unit_system == "metric"
+        with st.form(f"manual_single_segment_{unit_system}"):
+            st.markdown("#### § 1 — Segment setup")
+            segment_length = st.number_input(
+                f"Segment length ({'km' if metric else 'mi'})",
+                min_value=0.01,
+                value=defaults["segment_length"],
+            )
+            posted_speed = st.number_input(
+                f"Posted speed / base speed ({'km/h' if metric else 'mph'})",
+                min_value=1.0,
+                value=defaults["posted_speed"],
+            )
+
+            st.markdown("#### § 2 — Geometry")
+            geometry_columns = st.columns(2)
+            lane_width = geometry_columns[0].number_input(
+                f"Lane width ({'m' if metric else 'ft'})",
+                min_value=0.01,
+                value=defaults["lane_width"],
+            )
+            shoulder_width = geometry_columns[1].number_input(
+                f"Shoulder width ({'m' if metric else 'ft'})",
+                min_value=0.0,
+                value=defaults["shoulder_width"],
+            )
+            access_density = st.number_input(
+                f"Access point density (points/{'km' if metric else 'mi'})",
+                min_value=0.0,
+                value=defaults["access_point_density"],
+            )
+
+            st.markdown("#### § 3 — Traffic demand")
+            demand_columns = st.columns(2)
+            analysis_volume = demand_columns[0].number_input(
+                "Analysis-direction volume (veh/h)",
+                min_value=0.0,
+                value=defaults["analysis_direction_volume"],
+            )
+            peak_hour_factor = demand_columns[1].number_input(
+                "Peak hour factor (PHF)",
+                min_value=0.01,
+                max_value=1.0,
+                value=defaults["peak_hour_factor"],
+            )
+            heavy_vehicle_percent = demand_columns[0].number_input(
+                "Heavy vehicles (%)",
+                min_value=0.0,
+                value=(
+                    8.0
+                    if segment_type == "passing_lane"
+                    else defaults["heavy_vehicle_percent"]
+                ),
+            )
+            opposing_volume = (
+                demand_columns[1].number_input(
+                    "Opposing-direction volume (veh/h)",
+                    min_value=0.0,
+                    value=defaults["opposing_direction_volume"],
+                )
+                if segment_type == "passing_zone"
+                else None
+            )
+
+            if terrain_type == "mountainous":
+                st.markdown("#### § 4 — Terrain / grade")
+                st.info(
+                    "Mountainous analysis is limited to validated grade and segment-"
+                    "length combinations; unsupported combinations are rejected."
+                )
+                grade_percent = st.number_input(
+                    "Grade (%)", value=defaults["grade_percent"]
+                )
+            else:
+                grade_percent = 0.0
+
+            run_manual = st.form_submit_button(
+                "Run calculation", type="primary", use_container_width=True
+            )
+
+        st.caption(
+            "Locked assumptions: straight alignment; no upstream passing lane; "
+            "single segment only."
+        )
+
     if run_manual:
         values = {
+            "unit_system": unit_system,
             "segment_type": segment_type,
             "terrain_type": terrain_type,
-            "posted_speed_mph": posted_speed,
-            "segment_length_mi": segment_length,
-            "lane_width_ft": lane_width,
-            "shoulder_width_ft": shoulder_width,
-            "access_point_density_per_mi": access_density,
-            "analysis_direction_volume_veh_h": analysis_volume,
+            "posted_speed": posted_speed,
+            "segment_length": segment_length,
+            "lane_width": lane_width,
+            "shoulder_width": shoulder_width,
+            "access_point_density": access_density,
+            "analysis_direction_volume": analysis_volume,
             "peak_hour_factor": peak_hour_factor,
             "heavy_vehicle_percent": heavy_vehicle_percent,
             "grade_percent": grade_percent,
-            "opposing_direction_volume_veh_h": opposing_volume,
+            "opposing_direction_volume": opposing_volume,
         }
         try:
             result = run_manual_single_segment(values)
             st.session_state["manual_segment_result"] = result_to_dict(result)
         except HCMCalcError as exc:
             st.session_state.pop("manual_segment_result", None)
-            st.error(str(exc))
+            with result_column:
+                st.error(str(exc))
 
-    stored_result = st.session_state.get("manual_segment_result")
-    if stored_result is None:
-        st.info("Enter one segment and click Run to calculate.")
-        return
-    render_result("manual-single-segment", stored_result)
+    with result_column:
+        stored_result = st.session_state.get("manual_segment_result")
+        if stored_result is None:
+            st.info("Enter segment inputs and click Run calculation to see results.")
+            return
+        render_manual_result(stored_result, unit_system)
+
+
+def render_manual_result(result_data: dict[str, Any], unit_system: str) -> None:
+    """Render the manual result hierarchy with display-unit conversions."""
+
+    outputs = result_data["outputs"]
+    metrics = display_outputs(outputs, unit_system)
+    st.subheader("Level of service")
+    st.metric("LOS", outputs["level_of_service"])
+
+    metric_columns = st.columns(3)
+    for index, metric in enumerate(metrics.values()):
+        metric_columns[index % 3].metric(
+            metric["label"], f'{metric["value"]:.2f} {metric["unit"]}'
+        )
+
+    for warning in result_data["warnings"]:
+        st.warning(warning)
+
+    with st.expander("Assumptions"):
+        for assumption in result_data["assumptions"]:
+            st.markdown(f"- {assumption}")
+
+    with st.expander("Intermediate values"):
+        st.dataframe(
+            result_data["intermediate_values"],
+            hide_index=True,
+            use_container_width=True,
+        )
+
+    full_result = {
+        "unit_system": unit_system,
+        "display_outputs": metrics,
+        "engine_result": result_data,
+    }
+    full_result_json = json.dumps(full_result, indent=2)
+    with st.expander("Full result JSON (engine-native values are imperial)"):
+        st.json(full_result)
+
+    st.download_button(
+        "Download JSON",
+        data=full_result_json,
+        file_name="manual-single-segment-result.json",
+        mime="application/json",
+        use_container_width=True,
+    )
 
 
 def main() -> None:
@@ -227,15 +341,18 @@ def main() -> None:
     st.set_page_config(page_title="HCM Calculator", layout="wide")
     st.title("HCM Calculator")
     st.caption("HCM 7th Edition Chapter 15 Two-Lane Highway")
+    st.info(SCOPE_NOTICE)
     mode = st.radio(
         "Mode",
-        ["Validated Case Viewer", "Manual Single Segment Calculator"],
+        ["Manual single segment calculator", "Validated examples / QA"],
         horizontal=True,
     )
-    if mode == "Validated Case Viewer":
-        render_validated_case_viewer()
-    else:
+    if mode == "Manual single segment calculator":
         render_manual_single_segment_calculator()
+    else:
+        render_validated_case_viewer()
+    st.divider()
+    st.caption(LIMITATIONS_FOOTER)
 
 
 if __name__ == "__main__":

@@ -19,7 +19,7 @@ Implemented:
 - Documentation scaffold
 - Methodology and validation references
 - HCM Chapter 26 Two-Lane Highway Example Problems 1 through 4 (`TLH-CH15-001` through `TLH-CH15-004`)
-- Streamlit Validated Case Viewer and Manual Single Segment Calculator
+- Streamlit Manual Single Segment Calculator and Validated examples / QA viewer
 - Unit and validation fixture tests
 
 Not implemented yet:
@@ -77,12 +77,17 @@ streamlit run src/hcmcalc/ui/streamlit_app.py
 
 The single-page app provides two modes:
 
-- **Validated Case Viewer** loads `references/example_inputs.yaml` and preserves
-  Example Problems 1 through 4 validation behavior.
 - **Manual Single Segment Calculator** accepts one straight Two-Lane Highway
-  segment and displays demand flow rate, capacity, speeds, percent followers,
-  follower density, LOS, assumptions, warnings, intermediate values, and a
-  downloadable full-result JSON preview.
+  segment using Metric inputs by default or optional Imperial inputs. Unit
+  conversion occurs only in the UI/manual adapter; the calculation engine keeps
+  its existing imperial-native contract. The result view displays selected
+  metrics in the chosen unit system and preserves the full imperial-native
+  engine result in the downloadable JSON.
+- **Validated examples / QA** loads `references/example_inputs.yaml` and preserves
+  Example Problems 1 through 4 validation behavior.
+
+The engine and CLI validation behavior remains based on the existing validated
+fixtures. CLI inputs, outputs, and JSON schema are unchanged.
 
 Manual v0.1 scope:
 
