@@ -12,11 +12,17 @@ from hcmcalc.cli import find_case, load_input_file, result_to_dict, run_case
 from hcmcalc.core import HCMCalcError
 from hcmcalc.ui.manual_segment import run_manual_single_segment
 from hcmcalc.ui.result_view import compact_rows, format_display_metric, los_colors
+from hcmcalc.ui.schematics import get_segment_schematic_path
 from hcmcalc.ui.units import DEFAULT_UNIT_SYSTEM, display_outputs, manual_defaults
 
 
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURE_PATH = ROOT / "references" / "example_inputs.yaml"
+SEGMENT_TYPE_LABELS = {
+    "passing_constrained": "Passing constrained",
+    "passing_zone": "Passing zone",
+    "passing_lane": "Passing lane",
+}
 IMPLEMENTED_CASE_IDS = (
     "TLH-CH15-001",
     "TLH-CH15-002",
@@ -210,18 +216,23 @@ def render_manual_single_segment_calculator() -> None:
         setup_columns = st.columns(2)
         segment_type = setup_columns[0].selectbox(
             "Segment type",
-            ["passing_constrained", "passing_zone", "passing_lane"],
-            format_func=lambda value: {
-                "passing_constrained": "Passing constrained",
-                "passing_zone": "Passing zone",
-                "passing_lane": "Passing lane",
-            }[value],
+            list(SEGMENT_TYPE_LABELS),
+            format_func=SEGMENT_TYPE_LABELS.__getitem__,
         )
         terrain_type = setup_columns[1].selectbox(
             "Terrain type",
             ["level", "mountainous"],
             format_func=str.title,
         )
+        schematic_path = get_segment_schematic_path(segment_type)
+        if schematic_path is None:
+            st.caption("Schematic image not found for this segment type.")
+        else:
+            st.image(
+                schematic_path,
+                caption=f"Segment schematic: {SEGMENT_TYPE_LABELS[segment_type]}",
+                width=420,
+            )
         if segment_type == "passing_lane":
             st.warning(
                 "Single-segment passing lane results do not represent downstream "
