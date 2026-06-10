@@ -12,14 +12,12 @@ from hcmcalc.cli import find_case, load_input_file, result_to_dict, run_case
 from hcmcalc.core import HCMCalcError
 from hcmcalc.ui.manual_segment import run_manual_single_segment
 from hcmcalc.ui.result_view import compact_rows, format_display_metric, los_colors
+from hcmcalc.ui.schematics import get_segment_schematic_path
 from hcmcalc.ui.units import DEFAULT_UNIT_SYSTEM, display_outputs, manual_defaults
 
 
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURE_PATH = ROOT / "references" / "example_inputs.yaml"
-SEGMENT_SCHEMATIC_DIRECTORY = (
-    ROOT / "assets" / "schematics" / "two_lane" / "left_hand"
-)
 SEGMENT_TYPE_LABELS = {
     "passing_constrained": "Passing constrained",
     "passing_zone": "Passing zone",
@@ -39,21 +37,6 @@ LIMITATIONS_FOOTER = (
     "Current limitations: example-scoped validation, selected mountainous "
     "combinations, and no downstream passing-lane effects."
 )
-
-
-def get_segment_schematic_path(segment_type: str) -> Path | None:
-    """Return the existing schematic path for a supported segment type."""
-
-    filename = {
-        "passing_constrained": "passing_constrained.png",
-        "passing_zone": "passing_zone.png",
-        "passing_lane": "passing_lane.png",
-    }.get(segment_type)
-    if filename is None:
-        return None
-
-    schematic_path = SEGMENT_SCHEMATIC_DIRECTORY / filename
-    return schematic_path if schematic_path.is_file() else None
 
 
 def apply_ui_styles() -> None:

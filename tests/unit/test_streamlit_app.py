@@ -1,5 +1,5 @@
 from hcmcalc.ui.result_view import compact_rows, format_display_metric, los_colors
-from hcmcalc.ui.streamlit_app import get_segment_schematic_path
+from hcmcalc.ui.schematics import get_segment_schematic_path
 
 
 def test_supported_segment_types_map_to_existing_schematics() -> None:
