@@ -14,7 +14,12 @@ from hcmcalc.ui.audit import build_manual_calculation_audit_record
 from hcmcalc.ui.manual_segment import run_manual_single_segment
 from hcmcalc.ui.result_view import compact_rows, format_display_metric, los_colors
 from hcmcalc.ui.schematics import get_segment_schematic_path
-from hcmcalc.ui.units import DEFAULT_UNIT_SYSTEM, display_outputs, manual_defaults
+from hcmcalc.ui.units import (
+    DEFAULT_UNIT_SYSTEM,
+    display_outputs,
+    manual_defaults,
+    manual_horizontal_curve_defaults,
+)
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -31,8 +36,8 @@ IMPLEMENTED_CASE_IDS = (
     "TLH-CH15-004",
 )
 SCOPE_NOTICE = (
-    "Current scope: one straight two-lane highway segment, with level and limited "
-    "mountainous terrain support."
+    "Current scope: one two-lane highway segment, with level and limited "
+    "mountainous terrain support and Example Problem 2 horizontal curves."
 )
 LIMITATIONS_FOOTER = (
     "Current limitations: example-scoped validation, selected mountainous "
@@ -273,6 +278,61 @@ def render_manual_single_segment_calculator() -> None:
                 min_value=0.0,
                 value=defaults["access_point_density"],
             )
+            horizontal_alignment_label = st.selectbox(
+                "Horizontal alignment",
+                ["Straight", "Horizontal curve"],
+                help=(
+                    "Horizontal curve adjustment uses the validated Example "
+                    "Problem 2 calculation path."
+                ),
+            )
+            horizontal_alignment = (
+                "horizontal_curves"
+                if horizontal_alignment_label == "Horizontal curve"
+                else "straight"
+            )
+            horizontal_subsegments: list[dict[str, Any]] = []
+            if horizontal_alignment == "horizontal_curves":
+                st.caption(
+                    "Horizontal curve adjustment uses the validated Example "
+                    "Problem 2 calculation path. Subsegment lengths must total "
+                    f"the segment length; lengths and radii are in {'m' if metric else 'ft'}."
+                )
+                horizontal_subsegments = st.data_editor(
+                    manual_horizontal_curve_defaults(unit_system, segment_length),
+                    key=f"manual_horizontal_subsegments_{unit_system}",
+                    hide_index=True,
+                    num_rows="fixed",
+                    use_container_width=True,
+                    column_config={
+                        "type": st.column_config.SelectboxColumn(
+                            "Subsegment type",
+                            options=["tangent", "horizontal_curve"],
+                            required=True,
+                        ),
+                        "length": st.column_config.NumberColumn(
+                            f"Length ({'m' if metric else 'ft'})",
+                            min_value=0.01,
+                            required=True,
+                        ),
+                        "superelevation_percent": st.column_config.NumberColumn(
+                            "Superelevation (%)"
+                        ),
+                        "radius": st.column_config.NumberColumn(
+                            f"Radius ({'m' if metric else 'ft'})",
+                            min_value=0.01,
+                        ),
+                        "central_angle_deg": st.column_config.NumberColumn(
+                            "Central angle (deg)"
+                        ),
+                        "horizontal_class": st.column_config.NumberColumn(
+                            "Horizontal class",
+                            min_value=1,
+                            max_value=5,
+                            step=1,
+                        ),
+                    },
+                )
 
             st.markdown(
                 '<div class="compact-section-label">Traffic demand</div>',
@@ -326,8 +386,8 @@ def render_manual_single_segment_calculator() -> None:
             )
 
         st.caption(
-            "Locked assumptions: straight alignment; no upstream passing lane; "
-            "single segment only."
+            "Locked assumptions: no upstream passing lane; single segment only. "
+            "Horizontal curves are limited to the validated Example Problem 2 path."
         )
 
     if run_manual:
@@ -345,6 +405,8 @@ def render_manual_single_segment_calculator() -> None:
             "heavy_vehicle_percent": heavy_vehicle_percent,
             "grade_percent": grade_percent,
             "opposing_direction_volume": opposing_volume,
+            "horizontal_alignment": horizontal_alignment,
+            "horizontal_alignment_subsegments": horizontal_subsegments,
         }
         st.session_state.pop("manual_segment_result", None)
         st.session_state.pop("manual_segment_error", None)

@@ -109,13 +109,23 @@ class TwoLaneHighwayChapter15Method:
                 "passing-lane effects or full facility performance. Use facility "
                 "analysis for corridor-level evaluation."
             )
+        if segment.horizontal_alignment == HORIZONTAL_CURVES_ALIGNMENT:
+            warnings.append(
+                "Manual horizontal curve support is limited to the validated "
+                "Example Problem 2 calculation path."
+            )
+        alignment_assumption = (
+            "Analysis is limited to one straight two-lane highway segment."
+            if segment.horizontal_alignment == STRAIGHT_ALIGNMENT
+            else "Horizontal curve adjustment uses the validated Example Problem 2 calculation path."
+        )
         return CalculationResult(
             method=self.method_name,
             facility_type=self.facility_type,
             outputs=outputs,
             intermediate_values=_single_segment_intermediate_values(outputs),
             assumptions=[
-                "Analysis is limited to one straight two-lane highway segment.",
+                alignment_assumption,
                 "Motorized Vehicle LOS is based on follower density.",
                 "Passing Constrained calculations use the HCM-required 1,500 veh/h opposing-flow assumption.",
                 "No upstream passing lane or downstream facility-wide effects are applied.",
@@ -1200,14 +1210,25 @@ def _validate_single_segment_scope(segment: TwoLaneFacilitySegmentInputs) -> Non
         raise MethodNotImplementedError(
             f"Unsupported manual single-segment type: {segment.segment_type}."
         )
-    if segment.horizontal_alignment != STRAIGHT_ALIGNMENT:
+    if segment.horizontal_alignment not in {
+        STRAIGHT_ALIGNMENT,
+        HORIZONTAL_CURVES_ALIGNMENT,
+    }:
         raise MethodNotImplementedError(
-            "Manual single-segment calculation is implemented only for straight alignment."
+            f"Unsupported manual horizontal alignment: {segment.horizontal_alignment}."
         )
-    if segment.horizontal_alignment_subsegments:
-        raise MethodNotImplementedError(
-            "Manual single-segment calculation does not support horizontal subsegments."
-        )
+    if (
+        segment.horizontal_alignment == STRAIGHT_ALIGNMENT
+        and segment.horizontal_alignment_subsegments
+    ):
+        raise HCMCalcError("Straight alignment cannot include horizontal subsegments.")
+    if segment.horizontal_alignment == HORIZONTAL_CURVES_ALIGNMENT:
+        _validate_manual_horizontal_curve_scope(segment)
+    if (
+        segment.horizontal_alignment == HORIZONTAL_CURVES_ALIGNMENT
+        and not segment.horizontal_alignment_subsegments
+    ):
+        raise HCMCalcError("Horizontal curve alignment requires horizontal subsegments.")
     if segment.segment_length_mi <= 0.0:
         raise HCMCalcError("segment_length_mi must be greater than zero.")
     if segment.posted_speed_mph <= 0.0:
@@ -1267,6 +1288,44 @@ def _validate_single_segment_scope(segment: TwoLaneFacilitySegmentInputs) -> Non
         )
 
 
+def _validate_manual_horizontal_curve_scope(
+    segment: TwoLaneFacilitySegmentInputs,
+) -> None:
+    if segment.segment_type != PASSING_CONSTRAINED or segment.grade_percent != 0.0:
+        raise MethodNotImplementedError(
+            "Manual horizontal curve calculation is supported only for a level "
+            "Passing Constrained segment using the validated Example Problem 2 path."
+        )
+    if len(segment.horizontal_alignment_subsegments) != 11:
+        raise HCMCalcError(
+            "Manual horizontal curve calculation requires the 11-subsegment "
+            "Example Problem 2 structure."
+        )
+
+    total_length_ft = 0.0
+    curve_count = 0
+    for subsegment in segment.horizontal_alignment_subsegments:
+        if subsegment.length_ft <= 0.0:
+            raise HCMCalcError("Horizontal subsegment length must be positive.")
+        total_length_ft += subsegment.length_ft
+        if subsegment.subsegment_type == "horizontal_curve":
+            curve_count += 1
+            _validate_horizontal_curve_subsegment(subsegment)
+        elif subsegment.subsegment_type != "tangent":
+            raise HCMCalcError(
+                "Horizontal subsegment type must be tangent or horizontal_curve."
+            )
+
+    if curve_count == 0:
+        raise HCMCalcError(
+            "Horizontal curve alignment requires at least one horizontal_curve subsegment."
+        )
+    if abs(total_length_ft - segment.segment_length_mi * 5280.0) > 1.0:
+        raise HCMCalcError(
+            "Horizontal subsegment lengths must match the segment length."
+        )
+
+
 def _validate_horizontal_curve_subsegment(
     subsegment: HorizontalAlignmentSubsegment,
 ) -> None:
@@ -1274,6 +1333,8 @@ def _validate_horizontal_curve_subsegment(
         raise HCMCalcError("Horizontal curve requires superelevation_percent.")
     if subsegment.radius_ft is None:
         raise HCMCalcError("Horizontal curve requires radius_ft.")
+    if subsegment.radius_ft <= 0.0:
+        raise HCMCalcError("Horizontal curve radius_ft must be positive.")
     if subsegment.horizontal_class not in HORIZONTAL_CURVE_SPEED_COEFFICIENTS:
         raise HCMCalcError("Horizontal curve class must be 1 through 5.")
 
