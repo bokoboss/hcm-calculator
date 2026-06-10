@@ -11,7 +11,7 @@ import streamlit as st
 from hcmcalc.cli import find_case, load_input_file, result_to_dict, run_case
 from hcmcalc.core import HCMCalcError
 from hcmcalc.ui.manual_segment import run_manual_single_segment
-from hcmcalc.ui.result_view import compact_rows
+from hcmcalc.ui.result_view import compact_rows, format_display_metric, los_colors
 from hcmcalc.ui.units import DEFAULT_UNIT_SYSTEM, display_outputs, manual_defaults
 
 
@@ -24,14 +24,60 @@ IMPLEMENTED_CASE_IDS = (
     "TLH-CH15-004",
 )
 SCOPE_NOTICE = (
-    "Current scope: single segment · straight alignment · level and mountainous "
-    "terrain (limited) · prototype v0.1"
+    "Current scope: one straight two-lane highway segment, with level and limited "
+    "mountainous terrain support."
 )
 LIMITATIONS_FOOTER = (
-    "Limitations: validated example-scoped implementation; no full facility manual "
-    "input; limited mountainous combinations; no downstream passing-lane effects; "
-    "no report export."
+    "Current limitations: example-scoped validation, selected mountainous "
+    "combinations, and no downstream passing-lane effects."
 )
+
+
+def apply_ui_styles() -> None:
+    """Apply restrained presentation styles without changing app behavior."""
+
+    st.markdown(
+        """
+        <style>
+        button[data-testid="stBaseButton-primaryFormSubmit"] {
+            background-color: #245b86;
+            border-color: #245b86;
+        }
+        button[data-testid="stBaseButton-primaryFormSubmit"]:hover {
+            background-color: #1d4a6e;
+            border-color: #1d4a6e;
+        }
+        .los-hero {
+            border: 1px solid var(--los-color);
+            border-left-width: 0.45rem;
+            border-radius: 0.55rem;
+            background: var(--los-background);
+            padding: 1.15rem 1.35rem;
+            margin-bottom: 1rem;
+        }
+        .los-hero-label {
+            color: #4b5563;
+            font-size: 0.8rem;
+            font-weight: 650;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.15rem;
+            text-transform: uppercase;
+        }
+        .los-hero-grade {
+            color: var(--los-color);
+            font-size: 3.4rem;
+            font-weight: 750;
+            line-height: 1;
+        }
+        .los-hero-density {
+            color: #374151;
+            font-size: 1rem;
+            margin-top: 0.55rem;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def render_list(title: str, values: list[str], empty_message: str) -> None:
@@ -152,6 +198,7 @@ def render_manual_single_segment_calculator() -> None:
         )
         unit_system = str(unit_label).lower()
         defaults = manual_defaults(unit_system)
+        st.markdown("#### § 1 — Segment setup")
         segment_type = st.selectbox(
             "Segment type",
             ["passing_constrained", "passing_zone", "passing_lane"],
@@ -174,7 +221,6 @@ def render_manual_single_segment_calculator() -> None:
 
         metric = unit_system == "metric"
         with st.form(f"manual_single_segment_{unit_system}"):
-            st.markdown("#### § 1 — Segment setup")
             segment_length = st.number_input(
                 f"Segment length ({'km' if metric else 'mi'})",
                 min_value=0.01,
@@ -294,13 +340,34 @@ def render_manual_result(result_data: dict[str, Any], unit_system: str) -> None:
 
     outputs = result_data["outputs"]
     metrics = display_outputs(outputs, unit_system)
-    st.subheader("Level of service")
-    st.metric("LOS", outputs["level_of_service"])
+    level_of_service = str(outputs["level_of_service"])
+    foreground, background = los_colors(level_of_service)
+    density = format_display_metric(
+        "follower_density", metrics["follower_density"], unit_system
+    )
+    st.markdown(
+        f"""
+        <div class="los-hero" style="--los-color: {foreground};
+             --los-background: {background};">
+            <div class="los-hero-label">Level of service</div>
+            <div class="los-hero-grade">LOS {level_of_service}</div>
+            <div class="los-hero-density">
+                Follower density <strong>{density}</strong>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
+    supporting_metrics = [
+        (name, metric)
+        for name, metric in metrics.items()
+        if name != "follower_density"
+    ]
     metric_columns = st.columns(3)
-    for index, metric in enumerate(metrics.values()):
+    for index, (name, metric) in enumerate(supporting_metrics):
         metric_columns[index % 3].metric(
-            metric["label"], f'{metric["value"]:.2f} {metric["unit"]}'
+            metric["label"], format_display_metric(name, metric, unit_system)
         )
 
     for warning in result_data["warnings"]:
@@ -339,13 +406,16 @@ def main() -> None:
     """Run the single-page Streamlit calculator."""
 
     st.set_page_config(page_title="HCM Calculator", layout="wide")
+    apply_ui_styles()
     st.title("HCM Calculator")
     st.caption("HCM 7th Edition Chapter 15 Two-Lane Highway")
     st.info(SCOPE_NOTICE)
+    st.markdown("#### Analysis mode")
     mode = st.radio(
-        "Mode",
+        "Choose the worksheet or validation viewer",
         ["Manual single segment calculator", "Validated examples / QA"],
         horizontal=True,
+        label_visibility="collapsed",
     )
     if mode == "Manual single segment calculator":
         render_manual_single_segment_calculator()
