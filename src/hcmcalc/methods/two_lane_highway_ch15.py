@@ -86,6 +86,43 @@ class TwoLaneHighwayChapter15Method:
 
         return _calculate_example_problem_1_result(parsed_inputs, base)
 
+    def calculate_single_segment(self, inputs: dict[str, Any]) -> CalculationResult:
+        """Calculate one segment within the validated manual-input scope."""
+
+        try:
+            segment = _parse_facility_segment({"segment_id": 1, **inputs})
+        except KeyError as exc:
+            raise HCMCalcError(
+                f"Missing single-segment input: {exc.args[0]}"
+            ) from exc
+        except (TypeError, ValueError) as exc:
+            raise HCMCalcError(
+                "Single-segment inputs must use valid numeric values."
+            ) from exc
+
+        _validate_single_segment_scope(segment)
+        outputs = _calculate_facility_segment(segment)
+        warnings = []
+        if segment.segment_type == PASSING_LANE:
+            warnings.append(
+                "Single-segment passing lane results do not represent downstream "
+                "passing-lane effects or full facility performance. Use facility "
+                "analysis for corridor-level evaluation."
+            )
+        return CalculationResult(
+            method=self.method_name,
+            facility_type=self.facility_type,
+            outputs=outputs,
+            intermediate_values=_single_segment_intermediate_values(outputs),
+            assumptions=[
+                "Analysis is limited to one straight two-lane highway segment.",
+                "Motorized Vehicle LOS is based on follower density.",
+                "Passing Constrained calculations use the HCM-required 1,500 veh/h opposing-flow assumption.",
+                "No upstream passing lane or downstream facility-wide effects are applied.",
+            ],
+            warnings=warnings,
+        )
+
 
 def _calculate_passing_constrained_base_values(
     parsed_inputs: TwoLaneExampleProblem1Inputs,
@@ -730,6 +767,30 @@ def _facility_segment_opposing_flow(segment: TwoLaneFacilitySegmentInputs) -> fl
     return OPPOSING_FLOW_EXAMPLE_1_VEH_H
 
 
+def _single_segment_intermediate_values(
+    outputs: dict[str, Any],
+) -> list[IntermediateValue]:
+    specs = [
+        ("demand_flow_rate", "demand_flow_rate_veh_h", "veh/h", "HCM Eq. 15-1"),
+        ("capacity", "capacity_veh_h", "veh/h", "HCM Ch. 15 Step 2"),
+        ("vertical_alignment_class", "vertical_class", None, "HCM Exhibit 15-11"),
+        ("base_free_flow_speed", "base_free_flow_speed_mph", "mph", "HCM Eq. 15-2"),
+        ("free_flow_speed", "free_flow_speed_mph", "mph", "HCM Eq. 15-3"),
+        ("average_speed", "average_speed_mph", "mph", "HCM Eq. 15-7"),
+        ("percent_followers", "percent_followers", "%", "HCM Eq. 15-17"),
+        (
+            "follower_density",
+            "follower_density_followers_mi_ln",
+            "followers/mi/ln",
+            "HCM Eq. 15-35 or Eq. 15-34 for Passing Lane midpoint",
+        ),
+    ]
+    return [
+        IntermediateValue(name, outputs[key], units, source)
+        for name, key, units, source in specs
+    ]
+
+
 def _facility_intermediate_values(
     segment_results: list[dict[str, Any]],
     outputs: dict[str, Any],
@@ -1132,6 +1193,78 @@ def _validate_facility_example_scope(inputs: TwoLaneExampleProblem3Inputs) -> No
                 raise HCMCalcError(
                     "Horizontal subsegment lengths must match the facility segment length."
                 )
+
+
+def _validate_single_segment_scope(segment: TwoLaneFacilitySegmentInputs) -> None:
+    if segment.segment_type not in {PASSING_CONSTRAINED, PASSING_ZONE, PASSING_LANE}:
+        raise MethodNotImplementedError(
+            f"Unsupported manual single-segment type: {segment.segment_type}."
+        )
+    if segment.horizontal_alignment != STRAIGHT_ALIGNMENT:
+        raise MethodNotImplementedError(
+            "Manual single-segment calculation is implemented only for straight alignment."
+        )
+    if segment.horizontal_alignment_subsegments:
+        raise MethodNotImplementedError(
+            "Manual single-segment calculation does not support horizontal subsegments."
+        )
+    if segment.segment_length_mi <= 0.0:
+        raise HCMCalcError("segment_length_mi must be greater than zero.")
+    if segment.posted_speed_mph <= 0.0:
+        raise HCMCalcError("posted_speed_mph must be greater than zero.")
+    if segment.analysis_direction_volume_veh_h < 0.0:
+        raise HCMCalcError("analysis_direction_volume_veh_h cannot be negative.")
+    if not 0.0 < segment.peak_hour_factor <= 1.0:
+        raise HCMCalcError("peak_hour_factor must be greater than zero and at most 1.0.")
+    if segment.heavy_vehicle_percent < 0.0:
+        raise HCMCalcError("heavy_vehicle_percent cannot be negative.")
+    if (
+        segment.opposing_direction_volume_veh_h is not None
+        and segment.opposing_direction_volume_veh_h < 0.0
+    ):
+        raise HCMCalcError("opposing_direction_volume_veh_h cannot be negative.")
+    if (
+        segment.segment_type == PASSING_ZONE
+        and segment.opposing_direction_volume_veh_h is None
+    ):
+        raise HCMCalcError("Passing Zone requires opposing_direction_volume_veh_h.")
+    if (
+        segment.segment_type != PASSING_ZONE
+        and segment.opposing_direction_volume_veh_h is not None
+    ):
+        raise HCMCalcError(
+            "Only Passing Zone single segments accept opposing_direction_volume_veh_h."
+        )
+
+    supported_mountainous_combinations = {
+        (-3.0, 0.5),
+        (4.0, 1.3),
+        (6.0, 0.5),
+        (6.0, 1.0),
+    }
+    grade_length = (segment.grade_percent, segment.segment_length_mi)
+    if (
+        segment.grade_percent != 0.0
+        and grade_length not in supported_mountainous_combinations
+    ):
+        raise MethodNotImplementedError(
+            "Unsupported mountainous grade/length combination. Supported "
+            "combinations are level Class 1, -3% / 0.5 mi, 4% / 1.3 mi, "
+            "6% / 0.5 mi, and 6% / 1.0 mi."
+        )
+    if segment.segment_type == PASSING_LANE and segment.heavy_vehicle_percent != 8.0:
+        raise MethodNotImplementedError(
+            "Manual Passing Lane calculation is currently supported only at 8% heavy vehicles."
+        )
+    if (
+        segment.segment_type == PASSING_LANE
+        and segment.grade_percent != 0.0
+        and grade_length != (-3.0, 0.5)
+    ):
+        raise MethodNotImplementedError(
+            "Manual Passing Lane calculation is currently supported only for "
+            "vertical Class 1 terrain; downstream facility effects are not included."
+        )
 
 
 def _validate_horizontal_curve_subsegment(
