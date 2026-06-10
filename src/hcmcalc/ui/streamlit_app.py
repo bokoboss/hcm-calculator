@@ -40,39 +40,48 @@ def apply_ui_styles() -> None:
         """
         <style>
         button[data-testid="stBaseButton-primaryFormSubmit"] {
-            background-color: #245b86;
-            border-color: #245b86;
+            background-color: #245b86 !important;
+            border-color: #245b86 !important;
+            color: #ffffff !important;
         }
         button[data-testid="stBaseButton-primaryFormSubmit"]:hover {
-            background-color: #1d4a6e;
-            border-color: #1d4a6e;
+            background-color: #1d4a6e !important;
+            border-color: #1d4a6e !important;
+        }
+        .compact-section-label {
+            color: #4b5563;
+            font-size: 0.82rem;
+            font-weight: 650;
+            letter-spacing: 0.04em;
+            margin: 0.15rem 0 -0.25rem;
+            text-transform: uppercase;
         }
         .los-hero {
             border: 1px solid var(--los-color);
             border-left-width: 0.45rem;
             border-radius: 0.55rem;
             background: var(--los-background);
-            padding: 1.15rem 1.35rem;
-            margin-bottom: 1rem;
+            padding: 0.7rem 1rem;
+            margin-bottom: 0.45rem;
         }
         .los-hero-label {
             color: #4b5563;
-            font-size: 0.8rem;
+            font-size: 0.72rem;
             font-weight: 650;
             letter-spacing: 0.08em;
-            margin-bottom: 0.15rem;
+            margin-bottom: 0.05rem;
             text-transform: uppercase;
         }
         .los-hero-grade {
             color: var(--los-color);
-            font-size: 3.4rem;
+            font-size: 2.7rem;
             font-weight: 750;
             line-height: 1;
         }
         .los-hero-density {
             color: #374151;
-            font-size: 1rem;
-            margin-top: 0.55rem;
+            font-size: 0.92rem;
+            margin-top: 0.3rem;
         }
         </style>
         """,
@@ -189,7 +198,7 @@ def render_manual_single_segment_calculator() -> None:
     input_column, result_column = st.columns([1, 1.15], gap="large")
 
     with input_column:
-        st.subheader("Manual single segment")
+        st.caption("Manual single segment")
         unit_label = st.radio(
             "Unit system",
             ["Metric", "Imperial"],
@@ -198,8 +207,8 @@ def render_manual_single_segment_calculator() -> None:
         )
         unit_system = str(unit_label).lower()
         defaults = manual_defaults(unit_system)
-        st.markdown("#### § 1 — Segment setup")
-        segment_type = st.selectbox(
+        setup_columns = st.columns(2)
+        segment_type = setup_columns[0].selectbox(
             "Segment type",
             ["passing_constrained", "passing_zone", "passing_lane"],
             format_func=lambda value: {
@@ -208,7 +217,7 @@ def render_manual_single_segment_calculator() -> None:
                 "passing_lane": "Passing lane",
             }[value],
         )
-        terrain_type = st.selectbox(
+        terrain_type = setup_columns[1].selectbox(
             "Terrain type",
             ["level", "mountainous"],
             format_func=str.title,
@@ -221,37 +230,43 @@ def render_manual_single_segment_calculator() -> None:
 
         metric = unit_system == "metric"
         with st.form(f"manual_single_segment_{unit_system}"):
-            segment_length = st.number_input(
+            st.markdown(
+                '<div class="compact-section-label">Geometry</div>',
+                unsafe_allow_html=True,
+            )
+            geometry_primary = st.columns(3)
+            segment_length = geometry_primary[0].number_input(
                 f"Segment length ({'km' if metric else 'mi'})",
                 min_value=0.01,
                 value=defaults["segment_length"],
             )
-            posted_speed = st.number_input(
+            posted_speed = geometry_primary[1].number_input(
                 f"Posted speed / base speed ({'km/h' if metric else 'mph'})",
                 min_value=1.0,
                 value=defaults["posted_speed"],
             )
-
-            st.markdown("#### § 2 — Geometry")
-            geometry_columns = st.columns(2)
-            lane_width = geometry_columns[0].number_input(
+            lane_width = geometry_primary[2].number_input(
                 f"Lane width ({'m' if metric else 'ft'})",
                 min_value=0.01,
                 value=defaults["lane_width"],
             )
-            shoulder_width = geometry_columns[1].number_input(
+            geometry_secondary = st.columns(2)
+            shoulder_width = geometry_secondary[0].number_input(
                 f"Shoulder width ({'m' if metric else 'ft'})",
                 min_value=0.0,
                 value=defaults["shoulder_width"],
             )
-            access_density = st.number_input(
+            access_density = geometry_secondary[1].number_input(
                 f"Access point density (points/{'km' if metric else 'mi'})",
                 min_value=0.0,
                 value=defaults["access_point_density"],
             )
 
-            st.markdown("#### § 3 — Traffic demand")
-            demand_columns = st.columns(2)
+            st.markdown(
+                '<div class="compact-section-label">Traffic demand</div>',
+                unsafe_allow_html=True,
+            )
+            demand_columns = st.columns(3)
             analysis_volume = demand_columns[0].number_input(
                 "Analysis-direction volume (veh/h)",
                 min_value=0.0,
@@ -263,7 +278,7 @@ def render_manual_single_segment_calculator() -> None:
                 max_value=1.0,
                 value=defaults["peak_hour_factor"],
             )
-            heavy_vehicle_percent = demand_columns[0].number_input(
+            heavy_vehicle_percent = demand_columns[2].number_input(
                 "Heavy vehicles (%)",
                 min_value=0.0,
                 value=(
@@ -273,7 +288,7 @@ def render_manual_single_segment_calculator() -> None:
                 ),
             )
             opposing_volume = (
-                demand_columns[1].number_input(
+                st.number_input(
                     "Opposing-direction volume (veh/h)",
                     min_value=0.0,
                     value=defaults["opposing_direction_volume"],
@@ -283,13 +298,13 @@ def render_manual_single_segment_calculator() -> None:
             )
 
             if terrain_type == "mountainous":
-                st.markdown("#### § 4 — Terrain / grade")
-                st.info(
-                    "Mountainous analysis is limited to validated grade and segment-"
-                    "length combinations; unsupported combinations are rejected."
-                )
-                grade_percent = st.number_input(
+                terrain_columns = st.columns([1, 2])
+                grade_percent = terrain_columns[0].number_input(
                     "Grade (%)", value=defaults["grade_percent"]
+                )
+                terrain_columns[1].caption(
+                    "Supported combinations are limited to validated mountainous "
+                    "grades and segment lengths."
                 )
             else:
                 grade_percent = 0.0
@@ -359,13 +374,10 @@ def render_manual_result(result_data: dict[str, Any], unit_system: str) -> None:
         unsafe_allow_html=True,
     )
 
-    supporting_metrics = [
-        (name, metric)
-        for name, metric in metrics.items()
-        if name != "follower_density"
-    ]
-    metric_columns = st.columns(3)
+    supporting_metrics = list(metrics.items())
     for index, (name, metric) in enumerate(supporting_metrics):
+        if index % 3 == 0:
+            metric_columns = st.columns(3)
         metric_columns[index % 3].metric(
             metric["label"], format_display_metric(name, metric, unit_system)
         )
@@ -390,16 +402,16 @@ def render_manual_result(result_data: dict[str, Any], unit_system: str) -> None:
         "engine_result": result_data,
     }
     full_result_json = json.dumps(full_result, indent=2)
-    with st.expander("Full result JSON (engine-native values are imperial)"):
+    with st.expander("Full result JSON"):
+        st.caption("Engine-native values are imperial.")
         st.json(full_result)
-
-    st.download_button(
-        "Download JSON",
-        data=full_result_json,
-        file_name="manual-single-segment-result.json",
-        mime="application/json",
-        use_container_width=True,
-    )
+        st.download_button(
+            "Download JSON",
+            data=full_result_json,
+            file_name="manual-single-segment-result.json",
+            mime="application/json",
+            use_container_width=True,
+        )
 
 
 def main() -> None:
@@ -407,16 +419,17 @@ def main() -> None:
 
     st.set_page_config(page_title="HCM Calculator", layout="wide")
     apply_ui_styles()
-    st.title("HCM Calculator")
-    st.caption("HCM 7th Edition Chapter 15 Two-Lane Highway")
-    st.info(SCOPE_NOTICE)
-    st.markdown("#### Analysis mode")
-    mode = st.radio(
-        "Choose the worksheet or validation viewer",
-        ["Manual single segment calculator", "Validated examples / QA"],
-        horizontal=True,
-        label_visibility="collapsed",
-    )
+    header_content, header_mode = st.columns([3, 1])
+    with header_content:
+        st.subheader("HCM Calculator")
+        st.caption(f"HCM 7th Edition Chapter 15 Two-Lane Highway. {SCOPE_NOTICE}")
+    with header_mode:
+        mode = st.radio(
+            "Choose the worksheet or validation viewer",
+            ["Manual single segment calculator", "Validated examples / QA"],
+            horizontal=True,
+            label_visibility="collapsed",
+        )
     if mode == "Manual single segment calculator":
         render_manual_single_segment_calculator()
     else:
