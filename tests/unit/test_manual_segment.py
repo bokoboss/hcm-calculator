@@ -5,6 +5,7 @@ import pytest
 
 from hcmcalc.core import HCMCalcError, MethodNotImplementedError
 from hcmcalc.methods.two_lane_highway_ch15 import TwoLaneHighwayChapter15Method
+from hcmcalc.ui.audit import build_manual_calculation_audit_record
 from hcmcalc.ui.manual_segment import run_manual_single_segment
 from hcmcalc.ui.units import manual_defaults
 
@@ -189,3 +190,68 @@ def test_manual_passing_lane_rejects_unvalidated_vertical_class() -> None:
                 heavy_vehicle_percent=8.0,
             )
         )
+
+
+def test_manual_audit_record_contains_user_and_normalized_engine_inputs() -> None:
+    values = _default_style_values("metric")
+
+    audit_record = build_manual_calculation_audit_record(values)
+
+    assert audit_record["user_inputs"] == values
+    assert audit_record["normalized_engine_inputs"]["segment_type"] == (
+        "passing_constrained"
+    )
+
+
+def test_manual_audit_record_preserves_metric_values_and_converted_imperial_values() -> None:
+    values = _default_style_values("metric")
+
+    audit_record = build_manual_calculation_audit_record(values)
+
+    assert audit_record["user_inputs"]["segment_length"] == 1.20
+    assert audit_record["user_inputs"]["posted_speed"] == 80.0
+    assert audit_record["normalized_engine_inputs"]["segment_length_mi"] == (
+        pytest.approx(1.20 / 1.609344)
+    )
+    assert audit_record["normalized_engine_inputs"]["posted_speed_mph"] == (
+        pytest.approx(80.0 / 1.609344)
+    )
+
+
+def test_successful_manual_audit_record_includes_result_context() -> None:
+    values = _default_style_values("imperial")
+    result = run_manual_single_segment(values)
+
+    audit_record = build_manual_calculation_audit_record(values, result=result)
+
+    assert audit_record["supported_scope_status"] == "supported"
+    assert audit_record["assumptions"] == result.assumptions
+    assert audit_record["warnings"] == result.warnings
+    assert audit_record["outputs"] == result.outputs
+    assert audit_record["intermediate_values"]
+    assert audit_record["calculation_metadata"]["status"] == "succeeded"
+    assert audit_record["generated_at"]
+
+
+def test_unsupported_manual_audit_record_preserves_submitted_context() -> None:
+    values = _manual_values(
+        unit_system="imperial",
+        terrain_type="mountainous",
+        segment_length_mi=1.0,
+        grade_percent=4.0,
+    )
+
+    with pytest.raises(MethodNotImplementedError) as exc_info:
+        run_manual_single_segment(values)
+
+    audit_record = build_manual_calculation_audit_record(
+        values, error=exc_info.value
+    )
+
+    assert audit_record["supported_scope_status"] == "unsupported"
+    assert audit_record["unit_system"] == "imperial"
+    assert audit_record["user_inputs"] == values
+    assert audit_record["normalized_engine_inputs"]["segment_length_mi"] == 1.0
+    assert "Unsupported mountainous" in (
+        audit_record["calculation_metadata"]["error_message"]
+    )
