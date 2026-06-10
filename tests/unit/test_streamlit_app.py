@@ -1,4 +1,24 @@
 from hcmcalc.ui.result_view import compact_rows, format_display_metric, los_colors
+from hcmcalc.ui.streamlit_app import get_segment_schematic_path
+
+
+def test_supported_segment_types_map_to_existing_schematics() -> None:
+    expected_filenames = {
+        "passing_constrained": "passing_constrained.png",
+        "passing_zone": "passing_zone.png",
+        "passing_lane": "passing_lane.png",
+    }
+
+    for segment_type, expected_filename in expected_filenames.items():
+        schematic_path = get_segment_schematic_path(segment_type)
+
+        assert schematic_path is not None
+        assert schematic_path.name == expected_filename
+        assert schematic_path.is_file()
+
+
+def test_unknown_segment_type_has_no_schematic() -> None:
+    assert get_segment_schematic_path("unknown") is None
 
 
 def test_compact_rows_excludes_nested_outputs() -> None:

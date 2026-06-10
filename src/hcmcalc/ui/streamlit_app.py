@@ -17,6 +17,14 @@ from hcmcalc.ui.units import DEFAULT_UNIT_SYSTEM, display_outputs, manual_defaul
 
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURE_PATH = ROOT / "references" / "example_inputs.yaml"
+SEGMENT_SCHEMATIC_DIRECTORY = (
+    ROOT / "assets" / "schematics" / "two_lane" / "left_hand"
+)
+SEGMENT_TYPE_LABELS = {
+    "passing_constrained": "Passing constrained",
+    "passing_zone": "Passing zone",
+    "passing_lane": "Passing lane",
+}
 IMPLEMENTED_CASE_IDS = (
     "TLH-CH15-001",
     "TLH-CH15-002",
@@ -31,6 +39,21 @@ LIMITATIONS_FOOTER = (
     "Current limitations: example-scoped validation, selected mountainous "
     "combinations, and no downstream passing-lane effects."
 )
+
+
+def get_segment_schematic_path(segment_type: str) -> Path | None:
+    """Return the existing schematic path for a supported segment type."""
+
+    filename = {
+        "passing_constrained": "passing_constrained.png",
+        "passing_zone": "passing_zone.png",
+        "passing_lane": "passing_lane.png",
+    }.get(segment_type)
+    if filename is None:
+        return None
+
+    schematic_path = SEGMENT_SCHEMATIC_DIRECTORY / filename
+    return schematic_path if schematic_path.is_file() else None
 
 
 def apply_ui_styles() -> None:
@@ -210,18 +233,23 @@ def render_manual_single_segment_calculator() -> None:
         setup_columns = st.columns(2)
         segment_type = setup_columns[0].selectbox(
             "Segment type",
-            ["passing_constrained", "passing_zone", "passing_lane"],
-            format_func=lambda value: {
-                "passing_constrained": "Passing constrained",
-                "passing_zone": "Passing zone",
-                "passing_lane": "Passing lane",
-            }[value],
+            list(SEGMENT_TYPE_LABELS),
+            format_func=SEGMENT_TYPE_LABELS.__getitem__,
         )
         terrain_type = setup_columns[1].selectbox(
             "Terrain type",
             ["level", "mountainous"],
             format_func=str.title,
         )
+        schematic_path = get_segment_schematic_path(segment_type)
+        if schematic_path is None:
+            st.caption("Schematic image not found for this segment type.")
+        else:
+            st.image(
+                schematic_path,
+                caption=f"Segment schematic: {SEGMENT_TYPE_LABELS[segment_type]}",
+                width=420,
+            )
         if segment_type == "passing_lane":
             st.warning(
                 "Single-segment passing lane results do not represent downstream "
