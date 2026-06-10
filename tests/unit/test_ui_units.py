@@ -75,3 +75,4 @@ def test_metric_display_outputs_convert_speeds_and_follower_density() -> None:
 def test_manual_ui_defaults_to_metric() -> None:
     assert DEFAULT_UNIT_SYSTEM == "metric"
     assert manual_defaults()["segment_length"] == 1.20
+    assert manual_defaults("Metric") == manual_defaults("metric")

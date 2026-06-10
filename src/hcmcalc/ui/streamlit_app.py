@@ -273,11 +273,11 @@ def render_manual_single_segment_calculator() -> None:
             "grade_percent": grade_percent,
             "opposing_direction_volume": opposing_volume,
         }
+        st.session_state.pop("manual_segment_result", None)
         try:
             result = run_manual_single_segment(values)
             st.session_state["manual_segment_result"] = result_to_dict(result)
         except HCMCalcError as exc:
-            st.session_state.pop("manual_segment_result", None)
             with result_column:
                 st.error(str(exc))
 

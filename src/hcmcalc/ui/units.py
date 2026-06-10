@@ -42,7 +42,7 @@ IMPERIAL_DEFAULTS: dict[str, float] = {
 def manual_defaults(unit_system: str = DEFAULT_UNIT_SYSTEM) -> dict[str, float]:
     """Return user-facing defaults for the selected unit system."""
 
-    _validate_unit_system(unit_system)
+    unit_system = _normalize_unit_system(unit_system)
     defaults = METRIC_DEFAULTS if unit_system == "metric" else IMPERIAL_DEFAULTS
     return dict(defaults)
 
@@ -52,34 +52,63 @@ def manual_values_to_engine_inputs(
 ) -> dict[str, Any]:
     """Convert user-facing manual values to engine-native imperial keys."""
 
-    _validate_unit_system(unit_system)
+    unit_system = _normalize_unit_system(unit_system)
     if unit_system == "imperial":
         return {
             **values,
-            "segment_length_mi": values.get("segment_length"),
-            "posted_speed_mph": values.get("posted_speed"),
-            "lane_width_ft": values.get("lane_width"),
-            "shoulder_width_ft": values.get("shoulder_width"),
-            "access_point_density_per_mi": values.get("access_point_density"),
-            "analysis_direction_volume_veh_h": values.get(
-                "analysis_direction_volume"
+            "unit_system": unit_system,
+            "segment_length_mi": _convert_user_value(
+                values, "segment_length", "segment_length_mi"
             ),
-            "opposing_direction_volume_veh_h": values.get(
-                "opposing_direction_volume"
+            "posted_speed_mph": _convert_user_value(
+                values, "posted_speed", "posted_speed_mph"
+            ),
+            "lane_width_ft": _convert_user_value(values, "lane_width", "lane_width_ft"),
+            "shoulder_width_ft": _convert_user_value(
+                values, "shoulder_width", "shoulder_width_ft"
+            ),
+            "access_point_density_per_mi": _convert_user_value(
+                values, "access_point_density", "access_point_density_per_mi"
+            ),
+            "analysis_direction_volume_veh_h": _convert_user_value(
+                values,
+                "analysis_direction_volume",
+                "analysis_direction_volume_veh_h",
+            ),
+            "opposing_direction_volume_veh_h": _convert_user_value(
+                values,
+                "opposing_direction_volume",
+                "opposing_direction_volume_veh_h",
             ),
         }
 
     return {
         **values,
-        "segment_length_mi": _divide(values.get("segment_length"), MILES_TO_KILOMETERS),
-        "posted_speed_mph": _divide(values.get("posted_speed"), MILES_TO_KILOMETERS),
-        "lane_width_ft": _divide(values.get("lane_width"), FEET_TO_METERS),
-        "shoulder_width_ft": _divide(values.get("shoulder_width"), FEET_TO_METERS),
-        "access_point_density_per_mi": _multiply(
-            values.get("access_point_density"), MILES_TO_KILOMETERS
+        "unit_system": unit_system,
+        "segment_length_mi": _convert_user_value(
+            values, "segment_length", "segment_length_mi", 1.0 / MILES_TO_KILOMETERS
         ),
-        "analysis_direction_volume_veh_h": values.get("analysis_direction_volume"),
-        "opposing_direction_volume_veh_h": values.get("opposing_direction_volume"),
+        "posted_speed_mph": _convert_user_value(
+            values, "posted_speed", "posted_speed_mph", 1.0 / MILES_TO_KILOMETERS
+        ),
+        "lane_width_ft": _convert_user_value(
+            values, "lane_width", "lane_width_ft", 1.0 / FEET_TO_METERS
+        ),
+        "shoulder_width_ft": _convert_user_value(
+            values, "shoulder_width", "shoulder_width_ft", 1.0 / FEET_TO_METERS
+        ),
+        "access_point_density_per_mi": _convert_user_value(
+            values,
+            "access_point_density",
+            "access_point_density_per_mi",
+            MILES_TO_KILOMETERS,
+        ),
+        "analysis_direction_volume_veh_h": _convert_user_value(
+            values, "analysis_direction_volume", "analysis_direction_volume_veh_h"
+        ),
+        "opposing_direction_volume_veh_h": _convert_user_value(
+            values, "opposing_direction_volume", "opposing_direction_volume_veh_h"
+        ),
     }
 
 
@@ -88,7 +117,7 @@ def display_outputs(
 ) -> dict[str, dict[str, Any]]:
     """Build the six primary result metrics in the selected display units."""
 
-    _validate_unit_system(unit_system)
+    unit_system = _normalize_unit_system(unit_system)
     metric = unit_system == "metric"
     speed_factor = MILES_TO_KILOMETERS if metric else 1.0
     density_factor = 1.0 / MILES_TO_KILOMETERS if metric else 1.0
@@ -128,14 +157,23 @@ def display_outputs(
     }
 
 
-def _validate_unit_system(unit_system: str) -> None:
+def _normalize_unit_system(unit_system: str) -> str:
+    unit_system = str(unit_system).strip().lower()
     if unit_system not in SUPPORTED_UNIT_SYSTEMS:
         raise HCMCalcError("unit_system must be metric or imperial.")
+    return unit_system
 
 
-def _divide(value: Any, divisor: float) -> Any:
-    return None if value is None else float(value) / divisor
+def _convert_user_value(
+    values: dict[str, Any],
+    user_key: str,
+    engine_key: str,
+    factor: float = 1.0,
+) -> Any:
+    if user_key not in values:
+        return values.get(engine_key)
 
-
-def _multiply(value: Any, multiplier: float) -> Any:
-    return None if value is None else float(value) * multiplier
+    value = values[user_key]
+    if value is None:
+        return None
+    return float(value) * factor

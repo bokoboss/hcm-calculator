@@ -6,6 +6,7 @@ import pytest
 from hcmcalc.core import HCMCalcError, MethodNotImplementedError
 from hcmcalc.methods.two_lane_highway_ch15 import TwoLaneHighwayChapter15Method
 from hcmcalc.ui.manual_segment import run_manual_single_segment
+from hcmcalc.ui.units import manual_defaults
 
 
 def _manual_values(**overrides):
@@ -27,6 +28,16 @@ def _manual_values(**overrides):
     return values
 
 
+def _default_style_values(unit_system: str) -> dict:
+    values = {
+        **manual_defaults(unit_system),
+        "unit_system": unit_system,
+        "segment_type": "passing_constrained",
+        "terrain_type": "level",
+    }
+    return values
+
+
 def test_manual_passing_constrained_example_1_equivalent_returns_los_d() -> None:
     result = run_manual_single_segment(_manual_values())
 
@@ -35,6 +46,29 @@ def test_manual_passing_constrained_example_1_equivalent_returns_los_d() -> None
     assert result.outputs["opposing_flow_rate_veh_h"] == 1500.0
     assert result.intermediate_values
     assert result.assumptions
+
+
+@pytest.mark.parametrize("unit_system", ["metric", "Metric"])
+def test_metric_default_style_values_run_successfully(unit_system: str) -> None:
+    result = run_manual_single_segment(_default_style_values(unit_system))
+
+    assert result.outputs["segment_type"] == "passing_constrained"
+    assert result.outputs["level_of_service"]
+
+
+@pytest.mark.parametrize("unit_system", ["imperial", "Imperial"])
+def test_imperial_default_style_values_run_successfully(unit_system: str) -> None:
+    result = run_manual_single_segment(_default_style_values(unit_system))
+
+    assert result.outputs["segment_type"] == "passing_constrained"
+    assert result.outputs["level_of_service"] == "D"
+
+
+def test_engine_native_values_with_unit_system_remain_supported() -> None:
+    result = run_manual_single_segment(_manual_values(unit_system="metric"))
+
+    assert result.outputs["segment_length_mi"] == 0.75
+    assert result.outputs["level_of_service"] == "D"
 
 
 def test_public_single_segment_api_example_1_equivalent_returns_los_d() -> None:
