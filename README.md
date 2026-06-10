@@ -1,4 +1,4 @@
-﻿# HCM Calculator
+# HCM Calculator
 
 Auditable Python scaffold for Highway Capacity Manual (HCM) calculations.
 
@@ -19,13 +19,13 @@ Implemented:
 - Documentation scaffold
 - Methodology and validation references
 - HCM Chapter 26 Two-Lane Highway Example Problems 1 through 4 (`TLH-CH15-001` through `TLH-CH15-004`)
-- Minimal Streamlit viewer for the implemented validation fixture cases
+- Streamlit Validated Case Viewer and Manual Single Segment Calculator
 - Unit and validation fixture tests
 
 Not implemented yet:
 
 - Full HCM Chapter 15 calculation engine
-- Free-form Streamlit worksheet data entry
+- Full facility manual input
 - Multilane Highway LOS calculations
 - Production validation dataset
 
@@ -67,7 +67,7 @@ py -m hcmcalc run references/example_inputs.yaml --case TLH-CH15-004
 
 The CLI currently supports validated example fixtures only.
 
-## Streamlit Prototype
+## Streamlit Calculator
 
 Run the single-page validated-case viewer from the repository root:
 
@@ -75,14 +75,33 @@ Run the single-page validated-case viewer from the repository root:
 streamlit run src/hcmcalc/ui/streamlit_app.py
 ```
 
-The prototype loads `references/example_inputs.yaml` and runs implemented cases
-`TLH-CH15-001` through `TLH-CH15-004` through the existing calculation registry. It
-displays outputs, facility segment results, assumptions, warnings, intermediate
-values, and a downloadable full-result JSON preview.
+The single-page app provides two modes:
 
-The Streamlit UI currently runs validated fixture cases only. It does not provide
-free-form manual input, a full worksheet workflow, Multilane Highway analysis, new
-HCM cases, or Word/Excel export.
+- **Validated Case Viewer** loads `references/example_inputs.yaml` and preserves
+  Example Problems 1 through 4 validation behavior.
+- **Manual Single Segment Calculator** accepts one straight Two-Lane Highway
+  segment and displays demand flow rate, capacity, speeds, percent followers,
+  follower density, LOS, assumptions, warnings, intermediate values, and a
+  downloadable full-result JSON preview.
+
+Manual v0.1 scope:
+
+- HCM 7th Edition Chapter 15 Two-Lane Highway
+- Motorized Vehicle LOS
+- One segment only
+- Passing Constrained, Passing Zone, and Passing Lane segment types
+- Level terrain and narrowly validated mountainous terrain combinations
+- Passing Zone requires opposing-direction volume
+- Passing Constrained uses the implemented HCM 1,500 veh/h opposing-flow assumption
+
+Limitations:
+
+- No full facility manual input yet
+- No general mountainous grade table; unsupported grade/length combinations are rejected
+- No downstream corridor effects for single passing-lane mode
+- Passing Lane calculation remains limited to the engine's validated Class 1, 8% heavy-vehicle path
+- No Multilane Highway yet
+- No report export yet; full result JSON download is available
 
 ## Repository Layout
 
@@ -95,6 +114,6 @@ tests/                      Unit and validation fixture tests
 
 ## Validation Requirement
 
-HCM 7th Edition Chapter 26 Two-Lane Highway Example Problems 1 through 4 (`TLH-CH15-001` through `TLH-CH15-004`) are implemented and validated as the current baseline. The implementation remains scoped to these exact examples; additional Chapter 15 cases are not yet implemented.
+HCM 7th Edition Chapter 26 Two-Lane Highway Example Problems 1 through 4 (`TLH-CH15-001` through `TLH-CH15-004`) are implemented and validated as the current baseline. Manual single-segment mode reuses those formula paths and coefficient tables, but only the listed v0.1 combinations are supported and unsupported scope is rejected.
 
 Before UI expansion or any production use, calculation correctness must continue to be validated against relevant HCM Chapter 26 example problems. Validation artifacts should document source examples, input mappings, expected outputs, tolerances, and reviewer sign-off.
