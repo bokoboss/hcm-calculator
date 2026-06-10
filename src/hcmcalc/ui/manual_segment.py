@@ -7,6 +7,7 @@ from typing import Any
 from hcmcalc.core import CalculationResult, HCMCalcError
 from hcmcalc.methods.two_lane_highway_ch15 import TwoLaneHighwayChapter15Method
 from hcmcalc.methods.two_lane_highway_models import PASSING_ZONE
+from hcmcalc.ui.units import manual_values_to_engine_inputs
 
 
 def run_manual_single_segment(values: dict[str, Any]) -> CalculationResult:
@@ -18,6 +19,9 @@ def run_manual_single_segment(values: dict[str, Any]) -> CalculationResult:
 
 def build_manual_segment_inputs(values: dict[str, Any]) -> dict[str, Any]:
     """Build one straight-segment engine input without duplicating formulas."""
+
+    if "unit_system" in values:
+        values = manual_values_to_engine_inputs(values, str(values["unit_system"]))
 
     terrain_type = str(values.get("terrain_type", ""))
     if terrain_type not in {"level", "mountainous"}:
