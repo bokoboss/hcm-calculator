@@ -19,12 +19,13 @@ Implemented:
 - Documentation scaffold
 - Methodology and validation references
 - HCM Chapter 26 Two-Lane Highway Example Problems 1 through 4 (`TLH-CH15-001` through `TLH-CH15-004`)
+- Minimal Streamlit viewer for the implemented validation fixture cases
 - Unit and validation fixture tests
 
 Not implemented yet:
 
 - Full HCM Chapter 15 calculation engine
-- Streamlit worksheet UI
+- Free-form Streamlit worksheet data entry
 - Multilane Highway LOS calculations
 - Production validation dataset
 
@@ -38,7 +39,14 @@ python -m venv .venv
 python -m pip install -e .[dev]
 ```
 
-Streamlit is listed as an optional UI dependency only. Calculation logic must remain usable without Streamlit installed.
+Streamlit is listed as an optional UI dependency only. Install it with the development
+dependencies to run the validated-case viewer:
+
+```powershell
+python -m pip install -e .[dev,ui]
+```
+
+Calculation logic and the CLI remain usable without Streamlit installed.
 
 ## Running Tests
 
@@ -58,6 +66,23 @@ py -m hcmcalc run references/example_inputs.yaml --case TLH-CH15-004
 ```
 
 The CLI currently supports validated example fixtures only.
+
+## Streamlit Prototype
+
+Run the single-page validated-case viewer from the repository root:
+
+```powershell
+streamlit run src/hcmcalc/ui/streamlit_app.py
+```
+
+The prototype loads `references/example_inputs.yaml` and runs implemented cases
+`TLH-CH15-001` through `TLH-CH15-004` through the existing calculation registry. It
+displays outputs, facility segment results, assumptions, warnings, intermediate
+values, and a downloadable full-result JSON preview.
+
+The Streamlit UI currently runs validated fixture cases only. It does not provide
+free-form manual input, a full worksheet workflow, Multilane Highway analysis, new
+HCM cases, or Word/Excel export.
 
 ## Repository Layout
 
