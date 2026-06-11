@@ -31,6 +31,7 @@ REQUIRED_FIXTURE_FIELDS = frozenset(
         "validation_status",
         "verification_status",
         "runtime_status",
+        "implementation_status",
         "notes",
     }
 )
@@ -59,6 +60,7 @@ def validate_vertical_fixture(fixture: Mapping[str, Any]) -> None:
     _require_explicit_text(fixture, "validation_status")
     _require_explicit_text(fixture, "verification_status")
     _require_explicit_text(fixture, "runtime_status")
+    _require_explicit_text(fixture, "implementation_status")
 
     placeholder = fixture["placeholder"]
     if not isinstance(placeholder, bool):
@@ -72,7 +74,9 @@ def validate_vertical_fixture(fixture: Mapping[str, Any]) -> None:
         or validation_status in RUNTIME_ENABLED_STATUSES
     )
     if claims_runtime_validation and (
-        placeholder or verification_status not in VERIFIED_STATUSES
+        placeholder
+        or verification_status not in VERIFIED_STATUSES
+        or not validation_status.endswith("_validated")
     ):
         raise VerticalFixtureSchemaError(
             "Placeholder or unverified vertical fixtures cannot be runtime enabled."

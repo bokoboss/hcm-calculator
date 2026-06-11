@@ -1,9 +1,28 @@
 metadata:
   manifest_id: ch15_vertical_fixture_requirements
-  manifest_version: 1.0.0
-  purpose: Required validation fixture categories for future Chapter 15 vertical expansion
+  manifest_version: 1.1.0
+  purpose: Registry and required validation fixture categories for Chapter 15 vertical expansion
   runtime_enabled: false
-  notes: Placeholder requirements only. No verified calculation cases are populated.
+  notes: Registry metadata only. Referenced fixtures are not loaded by production calculations.
+
+fixture_registry:
+  - fixture_id: TLH-CH15-004-SEGMENT-3
+    fixture_path: references/vertical_fixtures/tlh_ch15_004_segment_3.yaml
+    calculation_type: manual_single_segment
+    validation_status: manual_single_segment_validated
+    verification_status: verified
+    runtime_status: runtime_validated
+    implementation_status: existing_runtime_support
+    notes: Backfill of the exact existing supported nonlevel manual path.
+
+  - fixture_id: PLACEHOLDER-CH15-VERTICAL-001
+    fixture_path: references/vertical_fixture_template.yaml
+    calculation_type: template
+    validation_status: template_only
+    verification_status: unverified
+    runtime_status: not_runtime_enabled
+    implementation_status: not_populated
+    notes: Template only; never calculation evidence.
 
 fixture_requirements:
   - fixture_category: additional_straight_passing_constrained_vertical_path

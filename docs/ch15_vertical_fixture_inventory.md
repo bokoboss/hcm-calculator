@@ -21,6 +21,16 @@ enabled. Future verified data must include source attribution, expected
 outputs, tolerances, and explicit validation status. Placeholder data must not
 be used for calculation.
 
+### First validated fixture backfill
+
+The fixture infrastructure now includes
+`references/vertical_fixtures/tlh_ch15_004_segment_3.yaml`, a provenance
+backfill for the exact existing `TLH-CH15-004` segment 3 nonlevel manual path.
+Its inputs, expected outputs, and tolerances are copied only from the existing
+repository validation fixtures and are cross-checked against them in tests.
+The backfill adds no HCM table values or coefficients and does not broaden
+calculation support.
+
 ## B. Existing Validated Fixtures
 
 In the table below, a grade length shown as the segment length means the source

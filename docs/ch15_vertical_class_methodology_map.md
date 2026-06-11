@@ -27,6 +27,12 @@ placeholder data must not be used for calculation. Any future data must include
 source attribution, expected outputs, tolerances, and explicit validation
 status before implementation review.
 
+The first validated schema backfill now represents the exact existing
+`TLH-CH15-004` segment 3 manual path. It uses only existing repository inputs,
+expected outputs, and tolerances, and serves as a fixture/provenance pattern.
+It adds no HCM table values or coefficients and enables no new calculation
+path.
+
 ### Phase 1 unsupported-scope guardrails
 
 Explicit vertical-scope guardrails are now applied before calculation. The
