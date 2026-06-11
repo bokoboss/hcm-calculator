@@ -1,0 +1,105 @@
+metadata:
+  manifest_id: ch15_vertical_data_requirements
+  manifest_version: 1.0.0
+  purpose: Required data categories for future Chapter 15 vertical expansion
+  runtime_enabled: false
+  notes: Placeholder metadata only. No HCM table values or coefficients are populated.
+
+datasets:
+  - dataset_id: grade_length_classification_boundaries
+    chapter: 15
+    method_area: two_lane_highway_vertical_alignment
+    data_type: classification_boundaries
+    required_lookup_keys: [grade_percent, grade_length, input_units]
+    required_output_fields: [vertical_class]
+    source_required: true
+    source_reference: null
+    copyright_status: review_required
+    verification_status: data_required
+    implementation_status: not_populated
+    runtime_status: not_runtime_enabled
+    notes: Verified boundary definitions and inclusivity rules are required.
+
+  - dataset_id: heavy_vehicle_adjustment_lookup
+    chapter: 15
+    method_area: two_lane_highway_vertical_alignment
+    data_type: adjustment_lookup
+    required_lookup_keys: [vertical_class, grade_percent, grade_length, heavy_vehicle_percent, opposing_flow]
+    required_output_fields: [heavy_vehicle_adjustment]
+    source_required: true
+    source_reference: null
+    copyright_status: review_required
+    verification_status: data_required
+    implementation_status: not_populated
+    runtime_status: not_runtime_enabled
+    notes: Verified adjustment data is required before any new path is enabled.
+
+  - dataset_id: vertical_class_lookup_data
+    chapter: 15
+    method_area: two_lane_highway_vertical_alignment
+    data_type: lookup_data
+    required_lookup_keys: [terrain_type, segment_type, grade_percent, grade_length, input_units]
+    required_output_fields: [vertical_class]
+    source_required: true
+    source_reference: null
+    copyright_status: review_required
+    verification_status: data_required
+    implementation_status: not_populated
+    runtime_status: not_runtime_enabled
+    notes: Must not replace or broaden the existing validated-example metadata without fixtures.
+
+  - dataset_id: passing_lane_class_specific_adjustments
+    chapter: 15
+    method_area: two_lane_highway_passing_lane
+    data_type: segment_type_adjustments
+    required_lookup_keys: [vertical_class, grade_percent, grade_length, heavy_vehicle_percent]
+    required_output_fields: [capacity, lane_level_adjustments, downstream_effect_rules]
+    source_required: true
+    source_reference: null
+    copyright_status: review_required
+    verification_status: data_required
+    implementation_status: not_populated
+    runtime_status: not_runtime_enabled
+    notes: Class-specific Passing Lane behavior requires standalone and facility validation.
+
+  - dataset_id: nonlevel_passing_zone_adjustments
+    chapter: 15
+    method_area: two_lane_highway_passing_zone
+    data_type: segment_type_adjustments
+    required_lookup_keys: [vertical_class, grade_percent, grade_length, heavy_vehicle_percent, opposing_flow]
+    required_output_fields: [speed_adjustments, percent_followers_adjustments]
+    source_required: true
+    source_reference: null
+    copyright_status: review_required
+    verification_status: data_required
+    implementation_status: not_populated
+    runtime_status: not_runtime_enabled
+    notes: A standalone verified nonlevel Passing Zone fixture is required.
+
+  - dataset_id: horizontal_curve_nonlevel_interaction_data
+    chapter: 15
+    method_area: two_lane_highway_geometric_interactions
+    data_type: interaction_rules
+    required_lookup_keys: [vertical_class, horizontal_class, grade_percent, grade_length]
+    required_output_fields: [calculation_order, interaction_adjustments]
+    source_required: true
+    source_reference: null
+    copyright_status: review_required
+    verification_status: data_required
+    implementation_status: not_populated
+    runtime_status: not_runtime_enabled
+    notes: Interaction rules and checked subsegment outputs are required.
+
+  - dataset_id: facility_adjustment_rules
+    chapter: 15
+    method_area: two_lane_highway_facility
+    data_type: facility_rules
+    required_lookup_keys: [segment_sequence, segment_context, adjustment_context]
+    required_output_fields: [segment_adjustments, facility_aggregation_rules]
+    source_required: true
+    source_reference: null
+    copyright_status: review_required
+    verification_status: data_required
+    implementation_status: not_populated
+    runtime_status: not_runtime_enabled
+    notes: Rules, sequencing, rounding, and fixture boundaries must be verified.

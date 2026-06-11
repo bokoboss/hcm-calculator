@@ -1,0 +1,28 @@
+metadata:
+  fixture_template_version: 1.0.0
+  purpose: Template for future independently verified Chapter 15 vertical fixtures
+  status: placeholder_template
+  runtime_enabled: false
+  notes: Replace placeholders only with source-attributed, manually verified data.
+
+fixtures:
+  - fixture_id: PLACEHOLDER-CH15-VERTICAL-001
+    placeholder: true
+    source: null
+    source_reference: REQUIRED_BEFORE_VERIFICATION
+    calculation_type: single_segment
+    segment_type: REQUIRED_BEFORE_VERIFICATION
+    terrain_type: REQUIRED_BEFORE_VERIFICATION
+    horizontal_alignment: REQUIRED_BEFORE_VERIFICATION
+    grade_percent: null
+    grade_length: null
+    vertical_class: null
+    heavy_vehicle_percent: null
+    input_units: REQUIRED_BEFORE_VERIFICATION
+    expected_outputs: {}
+    expected_intermediate_values: {}
+    tolerance: {}
+    validation_status: placeholder
+    verification_status: unverified
+    runtime_status: not_runtime_enabled
+    notes: Do not use for calculation. Populate only in a reviewed future fixture PR.

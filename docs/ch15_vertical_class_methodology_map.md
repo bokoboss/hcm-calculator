@@ -17,6 +17,16 @@ records the existing standalone and facility-only validation evidence, missing
 fixtures, required verified data, and recommended test-first expansion order.
 It does not add methodology support.
 
+### Phase 4B data and fixture preparation
+
+Non-runtime manifests, a fixture template, structural fixture validation, and
+[vertical data ingestion guidelines](ch15_vertical_data_ingestion_guidelines.md)
+now provide a controlled path for adding verified data later. No actual HCM
+values or coefficients are populated, no placeholder is runtime enabled, and
+placeholder data must not be used for calculation. Any future data must include
+source attribution, expected outputs, tolerances, and explicit validation
+status before implementation review.
+
 ### Phase 1 unsupported-scope guardrails
 
 Explicit vertical-scope guardrails are now applied before calculation. The

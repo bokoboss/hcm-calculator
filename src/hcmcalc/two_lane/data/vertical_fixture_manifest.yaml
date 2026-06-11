@@ -1,0 +1,79 @@
+metadata:
+  manifest_id: ch15_vertical_fixture_requirements
+  manifest_version: 1.0.0
+  purpose: Required validation fixture categories for future Chapter 15 vertical expansion
+  runtime_enabled: false
+  notes: Placeholder requirements only. No verified calculation cases are populated.
+
+fixture_requirements:
+  - fixture_category: additional_straight_passing_constrained_vertical_path
+    calculation_type: single_segment
+    required_expected_outputs: [vertical_class, demand_flow_rate, capacity, average_speed, percent_followers, follower_density, level_of_service]
+    required_validation_evidence: [source_reference, checked_calculation, tolerances, reviewer_signoff]
+    verification_status: data_required
+    implementation_status: not_populated
+    runtime_status: not_runtime_enabled
+    notes: Required before enabling one additional standalone vertical path.
+
+  - fixture_category: grade_length_classification_boundaries
+    calculation_type: qa
+    required_expected_outputs: [vertical_class, scope_status]
+    required_validation_evidence: [source_reference, boundary_inclusivity, tolerances, reviewer_signoff]
+    verification_status: data_required
+    implementation_status: not_populated
+    runtime_status: not_runtime_enabled
+    notes: Cases immediately below, at, and above each claimed boundary are required.
+
+  - fixture_category: non_eight_percent_heavy_vehicles
+    calculation_type: single_segment
+    required_expected_outputs: [heavy_vehicle_adjustment, average_speed, percent_followers, follower_density, level_of_service]
+    required_validation_evidence: [source_reference, checked_calculation, tolerances, reviewer_signoff]
+    verification_status: data_required
+    implementation_status: not_populated
+    runtime_status: not_runtime_enabled
+    notes: Required for each claimed class, path, and percentage range.
+
+  - fixture_category: nonlevel_passing_zone
+    calculation_type: single_segment
+    required_expected_outputs: [opposing_demand_flow, demand_flow_rate, capacity, average_speed, percent_followers, follower_density, level_of_service]
+    required_validation_evidence: [source_reference, checked_calculation, tolerances, reviewer_signoff]
+    verification_status: data_required
+    implementation_status: not_populated
+    runtime_status: not_runtime_enabled
+    notes: Must verify opposing-flow treatment.
+
+  - fixture_category: nonlevel_passing_lane
+    calculation_type: single_segment_and_facility
+    required_expected_outputs: [capacity, lane_level_outputs, midpoint_density, endpoint_density, level_of_service, downstream_effects]
+    required_validation_evidence: [source_reference, checked_calculation, tolerances, reviewer_signoff]
+    verification_status: data_required
+    implementation_status: not_populated
+    runtime_status: not_runtime_enabled
+    notes: Standalone and facility-context evidence are required.
+
+  - fixture_category: horizontal_curve_nonlevel_interaction
+    calculation_type: single_segment
+    required_expected_outputs: [subsegment_outputs, adjusted_average_speed, percent_followers, follower_density, level_of_service]
+    required_validation_evidence: [source_reference, checked_calculation, tolerances, reviewer_signoff]
+    verification_status: data_required
+    implementation_status: not_populated
+    runtime_status: not_runtime_enabled
+    notes: Must verify interaction order and complete segment outputs.
+
+  - fixture_category: grade_transitions
+    calculation_type: single_segment
+    required_expected_outputs: [classification_decisions, segment_outputs, scope_status]
+    required_validation_evidence: [source_reference, structured_vertical_profile, tolerances, reviewer_signoff]
+    verification_status: data_required
+    implementation_status: not_populated
+    runtime_status: not_runtime_enabled
+    notes: Required when grade length differs from segment length.
+
+  - fixture_category: facility_workflow
+    calculation_type: facility
+    required_expected_outputs: [segment_outputs, facility_follower_density, facility_level_of_service, facility_adjustments]
+    required_validation_evidence: [source_reference, checked_calculation, tolerances, reviewer_signoff]
+    verification_status: data_required
+    implementation_status: not_populated
+    runtime_status: not_runtime_enabled
+    notes: Exact fixture boundaries and aggregation rules must be documented.

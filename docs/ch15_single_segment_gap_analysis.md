@@ -101,6 +101,15 @@ now records the available standalone and facility-only evidence and the
 required future fixtures. Vertical expansion remains blocked by missing
 verified fixtures, classification boundaries, and applicable HCM table data.
 
+### Phase 4B data and fixture preparation
+
+Non-runtime manifest files, a vertical fixture template, structural validation,
+and [vertical data ingestion guidelines](ch15_vertical_data_ingestion_guidelines.md)
+now exist for future verified additions. They contain no actual HCM values or
+coefficients and enable no calculation support. Future fixtures must include
+source attribution, expected outputs, tolerances, and explicit validation
+status; placeholders must never be used for calculation.
+
 ### Level + straight baseline status
 
 Level terrain with straight horizontal alignment is treated as the practical
