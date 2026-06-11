@@ -11,6 +11,12 @@ This document does not add methodology support, authorize new calculation
 paths, or establish that any combination beyond the existing validation
 fixtures is correct.
 
+The Phase 4
+[Chapter 15 Vertical Fixture Inventory](ch15_vertical_fixture_inventory.md)
+records the existing standalone and facility-only validation evidence, missing
+fixtures, required verified data, and recommended test-first expansion order.
+It does not add methodology support.
+
 ### Phase 1 unsupported-scope guardrails
 
 Explicit vertical-scope guardrails are now applied before calculation. The
