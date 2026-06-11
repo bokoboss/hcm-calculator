@@ -12,6 +12,11 @@ from hcmcalc.cli import find_case, load_input_file, result_to_dict, run_case
 from hcmcalc.core import HCMCalcError
 from hcmcalc.ui.audit import build_manual_calculation_audit_record
 from hcmcalc.ui.manual_segment import run_manual_single_segment
+from hcmcalc.ui.project_io import (
+    ProjectFileError,
+    create_manual_project_json,
+    load_manual_project_json,
+)
 from hcmcalc.ui.result_view import compact_rows, format_display_metric, los_colors
 from hcmcalc.ui.schematics import get_segment_schematic_path
 from hcmcalc.ui.units import (
@@ -207,6 +212,13 @@ def render_validated_case_viewer() -> None:
 def render_manual_single_segment_calculator() -> None:
     """Render the v0.1 manual single-segment worksheet."""
 
+    pending_project = st.session_state.pop("manual_pending_project", None)
+    if pending_project is not None:
+        _restore_manual_project(pending_project)
+    load_message = st.session_state.pop("manual_project_load_message", None)
+    if load_message is not None:
+        st.success(load_message)
+
     input_column, result_column = st.columns([1, 1.15], gap="large")
 
     with input_column:
@@ -216,6 +228,7 @@ def render_manual_single_segment_calculator() -> None:
             ["Metric", "Imperial"],
             index=0 if DEFAULT_UNIT_SYSTEM == "metric" else 1,
             horizontal=True,
+            key="manual_unit_label",
         )
         unit_system = str(unit_label).lower()
         defaults = manual_defaults(unit_system)
@@ -224,12 +237,18 @@ def render_manual_single_segment_calculator() -> None:
             "Segment type",
             list(SEGMENT_TYPE_LABELS),
             format_func=SEGMENT_TYPE_LABELS.__getitem__,
+            key="manual_segment_type",
         )
         terrain_type = setup_columns[1].selectbox(
             "Terrain type",
             ["level", "mountainous"],
             format_func=str.title,
+            key="manual_terrain_type",
         )
+        for name, default in defaults.items():
+            if name == "heavy_vehicle_percent" and segment_type == "passing_lane":
+                default = 8.0
+            st.session_state.setdefault(f"manual_{name}_{unit_system}", default)
         schematic_path = get_segment_schematic_path(segment_type)
         if schematic_path is None:
             st.caption("Schematic image not found for this segment type.")
@@ -255,28 +274,28 @@ def render_manual_single_segment_calculator() -> None:
             segment_length = geometry_primary[0].number_input(
                 f"Segment length ({'km' if metric else 'mi'})",
                 min_value=0.01,
-                value=defaults["segment_length"],
+                key=f"manual_segment_length_{unit_system}",
             )
             posted_speed = geometry_primary[1].number_input(
                 f"Posted speed / base speed ({'km/h' if metric else 'mph'})",
                 min_value=1.0,
-                value=defaults["posted_speed"],
+                key=f"manual_posted_speed_{unit_system}",
             )
             lane_width = geometry_primary[2].number_input(
                 f"Lane width ({'m' if metric else 'ft'})",
                 min_value=0.01,
-                value=defaults["lane_width"],
+                key=f"manual_lane_width_{unit_system}",
             )
             geometry_secondary = st.columns(2)
             shoulder_width = geometry_secondary[0].number_input(
                 f"Shoulder width ({'m' if metric else 'ft'})",
                 min_value=0.0,
-                value=defaults["shoulder_width"],
+                key=f"manual_shoulder_width_{unit_system}",
             )
             access_density = geometry_secondary[1].number_input(
                 f"Access point density (points/{'km' if metric else 'mi'})",
                 min_value=0.0,
-                value=defaults["access_point_density"],
+                key=f"manual_access_point_density_{unit_system}",
             )
             horizontal_alignment_label = st.selectbox(
                 "Horizontal alignment",
@@ -285,6 +304,7 @@ def render_manual_single_segment_calculator() -> None:
                     "Horizontal curve adjustment uses the validated Example "
                     "Problem 2 calculation path."
                 ),
+                key="manual_horizontal_alignment_label",
             )
             horizontal_alignment = (
                 "horizontal_curves"
@@ -298,9 +318,19 @@ def render_manual_single_segment_calculator() -> None:
                     "Problem 2 calculation path. Subsegment lengths must total "
                     f"the segment length; lengths and radii are in {'m' if metric else 'ft'}."
                 )
-                horizontal_subsegments = st.data_editor(
+                editor_version = st.session_state.get(
+                    f"manual_horizontal_subsegments_version_{unit_system}", 0
+                )
+                editor_data = st.session_state.pop(
+                    f"manual_horizontal_subsegments_seed_{unit_system}",
                     manual_horizontal_curve_defaults(unit_system, segment_length),
-                    key=f"manual_horizontal_subsegments_{unit_system}",
+                )
+                horizontal_subsegments = st.data_editor(
+                    editor_data,
+                    key=(
+                        f"manual_horizontal_subsegments_{unit_system}_"
+                        f"{editor_version}"
+                    ),
                     hide_index=True,
                     num_rows="fixed",
                     use_container_width=True,
@@ -342,28 +372,24 @@ def render_manual_single_segment_calculator() -> None:
             analysis_volume = demand_columns[0].number_input(
                 "Analysis-direction volume (veh/h)",
                 min_value=0.0,
-                value=defaults["analysis_direction_volume"],
+                key=f"manual_analysis_direction_volume_{unit_system}",
             )
             peak_hour_factor = demand_columns[1].number_input(
                 "Peak hour factor (PHF)",
                 min_value=0.01,
                 max_value=1.0,
-                value=defaults["peak_hour_factor"],
+                key=f"manual_peak_hour_factor_{unit_system}",
             )
             heavy_vehicle_percent = demand_columns[2].number_input(
                 "Heavy vehicles (%)",
                 min_value=0.0,
-                value=(
-                    8.0
-                    if segment_type == "passing_lane"
-                    else defaults["heavy_vehicle_percent"]
-                ),
+                key=f"manual_heavy_vehicle_percent_{unit_system}",
             )
             opposing_volume = (
                 st.number_input(
                     "Opposing-direction volume (veh/h)",
                     min_value=0.0,
-                    value=defaults["opposing_direction_volume"],
+                    key=f"manual_opposing_direction_volume_{unit_system}",
                 )
                 if segment_type == "passing_zone"
                 else None
@@ -372,7 +398,8 @@ def render_manual_single_segment_calculator() -> None:
             if terrain_type == "mountainous":
                 terrain_columns = st.columns([1, 2])
                 grade_percent = terrain_columns[0].number_input(
-                    "Grade (%)", value=defaults["grade_percent"]
+                    "Grade (%)",
+                    key=f"manual_grade_percent_{unit_system}",
                 )
                 terrain_columns[1].caption(
                     "Supported combinations are limited to validated mountainous "
@@ -385,12 +412,6 @@ def render_manual_single_segment_calculator() -> None:
                 "Run calculation", type="primary", use_container_width=True
             )
 
-        st.caption(
-            "Locked assumptions: no upstream passing lane; single segment only. "
-            "Horizontal curves are limited to the validated Example Problem 2 path."
-        )
-
-    if run_manual:
         values = {
             "unit_system": unit_system,
             "segment_type": segment_type,
@@ -408,6 +429,13 @@ def render_manual_single_segment_calculator() -> None:
             "horizontal_alignment": horizontal_alignment,
             "horizontal_alignment_subsegments": horizontal_subsegments,
         }
+        render_manual_project_file_controls(values)
+        st.caption(
+            "Locked assumptions: no upstream passing lane; single segment only. "
+            "Horizontal curves are limited to the validated Example Problem 2 path."
+        )
+
+    if run_manual:
         st.session_state.pop("manual_segment_result", None)
         st.session_state.pop("manual_segment_error", None)
         try:
@@ -440,6 +468,101 @@ def render_manual_single_segment_calculator() -> None:
             else unit_system,
             audit_record,
         )
+
+
+def render_manual_project_file_controls(manual_inputs: dict[str, Any]) -> None:
+    """Render compact manual project save and load controls."""
+
+    stored_audit = st.session_state.get("manual_segment_audit")
+    calculation_matches_inputs = (
+        isinstance(stored_audit, dict)
+        and stored_audit.get("user_inputs") == manual_inputs
+    )
+    result = (
+        st.session_state.get("manual_segment_result")
+        if calculation_matches_inputs
+        else None
+    )
+    audit_record = stored_audit if calculation_matches_inputs else None
+    project_json = create_manual_project_json(
+        manual_inputs, result=result, audit_record=audit_record
+    )
+
+    with st.expander("Project file"):
+        st.caption("Save this worksheet setup or restore a saved manual project.")
+        st.download_button(
+            "Download project JSON",
+            data=project_json,
+            file_name="manual-single-segment-project.json",
+            mime="application/json",
+            use_container_width=True,
+        )
+        uploaded_project = st.file_uploader(
+            "Load project JSON",
+            type=["json"],
+            key="manual_project_file_uploader",
+        )
+        if st.button(
+            "Load project",
+            disabled=uploaded_project is None,
+            use_container_width=True,
+        ):
+            try:
+                project = load_manual_project_json(uploaded_project.getvalue())
+            except ProjectFileError as exc:
+                st.error(str(exc))
+            else:
+                st.session_state["manual_pending_project"] = project
+                st.rerun()
+
+
+def _restore_manual_project(project: dict[str, Any]) -> None:
+    """Restore validated project data into manual worksheet session state."""
+
+    manual_inputs = project["manual_inputs"]
+    unit_system = project["unit_system"]
+    st.session_state["manual_unit_label"] = unit_system.title()
+    st.session_state["manual_segment_type"] = manual_inputs["segment_type"]
+    st.session_state["manual_terrain_type"] = manual_inputs["terrain_type"]
+    st.session_state["manual_horizontal_alignment_label"] = (
+        "Horizontal curve"
+        if manual_inputs["horizontal_alignment"] == "horizontal_curves"
+        else "Straight"
+    )
+    for name in (
+        "segment_length",
+        "posted_speed",
+        "lane_width",
+        "shoulder_width",
+        "access_point_density",
+        "analysis_direction_volume",
+        "peak_hour_factor",
+        "heavy_vehicle_percent",
+        "opposing_direction_volume",
+        "grade_percent",
+    ):
+        value = manual_inputs.get(name)
+        if value is not None:
+            st.session_state[f"manual_{name}_{unit_system}"] = value
+    curve_version_key = f"manual_horizontal_subsegments_version_{unit_system}"
+    st.session_state[curve_version_key] = st.session_state.get(curve_version_key, 0) + 1
+    st.session_state[f"manual_horizontal_subsegments_seed_{unit_system}"] = (
+        manual_inputs.get("horizontal_alignment_subsegments", [])
+    )
+
+    for state_key, project_key in (
+        ("manual_segment_result", "result"),
+        ("manual_segment_audit", "audit_record"),
+    ):
+        if project.get(project_key) is None:
+            st.session_state.pop(state_key, None)
+        else:
+            st.session_state[state_key] = project[project_key]
+    st.session_state.pop("manual_segment_error", None)
+    st.session_state["manual_project_load_message"] = (
+        "Project loaded. Review the restored inputs and click Run calculation "
+        "to calculate again."
+    )
 
 
 def render_audit_record(audit_record: dict[str, Any] | None) -> None:
