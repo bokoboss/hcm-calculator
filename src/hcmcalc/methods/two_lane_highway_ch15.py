@@ -48,6 +48,7 @@ from hcmcalc.methods.two_lane_highway_models import (
     TwoLaneExampleProblem3Inputs,
     TwoLaneFacilitySegmentInputs,
 )
+from hcmcalc.methods.two_lane_highway_scope import require_supported_vertical_scope
 
 
 class TwoLaneHighwayChapter15Method:
@@ -1093,6 +1094,13 @@ def _parse_facility_segment(
             _parse_horizontal_alignment_subsegment(subsegment)
             for subsegment in segment.get("horizontal_alignment_subsegments", [])
         ),
+        terrain_type=(
+            str(segment["terrain_type"])
+            if segment.get("terrain_type") is not None
+            else None
+        ),
+        grade_length_mi=_optional_float(segment.get("grade_length_mi")),
+        vertical_class=_optional_int(segment.get("vertical_class")),
     )
 
 
@@ -1220,6 +1228,21 @@ def _validate_facility_example_scope(inputs: TwoLaneExampleProblem3Inputs) -> No
             )
         if segment.peak_hour_factor <= 0.0:
             raise HCMCalcError("peak_hour_factor must be greater than zero.")
+        require_supported_vertical_scope(
+            segment_type=segment.segment_type,
+            grade_percent=segment.grade_percent,
+            grade_length_mi=(
+                segment.grade_length_mi
+                if segment.grade_length_mi is not None
+                else segment.segment_length_mi
+            ),
+            segment_length_mi=segment.segment_length_mi,
+            heavy_vehicle_percent=segment.heavy_vehicle_percent,
+            horizontal_alignment=segment.horizontal_alignment,
+            terrain_type=segment.terrain_type,
+            vertical_class=segment.vertical_class,
+            validated_facility_example=True,
+        )
         if segment.segment_type == PASSING_ZONE:
             if segment.opposing_direction_volume_veh_h is None:
                 raise HCMCalcError(
@@ -1260,13 +1283,6 @@ def _validate_single_segment_scope(segment: TwoLaneFacilitySegmentInputs) -> Non
         and segment.horizontal_alignment_subsegments
     ):
         raise HCMCalcError("Straight alignment cannot include horizontal subsegments.")
-    if segment.horizontal_alignment == HORIZONTAL_CURVES_ALIGNMENT:
-        _validate_manual_horizontal_curve_scope(segment)
-    if (
-        segment.horizontal_alignment == HORIZONTAL_CURVES_ALIGNMENT
-        and not segment.horizontal_alignment_subsegments
-    ):
-        raise HCMCalcError("Horizontal curve alignment requires horizontal subsegments.")
     _validate_finite_single_segment_inputs(segment)
     if segment.segment_length_mi <= 0.0:
         raise HCMCalcError("Segment length must be greater than zero.")
@@ -1313,36 +1329,27 @@ def _validate_single_segment_scope(segment: TwoLaneFacilitySegmentInputs) -> Non
             "Opposing-direction volume is accepted only for Passing Zone single "
             "segments."
         )
-
-    supported_mountainous_combinations = {
-        (-3.0, 0.5),
-        (4.0, 1.3),
-        (6.0, 0.5),
-        (6.0, 1.0),
-    }
-    grade_length = (segment.grade_percent, segment.segment_length_mi)
+    require_supported_vertical_scope(
+        segment_type=segment.segment_type,
+        grade_percent=segment.grade_percent,
+        grade_length_mi=(
+            segment.grade_length_mi
+            if segment.grade_length_mi is not None
+            else segment.segment_length_mi
+        ),
+        segment_length_mi=segment.segment_length_mi,
+        heavy_vehicle_percent=segment.heavy_vehicle_percent,
+        horizontal_alignment=segment.horizontal_alignment,
+        terrain_type=segment.terrain_type,
+        vertical_class=segment.vertical_class,
+    )
+    if segment.horizontal_alignment == HORIZONTAL_CURVES_ALIGNMENT:
+        _validate_manual_horizontal_curve_scope(segment)
     if (
-        segment.grade_percent != 0.0
-        and grade_length not in supported_mountainous_combinations
+        segment.horizontal_alignment == HORIZONTAL_CURVES_ALIGNMENT
+        and not segment.horizontal_alignment_subsegments
     ):
-        raise MethodNotImplementedError(
-            "Unsupported mountainous grade/length combination. Supported "
-            "combinations are level Class 1, -3% / 0.5 mi, 4% / 1.3 mi, "
-            "6% / 0.5 mi, and 6% / 1.0 mi."
-        )
-    if segment.segment_type == PASSING_LANE and segment.heavy_vehicle_percent != 8.0:
-        raise MethodNotImplementedError(
-            "Manual Passing Lane calculation is currently supported only at 8% heavy vehicles."
-        )
-    if (
-        segment.segment_type == PASSING_LANE
-        and segment.grade_percent != 0.0
-        and grade_length != (-3.0, 0.5)
-    ):
-        raise MethodNotImplementedError(
-            "Manual Passing Lane calculation is currently supported only for "
-            "vertical Class 1 terrain; downstream facility effects are not included."
-        )
+        raise HCMCalcError("Horizontal curve alignment requires horizontal subsegments.")
 
 
 def _validate_finite_single_segment_inputs(
@@ -1454,21 +1461,15 @@ def facility_segment_capacity(segment_type: str, heavy_vehicle_percent: float) -
 def vertical_alignment_class(segment_length_mi: float, grade_percent: float) -> int:
     """HCM Exhibit 15-11 mapping for validated Examples 1 through 4."""
 
-    if grade_percent == 0.0 and 0.25 <= segment_length_mi <= 3.0:
-        return 1
-    if (grade_percent, segment_length_mi) == (-3.0, 0.5):
-        return 1
-    if (grade_percent, segment_length_mi) in {(4.0, 1.3), (6.0, 0.5)}:
-        return 4
-    if (grade_percent, segment_length_mi) == (6.0, 1.0):
-        return 5
-    if not 0.25 <= segment_length_mi <= 3.0:
-        raise HCMCalcError(
-            "Passing Constrained vertical class 1 segment length must be 0.25 to 3.0 mi."
-        )
-    raise MethodNotImplementedError(
-        "Vertical alignment is implemented only for the grade/length combinations validated by Examples 1 through 4."
+    decision = require_supported_vertical_scope(
+        segment_type=PASSING_CONSTRAINED,
+        grade_percent=grade_percent,
+        grade_length_mi=segment_length_mi,
+        segment_length_mi=segment_length_mi,
+        heavy_vehicle_percent=8.0,
     )
+    assert decision.vertical_class is not None
+    return decision.vertical_class
 
 
 def base_free_flow_speed(posted_speed_mph: float) -> float:

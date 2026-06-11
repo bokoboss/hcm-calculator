@@ -1,7 +1,7 @@
 ﻿"""Core contracts for auditable HCM calculation methods."""
 
 from .audit import AuditRecord, CalculationResult, IntermediateValue
-from .exceptions import HCMCalcError, MethodNotImplementedError
+from .exceptions import HCMCalcError, MethodNotImplementedError, UnsupportedScopeError
 from .interfaces import CalculationMethod
 
 __all__ = [
@@ -11,4 +11,5 @@ __all__ = [
     "HCMCalcError",
     "IntermediateValue",
     "MethodNotImplementedError",
+    "UnsupportedScopeError",
 ]

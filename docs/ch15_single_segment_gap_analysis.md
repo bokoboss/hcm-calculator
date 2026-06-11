@@ -70,6 +70,19 @@ Known unsupported or incomplete manual cases:
 - A complete audit record that preserves normalized inputs and all
   decision-relevant intermediate values alongside the result.
 
+### Explicit unsupported-scope guardrails
+
+The manual and engine boundaries now reject unsupported terrain, grade-length,
+vertical-class, and Passing Lane combinations before formulas run. Failed
+manual calculations preserve the selected scope inputs, normalized engine
+inputs when available, a classified scope status, and an engineer-readable
+unsupported reason without emitting misleading LOS or output values.
+
+This change does not add general mountainous, grade-length, or vertical-class
+support. Unsupported combinations are rejected rather than approximated.
+Broader support still requires reviewed HCM table/coefficient data and
+independent validation fixtures.
+
 ### Level + straight baseline status
 
 Level terrain with straight horizontal alignment is treated as the practical

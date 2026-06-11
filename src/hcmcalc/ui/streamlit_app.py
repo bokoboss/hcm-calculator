@@ -475,8 +475,8 @@ def render_manual_single_segment_calculator() -> None:
                     key=f"manual_grade_percent_{unit_system}",
                 )
                 terrain_columns[1].caption(
-                    "Supported combinations are limited to validated mountainous "
-                    "grades and segment lengths."
+                    "Non-level terrain support is limited to currently validated "
+                    "example-problem paths."
                 )
             else:
                 grade_percent = 0.0
