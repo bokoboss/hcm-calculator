@@ -1,8 +1,8 @@
-"""Table-driven metadata structures for future Chapter 15 vertical lookups.
+"""Table-driven metadata structures for Chapter 15 vertical lookups.
 
-This module does not enable calculation support. Records describe only paths
-already represented by the repository's validation fixtures and contain no HCM
-table values or coefficients.
+Records describe only paths already represented by the repository's validation
+fixtures and contain no HCM table values or coefficients. Scope guardrails use
+the records to distinguish manual-validated paths from facility-only paths.
 """
 
 from __future__ import annotations
@@ -102,6 +102,7 @@ class VerticalClassLookupRecord:
     validation_basis: str
     status: LookupStatus
     notes: str
+    manual_single_segment_validated: bool = False
 
 
 @dataclass(frozen=True)
@@ -124,7 +125,12 @@ def _validated_example_record(
     grade_length_mi: float,
     vertical_class: int,
     validation_basis: str = "Existing repository validation fixture",
+    manual_single_segment_validated: bool = False,
+    notes: str | None = None,
 ) -> VerticalClassLookupRecord:
+    metadata_note = (
+        "Metadata only; no HCM lookup table values or coefficients are represented."
+    )
     return VerticalClassLookupRecord(
         key=VerticalClassLookupKey(
             terrain_type="mountainous",
@@ -137,30 +143,52 @@ def _validated_example_record(
         source="HCM Chapter 26 Two-Lane Highway Example Problem 4",
         validation_basis=validation_basis,
         status=LookupStatus.VALIDATED_EXAMPLE_PATH,
-        notes="Metadata only; no HCM lookup table values or coefficients are represented.",
+        notes=f"{metadata_note} {notes}" if notes else metadata_note,
+        manual_single_segment_validated=manual_single_segment_validated,
     )
 
 
-# Metadata mirrors only existing validated paths. It is intentionally not used
-# by the production scope checker or calculation engine.
+# Metadata mirrors only existing validated paths. It does not add methodology
+# data or authorize calculation formulas beyond the recorded validation scope.
 VERTICAL_CLASS_LOOKUP_RECORDS = (
     _validated_example_record(
         segment_type="passing_constrained",
         grade_percent=-3.0,
         grade_length_mi=0.5,
         vertical_class=1,
+        validation_basis=(
+            "Existing repository fixture TLH-CH15-004 segment 6 expected outputs"
+        ),
+        notes=(
+            "Facility-only path; published final follower density includes upstream "
+            "Passing Lane adjustment and does not validate standalone output."
+        ),
     ),
     _validated_example_record(
         segment_type="passing_lane",
         grade_percent=-3.0,
         grade_length_mi=0.5,
         vertical_class=1,
+        validation_basis=(
+            "Existing repository fixture TLH-CH15-004 segment 5 expected outputs"
+        ),
+        notes=(
+            "Facility-only Passing Lane path; standalone and downstream effects are "
+            "not independently validated."
+        ),
     ),
     _validated_example_record(
         segment_type="passing_constrained",
         grade_percent=4.0,
         grade_length_mi=1.3,
         vertical_class=4,
+        validation_basis=(
+            "Existing repository fixture TLH-CH15-004 segments 1 and 4 expected outputs"
+        ),
+        notes=(
+            "Facility-only nonlevel horizontal-curve path; no straight standalone "
+            "validation fixture exists."
+        ),
     ),
     _validated_example_record(
         segment_type="passing_constrained",
@@ -170,12 +198,20 @@ VERTICAL_CLASS_LOOKUP_RECORDS = (
         validation_basis=(
             "Existing repository fixture TLH-CH15-004 segment 3 expected outputs"
         ),
+        manual_single_segment_validated=True,
     ),
     _validated_example_record(
         segment_type="passing_constrained",
         grade_percent=6.0,
         grade_length_mi=1.0,
         vertical_class=5,
+        validation_basis=(
+            "Existing repository fixture TLH-CH15-004 segment 2 expected outputs"
+        ),
+        notes=(
+            "Facility-only nonlevel horizontal-curve path; no straight standalone "
+            "validation fixture exists."
+        ),
     ),
 )
 

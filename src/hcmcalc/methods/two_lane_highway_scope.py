@@ -147,7 +147,7 @@ def classify_vertical_scope(
     if (
         grade_percent != 0.0
         and not validated_facility_example
-        and not _is_selected_manual_vertical_path(lookup_record)
+        and not _is_manual_single_segment_validated(lookup_record)
     ):
         return VerticalScopeDecision(
             "unsupported_needs_validation_fixture",
@@ -245,16 +245,13 @@ def _derived_level_class(grade_length_mi: float) -> int | None:
     return None
 
 
-def _is_selected_manual_vertical_path(
+def _is_manual_single_segment_validated(
     record: VerticalClassLookupRecord | None,
 ) -> bool:
     return (
         record is not None
         and record.status == LookupStatus.VALIDATED_EXAMPLE_PATH
-        and record.key.segment_type == PASSING_CONSTRAINED
-        and record.key.grade_percent.contains(6.0)
-        and record.key.grade_length_mi.contains(0.5)
-        and record.vertical_class == 4
+        and record.manual_single_segment_validated
     )
 
 
