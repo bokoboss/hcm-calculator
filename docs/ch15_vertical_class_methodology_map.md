@@ -29,8 +29,10 @@ enabled.
 ### Level terrain
 
 - The manual worksheet's `terrain_type="level"` selection normalizes
-  `grade_percent` to `0.0`; `terrain_type` is not passed into the calculation
-  engine.
+  `grade_percent` to `0.0`. The engine model now parses `terrain_type`,
+  `grade_length_mi`, and an optional submitted `vertical_class` for explicit
+  scope classification and guardrails. These fields are not used directly in
+  calculation formulas.
 - `vertical_alignment_class()` returns vertical Class 1 for a `0%` grade when
   the segment length is from `0.25` through `3.0 mi`.
 - Level, straight Passing Constrained, Passing Zone, and Passing Lane paths
@@ -54,11 +56,12 @@ Exhibit 15-11:
 
 The Example Problem 4 facility path validates these combinations at `8%` heavy
 vehicles in its exact six-segment facility context. Some combinations include
-horizontal curves and downstream Passing Lane effects. The public
-single-segment path also permits the exact grade-length pairs for straight
-Passing Constrained and Passing Zone segments with other valid input values,
-but those broader combinations are implemented behavior, not independently
-validated methodology.
+horizontal curves and downstream Passing Lane effects. Nonlevel manual
+single-segment support is explicitly guarded: Passing Constrained is limited to
+the exact mapped grade-length pairs at `8%` heavy vehicles, and nonlevel Passing
+Zone is rejected pending an independent validation fixture. Exact grade-length
+pairs do not establish broad methodology validation or authorize other
+nonlevel inputs.
 
 ### Downgrade Class 1 path
 
@@ -67,8 +70,8 @@ validated methodology.
   segment and one Passing Constrained segment, both straight and at `8%` heavy
   vehicles.
 - The manual single-segment path permits the exact downgrade for Passing
-  Constrained and Passing Zone segments with valid inputs. It permits Passing
-  Lane only at `8%` heavy vehicles.
+  Constrained and Passing Lane only at `8%` heavy vehicles. Nonlevel Passing
+  Zone is rejected pending an independent validation fixture.
 - No other downgrade grade-length pair is supported.
 
 ### Other current vertical class behavior
@@ -79,19 +82,19 @@ validated methodology.
 - Passing Lane coefficient dictionaries and Passing Lane lane-level capacity
   are implemented only for Class 1.
 - No complete grade-length classification table or boundary lookup is present.
-- No generic `terrain_type`-to-class calculation exists. Terrain type is a UI
-  input interpretation choice; vertical class is derived from normalized grade
-  and segment length.
+- No generic `terrain_type`-to-class calculation exists. Terrain type is parsed
+  into the engine model and used by scope guardrails, but vertical class is
+  still derived from normalized grade and grade length for formulas.
 
 ## C. Current Input Fields Related to Vertical Alignment
 
 | Field | Current meaning and use |
 | --- | --- |
-| `terrain_type` | Manual UI/adapter field with values `level` or `mountainous`. `level` forces normalized `grade_percent` to `0.0`; `mountainous` requires a submitted grade. It is not part of the method-owned engine models and is not used directly in formulas. |
+| `terrain_type` | Manual UI/adapter field with values `level` or `mountainous`. `level` forces normalized `grade_percent` to `0.0`; `mountainous` requires a submitted grade. It is parsed into the method-owned engine segment model for scope classification and guardrails, but is not used directly in formulas. |
 | `grade_percent` | Signed engine input used with `segment_length_mi` to derive `vertical_class`. Positive values represent the implemented upgrade examples; `-3.0` is the only implemented downgrade. Manual level terrain overwrites a submitted grade with `0.0`. |
-| `grade_length` | There is no separate field. The implementation treats the full `segment_length_mi` as the grade length when forming the exact `(grade_percent, segment_length_mi)` lookup pair. |
-| `vertical_class` | Derived intermediate value and output, not a user input. It selects class-indexed coefficients for heavy-vehicle free-flow-speed adjustment, average speed, percent followers, and Passing Lane behavior. |
-| `heavy_vehicle_percent` | Engine input used in free-flow speed, average speed, percent followers, and Passing Lane lane-allocation calculations. Passing Constrained and Passing Zone accept `0%` through `100%`; mountainous fixture validation exists only at `8%`. Manual Passing Lane is explicitly limited to exactly `8%`. |
+| `grade_length_mi` | Parsed engine-model scope input. The currently supported contract requires it to equal the full `segment_length_mi`; a different or missing nonlevel grade length is rejected because grade-transition methodology is not implemented. |
+| `vertical_class` | Normally a derived intermediate value and output. An optional submitted value may be parsed for scope validation and must match the guarded grade-length mapping. The derived class selects class-indexed coefficients for formulas. |
+| `heavy_vehicle_percent` | Engine input used in free-flow speed, average speed, percent followers, and Passing Lane lane-allocation calculations. Level Passing Constrained and Passing Zone accept `0%` through `100%`. Guarded nonlevel manual paths and all manual Passing Lane paths are limited to exactly `8%`; other nonlevel percentages require validation fixtures. |
 | `segment_type` | Selects Passing Constrained, Passing Zone, or Passing Lane calculation paths. Passing Lane has Class 1-only coefficient/capacity limitations and an `8%` manual guard. |
 | `horizontal_alignment` | Selects `straight` or `horizontal_curves`. Manual curves are restricted to the level Passing Constrained Example Problem 2 structure. The Example Problem 4 facility fixture includes Class 4 and Class 5 curve interactions, but this is not a general manual curve path. |
 | `segment_length_mi` | Serves both as segment length and current grade length. It is also used directly by class-specific speed and percent-followers equations. Vertical classification currently accepts level lengths only from `0.25` through `3.0 mi` and exact nonlevel pairs. |
@@ -115,10 +118,10 @@ methodology correctness.
 | Level | Passing Constrained | `0%` | `0.25-3.0 mi` | 1 | Manual accepts `0-100%` | Chapter 26 Examples 1-3; level reliability matrix | Implemented; validated baseline is example-scoped | Straight supported; manual curves only through exact Example Problem 2 structure. |
 | Level | Passing Zone | `0%` | `0.25-3.0 mi` | 1 | Manual accepts `0-100%` | Chapter 26 Example 3; level reliability matrix | Implemented; validated baseline is example-scoped | Requires actual opposing-direction volume. |
 | Level | Passing Lane | `0%` | `0.25-3.0 mi` | 1 | Exactly `8%` manually | Chapter 26 Example 3; level reliability matrix | Implemented, narrowly validated | Manual result excludes downstream/facility effects. |
-| Mountainous | Passing Constrained | `4%` | `1.3 mi` | 4 | Manual accepts `0-100%`; fixture uses `8%` | Chapter 26 Example 4 | Implemented, narrowly validated at fixture inputs | Facility fixture includes horizontal-curve variants; manual mountainous curves are rejected. |
-| Mountainous | Passing Constrained | `6%` | `0.5 mi` | 4 | Manual accepts `0-100%`; fixture uses `8%` | Chapter 26 Example 4 | Implemented, narrowly validated at fixture inputs | Fixture path is straight. |
-| Mountainous | Passing Constrained | `6%` | `1.0 mi` | 5 | Manual accepts `0-100%`; fixture uses `8%` | Chapter 26 Example 4 | Implemented, narrowly validated at fixture inputs | Facility fixture includes a horizontal curve; manual mountainous curves are rejected. |
-| Mountainous | Passing Constrained | `-3%` | `0.5 mi` | 1 | Manual accepts `0-100%`; fixture uses `8%` | Chapter 26 Example 4 | Implemented, narrowly validated at fixture inputs | Only implemented downgrade pair. |
+| Mountainous | Passing Constrained | `4%` | `1.3 mi` | 4 | Exactly `8%` on guarded nonlevel manual path | Chapter 26 Example 4 | Implemented, narrowly validated at fixture inputs | Facility fixture includes horizontal-curve variants; manual mountainous curves are rejected. |
+| Mountainous | Passing Constrained | `6%` | `0.5 mi` | 4 | Exactly `8%` on guarded nonlevel manual path | Chapter 26 Example 4 | Implemented, narrowly validated at fixture inputs | Fixture path is straight. |
+| Mountainous | Passing Constrained | `6%` | `1.0 mi` | 5 | Exactly `8%` on guarded nonlevel manual path | Chapter 26 Example 4 | Implemented, narrowly validated at fixture inputs | Facility fixture includes a horizontal curve; manual mountainous curves are rejected. |
+| Mountainous | Passing Constrained | `-3%` | `0.5 mi` | 1 | Exactly `8%` on guarded nonlevel manual path | Chapter 26 Example 4 | Implemented, narrowly validated at fixture inputs | Only implemented downgrade pair. |
 | Mountainous | Passing Zone | Any nonlevel pair | Any | Any | Any | No direct Chapter 26 fixture for a nonlevel Passing Zone | Explicitly unsupported pending validation fixture | Phase 1 guardrails reject this path before calculation. |
 | Mountainous | Passing Lane | `-3%` | `0.5 mi` | 1 | Exactly `8%` | Chapter 26 Example 4 | Implemented, narrowly validated | Only nonlevel Passing Lane pair; manual result excludes downstream/facility effects. |
 
@@ -131,13 +134,15 @@ required HCM data and validation fixtures are available.
 | --- | --- |
 | Any nonlevel grade-length pair other than `-3% / 0.5 mi`, `4% / 1.3 mi`, `6% / 0.5 mi`, or `6% / 1.0 mi` | The complete grade-length-to-vertical-class mapping is absent and no validation fixtures exist. |
 | Any vertical class not represented by the current class-indexed dictionaries | Required coefficients and validated calculation behavior are absent. |
+| Any nonlevel manual path at a heavy-vehicle percentage other than exactly `8%` | Current nonlevel validation fixtures use `8%`; other percentages require independent validation fixtures before calculation. |
+| Any nonlevel manual Passing Zone path | No independent nonlevel Passing Zone validation fixture exists, so the scope guardrail rejects it before calculation. |
 | Passing Lane in vertical Class 4 or 5, or any other non-Class-1 path | Passing Lane speed, percent-followers, and lane-level capacity data are Class 1 only. |
 | Manual Passing Lane at a heavy-vehicle percentage other than exactly `8%` | Current path is restricted to the validated example percentage. |
 | Any downgrade other than `-3% / 0.5 mi` | No classification mapping or validation fixture exists. |
 | General mountainous horizontal-curve single segments | Manual curve support is explicitly limited to level Passing Constrained Example Problem 2. |
-| Grade transitions or a grade length different from the full segment length | The current input contract has no independent grade-length or vertical-profile representation. |
+| Grade transitions or a grade length different from the full segment length | `grade_length_mi` is parsed for scope validation, but the current calculation contract requires it to equal the full segment length because grade-transition methodology is not implemented. |
 | Segment lengths outside `0.25-3.0 mi` for vertical classification | Current classifier rejects them; broader applicability has not been mapped. |
-| Arbitrary mountainous Passing Constrained or Passing Zone inputs claimed as validated | Exact grade-length pairs may execute, but only the Example Problem 4 inputs establish fixture validation. |
+| Arbitrary mountainous Passing Constrained inputs claimed as validated | Exact mapped grade-length pairs execute only through guarded `8%` paths; only the Example Problem 4 inputs establish fixture validation. |
 | Arbitrary mountainous multi-segment facilities or segment sequences | Facility calculations are restricted to the exact Example Problem 4 shape and context. |
 | General passing-lane upstream/downstream interactions with new vertical classes | Downstream behavior is validated only through the existing facility example paths. |
 
