@@ -7,9 +7,28 @@ vertical class and grade-length support. It audits the current implementation,
 separates implemented behavior from validated behavior, identifies missing
 methodology data, and recommends a safe implementation sequence.
 
-This document does not add methodology support, authorize new calculation
-paths, or establish that any combination beyond the existing validation
-fixtures is correct.
+This document does not authorize new calculation paths or establish that any
+combination beyond the existing validation fixtures is correct. HCM7 Chapter
+15 Step 3 vertical alignment classification is now implemented independently
+from downstream calculations.
+
+### Exhibit 15-11 classification lookup
+
+The verified table from the supplied NCHRP/NAP Chapter 7 methodology document,
+Step 3, Exhibit 15-11, is implemented as a table-driven lookup. The lookup:
+
+- accepts segment length in miles and grade percent;
+- infers upgrade or downgrade from signed grade, or accepts an explicit
+  direction context for unsigned grade magnitude;
+- applies lower-exclusive and upper-inclusive bins, including `<=0.1 mi`,
+  `>0.1 to <=0.2 mi`, `<=1%`, and `>1% to <=2%`;
+- returns the vertical class, matched length row, matched grade column,
+  direction, and source reference.
+
+Classification support is separate from calculation support. The existing
+scope guardrails still reject unvalidated nonlevel FFS, speed, percent
+followers, follower density, Passing Lane, downstream-adjustment, and facility
+calculation paths. No downstream formulas or validated expected outputs changed.
 
 The Phase 4
 [Chapter 15 Vertical Fixture Inventory](ch15_vertical_fixture_inventory.md)
@@ -49,11 +68,12 @@ enabled.
 ### Phase 2 lookup structure
 
 Typed, source-attributed lookup structures and pure lookup helpers now exist
-for future table-driven vertical-class support. The placeholder records contain
-metadata only for existing validated Example Problem 4 paths.
+for table-driven vertical-class support. Exhibit 15-11 classification is
+implemented as a pure lookup. Separate validation-path records contain metadata
+only for existing validated Example Problem 4 calculation paths.
 
-No HCM table values or coefficients were added in Phase 2. Phase 3 now connects
-the metadata to production scope classification for one exact validated path;
+No downstream coefficient tables were added. Phase 3 connects validation-path
+metadata to production scope classification for one exact validated path;
 calculation formulas remain unchanged.
 
 ### Phase 3 selected validated vertical path
@@ -148,9 +168,11 @@ establish broad methodology validation or authorize other nonlevel inputs.
   followers.
 - Passing Lane coefficient dictionaries and Passing Lane lane-level capacity
   are implemented only for Class 1.
-- No complete grade-length classification table is present. The metadata-only
-  boundary lookup structure is connected to production scope classification
-  only for the selected exact manual path and validated facility examples.
+- The complete Exhibit 15-11 grade-length classification table is available
+  through a pure lookup that reports matched row and column ranges.
+- Classification does not authorize downstream calculation. Validation-path
+  metadata remains connected to production scope classification only for the
+  selected exact manual path and validated facility examples.
 - No generic `terrain_type`-to-class calculation exists. Terrain type is parsed
   into the engine model and used by scope guardrails, but vertical class is
   still derived from normalized grade and grade length for formulas.
@@ -199,7 +221,7 @@ required HCM data and validation fixtures are available.
 
 | Combination | Current reason to remain unsupported |
 | --- | --- |
-| Any nonlevel grade-length pair other than `-3% / 0.5 mi`, `4% / 1.3 mi`, `6% / 0.5 mi`, or `6% / 1.0 mi` | The complete grade-length-to-vertical-class mapping is absent and no validation fixtures exist. |
+| Any nonlevel calculation pair other than `-3% / 0.5 mi`, `4% / 1.3 mi`, `6% / 0.5 mi`, or `6% / 1.0 mi` | Exhibit 15-11 can classify the pair, but downstream coefficients and validation fixtures do not yet authorize calculation. |
 | Any vertical class not represented by the current class-indexed dictionaries | Required coefficients and validated calculation behavior are absent. |
 | Any nonlevel manual path at a heavy-vehicle percentage other than exactly `8%` | Current nonlevel validation fixtures use `8%`; other percentages require independent validation fixtures before calculation. |
 | Any nonlevel manual Passing Zone path | No independent nonlevel Passing Zone validation fixture exists, so the scope guardrail rejects it before calculation. |
@@ -219,9 +241,6 @@ Do not infer or interpolate missing values from the existing example paths.
 Before broader support is implemented, the project needs an independently
 reviewed methodology source for:
 
-- The complete HCM Exhibit 15-11 grade-length-to-vertical-class decision data,
-  including exact boundaries, inclusivity rules, upgrade/downgrade treatment,
-  and applicability limits.
 - Coefficient rows for every vertical class intended to be supported for the
   heavy-vehicle free-flow-speed adjustment. The repository currently contains
   Exhibit 15-12 rows only for Classes 1, 4, and 5.

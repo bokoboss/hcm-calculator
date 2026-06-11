@@ -56,11 +56,14 @@ Known unsupported or incomplete manual cases:
 
 - Horizontal curves outside the narrowly validated Example Problem 2 manual
   path.
-- General vertical class determination and arbitrary grade-length combinations.
-  This known methodology gap is being prepared through the dedicated
+- General nonlevel calculations for arbitrary grade-length combinations.
+  HCM7 Chapter 15 Step 3 vertical alignment classification is implemented from
+  Exhibit 15-11, including auditable matched length and grade bins, but the
+  classification result does not enable downstream formulas. This calculation
+  gap is tracked through the dedicated
   [Chapter 15 Vertical Class and Grade-Length Methodology Map](ch15_vertical_class_methodology_map.md),
-  which audits current scope, missing data, validation needs, and a phased
-  implementation plan without adding calculation support.
+  which audits current scope, missing coefficient data, validation needs, and a
+  phased implementation plan.
 - Passing Lane cases outside Class 1 and `8%` heavy vehicles.
 - Upstream or downstream passing-lane effects and other corridor context.
 - General follower-density adjustment for a manual single segment.
@@ -77,9 +80,10 @@ inputs when available, a classified scope status, and an engineer-readable
 unsupported reason without emitting misleading LOS or output values.
 
 This change does not add general mountainous, grade-length, or vertical-class
-support. Unsupported combinations are rejected rather than approximated.
-Broader support still requires reviewed HCM table/coefficient data and
-independent validation fixtures.
+calculation support. Exhibit 15-11 can classify general vertical alignment, but
+unsupported calculation combinations are still rejected rather than
+approximated. Broader calculation support still requires reviewed downstream
+coefficient data and independent validation fixtures.
 
 The Phase 3 vertical implementation integrates the metadata lookup with the
 scope guardrail and promotes exactly one Example Problem 4 segment path. It
@@ -98,8 +102,8 @@ the only validated mountainous manual single-segment path.
 The Phase 4
 [Chapter 15 Vertical Fixture Inventory](ch15_vertical_fixture_inventory.md)
 now records the available standalone and facility-only evidence and the
-required future fixtures. Vertical expansion remains blocked by missing
-verified fixtures, classification boundaries, and applicable HCM table data.
+required future fixtures. Nonlevel calculation expansion remains blocked by
+missing verified fixtures and applicable downstream HCM coefficient data.
 
 ### Phase 4B data and fixture preparation
 
@@ -169,7 +173,7 @@ dependency.
 
 | Workflow step | Current capability | Gap to a more complete single-segment workflow |
 | --- | --- | --- |
-| Identify vertical class | Returns Class 1 for level and one validated downgrade combination, Class 4 for two validated combinations, and Class 5 for one validated combination. | Support the applicable grade-length domain and make the classification decision and its source auditable. Preserve rejection outside independently validated coverage. |
+| Identify vertical class | Uses the table-driven Exhibit 15-11 lookup to return Classes 1-5 plus the matched length row, grade column, direction, and source. | Integrate the classification decision into broader workflows only after downstream coefficients and validation fixtures are available. |
 | Demand flow / capacity | Calculates analysis-direction demand flow. Passing Zone uses actual opposing demand flow; Passing Constrained assumes `1,500 veh/h`; Passing Lane uses its validated capacity path. | Clarify directional-flow requirements and capacity rules by segment type, validate all input domains and capacity exceedance behavior, and expose assumptions consistently. |
 | Vertical alignment | Vertical class is calculated directly from grade and length; there is no separately reported vertical-alignment workflow decision. | Separate input interpretation, applicability checks, and vertical-class result in the audit trail without duplicating formulas. |
 | Free-flow speed | Calculates base free-flow speed, lane/shoulder adjustment, access-point adjustment, heavy-vehicle coefficient, and free-flow speed. | Broaden validated input coverage and expose every adjustment, source, unit, and applied assumption consistently. |
@@ -223,8 +227,9 @@ complexity.
 ### Phase 2: Expand geometric and adjustment coverage
 
 1. Add horizontal-curve manual input using structured subsegments.
-2. Add general vertical class and grade-length support only as validated tables
-   and fixtures become available.
+2. Add general nonlevel calculation support only as downstream coefficient
+   tables and validation fixtures become available. Exhibit 15-11
+   classification alone does not authorize those calculations.
 3. Expand follower-density adjustment coverage with explicit applicability and
    required context.
 4. Add focused regression coverage for interactions among segment type,

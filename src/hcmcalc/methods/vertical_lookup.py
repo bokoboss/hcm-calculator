@@ -1,8 +1,8 @@
-"""Table-driven metadata structures for Chapter 15 vertical lookups.
+"""Table-driven structures for Chapter 15 vertical lookups.
 
-Records describe only paths already represented by the repository's validation
-fixtures and contain no HCM table values or coefficients. Scope guardrails use
-the records to distinguish manual-validated paths from facility-only paths.
+The Exhibit 15-11 lookup classifies vertical alignment independently from
+calculation support. Validation-path records remain limited to paths already
+represented by repository fixtures and are used by scope guardrails.
 """
 
 from __future__ import annotations
@@ -10,7 +10,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 from math import isfinite
-from typing import Self
+from typing import Literal, Self
+
+
+VERTICAL_ALIGNMENT_CLASSIFICATION_SOURCE = (
+    "NCHRP Research Report 1102 methodology document, Chapter 7, "
+    "Step 3, Exhibit 15-11: Classifications for vertical alignment"
+)
+
+VerticalDirection = Literal["upgrade", "downgrade"]
 
 
 class LookupStatus(StrEnum):
@@ -60,6 +68,202 @@ class GradeLengthBoundary(NumericBoundary):
 
 class HeavyVehiclePercentBoundary(NumericBoundary):
     """Heavy-vehicle-percent lookup boundary."""
+
+
+@dataclass(frozen=True)
+class VerticalAlignmentLookupRange:
+    """One lower-exclusive and upper-inclusive Exhibit 15-11 range."""
+
+    label: str
+    minimum_exclusive: float | None = None
+    maximum_inclusive: float | None = None
+
+    def contains(self, value: float) -> bool:
+        """Return whether a normalized value is inside this range."""
+
+        return (
+            self.minimum_exclusive is None or value > self.minimum_exclusive
+        ) and (
+            self.maximum_inclusive is None or value <= self.maximum_inclusive
+        )
+
+
+@dataclass(frozen=True)
+class VerticalAlignmentClassification:
+    """Auditable result from the HCM Exhibit 15-11 classification lookup."""
+
+    vertical_class: int
+    lookup_row_range: str
+    lookup_column_range: str
+    source_reference: str
+    direction: VerticalDirection
+
+
+@dataclass(frozen=True)
+class VerticalAlignmentLookupRow:
+    """One segment-length row and its upgrade/downgrade class values."""
+
+    length_range: VerticalAlignmentLookupRange
+    upgrade_classes: tuple[int, ...]
+    downgrade_classes: tuple[int, ...]
+
+
+VERTICAL_ALIGNMENT_GRADE_COLUMNS = (
+    VerticalAlignmentLookupRange("<=1%", maximum_inclusive=1.0),
+    VerticalAlignmentLookupRange(">1% to <=2%", 1.0, 2.0),
+    VerticalAlignmentLookupRange(">2% to <=3%", 2.0, 3.0),
+    VerticalAlignmentLookupRange(">3% to <=4%", 3.0, 4.0),
+    VerticalAlignmentLookupRange(">4% to <=5%", 4.0, 5.0),
+    VerticalAlignmentLookupRange(">5% to <=6%", 5.0, 6.0),
+    VerticalAlignmentLookupRange(">6% to <=7%", 6.0, 7.0),
+    VerticalAlignmentLookupRange(">7% to <=8%", 7.0, 8.0),
+    VerticalAlignmentLookupRange(">8% to <=9%", 8.0, 9.0),
+    VerticalAlignmentLookupRange(">9%", minimum_exclusive=9.0),
+)
+
+
+def _vertical_alignment_row(
+    label: str,
+    minimum_exclusive: float | None,
+    maximum_inclusive: float | None,
+    upgrade_classes: tuple[int, ...],
+    downgrade_classes: tuple[int, ...],
+) -> VerticalAlignmentLookupRow:
+    return VerticalAlignmentLookupRow(
+        VerticalAlignmentLookupRange(label, minimum_exclusive, maximum_inclusive),
+        upgrade_classes,
+        downgrade_classes,
+    )
+
+
+# Values outside parentheses are upgrades; values in parentheses are downgrades.
+VERTICAL_ALIGNMENT_CLASSIFICATION_ROWS = (
+    _vertical_alignment_row(
+        "<=0.1 mi", None, 0.1,
+        (1, 1, 1, 1, 1, 1, 1, 2, 2, 2),
+        (1, 1, 1, 1, 1, 1, 1, 1, 2, 2),
+    ),
+    _vertical_alignment_row(
+        ">0.1 to <=0.2 mi", 0.1, 0.2,
+        (1, 1, 1, 1, 2, 2, 2, 3, 3, 3),
+        (1, 1, 1, 1, 1, 2, 2, 2, 3, 3),
+    ),
+    _vertical_alignment_row(
+        ">0.2 to <=0.3 mi", 0.2, 0.3,
+        (1, 1, 1, 2, 2, 3, 3, 4, 4, 5),
+        (1, 1, 1, 1, 2, 2, 3, 3, 4, 5),
+    ),
+    _vertical_alignment_row(
+        ">0.3 to <=0.4 mi", 0.3, 0.4,
+        (1, 1, 2, 2, 3, 3, 4, 5, 5, 5),
+        (1, 1, 1, 2, 2, 3, 4, 4, 5, 5),
+    ),
+    _vertical_alignment_row(
+        ">0.4 to <=0.5 mi", 0.4, 0.5,
+        (1, 1, 2, 2, 3, 4, 5, 5, 5, 5),
+        (1, 1, 1, 2, 3, 3, 4, 5, 5, 5),
+    ),
+    _vertical_alignment_row(
+        ">0.5 to <=0.6 mi", 0.5, 0.6,
+        (1, 1, 2, 3, 3, 4, 5, 5, 5, 5),
+        (1, 1, 1, 2, 3, 4, 5, 5, 5, 5),
+    ),
+    _vertical_alignment_row(
+        ">0.6 to <=0.7 mi", 0.6, 0.7,
+        (1, 1, 2, 3, 4, 4, 5, 5, 5, 5),
+        (1, 1, 1, 2, 3, 4, 5, 5, 5, 5),
+    ),
+    _vertical_alignment_row(
+        ">0.7 to <=0.8 mi", 0.7, 0.8,
+        (1, 1, 2, 3, 4, 5, 5, 5, 5, 5),
+        (1, 1, 1, 3, 4, 4, 5, 5, 5, 5),
+    ),
+    _vertical_alignment_row(
+        ">0.8 to <=0.9 mi", 0.8, 0.9,
+        (1, 1, 2, 3, 4, 5, 5, 5, 5, 5),
+        (1, 1, 1, 3, 4, 5, 5, 5, 5, 5),
+    ),
+    _vertical_alignment_row(
+        ">0.9 to <=1.0 mi", 0.9, 1.0,
+        (1, 1, 2, 3, 4, 5, 5, 5, 5, 5),
+        (1, 1, 2, 3, 4, 5, 5, 5, 5, 5),
+    ),
+    _vertical_alignment_row(
+        ">1.0 to <=1.1 mi", 1.0, 1.1,
+        (1, 1, 2, 3, 4, 5, 5, 5, 5, 5),
+        (1, 1, 2, 3, 4, 5, 5, 5, 5, 5),
+    ),
+    _vertical_alignment_row(
+        ">1.1 mi", 1.1, None,
+        (1, 1, 2, 4, 4, 5, 5, 5, 5, 5),
+        (1, 1, 2, 4, 4, 5, 5, 5, 5, 5),
+    ),
+)
+
+
+def classify_vertical_alignment(
+    segment_length_mi: float | None,
+    grade_percent: float | None,
+    direction_context: VerticalDirection | None = None,
+) -> VerticalAlignmentClassification:
+    """Classify vertical alignment using Step 3 and Exhibit 15-11.
+
+    Signed grades infer direction when ``direction_context`` is omitted.
+    A supplied direction context allows callers with unsigned grade magnitude
+    inputs to select the upgrade or parenthetical downgrade table value.
+    """
+
+    if segment_length_mi is None:
+        raise ValueError("Segment length is required for vertical classification.")
+    if grade_percent is None:
+        raise ValueError("Grade percent is required for vertical classification.")
+
+    normalized_length = _normalize_finite_number(segment_length_mi, "Segment length")
+    if normalized_length <= 0.0:
+        raise ValueError("Segment length must be greater than zero.")
+    normalized_grade = normalize_grade_percent(grade_percent)
+
+    if direction_context is None:
+        direction: VerticalDirection = (
+            "downgrade" if normalized_grade < 0.0 else "upgrade"
+        )
+    elif direction_context in {"upgrade", "downgrade"}:
+        direction = direction_context
+    else:
+        raise ValueError("Direction context must be 'upgrade' or 'downgrade'.")
+
+    grade_magnitude = abs(normalized_grade)
+    row = next(
+        (
+            candidate
+            for candidate in VERTICAL_ALIGNMENT_CLASSIFICATION_ROWS
+            if candidate.length_range.contains(normalized_length)
+        ),
+        None,
+    )
+    column_index = next(
+        (
+            index
+            for index, candidate in enumerate(VERTICAL_ALIGNMENT_GRADE_COLUMNS)
+            if candidate.contains(grade_magnitude)
+        ),
+        None,
+    )
+    if row is None or column_index is None:
+        raise ValueError(
+            "Segment length and grade percent are outside Exhibit 15-11."
+        )
+
+    classes = (
+        row.downgrade_classes if direction == "downgrade" else row.upgrade_classes
+    )
+    return VerticalAlignmentClassification(
+        vertical_class=classes[column_index],
+        lookup_row_range=row.length_range.label,
+        lookup_column_range=VERTICAL_ALIGNMENT_GRADE_COLUMNS[column_index].label,
+        source_reference=VERTICAL_ALIGNMENT_CLASSIFICATION_SOURCE,
+        direction=direction,
+    )
 
 
 @dataclass(frozen=True)
