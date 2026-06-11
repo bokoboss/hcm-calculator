@@ -25,4 +25,5 @@ fixtures:
     validation_status: placeholder
     verification_status: unverified
     runtime_status: not_runtime_enabled
+    implementation_status: not_populated
     notes: Do not use for calculation. Populate only in a reviewed future fixture PR.

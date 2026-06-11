@@ -1,0 +1,52 @@
+metadata:
+  fixture_document_version: 1.0.0
+  purpose: Backfill of an existing repository-validated Chapter 15 vertical path
+  notes: Validation and provenance only; this file is not a production calculation input.
+
+fixtures:
+  - fixture_id: TLH-CH15-004-SEGMENT-3
+    placeholder: false
+    source: HCM 7th Edition Chapter 26 Two-Lane Highway Example Problem 4
+    source_reference: TLH-CH15-004 segment 3 in references/example_inputs.yaml and references/expected_outputs.yaml
+    calculation_type: manual_single_segment
+    segment_type: passing_constrained
+    terrain_type: mountainous
+    horizontal_alignment: straight
+    grade_percent: 6.0
+    grade_length:
+      value: 0.5
+      unit: mi
+      basis: full_segment_length
+    vertical_class: 4
+    heavy_vehicle_percent: 8.0
+    input_units: imperial
+    inputs:
+      segment_length_mi: 0.5
+      posted_speed_mph: 55.0
+      analysis_direction_volume_veh_h: 1100.0
+      peak_hour_factor: 0.90
+      lane_width_ft: 12.0
+      shoulder_width_ft: 6.0
+      access_point_density_per_mi: 0.0
+    expected_outputs:
+      segment_id: 3
+      vertical_class: 4
+      demand_flow_rate_veh_h: 1222.0
+      capacity_veh_h: 1700.0
+      free_flow_speed_mph: 60.1
+      average_speed_mph: 50.8
+      percent_followers: 83.9
+      follower_density_followers_mi_ln: 20.2
+      level_of_service: E
+    expected_intermediate_values: {}
+    tolerance:
+      demand_flow_rate_veh_h_absolute: 1.0
+      speed_mph_absolute: 0.1
+      percent_followers_absolute: 0.2
+      follower_density_followers_mi_ln_absolute: 0.1
+      level_of_service_exact: true
+    validation_status: manual_single_segment_validated
+    verification_status: verified
+    runtime_status: runtime_validated
+    implementation_status: existing_runtime_support
+    notes: Exact existing nonlevel manual path only; no broader vertical support is implied.

@@ -52,3 +52,17 @@ interpolated, approximated, or invented merely to complete a dataset.
 
 Placeholder manifests and fixtures must not be imported by production
 calculation modules or treated as validation evidence.
+
+## Backfilled Fixture Pattern
+
+The first validated backfill,
+`references/vertical_fixtures/tlh_ch15_004_segment_3.yaml`, demonstrates the
+required pattern for a case that already has repository validation and runtime
+support. Backfilled fixtures must reference their canonical repository input
+and expected-output sources, preserve existing values and tolerances exactly,
+state validation/verification/runtime/implementation status explicitly, and
+remain provenance and validation artifacts rather than production inputs.
+
+Future backfills must include tests that compare their inputs, expected
+outputs, and tolerances directly with the existing canonical fixtures. A
+backfill does not authorize broader support or new methodology data.
