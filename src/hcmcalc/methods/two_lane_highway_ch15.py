@@ -4,6 +4,7 @@ The implemented calculation paths are scoped to Chapter 26 Example Problems 1
 through 4 and are intentionally kept independent from any UI.
 """
 
+from dataclasses import dataclass
 from math import exp, isfinite, log, sqrt
 from typing import Any
 
@@ -50,6 +51,25 @@ from hcmcalc.methods.two_lane_highway_models import (
 )
 from hcmcalc.methods.two_lane_highway_scope import require_supported_vertical_scope
 from hcmcalc.methods.vertical_lookup import find_vertical_class_record
+
+
+@dataclass(frozen=True)
+class FreeFlowSpeedEstimate:
+    """Auditable HCM Chapter 15 Step 4 free-flow speed estimate."""
+
+    base_free_flow_speed_mph: float
+    heavy_vehicle_speed_adjustment_coefficient: float
+    lane_shoulder_adjustment_mph: float
+    access_point_adjustment_mph: float
+    free_flow_speed_mph: float
+    source_references: tuple[str, ...] = (
+        "HCM Eq. 15-2",
+        "HCM Eq. 15-3",
+        "HCM Eq. 15-4",
+        "HCM Exhibit 15-12",
+        "HCM Eq. 15-5",
+        "HCM Eq. 15-6",
+    )
 
 
 class TwoLaneHighwayChapter15Method:
@@ -203,25 +223,21 @@ def _calculate_passing_constrained_base_values(
         parsed_inputs.segment_length_mi,
         parsed_inputs.grade_percent,
     )
-    bffs = base_free_flow_speed(parsed_inputs.posted_speed_mph)
-    f_ls = lane_shoulder_adjustment(
-        parsed_inputs.lane_width_ft,
-        parsed_inputs.shoulder_width_ft,
+    step4 = estimate_free_flow_speed(
+        posted_speed_mph=parsed_inputs.posted_speed_mph,
+        vertical_class=vertical_class,
+        segment_length_mi=parsed_inputs.segment_length_mi,
+        opposing_flow_veh_h=OPPOSING_FLOW_EXAMPLE_1_VEH_H,
+        heavy_vehicle_percent=parsed_inputs.heavy_vehicle_percent,
+        lane_width_ft=parsed_inputs.lane_width_ft,
+        shoulder_width_ft=parsed_inputs.shoulder_width_ft,
+        access_point_density_per_mi=parsed_inputs.access_point_density_per_mi,
     )
-    f_a = access_point_adjustment(parsed_inputs.access_point_density_per_mi)
-    hv_coefficient = heavy_vehicle_ffs_coefficient(
-        vertical_class,
-        bffs,
-        parsed_inputs.segment_length_mi,
-        OPPOSING_FLOW_EXAMPLE_1_VEH_H,
-    )
-    ffs = estimated_free_flow_speed(
-        bffs,
-        hv_coefficient,
-        parsed_inputs.heavy_vehicle_percent,
-        f_ls,
-        f_a,
-    )
+    bffs = step4.base_free_flow_speed_mph
+    f_ls = step4.lane_shoulder_adjustment_mph
+    f_a = step4.access_point_adjustment_mph
+    hv_coefficient = step4.heavy_vehicle_speed_adjustment_coefficient
+    ffs = step4.free_flow_speed_mph
     speed_m = average_speed_slope_coefficient(
         vertical_class,
         ffs,
@@ -276,6 +292,7 @@ def _calculate_passing_constrained_base_values(
         "lane_shoulder_adjustment_mph": f_ls,
         "access_point_adjustment_mph": f_a,
         "heavy_vehicle_ffs_coefficient": hv_coefficient,
+        "heavy_vehicle_speed_adjustment_coefficient": hv_coefficient,
         "free_flow_speed_mph": ffs,
         "average_speed_slope_coefficient": speed_m,
         "average_speed_power_coefficient": speed_p,
@@ -306,6 +323,9 @@ def _calculate_example_problem_1_result(
                 "lane_shoulder_adjustment_mph": base["lane_shoulder_adjustment_mph"],
                 "access_point_adjustment_mph": base["access_point_adjustment_mph"],
                 "heavy_vehicle_ffs_coefficient": base["heavy_vehicle_ffs_coefficient"],
+                "heavy_vehicle_speed_adjustment_coefficient": base[
+                    "heavy_vehicle_speed_adjustment_coefficient"
+                ],
                 "free_flow_speed_mph": base["free_flow_speed_mph"],
                 "average_speed_slope_coefficient": base[
                     "average_speed_slope_coefficient"
@@ -370,8 +390,8 @@ def _calculate_example_problem_1_result(
                     "HCM Eq. 15-6",
                 ),
                 IntermediateValue(
-                    "heavy_vehicle_ffs_coefficient",
-                    base["heavy_vehicle_ffs_coefficient"],
+                    "heavy_vehicle_speed_adjustment_coefficient",
+                    base["heavy_vehicle_speed_adjustment_coefficient"],
                     source="HCM Eq. 15-4 and Exhibit 15-12",
                 ),
                 IntermediateValue(
@@ -673,22 +693,21 @@ def _calculate_facility_segment(
         segment.heavy_vehicle_percent,
     )
     vertical_class = vertical_alignment_class(segment.segment_length_mi, segment.grade_percent)
-    bffs = base_free_flow_speed(segment.posted_speed_mph)
-    f_ls = lane_shoulder_adjustment(segment.lane_width_ft, segment.shoulder_width_ft)
-    f_a = access_point_adjustment(segment.access_point_density_per_mi)
-    hv_coefficient = heavy_vehicle_ffs_coefficient(
-        vertical_class,
-        bffs,
-        segment.segment_length_mi,
-        opposing_flow,
+    step4 = estimate_free_flow_speed(
+        posted_speed_mph=segment.posted_speed_mph,
+        vertical_class=vertical_class,
+        segment_length_mi=segment.segment_length_mi,
+        opposing_flow_veh_h=opposing_flow,
+        heavy_vehicle_percent=segment.heavy_vehicle_percent,
+        lane_width_ft=segment.lane_width_ft,
+        shoulder_width_ft=segment.shoulder_width_ft,
+        access_point_density_per_mi=segment.access_point_density_per_mi,
     )
-    ffs = estimated_free_flow_speed(
-        bffs,
-        hv_coefficient,
-        segment.heavy_vehicle_percent,
-        f_ls,
-        f_a,
-    )
+    bffs = step4.base_free_flow_speed_mph
+    f_ls = step4.lane_shoulder_adjustment_mph
+    f_a = step4.access_point_adjustment_mph
+    hv_coefficient = step4.heavy_vehicle_speed_adjustment_coefficient
+    ffs = step4.free_flow_speed_mph
 
     if segment.segment_type == PASSING_LANE:
         speed_m = passing_lane_average_speed_slope_coefficient(
@@ -781,6 +800,7 @@ def _calculate_facility_segment(
         "lane_shoulder_adjustment_mph": f_ls,
         "access_point_adjustment_mph": f_a,
         "heavy_vehicle_ffs_coefficient": hv_coefficient,
+        "heavy_vehicle_speed_adjustment_coefficient": hv_coefficient,
         "free_flow_speed_mph": ffs,
         "average_speed_slope_coefficient": speed_m,
         "average_speed_power_coefficient": speed_p,
@@ -841,6 +861,24 @@ def _single_segment_intermediate_values(
         ("capacity", "capacity_veh_h", "veh/h", "HCM Ch. 15 Step 2"),
         ("vertical_alignment_class", "vertical_class", None, "HCM Exhibit 15-11"),
         ("base_free_flow_speed", "base_free_flow_speed_mph", "mph", "HCM Eq. 15-2"),
+        (
+            "heavy_vehicle_speed_adjustment_coefficient",
+            "heavy_vehicle_speed_adjustment_coefficient",
+            None,
+            "HCM Eq. 15-4 and Exhibit 15-12",
+        ),
+        (
+            "lane_shoulder_adjustment",
+            "lane_shoulder_adjustment_mph",
+            "mph",
+            "HCM Eq. 15-5",
+        ),
+        (
+            "access_point_adjustment",
+            "access_point_adjustment_mph",
+            "mph",
+            "HCM Eq. 15-6",
+        ),
         ("free_flow_speed", "free_flow_speed_mph", "mph", "HCM Eq. 15-3"),
         ("average_speed", "average_speed_mph", "mph", "HCM Eq. 15-7"),
         ("percent_followers", "percent_followers", "%", "HCM Eq. 15-17"),
@@ -884,9 +922,27 @@ def _facility_intermediate_values(
                     source="HCM Exhibit 15-11",
                 ),
                 IntermediateValue(
-                    f"segment_{segment_id}_heavy_vehicle_ffs_coefficient",
-                    segment["heavy_vehicle_ffs_coefficient"],
+                    f"segment_{segment_id}_base_free_flow_speed",
+                    segment["base_free_flow_speed_mph"],
+                    "mph",
+                    "HCM Eq. 15-2",
+                ),
+                IntermediateValue(
+                    f"segment_{segment_id}_heavy_vehicle_speed_adjustment_coefficient",
+                    segment["heavy_vehicle_speed_adjustment_coefficient"],
                     source="HCM Eq. 15-4 and Exhibit 15-12",
+                ),
+                IntermediateValue(
+                    f"segment_{segment_id}_lane_shoulder_adjustment",
+                    segment["lane_shoulder_adjustment_mph"],
+                    "mph",
+                    "HCM Eq. 15-5",
+                ),
+                IntermediateValue(
+                    f"segment_{segment_id}_access_point_adjustment",
+                    segment["access_point_adjustment_mph"],
+                    "mph",
+                    "HCM Eq. 15-6",
                 ),
                 IntermediateValue(
                     f"segment_{segment_id}_free_flow_speed",
@@ -1490,15 +1546,26 @@ def vertical_alignment_class(segment_length_mi: float, grade_percent: float) -> 
     return decision.vertical_class
 
 
-def base_free_flow_speed(posted_speed_mph: float) -> float:
+def base_free_flow_speed(posted_speed_mph: float | None) -> float:
     """HCM Eq. 15-2 BFFS estimate."""
 
+    if posted_speed_mph is None:
+        raise HCMCalcError("Posted/base speed is required for HCM Step 4.")
+    if not isfinite(posted_speed_mph) or posted_speed_mph <= 0.0:
+        raise HCMCalcError("Posted/base speed must be a positive finite value.")
     return 1.14 * posted_speed_mph
 
 
-def lane_shoulder_adjustment(lane_width_ft: float, shoulder_width_ft: float) -> float:
+def lane_shoulder_adjustment(
+    lane_width_ft: float | None,
+    shoulder_width_ft: float | None,
+) -> float:
     """HCM Eq. 15-5 lane and shoulder width adjustment."""
 
+    if lane_width_ft is None or not isfinite(lane_width_ft):
+        raise HCMCalcError("lane_width_ft must be a finite numeric value.")
+    if shoulder_width_ft is None or not isfinite(shoulder_width_ft):
+        raise HCMCalcError("shoulder_width_ft must be a finite numeric value.")
     if not 9.0 <= lane_width_ft <= 12.0:
         raise HCMCalcError("lane_width_ft must be within the HCM range of 9 to 12 ft.")
     if not 0.0 <= shoulder_width_ft <= 6.0:
@@ -1508,22 +1575,51 @@ def lane_shoulder_adjustment(lane_width_ft: float, shoulder_width_ft: float) -> 
     return 0.6 * (12.0 - lane_width_ft) + 0.7 * (6.0 - shoulder_width_ft)
 
 
-def access_point_adjustment(access_point_density_per_mi: float) -> float:
+def access_point_adjustment(access_point_density_per_mi: float | None) -> float:
     """HCM Eq. 15-6 access point density adjustment."""
 
+    if access_point_density_per_mi is None or not isfinite(access_point_density_per_mi):
+        raise HCMCalcError(
+            "access_point_density_per_mi must be a finite numeric value."
+        )
     if access_point_density_per_mi < 0:
         raise HCMCalcError("access_point_density_per_mi must not be negative.")
     return min(access_point_density_per_mi / 4.0, 10.0)
 
 
 def heavy_vehicle_ffs_coefficient(
-    vertical_class: int,
-    base_free_flow_speed_mph: float,
-    segment_length_mi: float,
-    opposing_flow_veh_h: float,
+    vertical_class: int | None,
+    base_free_flow_speed_mph: float | None,
+    segment_length_mi: float | None,
+    opposing_flow_veh_h: float | None,
 ) -> float:
     """HCM Eq. 15-4 coefficient for the HV% term in Eq. 15-3."""
 
+    if vertical_class is None:
+        raise HCMCalcError("Vertical class is required for HCM Step 4.")
+    if vertical_class not in HEAVY_VEHICLE_COEFFICIENTS:
+        raise HCMCalcError(
+            f"Unsupported vertical class for HCM Step 4: {vertical_class}. "
+            "Expected Class 1 through 5."
+        )
+    if (
+        base_free_flow_speed_mph is None
+        or not isfinite(base_free_flow_speed_mph)
+        or base_free_flow_speed_mph <= 0.0
+    ):
+        raise HCMCalcError("Base free-flow speed must be a positive finite value.")
+    if (
+        segment_length_mi is None
+        or not isfinite(segment_length_mi)
+        or segment_length_mi <= 0.0
+    ):
+        raise HCMCalcError("Segment length must be a positive finite value.")
+    if (
+        opposing_flow_veh_h is None
+        or not isfinite(opposing_flow_veh_h)
+        or opposing_flow_veh_h < 0.0
+    ):
+        raise HCMCalcError("Opposing flow must be a nonnegative finite value.")
     coefficients = HEAVY_VEHICLE_COEFFICIENTS[vertical_class]
     modeled = (
         coefficients.a0
@@ -1554,6 +1650,53 @@ def estimated_free_flow_speed(
         - heavy_vehicle_coefficient * heavy_vehicle_percent
         - lane_shoulder_adjustment_mph
         - access_point_adjustment_mph
+    )
+
+
+def estimate_free_flow_speed(
+    *,
+    posted_speed_mph: float | None,
+    vertical_class: int | None,
+    segment_length_mi: float | None,
+    opposing_flow_veh_h: float | None,
+    heavy_vehicle_percent: float | None,
+    lane_width_ft: float | None,
+    shoulder_width_ft: float | None,
+    access_point_density_per_mi: float | None,
+) -> FreeFlowSpeedEstimate:
+    """Calculate and expose all HCM Chapter 15 Step 4 values."""
+
+    if (
+        heavy_vehicle_percent is None
+        or not isfinite(heavy_vehicle_percent)
+        or not 0.0 <= heavy_vehicle_percent <= 100.0
+    ):
+        raise HCMCalcError(
+            "Heavy-vehicle percentage must be a finite value between 0 and 100."
+        )
+
+    bffs = base_free_flow_speed(posted_speed_mph)
+    coefficient = heavy_vehicle_ffs_coefficient(
+        vertical_class,
+        bffs,
+        segment_length_mi,
+        opposing_flow_veh_h,
+    )
+    f_ls = lane_shoulder_adjustment(lane_width_ft, shoulder_width_ft)
+    f_a = access_point_adjustment(access_point_density_per_mi)
+    ffs = estimated_free_flow_speed(
+        bffs,
+        coefficient,
+        heavy_vehicle_percent,
+        f_ls,
+        f_a,
+    )
+    return FreeFlowSpeedEstimate(
+        base_free_flow_speed_mph=bffs,
+        heavy_vehicle_speed_adjustment_coefficient=coefficient,
+        lane_shoulder_adjustment_mph=f_ls,
+        access_point_adjustment_mph=f_a,
+        free_flow_speed_mph=ffs,
     )
 
 

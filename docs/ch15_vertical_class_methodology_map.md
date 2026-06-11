@@ -12,6 +12,19 @@ combination beyond the existing validation fixtures is correct. HCM7 Chapter
 15 Step 3 vertical alignment classification is now implemented independently
 from downstream calculations.
 
+### Step 4 free-flow speed estimation
+
+HCM7 Chapter 15 Step 4 free-flow speed estimation is implemented as a
+calculation-first helper using Eq. 15-2 through Eq. 15-6 and the complete
+Exhibit 15-12 coefficient table for vertical Classes 1 through 5. The helper
+validates its Step 4 inputs and exposes BFFS, the heavy-vehicle speed adjustment
+coefficient, lane/shoulder adjustment, access-point adjustment, FFS, and source
+references. Class 1 retains the Eq. 15-4 minimum coefficient behavior.
+
+This does not broaden the supported Step 5 average-speed, Step 6
+percent-followers, follower-density, LOS, Passing Lane, horizontal-curve, or
+facility calculation paths. Existing unsupported nonlevel paths remain guarded.
+
 ### Exhibit 15-11 classification lookup
 
 The verified table from the supplied NCHRP/NAP Chapter 7 methodology document,
@@ -163,9 +176,10 @@ establish broad methodology validation or authorize other nonlevel inputs.
 
 ### Other current vertical class behavior
 
-- Class-indexed coefficient dictionaries exist for Classes 1, 4, and 5 for
-  heavy-vehicle free-flow-speed adjustment, average speed, and percent
-  followers.
+- The complete Exhibit 15-12 heavy-vehicle free-flow-speed coefficient table is
+  implemented for vertical Classes 1 through 5. Average-speed and
+  percent-followers coefficient dictionaries remain limited to Classes 1, 4,
+  and 5.
 - Passing Lane coefficient dictionaries and Passing Lane lane-level capacity
   are implemented only for Class 1.
 - The complete Exhibit 15-11 grade-length classification table is available
@@ -241,9 +255,10 @@ Do not infer or interpolate missing values from the existing example paths.
 Before broader support is implemented, the project needs an independently
 reviewed methodology source for:
 
-- Coefficient rows for every vertical class intended to be supported for the
-  heavy-vehicle free-flow-speed adjustment. The repository currently contains
-  Exhibit 15-12 rows only for Classes 1, 4, and 5.
+- Independent validation fixtures for any new nonlevel Step 4 input
+  combinations before they are promoted through guarded public calculation
+  paths. The complete Exhibit 15-12 heavy-vehicle coefficient table is present,
+  but table availability alone does not authorize downstream support.
 - Coefficient rows for every intended vertical class for Passing Constrained
   and Passing Zone average-speed calculations. The repository currently
   contains relevant Exhibit 15-13 and 15-19 rows only for Classes 1, 4, and 5.

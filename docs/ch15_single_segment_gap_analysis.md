@@ -51,6 +51,10 @@ Current manual support:
   preserves the Imperial-native engine result.
 - Auditable result objects containing outputs, selected named intermediate
   values with HCM references, assumptions, and warnings.
+- A hardened HCM7 Chapter 15 Step 4 helper that exposes BFFS, the
+  heavy-vehicle speed adjustment coefficient, lane/shoulder adjustment,
+  access-point adjustment, and FFS using Eq. 15-2 through Eq. 15-6 and the
+  complete Exhibit 15-12 coefficient table for vertical Classes 1 through 5.
 
 Known unsupported or incomplete manual cases:
 
@@ -176,7 +180,7 @@ dependency.
 | Identify vertical class | Uses the table-driven Exhibit 15-11 lookup to return Classes 1-5 plus the matched length row, grade column, direction, and source. | Integrate the classification decision into broader workflows only after downstream coefficients and validation fixtures are available. |
 | Demand flow / capacity | Calculates analysis-direction demand flow. Passing Zone uses actual opposing demand flow; Passing Constrained assumes `1,500 veh/h`; Passing Lane uses its validated capacity path. | Clarify directional-flow requirements and capacity rules by segment type, validate all input domains and capacity exceedance behavior, and expose assumptions consistently. |
 | Vertical alignment | Vertical class is calculated directly from grade and length; there is no separately reported vertical-alignment workflow decision. | Separate input interpretation, applicability checks, and vertical-class result in the audit trail without duplicating formulas. |
-| Free-flow speed | Calculates base free-flow speed, lane/shoulder adjustment, access-point adjustment, heavy-vehicle coefficient, and free-flow speed. | Broaden validated input coverage and expose every adjustment, source, unit, and applied assumption consistently. |
+| Free-flow speed | Calculates and audits base free-flow speed, lane/shoulder adjustment, access-point adjustment, heavy-vehicle coefficient, and free-flow speed through a validated Step 4 helper. Exhibit 15-12 is table-driven for Classes 1-5. | Add independent validation fixtures before promoting additional nonlevel public calculation paths. |
 | Average speed | Calculates average speed for supported straight segment types. A horizontal-curve path exists only in validated example/facility paths. | Add validated manual horizontal-curve inputs and clearly distinguish tangent, curve-subsegment, and length-weighted results. |
 | Percent followers | Calculates percent followers and supporting coefficients for supported segment types. | Broaden validated combinations and make segment-type-specific behavior and prerequisites explicit. |
 | Follower density | Calculates Passing Constrained/Passing Zone density and Passing Lane midpoint density. | Make the selected density basis explicit in outputs and audit data, especially endpoint versus midpoint Passing Lane density. |
@@ -208,6 +212,10 @@ Useful schema improvements for a complete single-segment workflow are:
 Every phase requires methodology mapping, new validation fixtures, method-level
 tests, regression tests, and reviewer sign-off before its capability is claimed
 as supported.
+
+The Step 4 hardening does not implement Step 5 average-speed expansion or
+general nonlevel support. Unsupported downstream paths remain guarded even
+though Exhibit 15-12 now contains all vertical-class rows.
 
 ### Phase 1: Complete the level-terrain single-segment foundation
 
