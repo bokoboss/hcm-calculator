@@ -84,6 +84,8 @@ class PercentFollowersPowerCoefficients:
 # HCM Ch. 15 Exhibit 15-12 coefficients for Eq. 15-4.
 HEAVY_VEHICLE_COEFFICIENTS = {
     1: HeavyVehicleCoefficients(0.0, 0.0, 0.0, 0.0, 0.0, 0.0),
+    2: HeavyVehicleCoefficients(-0.45036, 0.00814, 0.01543, 0.01358, 0.0, 0.0),
+    3: HeavyVehicleCoefficients(-0.29591, 0.00743, 0.0, 0.01246, 0.0, 0.0),
     4: HeavyVehicleCoefficients(-0.40902, 0.00975, 0.00767, -0.18363, 0.00423, 0.0),
     5: HeavyVehicleCoefficients(-0.38360, 0.01074, 0.01945, -0.69848, 0.01069, 0.12700),
 }
