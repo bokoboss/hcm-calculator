@@ -59,6 +59,10 @@ Known unsupported or incomplete manual cases:
 - Horizontal curves outside the narrowly validated Example Problem 2 manual
   path.
 - General vertical class determination and arbitrary grade-length combinations.
+  This known methodology gap is being prepared through the dedicated
+  [Chapter 15 Vertical Class and Grade-Length Methodology Map](ch15_vertical_class_methodology_map.md),
+  which audits current scope, missing data, validation needs, and a phased
+  implementation plan without adding calculation support.
 - Passing Lane cases outside Class 1 and `8%` heavy vehicles.
 - Upstream or downstream passing-lane effects and other corridor context.
 - General follower-density adjustment for a manual single segment.
