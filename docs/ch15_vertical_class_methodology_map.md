@@ -11,6 +11,19 @@ This document does not add methodology support, authorize new calculation
 paths, or establish that any combination beyond the existing validation
 fixtures is correct.
 
+### Phase 1 unsupported-scope guardrails
+
+Explicit vertical-scope guardrails are now applied before calculation. The
+scope decision classifies a combination as `supported`, `unsupported`,
+`unsupported_needs_hcm_table_data`, or
+`unsupported_needs_validation_fixture`. Unsupported combinations are rejected
+instead of being approximated or allowed to fall back to level assumptions.
+
+These guardrails do not add broader vertical-class or grade-length support.
+Future expansion still requires reviewed HCM grade-length table/coefficient
+data and independent validation fixtures before a new calculation path can be
+enabled.
+
 ## B. Current Implementation Summary
 
 ### Level terrain
@@ -106,7 +119,7 @@ methodology correctness.
 | Mountainous | Passing Constrained | `6%` | `0.5 mi` | 4 | Manual accepts `0-100%`; fixture uses `8%` | Chapter 26 Example 4 | Implemented, narrowly validated at fixture inputs | Fixture path is straight. |
 | Mountainous | Passing Constrained | `6%` | `1.0 mi` | 5 | Manual accepts `0-100%`; fixture uses `8%` | Chapter 26 Example 4 | Implemented, narrowly validated at fixture inputs | Facility fixture includes a horizontal curve; manual mountainous curves are rejected. |
 | Mountainous | Passing Constrained | `-3%` | `0.5 mi` | 1 | Manual accepts `0-100%`; fixture uses `8%` | Chapter 26 Example 4 | Implemented, narrowly validated at fixture inputs | Only implemented downgrade pair. |
-| Mountainous | Passing Zone | Any of `-3%`, `4%`, or `6%` exact pairs above | Matching exact implemented length | 1, 4, or 5 | Manual accepts `0-100%` | No direct Chapter 26 fixture for a nonlevel Passing Zone | Implemented, not independently validated | Current public single-segment guards permit this straight path. |
+| Mountainous | Passing Zone | Any nonlevel pair | Any | Any | Any | No direct Chapter 26 fixture for a nonlevel Passing Zone | Explicitly unsupported pending validation fixture | Phase 1 guardrails reject this path before calculation. |
 | Mountainous | Passing Lane | `-3%` | `0.5 mi` | 1 | Exactly `8%` | Chapter 26 Example 4 | Implemented, narrowly validated | Only nonlevel Passing Lane pair; manual result excludes downstream/facility effects. |
 
 ## E. Unsupported Combinations

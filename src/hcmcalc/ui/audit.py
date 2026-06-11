@@ -6,7 +6,12 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 from typing import Any
 
-from hcmcalc.core import CalculationResult, HCMCalcError, MethodNotImplementedError
+from hcmcalc.core import (
+    CalculationResult,
+    HCMCalcError,
+    MethodNotImplementedError,
+    UnsupportedScopeError,
+)
 from hcmcalc.ui.manual_segment import build_manual_segment_inputs
 from hcmcalc.ui.units import DEFAULT_UNIT_SYSTEM
 
@@ -29,19 +34,38 @@ def build_manual_calculation_audit_record(
 
     if result is not None:
         result_data = asdict(result)
-        supported_scope_status = "supported"
+        scope_status = "supported"
         calculation_status = "succeeded"
     elif error is not None:
         result_data = {}
-        supported_scope_status = (
-            "unsupported" if isinstance(error, MethodNotImplementedError) else "invalid"
+        scope_status = (
+            error.scope_status
+            if isinstance(error, UnsupportedScopeError)
+            else "unsupported"
+            if isinstance(error, MethodNotImplementedError)
+            else "invalid"
         )
         calculation_status = "failed"
     else:
         result_data = {}
-        supported_scope_status = "not_evaluated"
+        scope_status = "not_evaluated"
         calculation_status = "not_run"
 
+    unsupported_reason = (
+        error.unsupported_reason
+        if isinstance(error, UnsupportedScopeError)
+        else str(error)
+        if isinstance(error, MethodNotImplementedError)
+        else None
+    )
+    error_context = error.context if isinstance(error, UnsupportedScopeError) else {}
+    supported_scope_status = (
+        "supported"
+        if scope_status == "supported"
+        else "unsupported"
+        if str(scope_status).startswith("unsupported")
+        else scope_status
+    )
     validation_context = {}
     if error is not None:
         validation_context = {
@@ -61,6 +85,21 @@ def build_manual_calculation_audit_record(
         "selected_horizontal_alignment": user_inputs.get(
             "horizontal_alignment", "straight"
         ),
+        "grade_percent": normalized_engine_inputs.get(
+            "grade_percent", user_inputs.get("grade_percent")
+        ),
+        "grade_length": error_context.get(
+            "grade_length_mi",
+            normalized_engine_inputs.get("grade_length_mi"),
+        ),
+        "vertical_class": error_context.get(
+            "vertical_class", user_inputs.get("vertical_class")
+        ),
+        "heavy_vehicle_percent": normalized_engine_inputs.get(
+            "heavy_vehicle_percent", user_inputs.get("heavy_vehicle_percent")
+        ),
+        "scope_status": scope_status,
+        "unsupported_reason": unsupported_reason,
         "supported_scope_status": supported_scope_status,
         "assumptions": result_data.get("assumptions", []),
         "warnings": result_data.get("warnings", []),

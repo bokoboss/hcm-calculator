@@ -2,6 +2,8 @@ import json
 
 import pytest
 
+from hcmcalc.core import UnsupportedScopeError
+from hcmcalc.ui.manual_segment import run_manual_single_segment
 from hcmcalc.ui.project_io import (
     PROJECT_SCHEMA_VERSION,
     ProjectFileError,
@@ -84,6 +86,21 @@ def test_load_valid_project_json_returns_restored_manual_inputs() -> None:
     loaded = load_manual_project_json(create_manual_project_json(manual_inputs))
 
     assert loaded["manual_inputs"] == manual_inputs
+
+
+def test_unsupported_project_restores_inputs_then_rejects_on_run() -> None:
+    manual_inputs = _manual_inputs(
+        terrain_type="mountainous",
+        grade_percent=4.0,
+        segment_length=1.0,
+        heavy_vehicle_percent=8.0,
+    )
+
+    loaded = load_manual_project_json(create_manual_project_json(manual_inputs))
+
+    assert loaded["manual_inputs"] == manual_inputs
+    with pytest.raises(UnsupportedScopeError, match="outside the currently validated"):
+        run_manual_single_segment(loaded["manual_inputs"])
 
 
 @pytest.mark.parametrize(

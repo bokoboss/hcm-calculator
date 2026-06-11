@@ -66,6 +66,9 @@ class TwoLaneFacilitySegmentInputs:
     shoulder_width_ft: float
     access_point_density_per_mi: float
     horizontal_alignment_subsegments: tuple[HorizontalAlignmentSubsegment, ...]
+    terrain_type: str | None = None
+    grade_length_mi: float | None = None
+    vertical_class: int | None = None
 
 
 @dataclass(frozen=True)
