@@ -223,3 +223,54 @@ def test_nonlevel_public_api_rejects_missing_grade_length() -> None:
 
     with pytest.raises(UnsupportedScopeError, match="requires grade length"):
         TwoLaneHighwayChapter15Method().calculate_single_segment(inputs)
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"grade_percent": 4.0, "segment_length_mi": 1.3},
+        {"grade_percent": 6.0, "segment_length_mi": 1.0},
+        {"grade_percent": -3.0, "segment_length_mi": 0.5},
+        {
+            "segment_type": "passing_lane",
+            "grade_percent": -3.0,
+            "segment_length_mi": 0.5,
+        },
+    ],
+)
+def test_remaining_example_4_paths_remain_facility_only(overrides: dict) -> None:
+    values = _manual_values(
+        terrain_type="mountainous",
+        horizontal_alignment="straight",
+        posted_speed_mph=55.0,
+        analysis_direction_volume_veh_h=1100.0,
+        peak_hour_factor=0.90,
+        heavy_vehicle_percent=8.0,
+    )
+    values.update(overrides)
+
+    with pytest.raises(
+        UnsupportedScopeError, match="represented only in the validated"
+    ) as exc_info:
+        run_manual_single_segment(values)
+
+    audit = build_manual_calculation_audit_record(values, error=exc_info.value)
+    assert audit["scope_status"] == "unsupported_needs_validation_fixture"
+    assert audit["outputs"] == {}
+    assert audit["intermediate_values"] == []
+
+
+def test_nonlevel_horizontal_curve_remains_unsupported() -> None:
+    values = _manual_values(
+        terrain_type="mountainous",
+        horizontal_alignment="horizontal_curves",
+        posted_speed_mph=55.0,
+        segment_length_mi=1.3,
+        grade_percent=4.0,
+        analysis_direction_volume_veh_h=1100.0,
+        peak_hour_factor=0.90,
+        heavy_vehicle_percent=8.0,
+    )
+
+    with pytest.raises(UnsupportedScopeError):
+        run_manual_single_segment(values)

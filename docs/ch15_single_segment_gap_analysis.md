@@ -87,6 +87,14 @@ adds validation provenance to successful audit records and assumptions. It
 does not change formulas or claim general vertical-class, grade-length,
 mountainous, Passing Zone, or Passing Lane support.
 
+Phase 3B assessed every remaining Example Problem 4 nonlevel path and
+formalized no additional manual paths. Segments 1, 2, and 4 include horizontal
+curves; segment 5 is a Passing Lane facility path; and segment 6's published
+final density includes upstream Passing Lane adjustment. Lookup metadata and
+guardrail tests now preserve these paths as facility-only. The exact straight
+Passing Constrained `6% / 0.5 mi`, Class 4, `8%` path from segment 3 remains
+the only validated mountainous manual single-segment path.
+
 ### Level + straight baseline status
 
 Level terrain with straight horizontal alignment is treated as the practical

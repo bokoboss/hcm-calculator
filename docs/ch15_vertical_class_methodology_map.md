@@ -53,6 +53,24 @@ grade length, and any other mapped Example Problem 4 path outside its validated
 facility context. No general mountainous, vertical-class, or grade-length
 support is claimed.
 
+### Phase 3B remaining validated-path assessment
+
+No additional manual single-segment vertical paths were formalized. Inspection
+of every remaining `TLH-CH15-004` segment found no additional path with a
+standalone validation basis:
+
+| Segment(s) | Exact path | Existing expected-output basis | Manual decision |
+| --- | --- | --- | --- |
+| 1 and 4 | Passing Constrained, `4% / 1.3 mi`, Class 4, `8%`, horizontal curves | Facility fixture validates the curve-combined segment outputs | Remains facility-only; no new nonlevel horizontal-curve support |
+| 2 | Passing Constrained, `6% / 1.0 mi`, Class 5, `8%`, horizontal curves | Facility fixture validates the curve-combined segment output | Remains facility-only; no new nonlevel horizontal-curve support |
+| 5 | Passing Lane, `-3% / 0.5 mi`, Class 1, `8%`, straight | Facility fixture validates the Passing Lane segment and downstream context | Remains facility-only; no nonlevel manual Passing Lane promotion |
+| 6 | Passing Constrained, `-3% / 0.5 mi`, Class 1, `8%`, straight | Published final follower density includes upstream Passing Lane adjustment | Remains facility-only; standalone final output is not validated |
+
+Lookup metadata now records the exact fixture segment basis, facility-only
+limitation, and whether a record is independently validated for manual
+single-segment use. Only segment 3 is marked manual-single-segment validated.
+No formulas, coefficients, or HCM table values changed.
+
 ## B. Current Implementation Summary
 
 ### Level terrain
@@ -262,6 +280,13 @@ not be copied into the repository unless licensing and project policy permit it.
   coefficients, or new HCM table values were added.
 - All adjacent manual nonlevel combinations remain rejected.
 
+### Phase 3B: Remaining Example Problem 4 paths
+
+- Completed as an assessment and guardrail-hardening phase.
+- No additional path was formalized because every remaining candidate depends
+  on horizontal curves, Passing Lane behavior, or facility adjustment context.
+- Metadata and tests now make those facility-only limitations explicit.
+
 ### Phase 4: Expanded grade-length matrix
 
 - Add additional classes and grade-length ranges incrementally.
@@ -309,6 +334,7 @@ Before broader support is implemented, add:
 ## J. Recommended Next PR
 
 Any next vertical expansion must add independently verified methodology data
-and a validation fixture for one additional path before production scope is
-broadened. Existing Example Problem 4 facility-only paths must not be promoted
-as general single-segment support without that evidence.
+and a standalone validation fixture for one additional path before production
+scope is broadened. The Phase 3B assessment confirms that the remaining
+Example Problem 4 paths are facility-only and must not be promoted as general
+single-segment support without that evidence.
