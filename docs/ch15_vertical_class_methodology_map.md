@@ -24,6 +24,18 @@ Future expansion still requires reviewed HCM grade-length table/coefficient
 data and independent validation fixtures before a new calculation path can be
 enabled.
 
+### Phase 2 lookup structure
+
+Typed, source-attributed lookup structures and pure lookup helpers now exist
+for future table-driven vertical-class support. The placeholder records contain
+metadata only for existing validated Example Problem 4 paths.
+
+No HCM table values or coefficients have been added, and no new vertical-class
+support has been enabled. The production scope checker and calculation formulas
+remain unchanged. Future PRs should populate the structure only with verified
+HCM data and validation fixtures before connecting any new path to production
+calculations.
+
 ## B. Current Implementation Summary
 
 ### Level terrain
@@ -81,7 +93,9 @@ nonlevel inputs.
   followers.
 - Passing Lane coefficient dictionaries and Passing Lane lane-level capacity
   are implemented only for Class 1.
-- No complete grade-length classification table or boundary lookup is present.
+- No complete grade-length classification table is present. A metadata-only
+  boundary lookup structure now exists but is not connected to production
+  scope classification or calculations.
 - No generic `terrain_type`-to-class calculation exists. Terrain type is parsed
   into the engine model and used by scope guardrails, but vertical class is
   still derived from normalized grade and grade length for formulas.
@@ -220,12 +234,12 @@ not be copied into the repository unless licensing and project policy permit it.
 
 ### Phase 2: Table data structure and lookup helpers
 
-- Add a reviewed, source-attributed structure for vertical-class boundaries and
-  class-specific coefficient availability.
-- Implement pure lookup helpers with explicit units, inclusivity rules, source
-  metadata, and unsupported-data errors.
-- Test lookups and boundaries without connecting new classes to production
-  calculations.
+- A reviewed, source-attributed metadata structure now represents existing
+  validated example paths without copying HCM table data or coefficients.
+- Pure lookup helpers define explicit units, inclusivity rules, source metadata,
+  input validation, and structured missing-data results.
+- Lookup tests remain separate from production calculations and enable no new
+  classes or calculation paths.
 
 ### Phase 3: One narrowly validated vertical class path
 
