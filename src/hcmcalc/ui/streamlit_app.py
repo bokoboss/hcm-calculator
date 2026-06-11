@@ -11,6 +11,7 @@ import streamlit as st
 from hcmcalc.cli import find_case, load_input_file, result_to_dict, run_case
 from hcmcalc.core import HCMCalcError
 from hcmcalc.ui.audit import build_manual_calculation_audit_record
+from hcmcalc.ui.curve_editor import curve_setup_defaults, generate_curve_subsegments
 from hcmcalc.ui.manual_segment import run_manual_single_segment
 from hcmcalc.ui.project_io import (
     ProjectFileError,
@@ -218,6 +219,9 @@ def render_manual_single_segment_calculator() -> None:
     load_message = st.session_state.pop("manual_project_load_message", None)
     if load_message is not None:
         st.success(load_message)
+    generation_message = st.session_state.pop("manual_curve_generation_message", None)
+    if generation_message is not None:
+        st.success(generation_message)
 
     input_column, result_column = st.columns([1, 1.15], gap="large")
 
@@ -312,11 +316,64 @@ def render_manual_single_segment_calculator() -> None:
                 else "straight"
             )
             horizontal_subsegments: list[dict[str, Any]] = []
+            curve_setup: dict[str, Any] | None = None
+            generate_curve = False
             if horizontal_alignment == "horizontal_curves":
                 st.caption(
-                    "Horizontal curve adjustment uses the validated Example "
-                    "Problem 2 calculation path. Subsegment lengths must total "
-                    f"the segment length; lengths and radii are in {'m' if metric else 'ft'}."
+                    "Auto-generation is a convenience for the validated single-segment "
+                    "horizontal curve workflow. You can still edit the generated "
+                    "subsegments manually."
+                )
+                setup_defaults = curve_setup_defaults(unit_system, segment_length)
+                for name, default in setup_defaults.items():
+                    st.session_state.setdefault(
+                        f"manual_curve_setup_{name}_{unit_system}", default
+                    )
+                st.markdown(
+                    '<div class="compact-section-label">Curve setup</div>',
+                    unsafe_allow_html=True,
+                )
+                curve_primary = st.columns(3)
+                total_curve_length = curve_primary[0].number_input(
+                    f"Total curve length ({'m' if metric else 'ft'})",
+                    key=f"manual_curve_setup_total_curve_length_{unit_system}",
+                )
+                curve_radius = curve_primary[1].number_input(
+                    f"Curve radius ({'m' if metric else 'ft'})",
+                    key=f"manual_curve_setup_radius_{unit_system}",
+                )
+                superelevation = curve_primary[2].number_input(
+                    "Superelevation (%)",
+                    key=f"manual_curve_setup_superelevation_percent_{unit_system}",
+                )
+                curve_secondary = st.columns(3)
+                central_angle = curve_secondary[0].number_input(
+                    "Central angle (deg)",
+                    key=f"manual_curve_setup_central_angle_deg_{unit_system}",
+                )
+                horizontal_class = curve_secondary[1].number_input(
+                    "Horizontal class",
+                    min_value=1,
+                    max_value=5,
+                    step=1,
+                    key=f"manual_curve_setup_horizontal_class_{unit_system}",
+                )
+                subsegment_count = curve_secondary[2].number_input(
+                    "Number of subsegments",
+                    min_value=1,
+                    step=1,
+                    key=f"manual_curve_setup_subsegment_count_{unit_system}",
+                )
+                curve_setup = {
+                    "total_curve_length": total_curve_length,
+                    "radius": curve_radius,
+                    "superelevation_percent": superelevation,
+                    "central_angle_deg": central_angle,
+                    "horizontal_class": horizontal_class,
+                    "subsegment_count": subsegment_count,
+                }
+                generate_curve = st.form_submit_button(
+                    "Generate curve subsegments", use_container_width=True
                 )
                 editor_version = st.session_state.get(
                     f"manual_horizontal_subsegments_version_{unit_system}", 0
@@ -325,44 +382,50 @@ def render_manual_single_segment_calculator() -> None:
                     f"manual_horizontal_subsegments_seed_{unit_system}",
                     manual_horizontal_curve_defaults(unit_system, segment_length),
                 )
-                horizontal_subsegments = st.data_editor(
-                    editor_data,
-                    key=(
-                        f"manual_horizontal_subsegments_{unit_system}_"
-                        f"{editor_version}"
-                    ),
-                    hide_index=True,
-                    num_rows="fixed",
-                    use_container_width=True,
-                    column_config={
-                        "type": st.column_config.SelectboxColumn(
-                            "Subsegment type",
-                            options=["tangent", "horizontal_curve"],
-                            required=True,
+                with st.expander("Curve subsegments"):
+                    st.caption(
+                        "Review or edit generated rows. Subsegment lengths must total "
+                        f"the segment length; lengths and radii are in "
+                        f"{'m' if metric else 'ft'}."
+                    )
+                    horizontal_subsegments = st.data_editor(
+                        editor_data,
+                        key=(
+                            f"manual_horizontal_subsegments_{unit_system}_"
+                            f"{editor_version}"
                         ),
-                        "length": st.column_config.NumberColumn(
-                            f"Length ({'m' if metric else 'ft'})",
-                            min_value=0.01,
-                            required=True,
-                        ),
-                        "superelevation_percent": st.column_config.NumberColumn(
-                            "Superelevation (%)"
-                        ),
-                        "radius": st.column_config.NumberColumn(
-                            f"Radius ({'m' if metric else 'ft'})",
-                            min_value=0.01,
-                        ),
-                        "central_angle_deg": st.column_config.NumberColumn(
-                            "Central angle (deg)"
-                        ),
-                        "horizontal_class": st.column_config.NumberColumn(
-                            "Horizontal class",
-                            min_value=1,
-                            max_value=5,
-                            step=1,
-                        ),
-                    },
-                )
+                        hide_index=True,
+                        num_rows="fixed",
+                        use_container_width=True,
+                        column_config={
+                            "type": st.column_config.SelectboxColumn(
+                                "Subsegment type",
+                                options=["tangent", "horizontal_curve"],
+                                required=True,
+                            ),
+                            "length": st.column_config.NumberColumn(
+                                f"Length ({'m' if metric else 'ft'})",
+                                min_value=0.01,
+                                required=True,
+                            ),
+                            "superelevation_percent": st.column_config.NumberColumn(
+                                "Superelevation (%)"
+                            ),
+                            "radius": st.column_config.NumberColumn(
+                                f"Radius ({'m' if metric else 'ft'})",
+                                min_value=0.01,
+                            ),
+                            "central_angle_deg": st.column_config.NumberColumn(
+                                "Central angle (deg)"
+                            ),
+                            "horizontal_class": st.column_config.NumberColumn(
+                                "Horizontal class",
+                                min_value=1,
+                                max_value=5,
+                                step=1,
+                            ),
+                        },
+                    )
 
             st.markdown(
                 '<div class="compact-section-label">Traffic demand</div>',
@@ -429,6 +492,27 @@ def render_manual_single_segment_calculator() -> None:
             "horizontal_alignment": horizontal_alignment,
             "horizontal_alignment_subsegments": horizontal_subsegments,
         }
+        if curve_setup is not None:
+            values["curve_setup"] = curve_setup
+        if generate_curve and curve_setup is not None:
+            try:
+                generated_subsegments = generate_curve_subsegments(curve_setup)
+            except HCMCalcError as exc:
+                st.error(str(exc))
+            else:
+                curve_version_key = (
+                    f"manual_horizontal_subsegments_version_{unit_system}"
+                )
+                st.session_state[curve_version_key] = (
+                    st.session_state.get(curve_version_key, 0) + 1
+                )
+                st.session_state[
+                    f"manual_horizontal_subsegments_seed_{unit_system}"
+                ] = generated_subsegments
+                st.session_state["manual_curve_generation_message"] = (
+                    f"Generated {len(generated_subsegments)} editable curve subsegments."
+                )
+                st.rerun()
         render_manual_project_file_controls(values)
         st.caption(
             "Locked assumptions: no upstream passing lane; single segment only. "
@@ -549,6 +633,10 @@ def _restore_manual_project(project: dict[str, Any]) -> None:
     st.session_state[f"manual_horizontal_subsegments_seed_{unit_system}"] = (
         manual_inputs.get("horizontal_alignment_subsegments", [])
     )
+    curve_setup = manual_inputs.get("curve_setup")
+    if isinstance(curve_setup, dict):
+        for name, value in curve_setup.items():
+            st.session_state[f"manual_curve_setup_{name}_{unit_system}"] = value
 
     for state_key, project_key in (
         ("manual_segment_result", "result"),

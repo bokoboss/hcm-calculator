@@ -267,11 +267,20 @@ def test_manual_audit_record_preserves_metric_values_and_converted_imperial_valu
 
 def test_manual_horizontal_curve_audit_includes_user_and_normalized_inputs() -> None:
     values = _example_2_manual_values("metric")
+    values["curve_setup"] = {
+        "total_curve_length": 1200.0,
+        "radius": 137.16,
+        "superelevation_percent": 3.0,
+        "central_angle_deg": 55.0,
+        "horizontal_class": 3,
+        "subsegment_count": 11,
+    }
     result = run_manual_single_segment(values)
 
     audit_record = build_manual_calculation_audit_record(values, result=result)
 
     assert audit_record["selected_horizontal_alignment"] == "horizontal_curves"
+    assert audit_record["user_inputs"]["curve_setup"] == values["curve_setup"]
     assert audit_record["user_inputs"]["horizontal_alignment_subsegments"][1][
         "radius"
     ] == pytest.approx(450.0 * FEET_TO_METERS)

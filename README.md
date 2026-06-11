@@ -80,10 +80,13 @@ The single-page app provides two modes:
 - **Manual Single Segment Calculator** accepts one straight or horizontal-curve
   Two-Lane Highway segment using Metric inputs by default or optional Imperial
   inputs. Horizontal-curve support uses the currently validated Example Problem
-  2 structured-subsegment calculation path. Unit conversion occurs only in the
-  UI/manual adapter; the calculation engine keeps its existing imperial-native
-  contract. The result view displays selected metrics in the chosen unit system
-  and preserves the full imperial-native engine result in the downloadable JSON.
+  2 structured-subsegment calculation path. Horizontal curve mode includes a
+  compact curve setup section that generates evenly distributed editable
+  subsegments; users may still review and edit every subsegment manually. Unit
+  conversion occurs only in the UI/manual adapter; the calculation engine keeps
+  its existing imperial-native contract. The result view displays selected
+  metrics in the chosen unit system and preserves the full imperial-native
+  engine result in the downloadable JSON.
 - **Validated examples / QA** loads `references/example_inputs.yaml` and preserves
   Example Problems 1 through 4 validation behavior.
 
@@ -109,7 +112,8 @@ Limitations:
 - No downstream corridor effects for single passing-lane mode
 - Passing Lane calculation remains limited to the engine's validated Class 1, 8% heavy-vehicle path
 - Horizontal curves remain limited to the validated Example Problem 2 path; other
-  segment types, terrain combinations, and subsegment structures are rejected
+  segment types, terrain combinations, and subsegment structures are rejected.
+  Curve setup generation does not expand this single-segment validated scope
 - No Multilane Highway yet
 - No report export yet; full result JSON download is available
 

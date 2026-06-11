@@ -8,6 +8,7 @@ from typing import Any
 
 from hcmcalc import __version__
 from hcmcalc.core import HCMCalcError
+from hcmcalc.ui.curve_editor import validate_curve_setup
 from hcmcalc.ui.manual_segment import build_manual_segment_inputs
 
 
@@ -154,6 +155,12 @@ def _validate_manual_inputs(manual_inputs: dict[str, Any]) -> None:
 
     subsegments = manual_inputs.get("horizontal_alignment_subsegments", [])
     if manual_inputs["horizontal_alignment"] == "horizontal_curves":
+        curve_setup = manual_inputs.get("curve_setup")
+        if curve_setup is not None:
+            try:
+                validate_curve_setup(curve_setup)
+            except HCMCalcError as exc:
+                raise ProjectFileError(f"Malformed curve_setup: {exc}") from exc
         _validate_horizontal_subsegments(subsegments)
     elif subsegments is not None and not isinstance(subsegments, list):
         raise ProjectFileError("Malformed horizontal curve subsegments: expected a list.")
