@@ -49,6 +49,7 @@ from hcmcalc.methods.two_lane_highway_models import (
     TwoLaneFacilitySegmentInputs,
 )
 from hcmcalc.methods.two_lane_highway_scope import require_supported_vertical_scope
+from hcmcalc.methods.vertical_lookup import find_vertical_class_record
 
 
 class TwoLaneHighwayChapter15Method:
@@ -127,6 +128,22 @@ class TwoLaneHighwayChapter15Method:
             *_single_segment_type_assumptions(segment),
             "No upstream passing lane or downstream facility-wide effects are applied.",
         ]
+        if segment.grade_percent != 0.0:
+            lookup = find_vertical_class_record(
+                terrain_type=segment.terrain_type or "mountainous",
+                segment_type=segment.segment_type,
+                grade_percent=segment.grade_percent,
+                grade_length_mi=segment.grade_length_mi or segment.segment_length_mi,
+                heavy_vehicle_percent=segment.heavy_vehicle_percent,
+            )
+            assert lookup.record is not None
+            assumptions.append(
+                "Validated vertical scope is limited to the exact "
+                f"{lookup.record.source} segment path; {lookup.record.validation_basis}."
+            )
+            warnings.append(
+                "No general mountainous, vertical-class, or grade-length support is claimed."
+            )
         return CalculationResult(
             method=self.method_name,
             facility_type=self.facility_type,
@@ -1333,9 +1350,9 @@ def _validate_single_segment_scope(segment: TwoLaneFacilitySegmentInputs) -> Non
         segment_type=segment.segment_type,
         grade_percent=segment.grade_percent,
         grade_length_mi=(
-            segment.grade_length_mi
-            if segment.grade_length_mi is not None
-            else segment.segment_length_mi
+            segment.segment_length_mi
+            if segment.grade_percent == 0.0
+            else segment.grade_length_mi
         ),
         segment_length_mi=segment.segment_length_mi,
         heavy_vehicle_percent=segment.heavy_vehicle_percent,
@@ -1467,6 +1484,7 @@ def vertical_alignment_class(segment_length_mi: float, grade_percent: float) -> 
         grade_length_mi=segment_length_mi,
         segment_length_mi=segment_length_mi,
         heavy_vehicle_percent=8.0,
+        validated_facility_example=True,
     )
     assert decision.vertical_class is not None
     return decision.vertical_class

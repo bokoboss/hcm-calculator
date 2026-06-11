@@ -272,8 +272,8 @@ def test_manual_mountainous_supported_grade_length_returns_result() -> None:
         _manual_values(
             terrain_type="mountainous",
             posted_speed_mph=55.0,
-            segment_length_mi=1.3,
-            grade_percent=4.0,
+            segment_length_mi=0.5,
+            grade_percent=6.0,
             analysis_direction_volume_veh_h=1100.0,
             peak_hour_factor=0.90,
             heavy_vehicle_percent=8.0,
@@ -281,7 +281,15 @@ def test_manual_mountainous_supported_grade_length_returns_result() -> None:
     )
 
     assert result.outputs["vertical_class"] == 4
+    assert result.outputs["free_flow_speed_mph"] == pytest.approx(60.1, abs=0.1)
+    assert result.outputs["average_speed_mph"] == pytest.approx(50.8, abs=0.1)
+    assert result.outputs["percent_followers"] == pytest.approx(83.9, abs=0.2)
+    assert result.outputs["follower_density_followers_mi_ln"] == pytest.approx(
+        20.2, abs=0.1
+    )
     assert result.outputs["level_of_service"] == "E"
+    assert any("TLH-CH15-004 segment 3" in item for item in result.assumptions)
+    assert result.warnings
 
 
 def test_manual_mountainous_unsupported_grade_length_is_rejected() -> None:
@@ -294,6 +302,7 @@ def test_manual_mountainous_unsupported_grade_length_is_rejected() -> None:
                 terrain_type="mountainous",
                 segment_length_mi=1.0,
                 grade_percent=4.0,
+                heavy_vehicle_percent=8.0,
             )
         )
 
@@ -305,8 +314,8 @@ def test_manual_passing_lane_rejects_unvalidated_heavy_vehicle_percent() -> None
         )
 
 
-def test_manual_passing_lane_rejects_unvalidated_vertical_class() -> None:
-    with pytest.raises(MethodNotImplementedError, match="vertical Class 1"):
+def test_manual_passing_lane_rejects_unvalidated_vertical_path() -> None:
+    with pytest.raises(MethodNotImplementedError, match="Manual single-segment support"):
         run_manual_single_segment(
             _manual_values(
                 segment_type="passing_lane",
@@ -410,6 +419,7 @@ def test_unsupported_manual_audit_record_preserves_submitted_context() -> None:
         terrain_type="mountainous",
         segment_length_mi=1.0,
         grade_percent=4.0,
+        heavy_vehicle_percent=8.0,
     )
 
     with pytest.raises(MethodNotImplementedError) as exc_info:
@@ -428,6 +438,34 @@ def test_unsupported_manual_audit_record_preserves_submitted_context() -> None:
     )
     assert audit_record["validation_context"]["status"] == "unsupported"
     assert "Unsupported mountainous" in audit_record["validation_context"]["message"]
+
+
+def test_selected_vertical_path_audit_includes_validation_provenance() -> None:
+    values = _manual_values(
+        unit_system="imperial",
+        terrain_type="mountainous",
+        posted_speed_mph=55.0,
+        segment_length_mi=0.5,
+        grade_percent=6.0,
+        analysis_direction_volume_veh_h=1100.0,
+        peak_hour_factor=0.90,
+        heavy_vehicle_percent=8.0,
+    )
+
+    result = run_manual_single_segment(values)
+    audit_record = build_manual_calculation_audit_record(values, result=result)
+
+    assert audit_record["selected_segment_type"] == "passing_constrained"
+    assert audit_record["selected_terrain_type"] == "mountainous"
+    assert audit_record["selected_horizontal_alignment"] == "straight"
+    assert audit_record["grade_percent"] == 6.0
+    assert audit_record["grade_length"] == 0.5
+    assert audit_record["vertical_class"] == 4
+    assert audit_record["heavy_vehicle_percent"] == 8.0
+    assert audit_record["scope_status"] == "supported"
+    assert "TLH-CH15-004 segment 3" in audit_record["validation_basis"]
+    assert audit_record["outputs"] == result.outputs
+    assert audit_record["intermediate_values"]
 
 
 def test_invalid_manual_audit_record_preserves_validation_context() -> None:

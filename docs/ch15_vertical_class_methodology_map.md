@@ -30,11 +30,28 @@ Typed, source-attributed lookup structures and pure lookup helpers now exist
 for future table-driven vertical-class support. The placeholder records contain
 metadata only for existing validated Example Problem 4 paths.
 
-No HCM table values or coefficients have been added, and no new vertical-class
-support has been enabled. The production scope checker and calculation formulas
-remain unchanged. Future PRs should populate the structure only with verified
-HCM data and validation fixtures before connecting any new path to production
-calculations.
+No HCM table values or coefficients were added in Phase 2. Phase 3 now connects
+the metadata to production scope classification for one exact validated path;
+calculation formulas remain unchanged.
+
+### Phase 3 selected validated vertical path
+
+Production manual single-segment support now uses the lookup metadata for
+exactly one nonlevel path: mountainous, straight Passing Constrained,
+`6% / 0.5 mi`, vertical Class 4, and exactly `8%` heavy vehicles.
+
+The validation basis is Chapter 26 Example Problem 4 fixture `TLH-CH15-004`,
+segment 3. This path is safe because the fixture segment is straight Passing
+Constrained, has published expected outputs, and does not depend on Passing
+Lane or downstream facility effects. No formulas, coefficients, or HCM table
+values changed.
+
+Adjacent combinations remain unsupported for manual calculation, including a
+different grade length, a different heavy-vehicle percentage, a mismatched
+submitted vertical class, any nonlevel Passing Zone or Passing Lane, missing
+grade length, and any other mapped Example Problem 4 path outside its validated
+facility context. No general mountainous, vertical-class, or grade-length
+support is claimed.
 
 ## B. Current Implementation Summary
 
@@ -57,8 +74,8 @@ calculations.
 
 ### Current mountainous and example-problem paths
 
-The grade-length-to-vertical-class decision is a hard-coded subset of HCM
-Exhibit 15-11:
+The lookup-backed grade-length-to-vertical-class decision represents a narrow
+subset of HCM Exhibit 15-11:
 
 | Grade and length | Derived vertical class | Validation basis |
 | --- | ---: | --- |
@@ -69,11 +86,10 @@ Exhibit 15-11:
 The Example Problem 4 facility path validates these combinations at `8%` heavy
 vehicles in its exact six-segment facility context. Some combinations include
 horizontal curves and downstream Passing Lane effects. Nonlevel manual
-single-segment support is explicitly guarded: Passing Constrained is limited to
-the exact mapped grade-length pairs at `8%` heavy vehicles, and nonlevel Passing
-Zone is rejected pending an independent validation fixture. Exact grade-length
-pairs do not establish broad methodology validation or authorize other
-nonlevel inputs.
+single-segment support is explicitly guarded and limited to the exact straight
+Passing Constrained `6% / 0.5 mi` segment-3 path at `8%` heavy vehicles. Other
+mapped pairs remain facility-fixture-only. Exact grade-length pairs do not
+establish broad methodology validation or authorize other nonlevel inputs.
 
 ### Downgrade Class 1 path
 
@@ -81,9 +97,8 @@ nonlevel inputs.
 - Chapter 26 Example Problem 4 validates that downgrade for one Passing Lane
   segment and one Passing Constrained segment, both straight and at `8%` heavy
   vehicles.
-- The manual single-segment path permits the exact downgrade for Passing
-  Constrained and Passing Lane only at `8%` heavy vehicles. Nonlevel Passing
-  Zone is rejected pending an independent validation fixture.
+- The manual single-segment path rejects this downgrade because Phase 3
+  promotes only the exact Example Problem 4 segment-3 upgrade path.
 - No other downgrade grade-length pair is supported.
 
 ### Other current vertical class behavior
@@ -93,9 +108,9 @@ nonlevel inputs.
   followers.
 - Passing Lane coefficient dictionaries and Passing Lane lane-level capacity
   are implemented only for Class 1.
-- No complete grade-length classification table is present. A metadata-only
-  boundary lookup structure now exists but is not connected to production
-  scope classification or calculations.
+- No complete grade-length classification table is present. The metadata-only
+  boundary lookup structure is connected to production scope classification
+  only for the selected exact manual path and validated facility examples.
 - No generic `terrain_type`-to-class calculation exists. Terrain type is parsed
   into the engine model and used by scope guardrails, but vertical class is
   still derived from normalized grade and grade length for formulas.
@@ -132,12 +147,10 @@ methodology correctness.
 | Level | Passing Constrained | `0%` | `0.25-3.0 mi` | 1 | Manual accepts `0-100%` | Chapter 26 Examples 1-3; level reliability matrix | Implemented; validated baseline is example-scoped | Straight supported; manual curves only through exact Example Problem 2 structure. |
 | Level | Passing Zone | `0%` | `0.25-3.0 mi` | 1 | Manual accepts `0-100%` | Chapter 26 Example 3; level reliability matrix | Implemented; validated baseline is example-scoped | Requires actual opposing-direction volume. |
 | Level | Passing Lane | `0%` | `0.25-3.0 mi` | 1 | Exactly `8%` manually | Chapter 26 Example 3; level reliability matrix | Implemented, narrowly validated | Manual result excludes downstream/facility effects. |
-| Mountainous | Passing Constrained | `4%` | `1.3 mi` | 4 | Exactly `8%` on guarded nonlevel manual path | Chapter 26 Example 4 | Implemented, narrowly validated at fixture inputs | Facility fixture includes horizontal-curve variants; manual mountainous curves are rejected. |
-| Mountainous | Passing Constrained | `6%` | `0.5 mi` | 4 | Exactly `8%` on guarded nonlevel manual path | Chapter 26 Example 4 | Implemented, narrowly validated at fixture inputs | Fixture path is straight. |
-| Mountainous | Passing Constrained | `6%` | `1.0 mi` | 5 | Exactly `8%` on guarded nonlevel manual path | Chapter 26 Example 4 | Implemented, narrowly validated at fixture inputs | Facility fixture includes a horizontal curve; manual mountainous curves are rejected. |
-| Mountainous | Passing Constrained | `-3%` | `0.5 mi` | 1 | Exactly `8%` on guarded nonlevel manual path | Chapter 26 Example 4 | Implemented, narrowly validated at fixture inputs | Only implemented downgrade pair. |
+| Mountainous | Passing Constrained | `6%` | `0.5 mi` | 4 | Exactly `8%` | Chapter 26 Example 4, `TLH-CH15-004` segment 3 | Implemented as the one Phase 3 validated manual vertical path | Straight only; published fixture outputs are preserved. |
+| Mountainous | Passing Constrained | Other Example Problem 4 mapped pairs | Exact fixture lengths | 1, 4, or 5 | Exactly `8%` in fixture | Chapter 26 Example 4 facility only | Explicitly unsupported manually | Remain available only in the exact validated facility fixture. |
 | Mountainous | Passing Zone | Any nonlevel pair | Any | Any | Any | No direct Chapter 26 fixture for a nonlevel Passing Zone | Explicitly unsupported pending validation fixture | Phase 1 guardrails reject this path before calculation. |
-| Mountainous | Passing Lane | `-3%` | `0.5 mi` | 1 | Exactly `8%` | Chapter 26 Example 4 | Implemented, narrowly validated | Only nonlevel Passing Lane pair; manual result excludes downstream/facility effects. |
+| Mountainous | Passing Lane | Any nonlevel pair | Any | Any | Any | No independent standalone fixture | Explicitly unsupported manually | Facility Example Problem 4 behavior is preserved. |
 
 ## E. Unsupported Combinations
 
@@ -238,17 +251,16 @@ not be copied into the repository unless licensing and project policy permit it.
   validated example paths without copying HCM table data or coefficients.
 - Pure lookup helpers define explicit units, inclusivity rules, source metadata,
   input validation, and structured missing-data results.
-- Lookup tests remain separate from production calculations and enable no new
-  classes or calculation paths.
+- Lookup tests remain separate from calculation formulas. Phase 3 uses the
+  metadata to enable one exact production scope path.
 
 ### Phase 3: One narrowly validated vertical class path
 
-- Select one missing or incomplete grade-length/class path with an authoritative
-  example or independently checked fixture.
-- Add the classification data, required coefficient data, method-level tests,
-  fixture test, and regression coverage for only that path.
-- Keep Passing Lane and horizontal-curve interactions out unless the selected
-  fixture specifically validates them.
+- Completed for the exact straight Passing Constrained `6% / 0.5 mi`, Class 4,
+  `8%` heavy-vehicle path from `TLH-CH15-004` segment 3.
+- The lookup scaffold is integrated with the scope guardrail; no formulas,
+  coefficients, or new HCM table values were added.
+- All adjacent manual nonlevel combinations remain rejected.
 
 ### Phase 4: Expanded grade-length matrix
 
@@ -296,11 +308,7 @@ Before broader support is implemented, add:
 
 ## J. Recommended Next PR
 
-The next implementation PR should be narrow and test-first: add explicit
-vertical-class lookup boundary data and pure lookup tests for one independently
-validated, currently unsupported grade-length path, while leaving production
-calculation routing disabled for that path.
-
-That PR should include source attribution, unit and boundary rules, unsupported
-lookup behavior, and validation fixtures before a later PR connects the new
-class path to calculation formulas.
+Any next vertical expansion must add independently verified methodology data
+and a validation fixture for one additional path before production scope is
+broadened. Existing Example Problem 4 facility-only paths must not be promoted
+as general single-segment support without that evidence.

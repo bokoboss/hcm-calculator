@@ -37,11 +37,9 @@ Current manual support:
 - One straight segment.
 - Passing Constrained, Passing Zone, and Passing Lane segment types.
 - Level terrain.
-- Narrowly validated mountainous combinations:
-  - `-3% / 0.5 mi` (Class 1)
-  - `4% / 1.3 mi` (Class 4)
-  - `6% / 0.5 mi` (Class 4)
-  - `6% / 1.0 mi` (Class 5)
+- One narrowly validated mountainous path: straight Passing Constrained,
+  `6% / 0.5 mi`, Class 4, exactly `8%` heavy vehicles, based on
+  `TLH-CH15-004` segment 3.
 - Passing Zone actual opposing-direction volume.
 - Passing Constrained fixed `1,500 veh/h` opposing-flow assumption.
 - Passing Lane only for the validated Class 1, `8%` heavy-vehicle path.
@@ -82,6 +80,12 @@ This change does not add general mountainous, grade-length, or vertical-class
 support. Unsupported combinations are rejected rather than approximated.
 Broader support still requires reviewed HCM table/coefficient data and
 independent validation fixtures.
+
+The Phase 3 vertical implementation integrates the metadata lookup with the
+scope guardrail and promotes exactly one Example Problem 4 segment path. It
+adds validation provenance to successful audit records and assumptions. It
+does not change formulas or claim general vertical-class, grade-length,
+mountainous, Passing Zone, or Passing Lane support.
 
 ### Level + straight baseline status
 
