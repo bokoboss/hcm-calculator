@@ -95,6 +95,12 @@ guardrail tests now preserve these paths as facility-only. The exact straight
 Passing Constrained `6% / 0.5 mi`, Class 4, `8%` path from segment 3 remains
 the only validated mountainous manual single-segment path.
 
+The Phase 4
+[Chapter 15 Vertical Fixture Inventory](ch15_vertical_fixture_inventory.md)
+now records the available standalone and facility-only evidence and the
+required future fixtures. Vertical expansion remains blocked by missing
+verified fixtures, classification boundaries, and applicable HCM table data.
+
 ### Level + straight baseline status
 
 Level terrain with straight horizontal alignment is treated as the practical
