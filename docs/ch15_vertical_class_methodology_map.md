@@ -21,9 +21,20 @@ validates its Step 4 inputs and exposes BFFS, the heavy-vehicle speed adjustment
 coefficient, lane/shoulder adjustment, access-point adjustment, FFS, and source
 references. Class 1 retains the Eq. 15-4 minimum coefficient behavior.
 
-This does not broaden the supported Step 5 average-speed, Step 6
-percent-followers, follower-density, LOS, Passing Lane, horizontal-curve, or
-facility calculation paths. Existing unsupported nonlevel paths remain guarded.
+### Step 5 tangent average-speed estimation
+
+HCM7 Chapter 15 Step 5 tangent/base average-speed estimation is implemented as
+an auditable calculation helper using Eq. 15-7 through Eq. 15-11. The
+coefficient tables in Exhibits 15-13 through 15-20 are table-driven for
+vertical Classes 1 through 5 and separately select Passing Constrained/Passing
+Zone or Passing Lane coefficients. The helper exposes the segment-length
+coefficient `b3`, heavy-vehicle coefficient `b4`, slope coefficient `m`, power
+coefficient `p`, tangent average speed, and source references.
+
+This formula hardening does not expand horizontal-curve support, implement Step
+6 percent followers, or broaden guarded public nonlevel, Passing Lane, or
+facility calculation paths. Existing validated outputs and unsupported-scope
+decisions remain in force.
 
 ### Exhibit 15-11 classification lookup
 
@@ -176,12 +187,13 @@ establish broad methodology validation or authorize other nonlevel inputs.
 
 ### Other current vertical class behavior
 
-- The complete Exhibit 15-12 heavy-vehicle free-flow-speed coefficient table is
-  implemented for vertical Classes 1 through 5. Average-speed and
-  percent-followers coefficient dictionaries remain limited to Classes 1, 4,
-  and 5.
-- Passing Lane coefficient dictionaries and Passing Lane lane-level capacity
-  are implemented only for Class 1.
+- The complete Exhibit 15-12 heavy-vehicle free-flow-speed coefficient table and
+  Step 5 Exhibits 15-13 through 15-20 average-speed coefficient tables are
+  implemented for vertical Classes 1 through 5. Percent-followers coefficient
+  dictionaries remain limited to Classes 1, 4, and 5.
+- Passing Lane Step 5 coefficient tables cover Classes 1 through 5. Passing
+  Lane percent-followers dictionaries and lane-level capacity remain Class 1
+  only, so public calculation guardrails are unchanged.
 - The complete Exhibit 15-11 grade-length classification table is available
   through a pure lookup that reports matched row and column ranges.
 - Classification does not authorize downstream calculation. Validation-path
@@ -259,9 +271,6 @@ reviewed methodology source for:
   combinations before they are promoted through guarded public calculation
   paths. The complete Exhibit 15-12 heavy-vehicle coefficient table is present,
   but table availability alone does not authorize downstream support.
-- Coefficient rows for every intended vertical class for Passing Constrained
-  and Passing Zone average-speed calculations. The repository currently
-  contains relevant Exhibit 15-13 and 15-19 rows only for Classes 1, 4, and 5.
 - Coefficient rows for every intended vertical class for percent followers at
   capacity and at 25% capacity. The repository currently contains relevant
   Exhibit 15-24 and 15-26 rows only for Classes 1, 4, and 5.

@@ -43,11 +43,15 @@ class SpeedPowerCoefficients:
 
 
 @dataclass(frozen=True)
-class SpeedSlopeAuxiliaryCoefficients:
+class SegmentLengthSpeedCoefficients:
     c0: float
     c1: float
     c2: float
     c3: float
+
+
+@dataclass(frozen=True)
+class HeavyVehicleSpeedCoefficients:
     d0: float
     d1: float
     d2: float
@@ -94,30 +98,63 @@ HEAVY_VEHICLE_COEFFICIENTS = {
 # Passing Constrained segments.
 SPEED_SLOPE_COEFFICIENTS = {
     1: SpeedSlopeCoefficients(0.0558, 0.0542, 0.3278, 0.1029, 0.0, 0.0),
+    2: SpeedSlopeCoefficients(5.7280, -0.0809, 0.7404, 0.0, 0.0, 3.1155),
+    3: SpeedSlopeCoefficients(9.3079, -0.1706, 1.1292, 0.0, 0.0, 3.1155),
     4: SpeedSlopeCoefficients(9.0115, -0.1994, 1.8252, 0.0, 0.0, 3.2685),
     5: SpeedSlopeCoefficients(23.9144, -0.6925, 1.9473, 0.0, 0.0, 3.5115),
 }
-SPEED_SLOPE_AUXILIARY_COEFFICIENTS = {
-    4: SpeedSlopeAuxiliaryCoefficients(
-        -12.5113, 0.0, 0.2656, 0.0, -5.7775, 0.0, 0.1373, 0.0
-    ),
-    5: SpeedSlopeAuxiliaryCoefficients(
-        -14.8961, 0.0, 0.4370, 0.0, -18.2910, 2.3875, 0.4494, -0.0520
-    ),
+
+# HCM Ch. 15 Exhibit 15-14 coefficients for Eq. 15-8, Passing Lane segments.
+PASSING_LANE_SPEED_SLOPE_BASE_COEFFICIENTS = {
+    1: SpeedSlopeCoefficients(-1.1379, 0.0941, 0.0, 0.0, 0.0, 0.0),
+    2: SpeedSlopeCoefficients(-2.0688, 0.1053, 0.0, 0.0, 0.0, 0.0),
+    3: SpeedSlopeCoefficients(-0.5074, 0.0935, 0.0, 0.0, 0.0, 0.0),
+    4: SpeedSlopeCoefficients(8.0354, -0.0860, 0.0, 0.0, 0.0, 4.1900),
+    5: SpeedSlopeCoefficients(7.2991, -0.3535, 0.0, 0.0, 0.0, 4.8700),
 }
 
-# HCM Ch. 15 Exhibits 15-14, 15-16, and 15-18 coefficients for the
-# Example Problem 3 level-terrain Passing Lane speed path.
-PASSING_LANE_SPEED_SLOPE_BASE_COEFFICIENTS = {
-    1: SpeedSlopeCoefficients(-1.138, 0.094, 0.0, 0.0, 0.0, 0.0),
+# HCM Ch. 15 Exhibits 15-15 and 15-16 coefficients for Eq. 15-9.
+SEGMENT_LENGTH_SPEED_COEFFICIENTS = {
+    1: SegmentLengthSpeedCoefficients(0.1029, 0.0, 0.0, 0.0),
+    2: SegmentLengthSpeedCoefficients(-13.8036, 0.0, 0.2446, 0.0),
+    3: SegmentLengthSpeedCoefficients(-11.9703, 0.0, 0.2542, 0.0),
+    4: SegmentLengthSpeedCoefficients(-12.5113, 0.0, 0.2656, 0.0),
+    5: SegmentLengthSpeedCoefficients(-14.8961, 0.0, 0.4370, 0.0),
 }
-PASSING_LANE_SPEED_SLOPE_B3_C1 = {1: 0.2667}
-PASSING_LANE_SPEED_SLOPE_B4_D1 = {1: 0.1252}
+PASSING_LANE_SEGMENT_LENGTH_SPEED_COEFFICIENTS = {
+    1: SegmentLengthSpeedCoefficients(0.0, 0.2667, 0.0, 0.0),
+    2: SegmentLengthSpeedCoefficients(0.0, 0.4479, 0.0, 0.0),
+    3: SegmentLengthSpeedCoefficients(0.0, 0.0, 0.0, 0.0),
+    4: SegmentLengthSpeedCoefficients(-27.1244, 11.5196, 0.4681, -0.1873),
+    5: SegmentLengthSpeedCoefficients(-45.3391, 17.3749, 1.0587, -0.3729),
+}
+
+# HCM Ch. 15 Exhibits 15-17 and 15-18 coefficients for Eq. 15-10.
+HEAVY_VEHICLE_SPEED_COEFFICIENTS = {
+    1: HeavyVehicleSpeedCoefficients(0.0, 0.0, 0.0, 0.0),
+    2: HeavyVehicleSpeedCoefficients(-1.7765, 0.0, 0.0392, 0.0),
+    3: HeavyVehicleSpeedCoefficients(-3.5550, 0.0, 0.0826, 0.0),
+    4: HeavyVehicleSpeedCoefficients(-5.7775, 0.0, 0.1373, 0.0),
+    5: HeavyVehicleSpeedCoefficients(-18.2910, 2.3875, 0.4494, -0.0520),
+}
+PASSING_LANE_HEAVY_VEHICLE_SPEED_COEFFICIENTS = {
+    1: HeavyVehicleSpeedCoefficients(0.0, 0.1252, 0.0, 0.0),
+    2: HeavyVehicleSpeedCoefficients(0.0, 0.1631, 0.0, 0.0),
+    3: HeavyVehicleSpeedCoefficients(0.0, -0.2201, 0.0, 0.0072),
+    4: HeavyVehicleSpeedCoefficients(0.0, -0.7506, 0.0, 0.0193),
+    5: HeavyVehicleSpeedCoefficients(3.8457, -0.9112, 0.0, 0.0170),
+}
 
 # HCM Ch. 15 Exhibit 15-19 coefficients for Eq. 15-11, Passing Zone and
 # Passing Constrained segments.
 SPEED_POWER_COEFFICIENTS = {
     1: SpeedPowerCoefficients(0.67576, 0.0, 0.0, 0.1206, -0.35919, 0.0, 0.0, 0.0, 0.0),
+    2: SpeedPowerCoefficients(
+        0.34524, 0.00591, 0.02031, 0.14911, -0.43784, -0.00296, 0.02956, 0.0, 0.41622
+    ),
+    3: SpeedPowerCoefficients(
+        0.17291, 0.00917, 0.05698, 0.27734, -0.61893, -0.00918, 0.09184, 0.0, 0.41622
+    ),
     4: SpeedPowerCoefficients(
         0.67689, 0.00534, -0.13037, 0.25699, -0.68465, -0.00709, 0.07087, 0.0, 0.33950
     ),
@@ -138,6 +175,18 @@ PASSING_LANE_SPEED_POWER_COEFFICIENTS = {
         0.0,
         -0.00419,
         0.0,
+    ),
+    2: SpeedPowerCoefficients(
+        0.65105, 0.0, 0.34931, 0.0, 0.0, 0.00722, 0.0, -0.00391, 0.0
+    ),
+    3: SpeedPowerCoefficients(
+        0.40117, 0.0, 0.68633, 0.0, 0.0, 0.02350, 0.0, -0.02088, 0.0
+    ),
+    4: SpeedPowerCoefficients(
+        1.13282, -0.00798, 0.35425, 0.0, 0.0, 0.01521, 0.0, -0.00987, 0.0
+    ),
+    5: SpeedPowerCoefficients(
+        1.12077, -0.00550, 0.25431, 0.0, 0.0, 0.01269, 0.0, -0.01053, 0.0
     ),
 }
 

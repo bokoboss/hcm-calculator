@@ -16,6 +16,7 @@ from hcmcalc.core import (
 )
 from hcmcalc.methods.two_lane_highway_coefficients import (
     HEAVY_VEHICLE_COEFFICIENTS,
+    HEAVY_VEHICLE_SPEED_COEFFICIENTS,
     HORIZONTAL_CURVE_BFFS_SLOPE,
     HORIZONTAL_CURVE_CLASS_SPEED_INTERCEPT,
     HORIZONTAL_CURVE_CLASS_SPEED_SLOPE,
@@ -24,8 +25,8 @@ from hcmcalc.methods.two_lane_highway_coefficients import (
     PASSING_LANE_PF_25_CAPACITY_COEFFICIENTS,
     PASSING_LANE_PF_CAPACITY_COEFFICIENTS,
     PASSING_LANE_SPEED_POWER_COEFFICIENTS,
-    PASSING_LANE_SPEED_SLOPE_B3_C1,
-    PASSING_LANE_SPEED_SLOPE_B4_D1,
+    PASSING_LANE_HEAVY_VEHICLE_SPEED_COEFFICIENTS,
+    PASSING_LANE_SEGMENT_LENGTH_SPEED_COEFFICIENTS,
     PASSING_LANE_SPEED_SLOPE_BASE_COEFFICIENTS,
     PF_25_CAPACITY_COEFFICIENTS,
     PF_CAPACITY_COEFFICIENTS,
@@ -33,7 +34,7 @@ from hcmcalc.methods.two_lane_highway_coefficients import (
     PF_SLOPE_COEFFICIENTS,
     PercentFollowersCapacityCoefficients,
     SPEED_POWER_COEFFICIENTS,
-    SPEED_SLOPE_AUXILIARY_COEFFICIENTS,
+    SEGMENT_LENGTH_SPEED_COEFFICIENTS,
     SPEED_SLOPE_COEFFICIENTS,
 )
 from hcmcalc.methods.two_lane_highway_models import (
@@ -70,6 +71,18 @@ class FreeFlowSpeedEstimate:
         "HCM Eq. 15-5",
         "HCM Eq. 15-6",
     )
+
+
+@dataclass(frozen=True)
+class AverageSpeedEstimate:
+    """Auditable HCM Chapter 15 Step 5 tangent average-speed estimate."""
+
+    average_speed_mph: float
+    speed_slope_coefficient_m: float
+    speed_power_coefficient_p: float
+    segment_length_coefficient_b3: float
+    heavy_vehicle_speed_coefficient_b4: float
+    source_references: tuple[str, ...]
 
 
 class TwoLaneHighwayChapter15Method:
@@ -238,21 +251,18 @@ def _calculate_passing_constrained_base_values(
     f_a = step4.access_point_adjustment_mph
     hv_coefficient = step4.heavy_vehicle_speed_adjustment_coefficient
     ffs = step4.free_flow_speed_mph
-    speed_m = average_speed_slope_coefficient(
-        vertical_class,
-        ffs,
-        OPPOSING_FLOW_EXAMPLE_1_VEH_H,
-        parsed_inputs.segment_length_mi,
-        parsed_inputs.heavy_vehicle_percent,
+    step5 = estimate_average_speed(
+        segment_type=parsed_inputs.segment_type,
+        vertical_class=vertical_class,
+        segment_length_mi=parsed_inputs.segment_length_mi,
+        free_flow_speed_mph=ffs,
+        heavy_vehicle_percent=parsed_inputs.heavy_vehicle_percent,
+        demand_flow_rate_veh_h=demand,
+        opposing_flow_veh_h=OPPOSING_FLOW_EXAMPLE_1_VEH_H,
     )
-    speed_p = average_speed_power_coefficient(
-        vertical_class,
-        ffs,
-        OPPOSING_FLOW_EXAMPLE_1_VEH_H,
-        parsed_inputs.segment_length_mi,
-        parsed_inputs.heavy_vehicle_percent,
-    )
-    speed = average_speed(ffs, demand, speed_m, speed_p)
+    speed_m = step5.speed_slope_coefficient_m
+    speed_p = step5.speed_power_coefficient_p
+    speed = step5.average_speed_mph
     pf_cap = percent_followers_at_capacity(
         vertical_class,
         parsed_inputs.segment_length_mi,
@@ -296,6 +306,9 @@ def _calculate_passing_constrained_base_values(
         "free_flow_speed_mph": ffs,
         "average_speed_slope_coefficient": speed_m,
         "average_speed_power_coefficient": speed_p,
+        "segment_length_coefficient_b3": step5.segment_length_coefficient_b3,
+        "heavy_vehicle_speed_coefficient_b4": step5.heavy_vehicle_speed_coefficient_b4,
+        "average_speed_source_reference": "; ".join(step5.source_references),
         "average_speed_mph": speed,
         "percent_followers_at_capacity": pf_cap,
         "percent_followers_at_25_percent_capacity": pf_25_cap,
@@ -332,6 +345,13 @@ def _calculate_example_problem_1_result(
                 ],
                 "average_speed_power_coefficient": base[
                     "average_speed_power_coefficient"
+                ],
+                "segment_length_coefficient_b3": base["segment_length_coefficient_b3"],
+                "heavy_vehicle_speed_coefficient_b4": base[
+                    "heavy_vehicle_speed_coefficient_b4"
+                ],
+                "average_speed_source_reference": base[
+                    "average_speed_source_reference"
                 ],
                 "average_speed_mph": base["average_speed_mph"],
                 "percent_followers_at_capacity": base["percent_followers_at_capacity"],
@@ -399,6 +419,16 @@ def _calculate_example_problem_1_result(
                     base["free_flow_speed_mph"],
                     "mph",
                     "HCM Eq. 15-3",
+                ),
+                IntermediateValue(
+                    "segment_length_coefficient_b3",
+                    base["segment_length_coefficient_b3"],
+                    source="HCM Eq. 15-9 and Exhibit 15-15",
+                ),
+                IntermediateValue(
+                    "heavy_vehicle_speed_coefficient_b4",
+                    base["heavy_vehicle_speed_coefficient_b4"],
+                    source="HCM Eq. 15-10 and Exhibit 15-17",
                 ),
                 IntermediateValue(
                     "average_speed_slope_coefficient",
@@ -709,21 +739,19 @@ def _calculate_facility_segment(
     hv_coefficient = step4.heavy_vehicle_speed_adjustment_coefficient
     ffs = step4.free_flow_speed_mph
 
+    step5 = estimate_average_speed(
+        segment_type=segment.segment_type,
+        vertical_class=vertical_class,
+        segment_length_mi=segment.segment_length_mi,
+        free_flow_speed_mph=ffs,
+        heavy_vehicle_percent=segment.heavy_vehicle_percent,
+        demand_flow_rate_veh_h=demand,
+        opposing_flow_veh_h=opposing_flow,
+    )
+    speed_m = step5.speed_slope_coefficient_m
+    speed_p = step5.speed_power_coefficient_p
+
     if segment.segment_type == PASSING_LANE:
-        speed_m = passing_lane_average_speed_slope_coefficient(
-            vertical_class,
-            ffs,
-            opposing_flow,
-            segment.segment_length_mi,
-            segment.heavy_vehicle_percent,
-        )
-        speed_p = passing_lane_average_speed_power_coefficient(
-            vertical_class,
-            ffs,
-            opposing_flow,
-            segment.segment_length_mi,
-            segment.heavy_vehicle_percent,
-        )
         pf_cap = passing_lane_percent_followers_at_capacity(
             vertical_class,
             segment.segment_length_mi,
@@ -737,20 +765,6 @@ def _calculate_facility_segment(
             segment.heavy_vehicle_percent,
         )
     else:
-        speed_m = average_speed_slope_coefficient(
-            vertical_class,
-            ffs,
-            opposing_flow,
-            segment.segment_length_mi,
-            segment.heavy_vehicle_percent,
-        )
-        speed_p = average_speed_power_coefficient(
-            vertical_class,
-            ffs,
-            opposing_flow,
-            segment.segment_length_mi,
-            segment.heavy_vehicle_percent,
-        )
         pf_cap = percent_followers_at_capacity(
             vertical_class,
             segment.segment_length_mi,
@@ -766,7 +780,7 @@ def _calculate_facility_segment(
             opposing_flow,
         )
 
-    speed = average_speed(ffs, demand, speed_m, speed_p)
+    speed = step5.average_speed_mph
     horizontal_results: list[dict[str, Any]] = []
     if segment.horizontal_alignment_subsegments:
         horizontal_results = horizontal_curve_subsegment_speeds(
@@ -804,6 +818,9 @@ def _calculate_facility_segment(
         "free_flow_speed_mph": ffs,
         "average_speed_slope_coefficient": speed_m,
         "average_speed_power_coefficient": speed_p,
+        "segment_length_coefficient_b3": step5.segment_length_coefficient_b3,
+        "heavy_vehicle_speed_coefficient_b4": step5.heavy_vehicle_speed_coefficient_b4,
+        "average_speed_source_reference": "; ".join(step5.source_references),
         "average_speed_mph": speed,
         "horizontal_curve_subsegments": horizontal_results,
         "percent_followers_at_capacity": pf_cap,
@@ -880,6 +897,36 @@ def _single_segment_intermediate_values(
             "HCM Eq. 15-6",
         ),
         ("free_flow_speed", "free_flow_speed_mph", "mph", "HCM Eq. 15-3"),
+        (
+            "segment_length_coefficient_b3",
+            "segment_length_coefficient_b3",
+            None,
+            "HCM Eq. 15-9 and Exhibit 15-15 or Exhibit 15-16",
+        ),
+        (
+            "heavy_vehicle_speed_coefficient_b4",
+            "heavy_vehicle_speed_coefficient_b4",
+            None,
+            "HCM Eq. 15-10 and Exhibit 15-17 or Exhibit 15-18",
+        ),
+        (
+            "average_speed_slope_coefficient",
+            "average_speed_slope_coefficient",
+            None,
+            "HCM Eq. 15-8 and Exhibit 15-13 or Exhibit 15-14",
+        ),
+        (
+            "average_speed_power_coefficient",
+            "average_speed_power_coefficient",
+            None,
+            "HCM Eq. 15-11 and Exhibit 15-19 or Exhibit 15-20",
+        ),
+        (
+            "average_speed_source_reference",
+            "average_speed_source_reference",
+            None,
+            "HCM Eq. 15-7 through Eq. 15-11 and Exhibits 15-13 through 15-20",
+        ),
         ("average_speed", "average_speed_mph", "mph", "HCM Eq. 15-7"),
         ("percent_followers", "percent_followers", "%", "HCM Eq. 15-17"),
         (
@@ -949,6 +996,16 @@ def _facility_intermediate_values(
                     segment["free_flow_speed_mph"],
                     "mph",
                     "HCM Eq. 15-3",
+                ),
+                IntermediateValue(
+                    f"segment_{segment_id}_segment_length_coefficient_b3",
+                    segment["segment_length_coefficient_b3"],
+                    source="HCM Eq. 15-9 and Exhibit 15-15 or Exhibit 15-16",
+                ),
+                IntermediateValue(
+                    f"segment_{segment_id}_heavy_vehicle_speed_coefficient_b4",
+                    segment["heavy_vehicle_speed_coefficient_b4"],
+                    source="HCM Eq. 15-10 and Exhibit 15-17 or Exhibit 15-18",
                 ),
                 IntermediateValue(
                     f"segment_{segment_id}_average_speed_slope_coefficient",
@@ -1709,23 +1766,103 @@ def average_speed_slope_coefficient(
 ) -> float:
     """HCM Eq. 15-8 slope coefficient for Eq. 15-7."""
 
-    coefficients = SPEED_SLOPE_COEFFICIENTS[vertical_class]
-    b3 = coefficients.b3
-    b4 = coefficients.b4
-    if vertical_class in SPEED_SLOPE_AUXILIARY_COEFFICIENTS:
-        auxiliary = SPEED_SLOPE_AUXILIARY_COEFFICIENTS[vertical_class]
-        b3 = (
-            auxiliary.c0
-            + auxiliary.c1 * sqrt(segment_length_mi)
-            + auxiliary.c2 * free_flow_speed_mph
-            + auxiliary.c3 * free_flow_speed_mph * sqrt(segment_length_mi)
-        )
-        b4 = (
-            auxiliary.d0
-            + auxiliary.d1 * sqrt(heavy_vehicle_percent)
-            + auxiliary.d2 * free_flow_speed_mph
-            + auxiliary.d3 * free_flow_speed_mph * sqrt(heavy_vehicle_percent)
-        )
+    return estimate_speed_slope_coefficient(
+        PASSING_CONSTRAINED,
+        vertical_class,
+        free_flow_speed_mph,
+        opposing_flow_veh_h,
+        segment_length_mi,
+        heavy_vehicle_percent,
+    )
+
+
+def estimate_segment_length_coefficient(
+    segment_type: str,
+    vertical_class: int,
+    free_flow_speed_mph: float,
+    segment_length_mi: float,
+) -> float:
+    """HCM Eq. 15-9 segment-length coefficient b3."""
+
+    _validate_step5_common_inputs(
+        segment_type=segment_type,
+        vertical_class=vertical_class,
+        free_flow_speed_mph=free_flow_speed_mph,
+        segment_length_mi=segment_length_mi,
+    )
+    table = (
+        PASSING_LANE_SEGMENT_LENGTH_SPEED_COEFFICIENTS
+        if segment_type == PASSING_LANE
+        else SEGMENT_LENGTH_SPEED_COEFFICIENTS
+    )
+    coefficients = table[vertical_class]
+    root_length = sqrt(segment_length_mi)
+    return (
+        coefficients.c0
+        + coefficients.c1 * root_length
+        + coefficients.c2 * free_flow_speed_mph
+        + coefficients.c3 * free_flow_speed_mph * root_length
+    )
+
+
+def estimate_heavy_vehicle_speed_coefficient(
+    segment_type: str,
+    vertical_class: int,
+    free_flow_speed_mph: float,
+    heavy_vehicle_percent: float,
+) -> float:
+    """HCM Eq. 15-10 heavy-vehicle percentage coefficient b4."""
+
+    _validate_step5_common_inputs(
+        segment_type=segment_type,
+        vertical_class=vertical_class,
+        free_flow_speed_mph=free_flow_speed_mph,
+        heavy_vehicle_percent=heavy_vehicle_percent,
+    )
+    table = (
+        PASSING_LANE_HEAVY_VEHICLE_SPEED_COEFFICIENTS
+        if segment_type == PASSING_LANE
+        else HEAVY_VEHICLE_SPEED_COEFFICIENTS
+    )
+    coefficients = table[vertical_class]
+    root_heavy_vehicles = sqrt(heavy_vehicle_percent)
+    return (
+        coefficients.d0
+        + coefficients.d1 * root_heavy_vehicles
+        + coefficients.d2 * free_flow_speed_mph
+        + coefficients.d3 * free_flow_speed_mph * root_heavy_vehicles
+    )
+
+
+def estimate_speed_slope_coefficient(
+    segment_type: str,
+    vertical_class: int,
+    free_flow_speed_mph: float,
+    opposing_flow_veh_h: float,
+    segment_length_mi: float,
+    heavy_vehicle_percent: float,
+) -> float:
+    """HCM Eq. 15-8 slope coefficient m."""
+
+    _validate_step5_common_inputs(
+        segment_type=segment_type,
+        vertical_class=vertical_class,
+        free_flow_speed_mph=free_flow_speed_mph,
+        segment_length_mi=segment_length_mi,
+        heavy_vehicle_percent=heavy_vehicle_percent,
+        opposing_flow_veh_h=opposing_flow_veh_h,
+    )
+    coefficients = (
+        PASSING_LANE_SPEED_SLOPE_BASE_COEFFICIENTS[vertical_class]
+        if segment_type == PASSING_LANE
+        else SPEED_SLOPE_COEFFICIENTS[vertical_class]
+    )
+    b3 = estimate_segment_length_coefficient(
+        segment_type, vertical_class, free_flow_speed_mph, segment_length_mi
+    )
+    b4 = estimate_heavy_vehicle_speed_coefficient(
+        segment_type, vertical_class, free_flow_speed_mph, heavy_vehicle_percent
+    )
     modeled = (
         coefficients.b0
         + coefficients.b1 * free_flow_speed_mph
@@ -1745,7 +1882,39 @@ def average_speed_power_coefficient(
 ) -> float:
     """HCM Eq. 15-11 power coefficient for Eq. 15-7."""
 
-    coefficients = SPEED_POWER_COEFFICIENTS[vertical_class]
+    return estimate_speed_power_coefficient(
+        PASSING_CONSTRAINED,
+        vertical_class,
+        free_flow_speed_mph,
+        opposing_flow_veh_h,
+        segment_length_mi,
+        heavy_vehicle_percent,
+    )
+
+
+def estimate_speed_power_coefficient(
+    segment_type: str,
+    vertical_class: int,
+    free_flow_speed_mph: float,
+    opposing_flow_veh_h: float,
+    segment_length_mi: float,
+    heavy_vehicle_percent: float,
+) -> float:
+    """HCM Eq. 15-11 power coefficient p."""
+
+    _validate_step5_common_inputs(
+        segment_type=segment_type,
+        vertical_class=vertical_class,
+        free_flow_speed_mph=free_flow_speed_mph,
+        segment_length_mi=segment_length_mi,
+        heavy_vehicle_percent=heavy_vehicle_percent,
+        opposing_flow_veh_h=opposing_flow_veh_h,
+    )
+    coefficients = (
+        PASSING_LANE_SPEED_POWER_COEFFICIENTS[vertical_class]
+        if segment_type == PASSING_LANE
+        else SPEED_POWER_COEFFICIENTS[vertical_class]
+    )
     opposing_flow_thousands = opposing_flow_veh_h / 1000.0
     modeled = (
         coefficients.f0
@@ -1773,6 +1942,137 @@ def average_speed(
     return free_flow_speed_mph - slope_coefficient * (
         demand_flow_rate_veh_h / 1000.0 - 0.1
     ) ** power_coefficient
+
+
+def estimate_average_speed(
+    *,
+    segment_type: str,
+    vertical_class: int,
+    segment_length_mi: float,
+    free_flow_speed_mph: float,
+    heavy_vehicle_percent: float,
+    demand_flow_rate_veh_h: float,
+    opposing_flow_veh_h: float,
+) -> AverageSpeedEstimate:
+    """Calculate and expose all HCM Chapter 15 Step 5 tangent-speed values."""
+
+    required_values = (
+        ("free-flow speed", free_flow_speed_mph),
+        ("segment length", segment_length_mi),
+        ("heavy-vehicle percentage", heavy_vehicle_percent),
+        ("demand flow rate", demand_flow_rate_veh_h),
+        ("opposing flow rate", opposing_flow_veh_h),
+    )
+    for label, value in required_values:
+        if value is None:
+            raise HCMCalcError(f"Step 5 {label} is required.")
+
+    _validate_step5_common_inputs(
+        segment_type=segment_type,
+        vertical_class=vertical_class,
+        free_flow_speed_mph=free_flow_speed_mph,
+        segment_length_mi=segment_length_mi,
+        heavy_vehicle_percent=heavy_vehicle_percent,
+        demand_flow_rate_veh_h=demand_flow_rate_veh_h,
+        opposing_flow_veh_h=opposing_flow_veh_h,
+    )
+    b3 = estimate_segment_length_coefficient(
+        segment_type, vertical_class, free_flow_speed_mph, segment_length_mi
+    )
+    b4 = estimate_heavy_vehicle_speed_coefficient(
+        segment_type, vertical_class, free_flow_speed_mph, heavy_vehicle_percent
+    )
+    slope = estimate_speed_slope_coefficient(
+        segment_type,
+        vertical_class,
+        free_flow_speed_mph,
+        opposing_flow_veh_h,
+        segment_length_mi,
+        heavy_vehicle_percent,
+    )
+    power = estimate_speed_power_coefficient(
+        segment_type,
+        vertical_class,
+        free_flow_speed_mph,
+        opposing_flow_veh_h,
+        segment_length_mi,
+        heavy_vehicle_percent,
+    )
+    speed = average_speed(free_flow_speed_mph, demand_flow_rate_veh_h, slope, power)
+    exhibits = (
+        (
+            "HCM Exhibit 15-14",
+            "HCM Exhibit 15-16",
+            "HCM Exhibit 15-18",
+            "HCM Exhibit 15-20",
+        )
+        if segment_type == PASSING_LANE
+        else (
+            "HCM Exhibit 15-13",
+            "HCM Exhibit 15-15",
+            "HCM Exhibit 15-17",
+            "HCM Exhibit 15-19",
+        )
+    )
+    return AverageSpeedEstimate(
+        average_speed_mph=speed,
+        speed_slope_coefficient_m=slope,
+        speed_power_coefficient_p=power,
+        segment_length_coefficient_b3=b3,
+        heavy_vehicle_speed_coefficient_b4=b4,
+        source_references=(
+            "HCM Eq. 15-7",
+            "HCM Eq. 15-8",
+            "HCM Eq. 15-9",
+            "HCM Eq. 15-10",
+            "HCM Eq. 15-11",
+            *exhibits,
+        ),
+    )
+
+
+def _validate_step5_common_inputs(
+    *,
+    segment_type: str,
+    vertical_class: int,
+    free_flow_speed_mph: float,
+    segment_length_mi: float | None = None,
+    heavy_vehicle_percent: float | None = None,
+    demand_flow_rate_veh_h: float | None = None,
+    opposing_flow_veh_h: float | None = None,
+) -> None:
+    if segment_type not in {PASSING_CONSTRAINED, PASSING_ZONE, PASSING_LANE}:
+        raise HCMCalcError(f"Unsupported Step 5 segment type: {segment_type!r}.")
+    if vertical_class not in {1, 2, 3, 4, 5}:
+        raise HCMCalcError("Step 5 vertical class must be an integer from 1 through 5.")
+    if (
+        free_flow_speed_mph is None
+        or not isfinite(free_flow_speed_mph)
+        or free_flow_speed_mph <= 0
+    ):
+        raise HCMCalcError(
+            "Step 5 free-flow speed must be a finite value greater than zero."
+        )
+    if segment_length_mi is not None and (
+        not isfinite(segment_length_mi) or segment_length_mi <= 0
+    ):
+        raise HCMCalcError(
+            "Step 5 segment length must be a finite value greater than zero."
+        )
+    if heavy_vehicle_percent is not None and (
+        not isfinite(heavy_vehicle_percent) or not 0 <= heavy_vehicle_percent <= 100
+    ):
+        raise HCMCalcError(
+            "Step 5 heavy-vehicle percentage must be a finite value between 0 and 100."
+        )
+    if demand_flow_rate_veh_h is not None and (
+        not isfinite(demand_flow_rate_veh_h) or demand_flow_rate_veh_h < 0
+    ):
+        raise HCMCalcError("Step 5 demand flow rate must be a finite nonnegative value.")
+    if opposing_flow_veh_h is not None and (
+        not isfinite(opposing_flow_veh_h) or opposing_flow_veh_h < 0
+    ):
+        raise HCMCalcError("Step 5 opposing flow rate must be a finite nonnegative value.")
 
 
 def horizontal_curve_base_free_flow_speed(
@@ -1936,17 +2236,14 @@ def passing_lane_average_speed_slope_coefficient(
 ) -> float:
     """HCM Eq. 15-8 with Passing Lane coefficients from Exhibits 15-14/16/18."""
 
-    coefficients = PASSING_LANE_SPEED_SLOPE_BASE_COEFFICIENTS[vertical_class]
-    b3 = PASSING_LANE_SPEED_SLOPE_B3_C1[vertical_class] * sqrt(segment_length_mi)
-    b4 = PASSING_LANE_SPEED_SLOPE_B4_D1[vertical_class] * sqrt(heavy_vehicle_percent)
-    modeled = (
-        coefficients.b0
-        + coefficients.b1 * free_flow_speed_mph
-        + coefficients.b2 * sqrt(opposing_flow_veh_h / 1000.0)
-        + max(0.0, b3) * sqrt(segment_length_mi)
-        + max(0.0, b4) * sqrt(heavy_vehicle_percent)
+    return estimate_speed_slope_coefficient(
+        PASSING_LANE,
+        vertical_class,
+        free_flow_speed_mph,
+        opposing_flow_veh_h,
+        segment_length_mi,
+        heavy_vehicle_percent,
     )
-    return max(coefficients.b5, modeled)
 
 
 def passing_lane_average_speed_power_coefficient(
@@ -1958,19 +2255,14 @@ def passing_lane_average_speed_power_coefficient(
 ) -> float:
     """HCM Eq. 15-11 with Passing Lane coefficients from Exhibit 15-20."""
 
-    coefficients = PASSING_LANE_SPEED_POWER_COEFFICIENTS[vertical_class]
-    opposing_flow_thousands = opposing_flow_veh_h / 1000.0
-    modeled = (
-        coefficients.f0
-        + coefficients.f1 * free_flow_speed_mph
-        + coefficients.f2 * segment_length_mi
-        + coefficients.f3 * opposing_flow_thousands
-        + coefficients.f4 * sqrt(opposing_flow_thousands)
-        + coefficients.f5 * heavy_vehicle_percent
-        + coefficients.f6 * sqrt(heavy_vehicle_percent)
-        + coefficients.f7 * (segment_length_mi * heavy_vehicle_percent)
+    return estimate_speed_power_coefficient(
+        PASSING_LANE,
+        vertical_class,
+        free_flow_speed_mph,
+        opposing_flow_veh_h,
+        segment_length_mi,
+        heavy_vehicle_percent,
     )
-    return max(coefficients.f8, modeled)
 
 
 def passing_lane_percent_followers_at_capacity(
