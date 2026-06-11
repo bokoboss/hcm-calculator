@@ -4,6 +4,7 @@ from hcmcalc.core import HCMCalcError
 from hcmcalc.ui.curve_editor import (
     curve_setup_defaults,
     generate_curve_subsegments,
+    initial_curve_subsegments,
 )
 from hcmcalc.ui.manual_segment import build_manual_segment_inputs
 
@@ -26,6 +27,17 @@ def test_generate_11_horizontal_curve_subsegments_from_setup() -> None:
 
     assert len(subsegments) == 11
     assert sum(row["length"] for row in subsegments) == pytest.approx(1100.0)
+
+
+def test_horizontal_curve_editor_initializes_visible_default_rows() -> None:
+    subsegments = initial_curve_subsegments("horizontal_curves", "metric", 1.2)
+
+    assert len(subsegments) == 11
+    assert sum(row["length"] for row in subsegments) == pytest.approx(1200.0)
+
+
+def test_straight_alignment_does_not_initialize_curve_rows() -> None:
+    assert initial_curve_subsegments("straight", "metric", 1.2) == []
 
 
 def test_generated_subsegments_preserve_engine_curve_fields() -> None:

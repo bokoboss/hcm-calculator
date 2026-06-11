@@ -11,7 +11,11 @@ import streamlit as st
 from hcmcalc.cli import find_case, load_input_file, result_to_dict, run_case
 from hcmcalc.core import HCMCalcError
 from hcmcalc.ui.audit import build_manual_calculation_audit_record
-from hcmcalc.ui.curve_editor import curve_setup_defaults, generate_curve_subsegments
+from hcmcalc.ui.curve_editor import (
+    curve_setup_defaults,
+    generate_curve_subsegments,
+    initial_curve_subsegments,
+)
 from hcmcalc.ui.manual_segment import run_manual_single_segment
 from hcmcalc.ui.project_io import (
     ProjectFileError,
@@ -24,7 +28,6 @@ from hcmcalc.ui.units import (
     DEFAULT_UNIT_SYSTEM,
     display_outputs,
     manual_defaults,
-    manual_horizontal_curve_defaults,
 )
 
 
@@ -269,6 +272,20 @@ def render_manual_single_segment_calculator() -> None:
             )
 
         metric = unit_system == "metric"
+        horizontal_alignment_label = st.selectbox(
+            "Horizontal alignment",
+            ["Straight", "Horizontal curve"],
+            help=(
+                "Horizontal curve adjustment uses the validated Example "
+                "Problem 2 calculation path."
+            ),
+            key="manual_horizontal_alignment_label",
+        )
+        horizontal_alignment = (
+            "horizontal_curves"
+            if horizontal_alignment_label == "Horizontal curve"
+            else "straight"
+        )
         with st.form(f"manual_single_segment_{unit_system}"):
             st.markdown(
                 '<div class="compact-section-label">Geometry</div>',
@@ -300,20 +317,6 @@ def render_manual_single_segment_calculator() -> None:
                 f"Access point density (points/{'km' if metric else 'mi'})",
                 min_value=0.0,
                 key=f"manual_access_point_density_{unit_system}",
-            )
-            horizontal_alignment_label = st.selectbox(
-                "Horizontal alignment",
-                ["Straight", "Horizontal curve"],
-                help=(
-                    "Horizontal curve adjustment uses the validated Example "
-                    "Problem 2 calculation path."
-                ),
-                key="manual_horizontal_alignment_label",
-            )
-            horizontal_alignment = (
-                "horizontal_curves"
-                if horizontal_alignment_label == "Horizontal curve"
-                else "straight"
             )
             horizontal_subsegments: list[dict[str, Any]] = []
             curve_setup: dict[str, Any] | None = None
@@ -380,7 +383,9 @@ def render_manual_single_segment_calculator() -> None:
                 )
                 editor_data = st.session_state.pop(
                     f"manual_horizontal_subsegments_seed_{unit_system}",
-                    manual_horizontal_curve_defaults(unit_system, segment_length),
+                    initial_curve_subsegments(
+                        horizontal_alignment, unit_system, segment_length
+                    ),
                 )
                 with st.expander("Curve subsegments"):
                     st.caption(

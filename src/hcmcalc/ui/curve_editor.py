@@ -5,11 +5,21 @@ from __future__ import annotations
 from typing import Any
 
 from hcmcalc.core import HCMCalcError
-from hcmcalc.ui.units import FEET_TO_METERS
+from hcmcalc.ui.units import FEET_TO_METERS, manual_horizontal_curve_defaults
 
 
 DEFAULT_CURVE_SUBSEGMENT_COUNT = 11
 MAX_CURVE_SUBSEGMENT_COUNT = 100
+
+
+def initial_curve_subsegments(
+    horizontal_alignment: str, unit_system: str, segment_length: float
+) -> list[dict[str, Any]]:
+    """Return visible default rows only when horizontal-curve editing is selected."""
+
+    if horizontal_alignment != "horizontal_curves":
+        return []
+    return manual_horizontal_curve_defaults(unit_system, segment_length)
 
 
 def curve_setup_defaults(
