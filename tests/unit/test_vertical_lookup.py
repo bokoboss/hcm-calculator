@@ -40,6 +40,20 @@ def test_exact_validated_example_path_metadata_can_be_found() -> None:
     assert "no HCM lookup table values" in result.record.notes
 
 
+def test_selected_vertical_path_metadata_names_exact_validation_fixture_segment() -> None:
+    result = find_vertical_class_record(
+        terrain_type="mountainous",
+        segment_type="passing_constrained",
+        grade_percent=6.0,
+        grade_length_mi=0.5,
+        heavy_vehicle_percent=8.0,
+    )
+
+    assert result.record is not None
+    assert result.record.vertical_class == 4
+    assert "TLH-CH15-004 segment 3" in result.record.validation_basis
+
+
 def test_unsupported_grade_length_combination_remains_missing_data() -> None:
     status = classify_vertical_lookup_status(
         terrain_type="mountainous",

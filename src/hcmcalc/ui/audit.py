@@ -73,6 +73,16 @@ def build_manual_calculation_audit_record(
             "error_type": type(error).__name__,
             "message": str(error),
         }
+    validation_basis = None
+    if result is not None and normalized_engine_inputs.get("grade_percent") != 0.0:
+        validation_basis = next(
+            (
+                assumption
+                for assumption in result.assumptions
+                if assumption.startswith("Validated vertical scope")
+            ),
+            None,
+        )
 
     return {
         "schema_version": MANUAL_AUDIT_SCHEMA_VERSION,
@@ -93,12 +103,16 @@ def build_manual_calculation_audit_record(
             normalized_engine_inputs.get("grade_length_mi"),
         ),
         "vertical_class": error_context.get(
-            "vertical_class", user_inputs.get("vertical_class")
+            "vertical_class",
+            result_data.get("outputs", {}).get(
+                "vertical_class", user_inputs.get("vertical_class")
+            ),
         ),
         "heavy_vehicle_percent": normalized_engine_inputs.get(
             "heavy_vehicle_percent", user_inputs.get("heavy_vehicle_percent")
         ),
         "scope_status": scope_status,
+        "validation_basis": validation_basis,
         "unsupported_reason": unsupported_reason,
         "supported_scope_status": supported_scope_status,
         "assumptions": result_data.get("assumptions", []),

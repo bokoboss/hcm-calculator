@@ -123,6 +123,7 @@ def _validated_example_record(
     grade_percent: float,
     grade_length_mi: float,
     vertical_class: int,
+    validation_basis: str = "Existing repository validation fixture",
 ) -> VerticalClassLookupRecord:
     return VerticalClassLookupRecord(
         key=VerticalClassLookupKey(
@@ -134,7 +135,7 @@ def _validated_example_record(
         ),
         vertical_class=vertical_class,
         source="HCM Chapter 26 Two-Lane Highway Example Problem 4",
-        validation_basis="Existing repository validation fixture",
+        validation_basis=validation_basis,
         status=LookupStatus.VALIDATED_EXAMPLE_PATH,
         notes="Metadata only; no HCM lookup table values or coefficients are represented.",
     )
@@ -166,6 +167,9 @@ VERTICAL_CLASS_LOOKUP_RECORDS = (
         grade_percent=6.0,
         grade_length_mi=0.5,
         vertical_class=4,
+        validation_basis=(
+            "Existing repository fixture TLH-CH15-004 segment 3 expected outputs"
+        ),
     ),
     _validated_example_record(
         segment_type="passing_constrained",

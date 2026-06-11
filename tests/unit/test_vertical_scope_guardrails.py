@@ -177,5 +177,49 @@ def test_require_supported_scope_error_carries_derived_vertical_class() -> None:
             heavy_vehicle_percent=8.0,
         )
 
-    assert exc_info.value.scope_status == "unsupported_needs_hcm_table_data"
+    assert exc_info.value.scope_status == "unsupported_needs_validation_fixture"
     assert exc_info.value.context["vertical_class"] == 4
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"heavy_vehicle_percent": 10.0},
+        {"segment_length_mi": 0.75},
+        {"vertical_class": 5},
+        {"segment_type": "passing_zone", "opposing_direction_volume_veh_h": 500.0},
+        {"segment_type": "passing_lane"},
+    ],
+)
+def test_adjacent_selected_vertical_paths_remain_unsupported(overrides: dict) -> None:
+    values = _manual_values(
+        terrain_type="mountainous",
+        posted_speed_mph=55.0,
+        segment_length_mi=0.5,
+        grade_percent=6.0,
+        analysis_direction_volume_veh_h=1100.0,
+        peak_hour_factor=0.90,
+        heavy_vehicle_percent=8.0,
+    )
+    values.update(overrides)
+
+    with pytest.raises(UnsupportedScopeError):
+        run_manual_single_segment(values)
+
+
+def test_nonlevel_public_api_rejects_missing_grade_length() -> None:
+    inputs = {
+        key: value
+        for key, value in _manual_values(
+            terrain_type="mountainous",
+            segment_length_mi=0.5,
+            grade_percent=6.0,
+            heavy_vehicle_percent=8.0,
+        ).items()
+        if key not in {"terrain_type", "grade_length_mi"}
+    }
+    inputs["terrain_type"] = "mountainous"
+    inputs["horizontal_alignment_subsegments"] = []
+
+    with pytest.raises(UnsupportedScopeError, match="requires grade length"):
+        TwoLaneHighwayChapter15Method().calculate_single_segment(inputs)
