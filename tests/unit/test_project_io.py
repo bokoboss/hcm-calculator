@@ -12,6 +12,16 @@ from hcmcalc.ui.project_io import (
 from hcmcalc.ui.units import manual_horizontal_curve_defaults
 
 
+CURVE_SETUP = {
+    "total_curve_length": 1200.0,
+    "radius": 137.16,
+    "superelevation_percent": 3.0,
+    "central_angle_deg": 55.0,
+    "horizontal_class": 3,
+    "subsegment_count": 11,
+}
+
+
 def _manual_inputs(**overrides) -> dict:
     values = {
         "unit_system": "metric",
@@ -107,6 +117,32 @@ def test_horizontal_curve_subsegments_survive_project_round_trip() -> None:
     loaded = load_manual_project_json(create_manual_project_json(manual_inputs))
 
     assert loaded["manual_inputs"]["horizontal_alignment_subsegments"] == subsegments
+
+
+def test_curve_setup_and_subsegments_survive_project_round_trip() -> None:
+    subsegments = manual_horizontal_curve_defaults("metric", segment_length=1.2)
+    manual_inputs = _manual_inputs(
+        horizontal_alignment="horizontal_curves",
+        curve_setup=CURVE_SETUP,
+        horizontal_alignment_subsegments=subsegments,
+    )
+
+    loaded = load_manual_project_json(create_manual_project_json(manual_inputs))
+
+    assert loaded["manual_inputs"]["curve_setup"] == CURVE_SETUP
+    assert loaded["manual_inputs"]["horizontal_alignment_subsegments"] == subsegments
+
+
+def test_horizontal_curve_project_without_curve_setup_remains_compatible() -> None:
+    subsegments = manual_horizontal_curve_defaults("metric", segment_length=1.2)
+    manual_inputs = _manual_inputs(
+        horizontal_alignment="horizontal_curves",
+        horizontal_alignment_subsegments=subsegments,
+    )
+
+    loaded = load_manual_project_json(create_manual_project_json(manual_inputs))
+
+    assert "curve_setup" not in loaded["manual_inputs"]
 
 
 def test_load_rejects_missing_required_fields() -> None:
