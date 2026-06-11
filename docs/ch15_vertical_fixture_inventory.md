@@ -11,6 +11,16 @@ This Phase 4 inventory adds no methodology support. It does not add formulas,
 table values, coefficients, calculation paths, or authorization to broaden the
 current supported scope.
 
+### Phase 4B data and fixture preparation
+
+Phase 4B adds non-runtime data and fixture manifests, a future-fixture
+template, a structural validation helper, and
+[vertical data ingestion guidelines](ch15_vertical_data_ingestion_guidelines.md).
+No actual HCM values or coefficients are populated, and no runtime support is
+enabled. Future verified data must include source attribution, expected
+outputs, tolerances, and explicit validation status. Placeholder data must not
+be used for calculation.
+
 ## B. Existing Validated Fixtures
 
 In the table below, a grade length shown as the segment length means the source
