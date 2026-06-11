@@ -451,12 +451,17 @@ def render_manual_single_segment_calculator() -> None:
             heavy_vehicle_percent = demand_columns[2].number_input(
                 "Heavy vehicles (%)",
                 min_value=0.0,
+                max_value=100.0,
                 key=f"manual_heavy_vehicle_percent_{unit_system}",
             )
             opposing_volume = (
                 st.number_input(
                     "Opposing-direction volume (veh/h)",
-                    min_value=0.0,
+                    min_value=1.0,
+                    help=(
+                        "Required for Passing Zone behavior and converted to opposing "
+                        "demand flow using the submitted PHF."
+                    ),
                     key=f"manual_opposing_direction_volume_{unit_system}",
                 )
                 if segment_type == "passing_zone"

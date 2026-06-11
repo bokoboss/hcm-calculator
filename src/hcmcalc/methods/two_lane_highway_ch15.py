@@ -4,7 +4,7 @@ The implemented calculation paths are scoped to Chapter 26 Example Problems 1
 through 4 and are intentionally kept independent from any UI.
 """
 
-from math import exp, log, sqrt
+from math import exp, isfinite, log, sqrt
 from typing import Any
 
 from hcmcalc.core import (
@@ -93,7 +93,8 @@ class TwoLaneHighwayChapter15Method:
             segment = _parse_facility_segment({"segment_id": 1, **inputs})
         except KeyError as exc:
             raise HCMCalcError(
-                f"Missing single-segment input: {exc.args[0]}"
+                "Single-segment calculation requires "
+                f"{_single_segment_input_label(exc.args[0])}."
             ) from exc
         except (TypeError, ValueError) as exc:
             raise HCMCalcError(
@@ -119,19 +120,56 @@ class TwoLaneHighwayChapter15Method:
             if segment.horizontal_alignment == STRAIGHT_ALIGNMENT
             else "Horizontal curve adjustment uses the validated Example Problem 2 calculation path."
         )
+        assumptions = [
+            alignment_assumption,
+            "Motorized Vehicle LOS is based on follower density.",
+            *_single_segment_type_assumptions(segment),
+            "No upstream passing lane or downstream facility-wide effects are applied.",
+        ]
         return CalculationResult(
             method=self.method_name,
             facility_type=self.facility_type,
             outputs=outputs,
             intermediate_values=_single_segment_intermediate_values(outputs),
-            assumptions=[
-                alignment_assumption,
-                "Motorized Vehicle LOS is based on follower density.",
-                "Passing Constrained calculations use the HCM-required 1,500 veh/h opposing-flow assumption.",
-                "No upstream passing lane or downstream facility-wide effects are applied.",
-            ],
+            assumptions=assumptions,
             warnings=warnings,
         )
+
+
+def _single_segment_input_label(name: str) -> str:
+    labels = {
+        "segment_type": "a segment type",
+        "segment_length_mi": "a segment length",
+        "posted_speed_mph": "a posted/base speed",
+        "analysis_direction_volume_veh_h": "an analysis-direction volume",
+        "peak_hour_factor": "a peak hour factor (PHF)",
+        "heavy_vehicle_percent": "a heavy-vehicle percentage",
+        "grade_percent": "a terrain grade",
+        "horizontal_alignment": "a horizontal alignment",
+        "lane_width_ft": "a lane width",
+        "shoulder_width_ft": "a shoulder width",
+        "access_point_density_per_mi": "an access-point density",
+    }
+    return labels.get(name, f"the {name} input")
+
+
+def _single_segment_type_assumptions(
+    segment: TwoLaneFacilitySegmentInputs,
+) -> list[str]:
+    if segment.segment_type == PASSING_ZONE:
+        return [
+            "Passing Zone behavior uses the submitted opposing-direction volume, "
+            "converted to opposing demand flow using the submitted PHF."
+        ]
+    if segment.segment_type == PASSING_LANE:
+        return [
+            "Passing Lane LOS uses the supported single-segment midpoint follower "
+            "density calculation and does not approximate downstream effects."
+        ]
+    return [
+        "Passing Constrained calculations use the HCM-required 1,500 veh/h "
+        "opposing-flow assumption."
+    ]
 
 
 def _calculate_passing_constrained_base_values(
@@ -1229,32 +1267,51 @@ def _validate_single_segment_scope(segment: TwoLaneFacilitySegmentInputs) -> Non
         and not segment.horizontal_alignment_subsegments
     ):
         raise HCMCalcError("Horizontal curve alignment requires horizontal subsegments.")
+    _validate_finite_single_segment_inputs(segment)
     if segment.segment_length_mi <= 0.0:
-        raise HCMCalcError("segment_length_mi must be greater than zero.")
+        raise HCMCalcError("Segment length must be greater than zero.")
     if segment.posted_speed_mph <= 0.0:
-        raise HCMCalcError("posted_speed_mph must be greater than zero.")
+        raise HCMCalcError("Posted/base speed must be greater than zero.")
     if segment.analysis_direction_volume_veh_h < 0.0:
-        raise HCMCalcError("analysis_direction_volume_veh_h cannot be negative.")
+        raise HCMCalcError("Analysis-direction volume cannot be negative.")
     if not 0.0 < segment.peak_hour_factor <= 1.0:
-        raise HCMCalcError("peak_hour_factor must be greater than zero and at most 1.0.")
-    if segment.heavy_vehicle_percent < 0.0:
-        raise HCMCalcError("heavy_vehicle_percent cannot be negative.")
+        raise HCMCalcError(
+            "Peak hour factor (PHF) must be greater than 0 and at most 1."
+        )
+    if not 0.0 <= segment.heavy_vehicle_percent <= 100.0:
+        raise HCMCalcError("Heavy-vehicle percentage must be between 0 and 100.")
+    if not 9.0 <= segment.lane_width_ft <= 12.0:
+        raise HCMCalcError(
+            "Lane width must be within the supported range of 9 to 12 ft."
+        )
+    if not 0.0 <= segment.shoulder_width_ft <= 6.0:
+        raise HCMCalcError(
+            "Shoulder width must be within the supported range of 0 to 6 ft."
+        )
+    if segment.access_point_density_per_mi < 0.0:
+        raise HCMCalcError("Access-point density cannot be negative.")
     if (
         segment.opposing_direction_volume_veh_h is not None
         and segment.opposing_direction_volume_veh_h < 0.0
     ):
-        raise HCMCalcError("opposing_direction_volume_veh_h cannot be negative.")
+        raise HCMCalcError("Opposing-direction volume cannot be negative.")
     if (
         segment.segment_type == PASSING_ZONE
-        and segment.opposing_direction_volume_veh_h is None
+        and (
+            segment.opposing_direction_volume_veh_h is None
+            or segment.opposing_direction_volume_veh_h <= 0.0
+        )
     ):
-        raise HCMCalcError("Passing Zone requires opposing_direction_volume_veh_h.")
+        raise HCMCalcError(
+            "Passing Zone requires an opposing-direction volume greater than zero."
+        )
     if (
         segment.segment_type != PASSING_ZONE
         and segment.opposing_direction_volume_veh_h is not None
     ):
         raise HCMCalcError(
-            "Only Passing Zone single segments accept opposing_direction_volume_veh_h."
+            "Opposing-direction volume is accepted only for Passing Zone single "
+            "segments."
         )
 
     supported_mountainous_combinations = {
@@ -1285,6 +1342,32 @@ def _validate_single_segment_scope(segment: TwoLaneFacilitySegmentInputs) -> Non
         raise MethodNotImplementedError(
             "Manual Passing Lane calculation is currently supported only for "
             "vertical Class 1 terrain; downstream facility effects are not included."
+        )
+
+
+def _validate_finite_single_segment_inputs(
+    segment: TwoLaneFacilitySegmentInputs,
+) -> None:
+    fields = (
+        ("Segment length", segment.segment_length_mi),
+        ("Posted/base speed", segment.posted_speed_mph),
+        ("Analysis-direction volume", segment.analysis_direction_volume_veh_h),
+        ("Peak hour factor (PHF)", segment.peak_hour_factor),
+        ("Heavy-vehicle percentage", segment.heavy_vehicle_percent),
+        ("Terrain grade", segment.grade_percent),
+        ("Lane width", segment.lane_width_ft),
+        ("Shoulder width", segment.shoulder_width_ft),
+        ("Access-point density", segment.access_point_density_per_mi),
+    )
+    for label, value in fields:
+        if not isfinite(value):
+            raise HCMCalcError(f"{label} must be a finite numeric value.")
+    if (
+        segment.opposing_direction_volume_veh_h is not None
+        and not isfinite(segment.opposing_direction_volume_veh_h)
+    ):
+        raise HCMCalcError(
+            "Opposing-direction volume must be a finite numeric value."
         )
 
 

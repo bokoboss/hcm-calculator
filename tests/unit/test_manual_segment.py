@@ -77,6 +77,7 @@ def test_manual_passing_constrained_example_1_equivalent_returns_los_d() -> None
     assert result.outputs["opposing_flow_rate_veh_h"] == 1500.0
     assert result.intermediate_values
     assert result.assumptions
+    assert "1,500 veh/h opposing-flow assumption" in result.assumptions[2]
 
 
 def test_manual_horizontal_curve_example_2_equivalent_returns_adjusted_speed() -> None:
@@ -155,8 +156,38 @@ def test_manual_adapter_does_not_import_private_engine_helpers() -> None:
 
 
 def test_manual_passing_zone_requires_opposing_direction_volume() -> None:
-    with pytest.raises(HCMCalcError, match="requires opposing_direction_volume"):
+    with pytest.raises(HCMCalcError, match="requires an opposing-direction volume"):
         run_manual_single_segment(_manual_values(segment_type="passing_zone"))
+
+
+def test_manual_passing_zone_rejects_zero_opposing_direction_volume() -> None:
+    with pytest.raises(
+        HCMCalcError, match="opposing-direction volume greater than zero"
+    ):
+        run_manual_single_segment(
+            _manual_values(
+                segment_type="passing_zone",
+                opposing_direction_volume_veh_h=0.0,
+            )
+        )
+
+
+@pytest.mark.parametrize("opposing_volume", [None, 0.0])
+def test_public_single_segment_api_requires_positive_passing_zone_opposing_volume(
+    opposing_volume: float | None,
+) -> None:
+    inputs = {
+        key: value
+        for key, value in _manual_values(
+            segment_type="passing_zone",
+            opposing_direction_volume_veh_h=opposing_volume,
+        ).items()
+        if key != "terrain_type"
+    }
+    inputs["horizontal_alignment"] = "straight"
+
+    with pytest.raises(HCMCalcError, match="opposing-direction volume greater than zero"):
+        TwoLaneHighwayChapter15Method().calculate_single_segment(inputs)
 
 
 def test_manual_passing_zone_with_opposing_direction_volume_returns_result() -> None:
@@ -169,6 +200,7 @@ def test_manual_passing_zone_with_opposing_direction_volume_returns_result() -> 
 
     assert result.outputs["segment_type"] == "passing_zone"
     assert result.outputs["opposing_flow_rate_veh_h"] == pytest.approx(500.0 / 0.94)
+    assert "submitted opposing-direction volume" in result.assumptions[2]
 
 
 def test_manual_passing_lane_returns_result_and_scope_warning() -> None:
@@ -186,6 +218,53 @@ def test_manual_passing_lane_returns_result_and_scope_warning() -> None:
     assert result.outputs["segment_type"] == "passing_lane"
     assert result.outputs["level_of_service"]
     assert "downstream passing-lane effects" in result.warnings[0]
+    assert "midpoint follower density" in result.assumptions[2]
+
+
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        ({"segment_length_mi": 0.0}, "Segment length must be greater than zero"),
+        ({"posted_speed_mph": 0.0}, "Posted/base speed must be greater than zero"),
+        ({"peak_hour_factor": 0.0}, "Peak hour factor \\(PHF\\)"),
+        ({"peak_hour_factor": 1.01}, "Peak hour factor \\(PHF\\)"),
+        ({"heavy_vehicle_percent": -0.1}, "between 0 and 100"),
+        ({"heavy_vehicle_percent": 100.1}, "between 0 and 100"),
+        ({"lane_width_ft": 8.9}, "Lane width must be within the supported range"),
+        ({"lane_width_ft": 12.1}, "Lane width must be within the supported range"),
+        (
+            {"shoulder_width_ft": -0.1},
+            "Shoulder width must be within the supported range",
+        ),
+        (
+            {"shoulder_width_ft": 6.1},
+            "Shoulder width must be within the supported range",
+        ),
+        (
+            {"analysis_direction_volume_veh_h": -1.0},
+            "Analysis-direction volume cannot be negative",
+        ),
+    ],
+)
+def test_manual_level_single_segment_rejects_invalid_inputs(
+    overrides: dict, message: str
+) -> None:
+    with pytest.raises(HCMCalcError, match=message):
+        run_manual_single_segment(_manual_values(**overrides))
+
+
+def test_public_single_segment_api_rejects_non_finite_volume_clearly() -> None:
+    inputs = {
+        key: value
+        for key, value in _manual_values(
+            analysis_direction_volume_veh_h=float("nan")
+        ).items()
+        if key != "terrain_type"
+    }
+    inputs["horizontal_alignment"] = "straight"
+
+    with pytest.raises(HCMCalcError, match="finite numeric value"):
+        TwoLaneHighwayChapter15Method().calculate_single_segment(inputs)
 
 
 def test_manual_mountainous_supported_grade_length_returns_result() -> None:
@@ -347,3 +426,19 @@ def test_unsupported_manual_audit_record_preserves_submitted_context() -> None:
     assert "Unsupported mountainous" in (
         audit_record["calculation_metadata"]["error_message"]
     )
+    assert audit_record["validation_context"]["status"] == "unsupported"
+    assert "Unsupported mountainous" in audit_record["validation_context"]["message"]
+
+
+def test_invalid_manual_audit_record_preserves_validation_context() -> None:
+    values = _manual_values(peak_hour_factor=0.0)
+
+    with pytest.raises(HCMCalcError) as exc_info:
+        run_manual_single_segment(values)
+
+    audit_record = build_manual_calculation_audit_record(values, error=exc_info.value)
+
+    assert audit_record["supported_scope_status"] == "invalid"
+    assert audit_record["normalized_engine_inputs"]["peak_hour_factor"] == 0.0
+    assert audit_record["validation_context"]["status"] == "invalid"
+    assert "Peak hour factor" in audit_record["validation_context"]["message"]

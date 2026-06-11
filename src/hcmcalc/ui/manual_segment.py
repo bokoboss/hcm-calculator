@@ -29,7 +29,7 @@ def build_manual_segment_inputs(values: dict[str, Any]) -> dict[str, Any]:
 
     terrain_type = str(values.get("terrain_type", ""))
     if terrain_type not in {"level", "mountainous"}:
-        raise HCMCalcError("terrain_type must be level or mountainous.")
+        raise HCMCalcError("Terrain type must be level or mountainous.")
 
     segment_type = str(values.get("segment_type", ""))
     horizontal_alignment = str(
@@ -37,7 +37,7 @@ def build_manual_segment_inputs(values: dict[str, Any]) -> dict[str, Any]:
     )
     if horizontal_alignment not in {STRAIGHT_ALIGNMENT, HORIZONTAL_CURVES_ALIGNMENT}:
         raise HCMCalcError(
-            "horizontal_alignment must be straight or horizontal_curves."
+            "Horizontal alignment must be straight or horizontal_curves."
         )
     grade = 0.0 if terrain_type == "level" else _required_float(values, "grade_percent")
     length = _required_float(values, "segment_length_mi")
@@ -70,9 +70,26 @@ def build_manual_segment_inputs(values: dict[str, Any]) -> dict[str, Any]:
 
 
 def _required_float(values: dict[str, Any], name: str) -> float:
+    label = _manual_input_label(name)
     if name not in values or values[name] is None:
-        raise HCMCalcError(f"Manual single-segment input requires {name}.")
+        raise HCMCalcError(f"Manual single-segment input requires {label}.")
     try:
         return float(values[name])
     except (TypeError, ValueError) as exc:
-        raise HCMCalcError(f"{name} must be numeric.") from exc
+        raise HCMCalcError(f"{label.capitalize()} must be numeric.") from exc
+
+
+def _manual_input_label(name: str) -> str:
+    labels = {
+        "grade_percent": "a terrain grade",
+        "segment_length_mi": "a segment length",
+        "posted_speed_mph": "a posted/base speed",
+        "analysis_direction_volume_veh_h": "an analysis-direction volume",
+        "opposing_direction_volume_veh_h": "an opposing-direction volume",
+        "peak_hour_factor": "a peak hour factor (PHF)",
+        "heavy_vehicle_percent": "a heavy-vehicle percentage",
+        "lane_width_ft": "a lane width",
+        "shoulder_width_ft": "a shoulder width",
+        "access_point_density_per_mi": "an access-point density",
+    }
+    return labels.get(name, f"the {name} input")

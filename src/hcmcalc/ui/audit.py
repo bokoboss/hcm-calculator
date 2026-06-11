@@ -42,6 +42,14 @@ def build_manual_calculation_audit_record(
         supported_scope_status = "not_evaluated"
         calculation_status = "not_run"
 
+    validation_context = {}
+    if error is not None:
+        validation_context = {
+            "status": supported_scope_status,
+            "error_type": type(error).__name__,
+            "message": str(error),
+        }
+
     return {
         "schema_version": MANUAL_AUDIT_SCHEMA_VERSION,
         "calculation_type": "manual_single_segment",
@@ -58,6 +66,7 @@ def build_manual_calculation_audit_record(
         "warnings": result_data.get("warnings", []),
         "outputs": result_data.get("outputs", {}),
         "intermediate_values": result_data.get("intermediate_values", []),
+        "validation_context": validation_context,
         "calculation_metadata": {
             "status": calculation_status,
             "method": result_data.get("method"),
