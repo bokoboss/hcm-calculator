@@ -86,6 +86,29 @@ def test_load_valid_project_json_returns_restored_manual_inputs() -> None:
     assert loaded["manual_inputs"] == manual_inputs
 
 
+@pytest.mark.parametrize(
+    "manual_inputs",
+    [
+        _manual_inputs(
+            segment_type="passing_zone",
+            opposing_direction_volume=500.0,
+        ),
+        _manual_inputs(
+            segment_type="passing_lane",
+            heavy_vehicle_percent=8.0,
+        ),
+    ],
+    ids=["passing-zone", "passing-lane"],
+)
+def test_level_segment_type_project_round_trip(manual_inputs: dict) -> None:
+    loaded = load_manual_project_json(create_manual_project_json(manual_inputs))
+
+    assert loaded["manual_inputs"] == manual_inputs
+    assert loaded["normalized_engine_inputs"]["segment_type"] == manual_inputs[
+        "segment_type"
+    ]
+
+
 def test_load_rejects_invalid_json() -> None:
     with pytest.raises(ProjectFileError, match="Invalid JSON"):
         load_manual_project_json("{not json")

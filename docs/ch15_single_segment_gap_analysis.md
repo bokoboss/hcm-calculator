@@ -45,6 +45,9 @@ Current manual support:
 - Passing Zone actual opposing-direction volume.
 - Passing Constrained fixed `1,500 veh/h` opposing-flow assumption.
 - Passing Lane only for the validated Class 1, `8%` heavy-vehicle path.
+- Engineer-readable validation for positive length and speed, supported lane and
+  shoulder widths, PHF, heavy-vehicle percentage, and directional volumes.
+- Manual horizontal curves for the narrowly validated Example Problem 2 path.
 - Metric and Imperial UI entry and result display. The UI adapter converts
   Metric inputs to the engine's Imperial-native contract, and downloadable JSON
   preserves the Imperial-native engine result.
@@ -53,8 +56,8 @@ Current manual support:
 
 Known unsupported or incomplete manual cases:
 
-- Horizontal curves and horizontal subsegments, despite the separately
-  validated Example Problem 2 engine path.
+- Horizontal curves outside the narrowly validated Example Problem 2 manual
+  path.
 - General vertical class determination and arbitrary grade-length combinations.
 - Passing Lane cases outside Class 1 and `8%` heavy vehicles.
 - Upstream or downstream passing-lane effects and other corridor context.
