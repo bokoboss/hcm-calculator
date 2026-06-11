@@ -66,6 +66,30 @@ Known unsupported or incomplete manual cases:
 - A complete audit record that preserves normalized inputs and all
   decision-relevant intermediate values alongside the result.
 
+### Level + straight baseline status
+
+Level terrain with straight horizontal alignment is treated as the practical
+baseline assumption because it excludes unvalidated grade, horizontal-curve,
+and facility interactions while retaining the supported Chapter 15 motorized
+vehicle LOS workflow. It is the appropriate default case when those effects are
+intentionally not modeled.
+
+The baseline currently supports one Passing Constrained, Passing Zone, or
+Passing Lane segment. Passing Constrained uses the required `1,500 veh/h`
+opposing-flow assumption, Passing Zone requires a positive submitted opposing
+flow, and Passing Lane remains limited to the validated Class 1, `8%`
+heavy-vehicle path. Passing Lane results explicitly exclude downstream and
+facility-wide effects.
+
+The reliability matrix covers low, medium, and near-capacity demand; multiple
+supported heavy-vehicle percentages; low, normal, and high opposing flows;
+Metric and Imperial entry; supported Passing Lane behavior and warnings;
+engineer-readable boundary and non-finite input validation; output sanity;
+successful audit completeness; and runnable project JSON round trips for all
+three supported segment types. These regression tests improve confidence in the
+existing baseline but do not expand the validated HCM methodology or support
+mountainous terrain, general horizontal curves, or facility analysis.
+
 ## Comparison Reference
 
 The public
