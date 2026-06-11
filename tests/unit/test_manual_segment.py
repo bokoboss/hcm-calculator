@@ -6,8 +6,15 @@ import pytest
 from hcmcalc.core import HCMCalcError, MethodNotImplementedError
 from hcmcalc.methods.two_lane_highway_ch15 import TwoLaneHighwayChapter15Method
 from hcmcalc.ui.audit import build_manual_calculation_audit_record
-from hcmcalc.ui.manual_segment import run_manual_single_segment
-from hcmcalc.ui.units import manual_defaults
+from hcmcalc.ui.manual_segment import (
+    build_manual_segment_inputs,
+    run_manual_single_segment,
+)
+from hcmcalc.ui.units import (
+    FEET_TO_METERS,
+    manual_defaults,
+    manual_horizontal_curve_defaults,
+)
 
 
 def _manual_values(**overrides):
@@ -39,6 +46,29 @@ def _default_style_values(unit_system: str) -> dict:
     return values
 
 
+def _example_2_manual_values(unit_system: str = "imperial") -> dict:
+    metric = unit_system == "metric"
+    return {
+        "unit_system": unit_system,
+        "segment_type": "passing_constrained",
+        "terrain_type": "level",
+        "posted_speed": 50.0 * 1.609344 if metric else 50.0,
+        "segment_length": 0.75 * 1.609344 if metric else 0.75,
+        "lane_width": 12.0 * FEET_TO_METERS if metric else 12.0,
+        "shoulder_width": 6.0 * FEET_TO_METERS if metric else 6.0,
+        "access_point_density": 0.0,
+        "analysis_direction_volume": 752.0,
+        "peak_hour_factor": 0.94,
+        "heavy_vehicle_percent": 5.0,
+        "grade_percent": 0.0,
+        "opposing_direction_volume": None,
+        "horizontal_alignment": "horizontal_curves",
+        "horizontal_alignment_subsegments": manual_horizontal_curve_defaults(
+            unit_system
+        ),
+    }
+
+
 def test_manual_passing_constrained_example_1_equivalent_returns_los_d() -> None:
     result = run_manual_single_segment(_manual_values())
 
@@ -47,6 +77,23 @@ def test_manual_passing_constrained_example_1_equivalent_returns_los_d() -> None
     assert result.outputs["opposing_flow_rate_veh_h"] == 1500.0
     assert result.intermediate_values
     assert result.assumptions
+
+
+def test_manual_horizontal_curve_example_2_equivalent_returns_adjusted_speed() -> None:
+    result = run_manual_single_segment(_example_2_manual_values())
+
+    assert result.outputs["average_speed_mph"] == pytest.approx(49.5, abs=0.1)
+    assert len(result.outputs["horizontal_curve_subsegments"]) == 11
+    assert "Example Problem 2 calculation path" in result.assumptions[0]
+    assert "Example Problem 2 calculation path" in result.warnings[0]
+
+
+def test_public_single_segment_api_accepts_manual_horizontal_curve_structure() -> None:
+    inputs = build_manual_segment_inputs(_example_2_manual_values())
+
+    result = TwoLaneHighwayChapter15Method().calculate_single_segment(inputs)
+
+    assert result.outputs["average_speed_mph"] == pytest.approx(49.5, abs=0.1)
 
 
 @pytest.mark.parametrize("unit_system", ["metric", "Metric"])
@@ -216,6 +263,42 @@ def test_manual_audit_record_preserves_metric_values_and_converted_imperial_valu
     assert audit_record["normalized_engine_inputs"]["posted_speed_mph"] == (
         pytest.approx(80.0 / 1.609344)
     )
+
+
+def test_manual_horizontal_curve_audit_includes_user_and_normalized_inputs() -> None:
+    values = _example_2_manual_values("metric")
+    result = run_manual_single_segment(values)
+
+    audit_record = build_manual_calculation_audit_record(values, result=result)
+
+    assert audit_record["selected_horizontal_alignment"] == "horizontal_curves"
+    assert audit_record["user_inputs"]["horizontal_alignment_subsegments"][1][
+        "radius"
+    ] == pytest.approx(450.0 * FEET_TO_METERS)
+    assert audit_record["normalized_engine_inputs"][
+        "horizontal_alignment_subsegments"
+    ][1]["radius_ft"] == pytest.approx(450.0)
+    assert audit_record["assumptions"] == result.assumptions
+    assert audit_record["warnings"] == result.warnings
+
+
+def test_manual_horizontal_curve_rejects_malformed_curve_radius() -> None:
+    values = _example_2_manual_values()
+    values["horizontal_alignment_subsegments"][1]["radius"] = 0.0
+
+    with pytest.raises(HCMCalcError, match="radius_ft must be positive"):
+        run_manual_single_segment(values)
+
+
+def test_manual_horizontal_curve_rejects_unsupported_segment_type() -> None:
+    with pytest.raises(
+        MethodNotImplementedError,
+        match="only for a level Passing Constrained segment",
+    ):
+        run_manual_single_segment(
+            _example_2_manual_values()
+            | {"segment_type": "passing_zone", "opposing_direction_volume": 500.0}
+        )
 
 
 def test_successful_manual_audit_record_includes_result_context() -> None:

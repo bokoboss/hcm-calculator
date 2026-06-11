@@ -50,6 +50,9 @@ def build_manual_calculation_audit_record(
         "normalized_engine_inputs": normalized_engine_inputs,
         "selected_segment_type": user_inputs.get("segment_type"),
         "selected_terrain_type": user_inputs.get("terrain_type"),
+        "selected_horizontal_alignment": user_inputs.get(
+            "horizontal_alignment", "straight"
+        ),
         "supported_scope_status": supported_scope_status,
         "assumptions": result_data.get("assumptions", []),
         "warnings": result_data.get("warnings", []),

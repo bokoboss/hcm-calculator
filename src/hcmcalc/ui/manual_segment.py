@@ -6,7 +6,11 @@ from typing import Any
 
 from hcmcalc.core import CalculationResult, HCMCalcError
 from hcmcalc.methods.two_lane_highway_ch15 import TwoLaneHighwayChapter15Method
-from hcmcalc.methods.two_lane_highway_models import PASSING_ZONE
+from hcmcalc.methods.two_lane_highway_models import (
+    HORIZONTAL_CURVES_ALIGNMENT,
+    PASSING_ZONE,
+    STRAIGHT_ALIGNMENT,
+)
 from hcmcalc.ui.units import manual_values_to_engine_inputs
 
 
@@ -18,7 +22,7 @@ def run_manual_single_segment(values: dict[str, Any]) -> CalculationResult:
 
 
 def build_manual_segment_inputs(values: dict[str, Any]) -> dict[str, Any]:
-    """Build one straight-segment engine input without duplicating formulas."""
+    """Build one manual single-segment engine input without duplicating formulas."""
 
     if "unit_system" in values:
         values = manual_values_to_engine_inputs(values, str(values["unit_system"]))
@@ -28,6 +32,13 @@ def build_manual_segment_inputs(values: dict[str, Any]) -> dict[str, Any]:
         raise HCMCalcError("terrain_type must be level or mountainous.")
 
     segment_type = str(values.get("segment_type", ""))
+    horizontal_alignment = str(
+        values.get("horizontal_alignment", STRAIGHT_ALIGNMENT)
+    )
+    if horizontal_alignment not in {STRAIGHT_ALIGNMENT, HORIZONTAL_CURVES_ALIGNMENT}:
+        raise HCMCalcError(
+            "horizontal_alignment must be straight or horizontal_curves."
+        )
     grade = 0.0 if terrain_type == "level" else _required_float(values, "grade_percent")
     length = _required_float(values, "segment_length_mi")
 
@@ -46,13 +57,15 @@ def build_manual_segment_inputs(values: dict[str, Any]) -> dict[str, Any]:
         "peak_hour_factor": _required_float(values, "peak_hour_factor"),
         "heavy_vehicle_percent": _required_float(values, "heavy_vehicle_percent"),
         "grade_percent": grade,
-        "horizontal_alignment": "straight",
+        "horizontal_alignment": horizontal_alignment,
         "lane_width_ft": _required_float(values, "lane_width_ft"),
         "shoulder_width_ft": _required_float(values, "shoulder_width_ft"),
         "access_point_density_per_mi": _required_float(
             values, "access_point_density_per_mi"
         ),
-        "horizontal_alignment_subsegments": [],
+        "horizontal_alignment_subsegments": list(
+            values.get("horizontal_alignment_subsegments", [])
+        ),
     }
 
 

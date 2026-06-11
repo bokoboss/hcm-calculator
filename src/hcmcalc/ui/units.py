@@ -38,6 +38,55 @@ IMPERIAL_DEFAULTS: dict[str, float] = {
     "grade_percent": 4.0,
 }
 
+EXAMPLE_2_HORIZONTAL_SUBSEGMENTS_FT: tuple[dict[str, Any], ...] = (
+    {"type": "tangent", "length": 280.0},
+    {
+        "type": "horizontal_curve",
+        "length": 432.0,
+        "superelevation_percent": 3.0,
+        "radius": 450.0,
+        "central_angle_deg": 55.0,
+        "horizontal_class": 3,
+    },
+    {"type": "tangent", "length": 260.0},
+    {
+        "type": "horizontal_curve",
+        "length": 366.5,
+        "superelevation_percent": 2.0,
+        "radius": 300.0,
+        "central_angle_deg": 70.0,
+        "horizontal_class": 4,
+    },
+    {"type": "tangent", "length": 250.0},
+    {
+        "type": "horizontal_curve",
+        "length": 216.0,
+        "superelevation_percent": 5.0,
+        "radius": 275.0,
+        "central_angle_deg": 45.0,
+        "horizontal_class": 5,
+    },
+    {"type": "tangent", "length": 275.6},
+    {
+        "type": "horizontal_curve",
+        "length": 458.0,
+        "superelevation_percent": 0.0,
+        "radius": 750.0,
+        "central_angle_deg": 35.0,
+        "horizontal_class": 2,
+    },
+    {"type": "tangent", "length": 285.0},
+    {
+        "type": "horizontal_curve",
+        "length": 767.9,
+        "superelevation_percent": 4.0,
+        "radius": 1100.0,
+        "central_angle_deg": 40.0,
+        "horizontal_class": 1,
+    },
+    {"type": "tangent", "length": 369.0},
+)
+
 
 def manual_defaults(unit_system: str = DEFAULT_UNIT_SYSTEM) -> dict[str, float]:
     """Return user-facing defaults for the selected unit system."""
@@ -47,12 +96,47 @@ def manual_defaults(unit_system: str = DEFAULT_UNIT_SYSTEM) -> dict[str, float]:
     return dict(defaults)
 
 
+def manual_horizontal_curve_defaults(
+    unit_system: str, segment_length: float | None = None
+) -> list[dict[str, Any]]:
+    """Return Example Problem 2-shaped subsegments in user-facing units."""
+
+    unit_system = _normalize_unit_system(unit_system)
+    factor = FEET_TO_METERS if unit_system == "metric" else 1.0
+    source_total = sum(
+        float(subsegment["length"])
+        for subsegment in EXAMPLE_2_HORIZONTAL_SUBSEGMENTS_FT
+    )
+    if segment_length is None:
+        length_scale = 1.0
+    else:
+        target_length = (
+            float(segment_length) * 1000.0
+            if unit_system == "metric"
+            else float(segment_length) * 5280.0
+        )
+        length_scale = target_length / (source_total * factor)
+    return [
+        {
+            **subsegment,
+            "length": float(subsegment["length"]) * factor * length_scale,
+            "radius": (
+                float(subsegment["radius"]) * factor
+                if subsegment.get("radius") is not None
+                else None
+            ),
+        }
+        for subsegment in EXAMPLE_2_HORIZONTAL_SUBSEGMENTS_FT
+    ]
+
+
 def manual_values_to_engine_inputs(
     values: dict[str, Any], unit_system: str
 ) -> dict[str, Any]:
     """Convert user-facing manual values to engine-native imperial keys."""
 
     unit_system = _normalize_unit_system(unit_system)
+    curve_subsegments = _convert_horizontal_subsegments(values, unit_system)
     if unit_system == "imperial":
         return {
             **values,
@@ -80,6 +164,7 @@ def manual_values_to_engine_inputs(
                 "opposing_direction_volume",
                 "opposing_direction_volume_veh_h",
             ),
+            "horizontal_alignment_subsegments": curve_subsegments,
         }
 
     return {
@@ -109,6 +194,7 @@ def manual_values_to_engine_inputs(
         "opposing_direction_volume_veh_h": _convert_user_value(
             values, "opposing_direction_volume", "opposing_direction_volume_veh_h"
         ),
+        "horizontal_alignment_subsegments": curve_subsegments,
     }
 
 
@@ -174,6 +260,35 @@ def _convert_user_value(
         return values.get(engine_key)
 
     value = values[user_key]
+    if value is None:
+        return None
+    return float(value) * factor
+
+
+def _convert_horizontal_subsegments(
+    values: dict[str, Any], unit_system: str
+) -> list[dict[str, Any]]:
+    subsegments = values.get("horizontal_alignment_subsegments", [])
+    factor = 1.0 / FEET_TO_METERS if unit_system == "metric" else 1.0
+    converted = []
+    for subsegment in subsegments:
+        if "length" not in subsegment:
+            converted.append(dict(subsegment))
+            continue
+        converted.append(
+            {
+                "type": subsegment.get("type"),
+                "length_ft": _optional_scaled_value(subsegment.get("length"), factor),
+                "superelevation_percent": subsegment.get("superelevation_percent"),
+                "radius_ft": _optional_scaled_value(subsegment.get("radius"), factor),
+                "central_angle_deg": subsegment.get("central_angle_deg"),
+                "horizontal_class": subsegment.get("horizontal_class"),
+            }
+        )
+    return converted
+
+
+def _optional_scaled_value(value: Any, factor: float) -> float | None:
     if value is None:
         return None
     return float(value) * factor

@@ -6,6 +6,7 @@ from hcmcalc.ui.units import (
     MILES_TO_KILOMETERS,
     display_outputs,
     manual_defaults,
+    manual_horizontal_curve_defaults,
 )
 
 
@@ -49,6 +50,46 @@ def test_imperial_manual_inputs_pass_through_to_engine_native_keys() -> None:
     assert inputs["lane_width_ft"] == 12.0
     assert inputs["shoulder_width_ft"] == 6.0
     assert inputs["access_point_density_per_mi"] == 2.0
+
+
+def test_metric_curve_inputs_convert_to_engine_native_feet() -> None:
+    values = {
+        **_conceptual_values("metric"),
+        "horizontal_alignment": "horizontal_curves",
+        "horizontal_alignment_subsegments": manual_horizontal_curve_defaults("metric"),
+    }
+
+    inputs = build_manual_segment_inputs(values)
+
+    assert inputs["horizontal_alignment_subsegments"][1]["length_ft"] == pytest.approx(
+        432.0
+    )
+    assert inputs["horizontal_alignment_subsegments"][1]["radius_ft"] == pytest.approx(
+        450.0
+    )
+
+
+def test_imperial_curve_inputs_pass_through_to_engine_native_feet() -> None:
+    values = {
+        **_conceptual_values("imperial"),
+        "horizontal_alignment": "horizontal_curves",
+        "horizontal_alignment_subsegments": manual_horizontal_curve_defaults(
+            "imperial"
+        ),
+    }
+
+    inputs = build_manual_segment_inputs(values)
+
+    assert inputs["horizontal_alignment_subsegments"][1]["length_ft"] == 432.0
+    assert inputs["horizontal_alignment_subsegments"][1]["radius_ft"] == 450.0
+
+
+def test_curve_defaults_scale_subsegment_lengths_to_selected_segment_length() -> None:
+    subsegments = manual_horizontal_curve_defaults("metric", segment_length=1.20)
+
+    assert sum(float(subsegment["length"]) for subsegment in subsegments) == (
+        pytest.approx(1200.0)
+    )
 
 
 def test_metric_display_outputs_convert_speeds_and_follower_density() -> None:
