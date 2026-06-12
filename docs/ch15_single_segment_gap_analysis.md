@@ -135,6 +135,15 @@ saved calculation/audit context without changing the calculation path.
 Unsupported combinations remain guarded. Manual Single Segment Save/Load using
 `project_type = manual_single_segment` remains supported.
 
+Export/reporting v0.1 adds CSV, lightweight Excel `.xlsx`, copy-ready Markdown,
+and report-friendly JSON for successful Manual Single Segment and guarded
+Manual Facility v0.1 calculations. Reports use the currently selected UI unit
+system with explicit unit labels and include assumptions, warnings,
+limitations, segment rows where applicable, and an audit/source-reference
+summary. The export layer formats the existing result and does not re-run or
+change calculation formulas, Step 3-10 behavior, guardrails, or supported
+methodology. PDF and DOCX export are not implemented.
+
 The Phase 4
 [Chapter 15 Vertical Fixture Inventory](ch15_vertical_fixture_inventory.md)
 now records the available standalone and facility-only evidence and the

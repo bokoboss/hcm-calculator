@@ -87,13 +87,16 @@ The single-page app provides three modes:
   conversion occurs only in the UI/manual adapter; the calculation engine keeps
   its existing imperial-native contract. The result view displays selected
   metrics in the chosen unit system and preserves the full imperial-native
-  engine result in the downloadable JSON.
+  engine result in the downloadable JSON. After a successful calculation, an
+  **Export / Report** section provides CSV, Excel `.xlsx`, Markdown, and
+  report-friendly JSON downloads.
 - **Validated examples / QA** loads `references/example_inputs.yaml` and preserves
   Example Problems 1 through 4 validation behavior.
 - **Manual Facility Calculator v0.1** is a limited template-backed facility
   workflow anchored to validated Example Problems 3 and 4. It provides a
   guarded segment table, facility and segment results, warnings, assumptions,
-  audit details, downloadable result JSON, and guarded Facility Project
+  audit details, CSV/Excel/Markdown/report JSON exports, downloadable result
+  JSON, and guarded Facility Project
   Save/Load JSON using `project_type = manual_facility_v0`. Segment sequence, type,
   terrain/curve context, passing-lane placement, and downstream adjustment
   context remain controlled by the selected template.
@@ -124,6 +127,10 @@ Limitations:
   general facility support; unsupported combinations remain guarded.
 - Existing Manual Single Segment Save/Load using
   `project_type = manual_single_segment` remains supported.
+- Export/reporting v0.1 supports Manual Single Segment and guarded Manual
+  Facility v0.1 results only. Exports use the selected UI display unit system,
+  label units explicitly, include workflow limitations, and format the existing
+  calculated result without changing or re-running calculation behavior.
 - No general mountainous grade table; unsupported grade/length combinations are rejected
 - No downstream corridor effects for single passing-lane mode
 - Passing Lane calculation remains limited to the engine's validated Class 1, 8% heavy-vehicle path
@@ -131,7 +138,8 @@ Limitations:
   segment types, terrain combinations, and subsegment structures are rejected.
   Curve setup generation does not expand this single-segment validated scope
 - No Multilane Highway yet
-- No report export yet; full result JSON download is available
+- PDF and DOCX report export are not implemented.
+- Export availability does not imply broader Chapter 15 methodology support.
 
 ## Repository Layout
 

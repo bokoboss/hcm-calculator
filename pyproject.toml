@@ -13,6 +13,7 @@ authors = [
   { name = "bokoboss" }
 ]
 dependencies = [
+  "openpyxl>=3.1",
   "pydantic>=2.7",
   "PyYAML>=6.0"
 ]
