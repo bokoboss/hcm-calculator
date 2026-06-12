@@ -120,6 +120,9 @@ def apply_ui_styles() -> None:
             font-size: 0.92rem;
             margin-top: 0.3rem;
         }
+        .stMainBlockContainer {
+            padding-top: 1.4rem;
+        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -589,11 +592,10 @@ def render_manual_single_segment_calculator() -> None:
     if generation_message is not None:
         st.success(generation_message)
 
-    worksheet_column, result_column = st.columns([2.15, 1.15], gap="large")
+    worksheet_column, result_column = st.columns([1.55, 1.0], gap="large")
 
     with worksheet_column:
-        st.caption("Manual single segment")
-        setup_column, schematic_column = st.columns([1.25, 0.9], gap="medium")
+        setup_column, schematic_column = st.columns([1.25, 1.0], gap="medium")
         with setup_column:
             st.markdown("**Setup**")
             setup_row_one = st.columns(2)
@@ -640,7 +642,7 @@ def render_manual_single_segment_calculator() -> None:
             schematic_path = get_segment_schematic_path(segment_type)
             if schematic_path is not None:
                 st.image(schematic_path, width="stretch")
-            st.caption("Schematic updates with the selected segment type.")
+            st.caption("Schematic updates with segment type.")
 
         for name, default in defaults.items():
             if name == "heavy_vehicle_percent" and segment_type == "passing_lane":
@@ -649,12 +651,11 @@ def render_manual_single_segment_calculator() -> None:
 
         metric = unit_system == "metric"
         with st.form(f"manual_single_segment_{unit_system}"):
-            form_input_column, form_advanced_column = st.columns(
-                [1.25, 0.9], gap="medium"
-            )
+            form_input_column = st.container()
+            form_advanced_column = st.container()
             with form_input_column:
                 st.markdown("**Geometry**")
-                geometry_row_one = st.columns(2)
+                geometry_row_one = st.columns(3)
                 segment_length = geometry_row_one[0].number_input(
                     f"Segment length ({'km' if metric else 'mi'})",
                     min_value=0.01,
@@ -665,34 +666,33 @@ def render_manual_single_segment_calculator() -> None:
                     min_value=1.0,
                     key=f"manual_posted_speed_{unit_system}",
                 )
-                geometry_row_two = st.columns(2)
-                lane_width = geometry_row_two[0].number_input(
+                lane_width = geometry_row_one[2].number_input(
                     f"Lane width ({'m' if metric else 'ft'})",
                     min_value=0.01,
                     key=f"manual_lane_width_{unit_system}",
                 )
-                shoulder_width = geometry_row_two[1].number_input(
+                geometry_row_two = st.columns(3)
+                shoulder_width = geometry_row_two[0].number_input(
                     f"Shoulder width ({'m' if metric else 'ft'})",
                     min_value=0.0,
                     key=f"manual_shoulder_width_{unit_system}",
                 )
-                geometry_row_three = st.columns(2)
-                access_density = geometry_row_three[0].number_input(
+                access_density = geometry_row_two[1].number_input(
                     f"Access point density (points/{'km' if metric else 'mi'})",
                     min_value=0.0,
                     key=f"manual_access_point_density_{unit_system}",
                 )
                 if terrain_type == "mountainous":
-                    grade_percent = geometry_row_three[1].number_input(
+                    grade_percent = geometry_row_two[2].number_input(
                         "Grade (%)",
                         key=f"manual_grade_percent_{unit_system}",
                     )
-                    geometry_row_three[1].caption("Validated paths only.")
+                    geometry_row_two[2].caption("Validated paths only.")
                 else:
                     grade_percent = 0.0
 
                 st.markdown("**Traffic**")
-                traffic_row_one = st.columns(2)
+                traffic_row_one = st.columns(3)
                 analysis_volume = traffic_row_one[0].number_input(
                     "Analysis-direction volume (veh/h)",
                     min_value=0.0,
@@ -704,8 +704,7 @@ def render_manual_single_segment_calculator() -> None:
                     max_value=1.0,
                     key=f"manual_peak_hour_factor_{unit_system}",
                 )
-                traffic_row_two = st.columns(2)
-                heavy_vehicle_percent = traffic_row_two[0].number_input(
+                heavy_vehicle_percent = traffic_row_one[2].number_input(
                     "Heavy vehicles (%)",
                     min_value=0.0,
                     max_value=100.0,
@@ -713,7 +712,8 @@ def render_manual_single_segment_calculator() -> None:
                 )
                 opposing_volume = None
                 if segment_type == "passing_zone":
-                    opposing_volume = traffic_row_two[1].number_input(
+                    traffic_row_two = st.columns(3)
+                    opposing_volume = traffic_row_two[0].number_input(
                         "Opposing-direction volume (veh/h)",
                         min_value=1.0,
                         help=(
@@ -728,16 +728,12 @@ def render_manual_single_segment_calculator() -> None:
                         "are not included here."
                     )
 
-                run_manual = st.form_submit_button(
-                    "Run calculation", type="primary", use_container_width=True
-                )
-
             with form_advanced_column:
-                st.markdown("**Advanced / Optional**")
                 horizontal_subsegments: list[dict[str, Any]] = []
                 curve_setup: dict[str, Any] | None = None
                 generate_curve = False
                 if horizontal_alignment == "horizontal_curves":
+                    st.markdown("**Advanced / Optional**")
                     setup_defaults = curve_setup_defaults(unit_system, segment_length)
                     for name, default in setup_defaults.items():
                         st.session_state.setdefault(
@@ -844,6 +840,10 @@ def render_manual_single_segment_calculator() -> None:
                             },
                         )
 
+            run_manual = st.form_submit_button(
+                "Run calculation", type="primary", use_container_width=True
+            )
+
         values = {
             "unit_system": unit_system,
             "segment_type": segment_type,
@@ -882,13 +882,13 @@ def render_manual_single_segment_calculator() -> None:
                     f"Generated {len(generated_subsegments)} editable curve subsegments."
                 )
                 st.rerun()
-        project_spacer, project_column = st.columns([1.25, 0.9], gap="medium")
-        with project_column:
-            render_manual_project_file_controls(values)
-            st.caption(
-                "Locked assumptions: no upstream passing lane; single segment only. "
-                "Horizontal curves are limited to the validated Example Problem 2 path."
-            )
+        if horizontal_alignment == "straight":
+            st.markdown("**Advanced / Optional**")
+        render_manual_project_file_controls(values)
+        st.caption(
+            "Locked assumptions: no upstream passing lane; single segment only. "
+            "Horizontal curves are limited to the validated Example Problem 2 path."
+        )
 
     if run_manual:
         st.session_state.pop("manual_segment_result", None)
@@ -906,6 +906,7 @@ def render_manual_single_segment_calculator() -> None:
             )
 
     with result_column:
+        st.markdown("**Results**")
         stored_result = st.session_state.get("manual_segment_result")
         audit_record = st.session_state.get("manual_segment_audit")
         stored_error = st.session_state.get("manual_segment_error")
@@ -1067,9 +1068,9 @@ def render_manual_result(
 
     supporting_metrics = list(metrics.items())
     for index, (name, metric) in enumerate(supporting_metrics):
-        if index % 3 == 0:
-            metric_columns = st.columns(3)
-        metric_columns[index % 3].metric(
+        if index % 2 == 0:
+            metric_columns = st.columns(2)
+        metric_columns[index % 2].metric(
             metric["label"], format_display_metric(name, metric, unit_system)
         )
 
@@ -1213,7 +1214,7 @@ def main() -> None:
 
     st.set_page_config(page_title="HCM Calculator", layout="wide")
     apply_ui_styles()
-    header_content, header_mode = st.columns([2, 2])
+    header_content, header_mode = st.columns([1.8, 1.0])
     with header_content:
         st.markdown("**HCM Calculator** — Chapter 15 Two-Lane Highway")
     with header_mode:
@@ -1223,7 +1224,7 @@ def main() -> None:
             horizontal=True,
             label_visibility="collapsed",
         )
-        st.caption(SCOPE_NOTICE)
+    st.caption(SCOPE_NOTICE)
     mode = {
         "Single": "Manual single segment calculator",
         "Facility": "Manual Facility Calculator v0.1",
