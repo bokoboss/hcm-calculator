@@ -18,11 +18,11 @@ from hcmcalc.core import (
 from hcmcalc.methods.two_lane_highway_coefficients import (
     HEAVY_VEHICLE_COEFFICIENTS,
     HEAVY_VEHICLE_SPEED_COEFFICIENTS,
+    HORIZONTAL_ALIGNMENT_CLASS_ROWS,
     HORIZONTAL_CURVE_BFFS_SLOPE,
     HORIZONTAL_CURVE_CLASS_SPEED_INTERCEPT,
     HORIZONTAL_CURVE_CLASS_SPEED_SLOPE,
     HORIZONTAL_CURVE_HEAVY_VEHICLE_COEFFICIENT,
-    HORIZONTAL_CURVE_SPEED_COEFFICIENTS,
     PASSING_LANE_PF_25_CAPACITY_COEFFICIENTS,
     PASSING_LANE_PF_CAPACITY_COEFFICIENTS,
     PASSING_LANE_SPEED_POWER_COEFFICIENTS,
@@ -84,6 +84,16 @@ class AverageSpeedEstimate:
     segment_length_coefficient_b3: float
     heavy_vehicle_speed_coefficient_b4: float
     source_references: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class HorizontalAlignmentClassification:
+    """Auditable HCM Exhibit 15-22 horizontal alignment classification."""
+
+    horizontal_class: int
+    radius_bin: str
+    superelevation_bin: str
+    source_reference: str = "HCM7 Exhibit 15-22"
 
 
 @dataclass(frozen=True)
@@ -558,13 +568,13 @@ def _calculate_example_problem_2_result(
         subsegments=parsed_inputs.horizontal_alignment_subsegments,
         base_free_flow_speed_mph=float(base["base_free_flow_speed_mph"]),
         heavy_vehicle_percent=parsed_inputs.heavy_vehicle_percent,
-        lane_shoulder_adjustment_mph=float(base["lane_shoulder_adjustment_mph"]),
-        access_point_adjustment_mph=float(base["access_point_adjustment_mph"]),
         demand_flow_rate_veh_h=float(base["demand_flow_rate_veh_h"]),
-        average_speed_power_coefficient=float(base["average_speed_power_coefficient"]),
         tangent_average_speed_mph=float(base["average_speed_mph"]),
     )
-    adjusted_speed = length_weighted_adjusted_average_speed(subsegment_results)
+    adjusted_speed = length_weighted_adjusted_average_speed(
+        subsegment_results,
+        parsed_inputs.segment_length_mi * 5280.0,
+    )
     outputs = dict(base)
     outputs.update(
         {
@@ -572,6 +582,14 @@ def _calculate_example_problem_2_result(
             "tangent_average_speed_mph": base["average_speed_mph"],
             "horizontal_curve_subsegments": subsegment_results,
             "adjusted_average_speed_mph": adjusted_speed,
+            "horizontal_curve_adjustment_applied": True,
+            "horizontal_curve_subsegment_count": len(subsegment_results),
+            "horizontal_classification_source_reference": "HCM7 Exhibit 15-22",
+            "horizontal_curve_speed_source_reference": (
+                "HCM Eq. 15-12 through Eq. 15-15"
+            ),
+            "weighted_average_speed": adjusted_speed,
+            "weighted_average_speed_source_reference": "HCM Eq. 15-16",
         }
     )
 
@@ -599,6 +617,23 @@ def _calculate_example_problem_2_result(
             index = subsegment["index"]
             intermediate_values.extend(
                 [
+                    IntermediateValue(
+                        f"subsegment_{index}_horizontal_class",
+                        subsegment["horizontal_class"],
+                        source=subsegment[
+                            "horizontal_classification_source_reference"
+                        ],
+                    ),
+                    IntermediateValue(
+                        f"subsegment_{index}_horizontal_class_radius_bin",
+                        subsegment["matched_radius_bin"],
+                        source="HCM7 Exhibit 15-22",
+                    ),
+                    IntermediateValue(
+                        f"subsegment_{index}_horizontal_class_superelevation_bin",
+                        subsegment["matched_superelevation_bin"],
+                        source="HCM7 Exhibit 15-22",
+                    ),
                     IntermediateValue(
                         f"subsegment_{index}_horizontal_curve_bffs",
                         subsegment["base_free_flow_speed_mph"],
@@ -832,13 +867,13 @@ def _calculate_facility_segment(
             segment.horizontal_alignment_subsegments,
             bffs,
             segment.heavy_vehicle_percent,
-            f_ls,
-            f_a,
             demand,
-            speed_p,
             speed,
         )
-        speed = length_weighted_adjusted_average_speed(horizontal_results)
+        speed = length_weighted_adjusted_average_speed(
+            horizontal_results,
+            segment.segment_length_mi * 5280.0,
+        )
     step6 = estimate_percent_followers(
         segment_type=segment.segment_type,
         vertical_class=vertical_class,
@@ -880,6 +915,18 @@ def _calculate_facility_segment(
         "average_speed_source_reference": "; ".join(step5.source_references),
         "average_speed_mph": speed,
         "horizontal_curve_subsegments": horizontal_results,
+        "horizontal_curve_adjustment_applied": bool(horizontal_results),
+        "horizontal_curve_subsegment_count": len(horizontal_results),
+        "horizontal_classification_source_reference": (
+            "HCM7 Exhibit 15-22" if horizontal_results else None
+        ),
+        "horizontal_curve_speed_source_reference": (
+            "HCM Eq. 15-12 through Eq. 15-15" if horizontal_results else None
+        ),
+        "weighted_average_speed": speed if horizontal_results else None,
+        "weighted_average_speed_source_reference": (
+            "HCM Eq. 15-16" if horizontal_results else None
+        ),
         "percent_followers_at_capacity": pf_cap,
         "percent_followers_at_25_percent_capacity": pf_25_cap,
         "percent_followers_slope_coefficient": pf_m,
@@ -1402,6 +1449,8 @@ def _parse_facility_segment(
 def _parse_horizontal_alignment_subsegment(
     subsegment: dict[str, Any],
 ) -> HorizontalAlignmentSubsegment:
+    if subsegment.get("length_ft") is None:
+        raise HCMCalcError("Horizontal subsegment requires length_ft.")
     return HorizontalAlignmentSubsegment(
         subsegment_type=str(subsegment["type"]),
         length_ft=float(subsegment["length_ft"]),
@@ -1461,8 +1510,10 @@ def _validate_example_problem_2_scope(inputs: TwoLaneExampleProblem2Inputs) -> N
 
     total_length_ft = 0.0
     for subsegment in inputs.horizontal_alignment_subsegments:
-        if subsegment.length_ft <= 0:
-            raise HCMCalcError("Horizontal subsegment length must be positive.")
+        if not isfinite(subsegment.length_ft) or subsegment.length_ft <= 0:
+            raise HCMCalcError(
+                "Horizontal subsegment length must be a positive finite value."
+            )
         total_length_ft += subsegment.length_ft
         if subsegment.subsegment_type == "horizontal_curve":
             _validate_horizontal_curve_subsegment(subsegment)
@@ -1548,6 +1599,10 @@ def _validate_facility_example_scope(inputs: TwoLaneExampleProblem3Inputs) -> No
                 "Example Problem 3 only supplies opposing flow for Passing Zone segments."
             )
         for subsegment in segment.horizontal_alignment_subsegments:
+            if not isfinite(subsegment.length_ft) or subsegment.length_ft <= 0.0:
+                raise HCMCalcError(
+                    "Horizontal subsegment length must be a positive finite value."
+                )
             if subsegment.subsegment_type == "horizontal_curve":
                 _validate_horizontal_curve_subsegment(subsegment)
         if segment.horizontal_alignment_subsegments:
@@ -1690,8 +1745,10 @@ def _validate_manual_horizontal_curve_scope(
     total_length_ft = 0.0
     curve_count = 0
     for subsegment in segment.horizontal_alignment_subsegments:
-        if subsegment.length_ft <= 0.0:
-            raise HCMCalcError("Horizontal subsegment length must be positive.")
+        if not isfinite(subsegment.length_ft) or subsegment.length_ft <= 0.0:
+            raise HCMCalcError(
+                "Horizontal subsegment length must be a positive finite value."
+            )
         total_length_ft += subsegment.length_ft
         if subsegment.subsegment_type == "horizontal_curve":
             curve_count += 1
@@ -1720,8 +1777,17 @@ def _validate_horizontal_curve_subsegment(
         raise HCMCalcError("Horizontal curve requires radius_ft.")
     if subsegment.radius_ft <= 0.0:
         raise HCMCalcError("Horizontal curve radius_ft must be positive.")
-    if subsegment.horizontal_class not in HORIZONTAL_CURVE_SPEED_COEFFICIENTS:
-        raise HCMCalcError("Horizontal curve class must be 1 through 5.")
+    classification = classify_horizontal_alignment(
+        subsegment.radius_ft,
+        subsegment.superelevation_percent,
+    )
+    if (
+        subsegment.horizontal_class is not None
+        and subsegment.horizontal_class != classification.horizontal_class
+    ):
+        raise HCMCalcError(
+            "Supplied horizontal curve class does not match HCM7 Exhibit 15-22."
+        )
 
 
 def demand_flow_rate(
@@ -2240,14 +2306,65 @@ def _validate_step5_common_inputs(
         raise HCMCalcError("Step 5 opposing flow rate must be a finite nonnegative value.")
 
 
+def classify_horizontal_alignment(
+    radius_ft: float | None,
+    superelevation_percent: float | None,
+) -> HorizontalAlignmentClassification:
+    """Classify a horizontal curve using HCM7 Exhibit 15-22."""
+
+    if radius_ft is None:
+        raise HCMCalcError("Horizontal curve requires radius_ft.")
+    if not isfinite(radius_ft) or radius_ft <= 0.0:
+        raise HCMCalcError("Horizontal curve radius_ft must be a positive finite value.")
+    if superelevation_percent is None:
+        raise HCMCalcError("Horizontal curve requires superelevation_percent.")
+    if not isfinite(superelevation_percent) or superelevation_percent < 0.0:
+        raise HCMCalcError(
+            "Horizontal curve superelevation_percent must be a nonnegative finite value."
+        )
+
+    # Unit conversion can place an exact exhibit boundary a few ulps below its
+    # intended imperial value (for example, 137.16 m -> 449.99999999999994 ft).
+    lookup_radius_ft = round(radius_ft, 9)
+    superelevation_index = min(int(superelevation_percent), 10)
+    if superelevation_index == 0:
+        superelevation_bin = "<1%"
+    elif superelevation_index < 10:
+        superelevation_bin = (
+            f">={superelevation_index} to <{superelevation_index + 1}%"
+        )
+    else:
+        superelevation_bin = ">=10%"
+    for lower_radius, upper_radius, radius_bin, classes in HORIZONTAL_ALIGNMENT_CLASS_ROWS:
+        if lower_radius <= lookup_radius_ft < upper_radius:
+            horizontal_class = classes[superelevation_index]
+            if horizontal_class is None:
+                raise HCMCalcError(
+                    "Unsupported radius/superelevation combination in HCM7 Exhibit "
+                    "15-22; the exhibit treats this curve as a tangent."
+                )
+            return HorizontalAlignmentClassification(
+                horizontal_class=horizontal_class,
+                radius_bin=radius_bin,
+                superelevation_bin=superelevation_bin,
+            )
+    raise HCMCalcError("Unsupported radius/superelevation combination.")
+
+
 def horizontal_curve_base_free_flow_speed(
-    base_free_flow_speed_mph: float,
+    base_free_flow_speed_mph: float | None,
     horizontal_class: int,
 ) -> float:
     """HCM Eq. 15-14 horizontal curve BFFS."""
 
-    if horizontal_class not in HORIZONTAL_CURVE_SPEED_COEFFICIENTS:
+    if horizontal_class not in range(1, 6):
         raise HCMCalcError("Horizontal curve class must be 1 through 5.")
+    if (
+        base_free_flow_speed_mph is None
+        or not isfinite(base_free_flow_speed_mph)
+        or base_free_flow_speed_mph <= 0.0
+    ):
+        raise HCMCalcError("Tangent base free-flow speed must be positive and finite.")
     class_speed = (
         HORIZONTAL_CURVE_CLASS_SPEED_INTERCEPT
         + HORIZONTAL_CURVE_BFFS_SLOPE * base_free_flow_speed_mph
@@ -2257,44 +2374,77 @@ def horizontal_curve_base_free_flow_speed(
 
 
 def horizontal_curve_free_flow_speed(
-    horizontal_curve_base_free_flow_speed_mph: float,
-    heavy_vehicle_percent: float,
-    lane_shoulder_adjustment_mph: float,
-    access_point_adjustment_mph: float,
+    horizontal_curve_base_free_flow_speed_mph: float | None,
+    heavy_vehicle_percent: float | None,
 ) -> float:
     """HCM Eq. 15-13 horizontal curve FFS."""
 
-    return (
-        horizontal_curve_base_free_flow_speed_mph
-        - HORIZONTAL_CURVE_HEAVY_VEHICLE_COEFFICIENT * heavy_vehicle_percent
-        - lane_shoulder_adjustment_mph
-        - access_point_adjustment_mph
+    if (
+        horizontal_curve_base_free_flow_speed_mph is None
+        or not isfinite(horizontal_curve_base_free_flow_speed_mph)
+    ):
+        raise HCMCalcError("Horizontal curve BFFS must be finite.")
+    if (
+        heavy_vehicle_percent is None
+        or not isfinite(heavy_vehicle_percent)
+        or not 0.0 <= heavy_vehicle_percent <= 100.0
+    ):
+        raise HCMCalcError("Heavy-vehicle percentage must be between 0 and 100.")
+    return horizontal_curve_base_free_flow_speed_mph - (
+        HORIZONTAL_CURVE_HEAVY_VEHICLE_COEFFICIENT * heavy_vehicle_percent
     )
 
 
-def horizontal_curve_speed_coefficient_m(horizontal_class: int) -> float:
+def horizontal_curve_speed_coefficient_m(
+    horizontal_curve_free_flow_speed_mph: float | None,
+    horizontal_class: int,
+) -> float:
     """HCM Eq. 15-15 horizontal curve speed coefficient."""
 
-    if horizontal_class not in HORIZONTAL_CURVE_SPEED_COEFFICIENTS:
+    if horizontal_class not in range(1, 6):
         raise HCMCalcError("Horizontal curve class must be 1 through 5.")
-    return HORIZONTAL_CURVE_SPEED_COEFFICIENTS[horizontal_class]
+    if (
+        horizontal_curve_free_flow_speed_mph is None
+        or not isfinite(horizontal_curve_free_flow_speed_mph)
+        or horizontal_curve_free_flow_speed_mph <= 0.0
+    ):
+        raise HCMCalcError("Horizontal curve FFS must be positive and finite.")
+    modeled = (
+        -25.8993
+        - 0.7756 * horizontal_curve_free_flow_speed_mph
+        + 10.6294 * sqrt(horizontal_curve_free_flow_speed_mph)
+        + 2.4766 * horizontal_class
+        - 9.8238 * sqrt(horizontal_class)
+    )
+    return max(0.277, modeled)
 
 
 def horizontal_curve_average_speed(
-    horizontal_curve_free_flow_speed_mph: float,
-    demand_flow_rate_veh_h: float,
+    horizontal_curve_free_flow_speed_mph: float | None,
+    demand_flow_rate_veh_h: float | None,
     speed_coefficient_m: float,
-    average_speed_power_coefficient: float,
-    tangent_average_speed_mph: float,
+    tangent_average_speed_mph: float | None,
 ) -> float:
     """HCM Eq. 15-12 horizontal curve average speed."""
 
-    if demand_flow_rate_veh_h <= 100.0:
-        curve_speed = horizontal_curve_free_flow_speed_mph
-    else:
-        curve_speed = horizontal_curve_free_flow_speed_mph - speed_coefficient_m * (
-            demand_flow_rate_veh_h / 1000.0 - 0.1
-        ) ** average_speed_power_coefficient
+    if (
+        demand_flow_rate_veh_h is None
+        or not isfinite(demand_flow_rate_veh_h)
+        or demand_flow_rate_veh_h < 100.0
+    ):
+        raise HCMCalcError(
+            "Horizontal curve demand flow must be finite and at least 100 veh/h."
+        )
+    if tangent_average_speed_mph is None or not isfinite(tangent_average_speed_mph):
+        raise HCMCalcError("Tangent comparison speed must be finite.")
+    if (
+        horizontal_curve_free_flow_speed_mph is None
+        or not isfinite(horizontal_curve_free_flow_speed_mph)
+    ):
+        raise HCMCalcError("Horizontal curve FFS must be finite.")
+    curve_speed = horizontal_curve_free_flow_speed_mph - speed_coefficient_m * sqrt(
+        demand_flow_rate_veh_h / 1000.0 - 0.1
+    )
     return min(tangent_average_speed_mph, curve_speed)
 
 
@@ -2302,10 +2452,7 @@ def horizontal_curve_subsegment_speeds(
     subsegments: tuple[HorizontalAlignmentSubsegment, ...],
     base_free_flow_speed_mph: float,
     heavy_vehicle_percent: float,
-    lane_shoulder_adjustment_mph: float,
-    access_point_adjustment_mph: float,
     demand_flow_rate_veh_h: float,
-    average_speed_power_coefficient: float,
     tangent_average_speed_mph: float,
 ) -> list[dict[str, float | int | str | None]]:
     """Calculate tangent and curve subsegment speeds for HCM Eq. 15-16."""
@@ -2320,6 +2467,10 @@ def horizontal_curve_subsegment_speeds(
             "radius_ft": subsegment.radius_ft,
             "central_angle_deg": subsegment.central_angle_deg,
             "horizontal_class": subsegment.horizontal_class,
+            "horizontal_classification_source_reference": None,
+            "matched_radius_bin": None,
+            "matched_superelevation_bin": None,
+            "tangent_comparison_speed": tangent_average_speed_mph,
         }
         if subsegment.subsegment_type == "tangent":
             result.update(
@@ -2328,10 +2479,25 @@ def horizontal_curve_subsegment_speeds(
                     "free_flow_speed_mph": None,
                     "speed_coefficient_m": None,
                     "average_speed_mph": tangent_average_speed_mph,
+                    "horizontal_curve_bffs": None,
+                    "horizontal_curve_ffs": None,
+                    "horizontal_curve_speed_slope_coefficient_m": None,
+                    "horizontal_curve_subsegment_speed": None,
                 }
             )
         else:
-            horizontal_class = _required_horizontal_class(subsegment)
+            classification = classify_horizontal_alignment(
+                subsegment.radius_ft,
+                subsegment.superelevation_percent,
+            )
+            horizontal_class = classification.horizontal_class
+            if (
+                subsegment.horizontal_class is not None
+                and subsegment.horizontal_class != horizontal_class
+            ):
+                raise HCMCalcError(
+                    "Supplied horizontal curve class does not match HCM7 Exhibit 15-22."
+                )
             curve_bffs = horizontal_curve_base_free_flow_speed(
                 base_free_flow_speed_mph,
                 horizontal_class,
@@ -2339,43 +2505,53 @@ def horizontal_curve_subsegment_speeds(
             curve_ffs = horizontal_curve_free_flow_speed(
                 horizontal_curve_base_free_flow_speed_mph=curve_bffs,
                 heavy_vehicle_percent=heavy_vehicle_percent,
-                lane_shoulder_adjustment_mph=lane_shoulder_adjustment_mph,
-                access_point_adjustment_mph=access_point_adjustment_mph,
             )
-            curve_m = horizontal_curve_speed_coefficient_m(horizontal_class)
+            curve_m = horizontal_curve_speed_coefficient_m(curve_ffs, horizontal_class)
             curve_speed = horizontal_curve_average_speed(
                 horizontal_curve_free_flow_speed_mph=curve_ffs,
                 demand_flow_rate_veh_h=demand_flow_rate_veh_h,
                 speed_coefficient_m=curve_m,
-                average_speed_power_coefficient=average_speed_power_coefficient,
                 tangent_average_speed_mph=tangent_average_speed_mph,
             )
             result.update(
                 {
+                    "horizontal_class": horizontal_class,
+                    "horizontal_classification_source_reference": (
+                        classification.source_reference
+                    ),
+                    "matched_radius_bin": classification.radius_bin,
+                    "matched_superelevation_bin": classification.superelevation_bin,
                     "base_free_flow_speed_mph": curve_bffs,
                     "free_flow_speed_mph": curve_ffs,
                     "speed_coefficient_m": curve_m,
                     "average_speed_mph": curve_speed,
+                    "horizontal_curve_bffs": curve_bffs,
+                    "horizontal_curve_ffs": curve_ffs,
+                    "horizontal_curve_speed_slope_coefficient_m": curve_m,
+                    "horizontal_curve_subsegment_speed": curve_speed,
+                    "horizontal_curve_speed_source_reference": (
+                        "HCM Eq. 15-12 through Eq. 15-15"
+                    ),
                 }
             )
         results.append(result)
     return results
 
 
-def _required_horizontal_class(subsegment: HorizontalAlignmentSubsegment) -> int:
-    if subsegment.horizontal_class is None:
-        raise HCMCalcError("Horizontal curve class must be 1 through 5.")
-    return subsegment.horizontal_class
-
-
 def length_weighted_adjusted_average_speed(
     subsegment_results: list[dict[str, float | int | str | None]],
+    segment_length_ft: float | None = None,
 ) -> float:
     """HCM Eq. 15-16 segment speed weighted by subsegment length."""
 
-    total_length = sum(float(subsegment["length_ft"]) for subsegment in subsegment_results)
+    subsegment_length = sum(
+        float(subsegment["length_ft"]) for subsegment in subsegment_results
+    )
+    total_length = subsegment_length if segment_length_ft is None else segment_length_ft
     if total_length <= 0:
         raise HCMCalcError("Total subsegment length must be positive.")
+    if abs(subsegment_length - total_length) > 1.0:
+        raise HCMCalcError("Horizontal subsegment lengths must match the segment length.")
     speed_distance_sum = sum(
         float(subsegment["length_ft"]) * float(subsegment["average_speed_mph"])
         for subsegment in subsegment_results

@@ -335,11 +335,26 @@ HORIZONTAL_CURVE_CLASS_SPEED_SLOPE = 6.868
 # HCM Eq. 15-13 heavy-vehicle adjustment coefficient for horizontal curves.
 HORIZONTAL_CURVE_HEAVY_VEHICLE_COEFFICIENT = 0.0255
 
-# HCM Eq. 15-15 curve speed coefficients by horizontal class.
-HORIZONTAL_CURVE_SPEED_COEFFICIENTS = {
-    1: 2.8036,
-    2: 1.4905,
-    3: 0.9145,
-    4: 0.4081,
-    5: 0.2770,
-}
+# HCM Exhibit 15-22 horizontal alignment classes. Each row contains the
+# inclusive lower radius bound, exclusive upper bound, display label, and
+# classes for superelevation bins <1, 1-<2, ..., 9-<10, and >=10 percent.
+# None represents an exhibit dash: the curve does not restrict speed.
+HORIZONTAL_ALIGNMENT_CLASS_ROWS = (
+    (0.0, 300.0, "<300 ft", (5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5)),
+    (300.0, 450.0, "300-449 ft", (4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4)),
+    (450.0, 600.0, "450-599 ft", (4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3)),
+    (600.0, 750.0, "600-749 ft", (3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2)),
+    (750.0, 900.0, "750-899 ft", (2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2)),
+    (900.0, 1050.0, "900-1,049 ft", (2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1)),
+    (1050.0, 1200.0, "1,050-1,199 ft", (2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1)),
+    (1200.0, 1350.0, "1,200-1,349 ft", (2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1)),
+    (1350.0, 1500.0, "1,350-1,499 ft", (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, None)),
+    (1500.0, 1650.0, "1,500-1,649 ft", (1, 1, 1, 1, 1, 1, 1, 1, None, None, None)),
+    (1650.0, 1800.0, "1,650-1,799 ft", (1, 1, 1, 1, 1, 1, None, None, None, None, None)),
+    (1800.0, 1950.0, "1,800-1,949 ft", (1, 1, 1, 1, 1, None, None, None, None, None, None)),
+    (1950.0, 2100.0, "1,950-2,099 ft", (1, 1, 1, 1, None, None, None, None, None, None, None)),
+    (2100.0, 2250.0, "2,100-2,249 ft", (1, 1, 1, None, None, None, None, None, None, None, None)),
+    (2250.0, 2400.0, "2,250-2,399 ft", (1, 1, None, None, None, None, None, None, None, None, None)),
+    (2400.0, 2550.0, "2,400-2,549 ft", (1, None, None, None, None, None, None, None, None, None, None)),
+    (2550.0, float("inf"), ">=2,550 ft", (None,) * 11),
+)
