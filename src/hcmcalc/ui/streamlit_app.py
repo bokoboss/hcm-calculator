@@ -33,6 +33,12 @@ from hcmcalc.ui.project_io import (
     load_manual_project_json,
 )
 from hcmcalc.ui.result_view import compact_rows, format_display_metric, los_colors
+from hcmcalc.ui.reporting import (
+    ReportingError,
+    build_report,
+    export_report,
+    report_filename,
+)
 from hcmcalc.ui.schematics import get_segment_schematic_path
 from hcmcalc.ui.units import (
     DEFAULT_UNIT_SYSTEM,
@@ -441,6 +447,16 @@ def render_manual_facility_calculator() -> None:
         )
     with st.expander("Audit / details"):
         st.json(audit)
+    render_export_report_section(
+        "manual_facility_v0",
+        result_data,
+        unit_system,
+        inputs=audit.get("facility_inputs", {}).get("segments", [])
+        if isinstance(audit, dict)
+        else [],
+        audit_record=audit,
+        template_id=template_id,
+    )
     full_result = {
         "calculation_type": "manual_facility_v0",
         "template_id": template_id,
@@ -1074,6 +1090,15 @@ def render_manual_result(
         )
 
     render_audit_record(audit_record)
+    render_export_report_section(
+        "manual_single_segment",
+        result_data,
+        unit_system,
+        inputs=audit_record.get("user_inputs", {})
+        if isinstance(audit_record, dict)
+        else {},
+        audit_record=audit_record,
+    )
 
     full_result = {
         "unit_system": unit_system,
@@ -1094,6 +1119,67 @@ def render_manual_result(
             mime="application/json",
             use_container_width=True,
         )
+
+
+def render_export_report_section(
+    calculation_type: str,
+    result_data: dict[str, Any],
+    unit_system: str,
+    *,
+    inputs: dict[str, Any] | list[dict[str, Any]],
+    audit_record: dict[str, Any] | None,
+    template_id: str | None = None,
+) -> None:
+    """Render compact report downloads from the existing calculated result."""
+
+    try:
+        report = build_report(
+            calculation_type,
+            result_data,
+            unit_system,
+            inputs=inputs,
+            audit_record=audit_record,
+            template_id=template_id,
+        )
+        downloads = (
+            ("Download CSV", "csv", "csv", "text/csv"),
+            (
+                "Download Excel",
+                "xlsx",
+                "xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ),
+            ("Download Markdown", "markdown", "md", "text/markdown"),
+            ("Download Report JSON", "json", "json", "application/json"),
+        )
+        rendered = [
+            (
+                label,
+                export_report(report, export_format),
+                report_filename(report, extension),
+                mime,
+            )
+            for label, export_format, extension, mime in downloads
+        ]
+    except ReportingError as exc:
+        st.error(f"Report export unavailable: {exc}")
+        return
+
+    with st.expander("Export / Report"):
+        st.caption(
+            "Exports reflect this calculated result in the selected display unit "
+            "system. They do not broaden methodology support."
+        )
+        columns = st.columns(2)
+        for index, (label, data, filename, mime) in enumerate(rendered):
+            columns[index % 2].download_button(
+                label,
+                data=data,
+                file_name=filename,
+                mime=mime,
+                use_container_width=True,
+                key=f"{calculation_type}_{filename}",
+            )
 
 
 def main() -> None:
