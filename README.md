@@ -93,7 +93,8 @@ The single-page app provides three modes:
 - **Manual Facility Calculator v0.1** is a limited template-backed facility
   workflow anchored to validated Example Problems 3 and 4. It provides a
   guarded segment table, facility and segment results, warnings, assumptions,
-  audit details, and downloadable result JSON. Segment sequence, type,
+  audit details, downloadable result JSON, and guarded Facility Project
+  Save/Load JSON using `project_type = manual_facility_v0`. Segment sequence, type,
   terrain/curve context, passing-lane placement, and downstream adjustment
   context remain controlled by the selected template.
 
@@ -118,8 +119,11 @@ Limitations:
 - Arbitrary segment sequences, nonlevel facilities, horizontal/nonlevel
   combinations, passing-lane placement, and downstream adjustments remain
   unsupported.
-- Facility project Save/Load is not included in v0.1; existing Manual Single
-  Segment Save/Load remains unchanged.
+- Facility Project Save/Load v0.1 is supported only for the guarded Example 3/4
+  templates using `project_type = manual_facility_v0`. It does not imply
+  general facility support; unsupported combinations remain guarded.
+- Existing Manual Single Segment Save/Load using
+  `project_type = manual_single_segment` remains supported.
 - No general mountainous grade table; unsupported grade/length combinations are rejected
 - No downstream corridor effects for single passing-lane mode
 - Passing Lane calculation remains limited to the engine's validated Class 1, 8% heavy-vehicle path

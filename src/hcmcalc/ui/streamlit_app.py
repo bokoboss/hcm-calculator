@@ -26,7 +26,9 @@ from hcmcalc.ui.manual_facility import (
 from hcmcalc.ui.manual_segment import run_manual_single_segment
 from hcmcalc.ui.project_io import (
     ProjectFileError,
+    create_manual_facility_project_json,
     create_manual_project_json,
+    load_manual_facility_project_json,
     load_manual_project_json,
 )
 from hcmcalc.ui.result_view import compact_rows, format_display_metric, los_colors
@@ -223,17 +225,26 @@ def render_validated_case_viewer() -> None:
 def render_manual_facility_calculator() -> None:
     """Render the limited Example 3/4-backed facility worksheet."""
 
-    st.warning(
-        "Limited template-backed facility workflow. This does not represent "
-        "full general Chapter 15 facility support."
+    pending_project = st.session_state.pop("manual_facility_pending_project", None)
+    if pending_project is not None:
+        _restore_manual_facility_project(pending_project)
+    load_message = st.session_state.pop("manual_facility_project_load_message", None)
+    if load_message is not None:
+        st.success(load_message)
+
+    st.info("Limited template-backed facility workflow")
+    st.caption(
+        "Validated example-based workflow only. This does not represent full "
+        "general Chapter 15 facility support; unsupported combinations remain guarded."
     )
     controls = st.columns([2, 1])
     template_options = facility_template_options()
     template_id = controls[0].selectbox(
-        "Validated example-based workflow",
+        "Facility template",
         list(template_options),
         format_func=template_options.__getitem__,
         key="facility_template_id",
+        help="Choose the validated Example Problem 3 or Example Problem 4 basis.",
     )
     unit_label = controls[1].radio(
         "Unit system",
@@ -242,6 +253,10 @@ def render_manual_facility_calculator() -> None:
         key="facility_unit_label",
     )
     unit_system = str(unit_label).lower()
+    selection_context = (template_id, unit_system)
+    if st.session_state.get("manual_facility_selection_context") != selection_context:
+        _clear_manual_facility_result_state(st.session_state)
+        st.session_state["manual_facility_selection_context"] = selection_context
 
     try:
         template = load_facility_template(template_id, unit_system)
@@ -255,14 +270,18 @@ def render_manual_facility_calculator() -> None:
         for field in template["segments"][0]
         if field not in editable_fields
     ]
-    st.caption(
-        f"Template source: {template['template_source_reference']}. "
-        "Segment sequence, types, terrain/curve context, passing-lane placement, "
-        "and downstream context remain locked."
+    st.markdown(f"**{template['template_label']}**")
+    st.caption(f"Basis: {template['template_basis']}. {template['supported_context']}")
+    template_details = st.columns(2)
+    template_details[0].success(f"Safe edits: {template['safe_edit_summary']}")
+    template_details[1].warning(f"Locked or unsupported: {template['locked_summary']}")
+    editor_version = st.session_state.get("manual_facility_editor_version", 0)
+    editor_seed = st.session_state.pop(
+        "manual_facility_segment_rows_seed", template["segments"]
     )
     edited_rows = st.data_editor(
-        template["segments"],
-        key=f"facility_segment_editor_{template_id}_{unit_system}",
+        editor_seed,
+        key=f"facility_segment_editor_{template_id}_{unit_system}_{editor_version}",
         hide_index=True,
         num_rows="fixed",
         disabled=disabled_fields,
@@ -294,21 +313,31 @@ def render_manual_facility_calculator() -> None:
             "downstream_affected": st.column_config.CheckboxColumn(
                 "Downstream context"
             ),
+            "segment_name": st.column_config.TextColumn("Segment name"),
+            "segment_type": st.column_config.TextColumn("Segment type"),
+            "terrain_type": st.column_config.TextColumn("Terrain"),
+            "grade_percent": st.column_config.NumberColumn("Grade (%)"),
+            "horizontal_alignment": st.column_config.TextColumn("Alignment"),
         },
     )
-    st.caption(
-        "Unsupported combinations are blocked. Manual downstream adjustment and "
-        "arbitrary passing-lane or nonlevel facility edits are not available."
+    st.warning(
+        "Locked fields preserve the validated template. Manual downstream adjustment "
+        "and arbitrary passing-lane, curve, nonlevel, or segment-sequence edits are unsupported."
     )
 
-    if st.button(
+    calculate_column, scope_column = st.columns([1, 2])
+    calculate = calculate_column.button(
         "Calculate facility",
         type="primary",
         use_container_width=True,
         key="facility_calculate",
-    ):
-        st.session_state.pop("manual_facility_result", None)
-        st.session_state.pop("manual_facility_error", None)
+    )
+    scope_column.caption(
+        "Calculation uses the existing guarded Example 3/4 engine path. "
+        "Save/Load does not broaden methodology support."
+    )
+    if calculate:
+        _clear_manual_facility_result_state(st.session_state)
         try:
             result = run_manual_facility(template_id, edited_rows, unit_system)
             st.session_state["manual_facility_result"] = result_to_dict(result)
@@ -332,11 +361,16 @@ def render_manual_facility_calculator() -> None:
                 )
             )
 
+    _render_manual_facility_project_file_controls(
+        template_id, unit_system, edited_rows, template["template_label"]
+    )
+
     error = st.session_state.get("manual_facility_error")
     audit = st.session_state.get("manual_facility_audit")
     if error is not None:
         st.error(f"Unsupported combination: {error}")
-        render_audit_record(audit)
+        with st.expander("Audit / details"):
+            st.json(audit)
         return
 
     result_data = st.session_state.get("manual_facility_result")
@@ -352,7 +386,8 @@ def render_manual_facility_calculator() -> None:
 
     outputs = result_data["outputs"]
     metric = unit_system == "metric"
-    summary = st.columns(6)
+    st.subheader("Facility summary")
+    summary = st.columns(5)
     summary[0].metric(
         "Facility follower density",
         f"{outputs['facility_follower_density_followers_mi_ln'] / 1.609344:.2f} fol/km/ln"
@@ -366,9 +401,8 @@ def render_manual_facility_calculator() -> None:
         if metric
         else f"{outputs['facility_average_speed_mph']:.1f} mph",
     )
-    summary[3].metric("Facility percent followers", "Not available")
-    summary[4].metric("Segments", len(outputs["segments"]))
-    summary[5].metric(
+    summary[3].metric("Segments", len(outputs["segments"]))
+    summary[4].metric(
         "Total length",
         f"{outputs['facility_length_mi'] * 1.609344:.2f} km"
         if metric
@@ -380,10 +414,32 @@ def render_manual_facility_calculator() -> None:
         st.session_state["manual_facility_result_rows"],
         hide_index=True,
         use_container_width=True,
+        column_config={
+            "segment_id": "Segment ID",
+            "segment_name": "Segment name",
+            "segment_type": "Segment type",
+            "segment_length_mi": "Length (mi)",
+            "average_speed_mph": "Average speed (mph)",
+            "percent_followers": "Percent followers (%)",
+            "follower_density_followers_mi_ln": "Follower density (fol/mi/ln)",
+            "level_of_service": "LOS",
+            "vertical_class": "Vertical class",
+            "horizontal_curve_adjustment_applied": "Curve adjustment",
+            "passing_lane": "Passing lane",
+            "downstream_adjustment_applied": "Downstream adjustment",
+            "key_warnings": "Key warnings",
+        },
     )
-    render_list("Warnings", result_data["warnings"], "No warnings reported.")
-    render_list("Assumptions", result_data["assumptions"], "No assumptions reported.")
-    render_audit_record(audit)
+    with st.expander("Assumptions / warnings"):
+        render_list("Warnings", result_data["warnings"], "No warnings reported.")
+        render_list("Assumptions", result_data["assumptions"], "No assumptions reported.")
+        render_list(
+            "Unsupported behavior notes",
+            template["unsupported_behavior_notes"],
+            "No unsupported behavior notes reported.",
+        )
+    with st.expander("Audit / details"):
+        st.json(audit)
     full_result = {
         "calculation_type": "manual_facility_v0",
         "template_id": template_id,
@@ -391,7 +447,11 @@ def render_manual_facility_calculator() -> None:
         "engine_result": result_data,
         "audit_record": audit,
     }
-    with st.expander("Full facility result JSON"):
+    with st.expander("Download / export"):
+        st.caption(
+            "Project JSON restores the guarded worksheet. Result JSON exports the "
+            "current calculation details."
+        )
         st.json(full_result)
         st.download_button(
             "Download facility result JSON",
@@ -400,10 +460,116 @@ def render_manual_facility_calculator() -> None:
             mime="application/json",
             use_container_width=True,
         )
-    st.caption(
-        "Facility project Save/Load is not included in v0.1. Existing Manual "
-        "Single Segment Save/Load remains unchanged."
+
+
+def _render_manual_facility_project_file_controls(
+    template_id: str,
+    unit_system: str,
+    segment_rows: list[dict[str, Any]],
+    template_name: str,
+) -> None:
+    """Render guarded facility project save and load controls."""
+
+    stored_audit = st.session_state.get("manual_facility_audit")
+    calculation_matches_inputs = (
+        isinstance(stored_audit, dict)
+        and stored_audit.get("template_id") == template_id
+        and stored_audit.get("unit_system") == unit_system
+        and stored_audit.get("facility_inputs", {}).get("segments") == segment_rows
     )
+    project_json = create_manual_facility_project_json(
+        template_id,
+        unit_system,
+        segment_rows,
+        result=(
+            st.session_state.get("manual_facility_result")
+            if calculation_matches_inputs
+            else None
+        ),
+        audit_record=stored_audit if calculation_matches_inputs else None,
+    )
+    with st.expander("Project file / Save and Load"):
+        st.caption(
+            f"Save or restore {template_name}. Facility projects remain template-backed."
+        )
+        st.download_button(
+            "Download facility project JSON",
+            data=project_json,
+            file_name=f"{template_id}-manual-facility-project.json",
+            mime="application/json",
+            use_container_width=True,
+        )
+        uploaded_project = st.file_uploader(
+            "Load facility project JSON",
+            type=["json"],
+            key="manual_facility_project_file_uploader",
+        )
+        if st.button(
+            "Load facility project",
+            disabled=uploaded_project is None,
+            use_container_width=True,
+        ):
+            try:
+                project = load_manual_facility_project_json(uploaded_project.getvalue())
+            except ProjectFileError as exc:
+                st.error(str(exc))
+            else:
+                st.session_state["manual_facility_pending_project"] = project
+                st.rerun()
+
+
+def _clear_manual_facility_result_state(state: Any) -> None:
+    """Clear stale facility calculation state after selection or input changes."""
+
+    for key in (
+        "manual_facility_result",
+        "manual_facility_result_context",
+        "manual_facility_result_rows",
+        "manual_facility_audit",
+        "manual_facility_error",
+    ):
+        state.pop(key, None)
+
+
+def _restore_manual_facility_project(project: dict[str, Any]) -> None:
+    """Restore validated facility project data into worksheet session state."""
+
+    unit_system = project["unit_system"]
+    template_id = project["template_id"]
+    st.session_state["facility_template_id"] = template_id
+    st.session_state["facility_unit_label"] = unit_system.title()
+    st.session_state["manual_facility_selection_context"] = (template_id, unit_system)
+    st.session_state["manual_facility_editor_version"] = (
+        st.session_state.get("manual_facility_editor_version", 0) + 1
+    )
+    st.session_state["manual_facility_segment_rows_seed"] = project["segment_rows"]
+    for state_key, project_key in (
+        ("manual_facility_result", "calculation_result"),
+        ("manual_facility_audit", "audit"),
+    ):
+        if project.get(project_key) is None:
+            st.session_state.pop(state_key, None)
+        else:
+            st.session_state[state_key] = project[project_key]
+    result = project.get("calculation_result")
+    if result is not None:
+        st.session_state["manual_facility_result_context"] = (template_id, unit_system)
+        st.session_state["manual_facility_result_rows"] = facility_segment_result_rows(
+            _calculation_result_from_dict(result), project["segment_rows"]
+        )
+    st.session_state.pop("manual_facility_error", None)
+    st.session_state["manual_facility_project_load_message"] = (
+        "Facility project loaded. Review the restored template-backed inputs and "
+        "click Calculate facility to calculate again."
+    )
+
+
+def _calculation_result_from_dict(result: dict[str, Any]) -> Any:
+    """Provide attribute access needed by the facility result row adapter."""
+
+    from types import SimpleNamespace
+
+    return SimpleNamespace(outputs=result["outputs"])
 
 
 def render_manual_single_segment_calculator() -> None:

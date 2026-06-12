@@ -128,7 +128,12 @@ Manual Facility Calculator v0.1 now exposes the facility-only Example 3/4
 paths without promoting them to standalone or general support. Segment
 sequence, nonlevel/curve context, Passing Lane placement, and downstream
 adjustment context remain template-controlled. Facility Save/Load is not
-included; Manual Single Segment Save/Load remains unchanged.
+general-purpose: Facility Project Save/Load v0.1 supports only
+`project_type = manual_facility_v0` for the guarded Example 3/4 templates.
+It restores the selected template, unit system, editable segment rows, and
+saved calculation/audit context without changing the calculation path.
+Unsupported combinations remain guarded. Manual Single Segment Save/Load using
+`project_type = manual_single_segment` remains supported.
 
 The Phase 4
 [Chapter 15 Vertical Fixture Inventory](ch15_vertical_fixture_inventory.md)
