@@ -59,6 +59,11 @@ Current manual support:
   `b3`, `b4`, `m`, `p`, tangent average speed, and source references using Eq.
   15-7 through Eq. 15-11 and table-driven Exhibits 15-13 through 15-20 for
   vertical Classes 1 through 5.
+- The guarded Step 5 horizontal-curve speed adjustment uses a table-driven
+  Exhibit 15-22 classification lookup and centralized, auditable Eq. 15-12
+  through Eq. 15-16 helpers. It reports matched radius/superelevation bins,
+  curve BFFS/FFS, slope coefficient, subsegment speed, tangent comparison
+  speed, and the length-weighted segment speed.
 - Hardened HCM7 Chapter 15 Step 8 follower-density helpers that use Eq. 15-35
   for Passing Constrained and Passing Zone segments and Eq. 15-34 for supported
   Passing Lane midpoint cases. The helpers expose the equation/formula and,
@@ -189,7 +194,7 @@ dependency.
 | Demand flow / capacity | Calculates analysis-direction demand flow. Passing Zone uses actual opposing demand flow; Passing Constrained assumes `1,500 veh/h`; Passing Lane uses its validated capacity path. | Clarify directional-flow requirements and capacity rules by segment type, validate all input domains and capacity exceedance behavior, and expose assumptions consistently. |
 | Vertical alignment | Vertical class is calculated directly from grade and length; there is no separately reported vertical-alignment workflow decision. | Separate input interpretation, applicability checks, and vertical-class result in the audit trail without duplicating formulas. |
 | Free-flow speed | Calculates and audits base free-flow speed, lane/shoulder adjustment, access-point adjustment, heavy-vehicle coefficient, and free-flow speed through a validated Step 4 helper. Exhibit 15-12 is table-driven for Classes 1-5. | Add independent validation fixtures before promoting additional nonlevel public calculation paths. |
-| Average speed | Calculates and audits Step 5 tangent average speed for supported straight segment types with table-driven Exhibits 15-13 through 15-20. A horizontal-curve path exists only in validated example/facility paths. | Add validated manual horizontal-curve inputs and clearly distinguish tangent, curve-subsegment, and length-weighted results. |
+| Average speed | Calculates and audits Step 5 tangent average speed for supported straight segment types with table-driven Exhibits 15-13 through 15-20. The guarded horizontal-curve path uses table-driven Exhibit 15-22 and centralized Eq. 15-12 through Eq. 15-16 helpers. | Add independent validation before broadening beyond the existing level Example Problem 2 manual path and validated facility examples. |
 | Percent followers | Calculates and audits Step 6 percent followers through Eq. 15-17 to Eq. 15-23. Exhibits 15-24 through 15-29 are table-driven for vertical Classes 1-5, with explicit input and logarithm-domain validation. | Add independent validation fixtures before broadening guarded nonlevel or Passing Lane calculation support. |
 | Follower density | Calculates and audits Passing Constrained/Passing Zone density with Eq. 15-35 and supported Passing Lane midpoint density with Eq. 15-34, including lane components. | Preserve the explicit endpoint-versus-midpoint basis as future Passing Lane and facility support expands. |
 | Follower-density adjustment, where applicable | Downstream adjustment exists in validated facility examples, but manual single-segment analysis explicitly excludes upstream/downstream effects. | Define when a standalone segment may validly receive an adjustment, what context is required, and when the UI must warn that facility context is missing. |

@@ -36,6 +36,15 @@ This formula hardening does not expand horizontal-curve support, implement Step
 facility calculation paths. Existing validated outputs and unsupported-scope
 decisions remain in force.
 
+### Step 5 horizontal-curve speed adjustment
+
+The guarded horizontal-curve adjustment uses a table-driven HCM7 Exhibit 15-22
+classification lookup and centralized Eq. 15-12 through Eq. 15-16 helpers.
+Matched radius and superelevation bins and the curve-speed intermediate values
+are exposed for audit. This hardening preserves the level Example Problem 2
+manual path and validated facility examples; it does not enable arbitrary
+nonlevel horizontal-curve combinations.
+
 ### Step 8 follower-density estimation
 
 HCM7 Chapter 15 Step 8 follower-density estimation is implemented through
