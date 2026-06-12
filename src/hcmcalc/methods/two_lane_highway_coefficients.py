@@ -202,11 +202,17 @@ PF_CAPACITY_COEFFICIENTS = {
         -0.05500,
         7.13758,
     ),
+    2: PercentFollowersCapacityCoefficients(
+        58.21104, 5.73387, -13.66293, -0.66126, 9.08575, -0.00950, -0.03602, 7.14619
+    ),
+    3: PercentFollowersCapacityCoefficients(
+        113.20439, 10.01778, -18.90000, 0.46542, -6.75338, -0.03000, -0.05800, 10.03239
+    ),
     4: PercentFollowersCapacityCoefficients(
         58.29978, -0.53611, 7.35076, -0.27046, 4.49850, -0.01100, -0.02968, 8.89680
     ),
     5: PercentFollowersCapacityCoefficients(
-        3.32968, -0.84377, 7.08952, -1.32089, 19.98477, -0.01250, -0.02960, 9.99450
+        3.32968, -0.84377, 7.08952, -1.32089, 19.98477, -0.01250, -0.02960, 9.99453
     ),
 }
 
@@ -222,6 +228,18 @@ PASSING_LANE_PF_CAPACITY_COEFFICIENTS = {
         1.50390,
         0.00491,
     ),
+    2: PercentFollowersCapacityCoefficients(
+        12.30096, 9.57465, -30.79427, -1.79448, 25.76436, -0.66350, 1.26039, -0.00323
+    ),
+    3: PercentFollowersCapacityCoefficients(
+        206.07369, -4.29885, 0.00000, 1.96483, -30.32556, -0.75812, 1.06453, -0.00839
+    ),
+    4: PercentFollowersCapacityCoefficients(
+        263.13428, 5.38749, -19.04859, 2.73018, -42.76919, -1.31277, -0.32242, 0.01412
+    ),
+    5: PercentFollowersCapacityCoefficients(
+        126.95629, 5.95754, -19.22229, 0.43238, -7.35636, -1.03017, -2.66026, 0.01389
+    ),
 }
 
 # HCM Ch. 15 Exhibit 15-26 coefficients for Eq. 15-20.
@@ -236,11 +254,17 @@ PF_25_CAPACITY_COEFFICIENTS = {
         -0.06700,
         11.60405,
     ),
+    2: PercentFollowersCapacityCoefficients(
+        47.83887, 12.80000, -28.20000, -0.61758, 5.80000, -0.04550, -0.03344, 11.35573
+    ),
+    3: PercentFollowersCapacityCoefficients(
+        125.40000, 19.50000, -34.90000, 0.90672, -16.10000, -0.11000, -0.06200, 14.71136
+    ),
     4: PercentFollowersCapacityCoefficients(
-        103.13534, 14.68459, -23.72704, 0.66444, -11.95763, -0.10000, 0.00172, 14.70074
+        103.13534, 14.68459, -23.72704, 0.66444, -11.95763, -0.10000, 0.00172, 14.70067
     ),
     5: PercentFollowersCapacityCoefficients(
-        89.00000, 19.02642, -34.54240, 0.29792, -6.62528, -0.16000, 0.00480, 17.56610
+        89.00000, 19.02642, -34.54240, 0.29792, -6.62528, -0.16000, 0.00480, 17.56611
     ),
 }
 
@@ -255,6 +279,18 @@ PASSING_LANE_PF_25_CAPACITY_COEFFICIENTS = {
         -0.56747,
         0.89427,
         0.00119,
+    ),
+    2: PercentFollowersCapacityCoefficients(
+        18.37886, 14.71856, -47.78892, -1.43373, 18.32040, -0.13226, 0.77217, -0.00778
+    ),
+    3: PercentFollowersCapacityCoefficients(
+        239.98930, 15.90683, -46.87525, 2.73582, -42.88130, -0.53746, 0.76271, -0.00428
+    ),
+    4: PercentFollowersCapacityCoefficients(
+        223.68435, 10.26908, -35.60830, 2.31877, -38.30034, -0.60275, -0.67758, 0.00117
+    ),
+    5: PercentFollowersCapacityCoefficients(
+        137.37633, 11.00106, -38.89043, 0.78501, -14.88672, -0.72576, -2.49546, 0.00872
     ),
 }
 

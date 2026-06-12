@@ -85,6 +85,18 @@ class AverageSpeedEstimate:
     source_references: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class PercentFollowersEstimate:
+    """Auditable HCM Chapter 15 Step 6 percent-followers estimate."""
+
+    percent_followers: float
+    percent_followers_at_capacity: float
+    percent_followers_at_25_capacity: float
+    percent_followers_slope_coefficient_m: float
+    percent_followers_power_coefficient_p: float
+    source_references: tuple[str, ...]
+
+
 class TwoLaneHighwayChapter15Method:
     """Partial two-lane highway motorized vehicle analysis implementation."""
 
@@ -263,33 +275,21 @@ def _calculate_passing_constrained_base_values(
     speed_m = step5.speed_slope_coefficient_m
     speed_p = step5.speed_power_coefficient_p
     speed = step5.average_speed_mph
-    pf_cap = percent_followers_at_capacity(
-        vertical_class,
-        parsed_inputs.segment_length_mi,
-        ffs,
-        parsed_inputs.heavy_vehicle_percent,
-        OPPOSING_FLOW_EXAMPLE_1_VEH_H,
+    step6 = estimate_percent_followers(
+        segment_type=parsed_inputs.segment_type,
+        vertical_class=vertical_class,
+        segment_length_mi=parsed_inputs.segment_length_mi,
+        free_flow_speed_mph=ffs,
+        heavy_vehicle_percent=parsed_inputs.heavy_vehicle_percent,
+        demand_flow_rate_veh_h=demand,
+        opposing_flow_veh_h=OPPOSING_FLOW_EXAMPLE_1_VEH_H,
+        capacity_veh_h=capacity,
     )
-    pf_25_cap = percent_followers_at_25_percent_capacity(
-        vertical_class,
-        parsed_inputs.segment_length_mi,
-        ffs,
-        parsed_inputs.heavy_vehicle_percent,
-        OPPOSING_FLOW_EXAMPLE_1_VEH_H,
-    )
-    pf_m = percent_followers_slope_coefficient(
-        parsed_inputs.segment_type,
-        pf_cap,
-        pf_25_cap,
-        capacity,
-    )
-    pf_p = percent_followers_power_coefficient(
-        parsed_inputs.segment_type,
-        pf_cap,
-        pf_25_cap,
-        capacity,
-    )
-    followers = percent_followers(demand, pf_m, pf_p)
+    pf_cap = step6.percent_followers_at_capacity
+    pf_25_cap = step6.percent_followers_at_25_capacity
+    pf_m = step6.percent_followers_slope_coefficient_m
+    pf_p = step6.percent_followers_power_coefficient_p
+    followers = step6.percent_followers
     density = follower_density(demand, speed, followers)
     los = level_of_service(density, parsed_inputs.posted_speed_mph)
 
@@ -314,6 +314,9 @@ def _calculate_passing_constrained_base_values(
         "percent_followers_at_25_percent_capacity": pf_25_cap,
         "percent_followers_slope_coefficient": pf_m,
         "percent_followers_power_coefficient": pf_p,
+        "percent_followers_slope_coefficient_m": pf_m,
+        "percent_followers_power_coefficient_p": pf_p,
+        "percent_followers_source_reference": "; ".join(step6.source_references),
         "percent_followers": followers,
         "follower_density_followers_mi_ln": density,
         "level_of_service": los,
@@ -751,35 +754,6 @@ def _calculate_facility_segment(
     speed_m = step5.speed_slope_coefficient_m
     speed_p = step5.speed_power_coefficient_p
 
-    if segment.segment_type == PASSING_LANE:
-        pf_cap = passing_lane_percent_followers_at_capacity(
-            vertical_class,
-            segment.segment_length_mi,
-            ffs,
-            segment.heavy_vehicle_percent,
-        )
-        pf_25_cap = passing_lane_percent_followers_at_25_percent_capacity(
-            vertical_class,
-            segment.segment_length_mi,
-            ffs,
-            segment.heavy_vehicle_percent,
-        )
-    else:
-        pf_cap = percent_followers_at_capacity(
-            vertical_class,
-            segment.segment_length_mi,
-            ffs,
-            segment.heavy_vehicle_percent,
-            opposing_flow,
-        )
-        pf_25_cap = percent_followers_at_25_percent_capacity(
-            vertical_class,
-            segment.segment_length_mi,
-            ffs,
-            segment.heavy_vehicle_percent,
-            opposing_flow,
-        )
-
     speed = step5.average_speed_mph
     horizontal_results: list[dict[str, Any]] = []
     if segment.horizontal_alignment_subsegments:
@@ -794,9 +768,21 @@ def _calculate_facility_segment(
             speed,
         )
         speed = length_weighted_adjusted_average_speed(horizontal_results)
-    pf_m = percent_followers_slope_coefficient(segment.segment_type, pf_cap, pf_25_cap, capacity)
-    pf_p = percent_followers_power_coefficient(segment.segment_type, pf_cap, pf_25_cap, capacity)
-    followers = percent_followers(demand, pf_m, pf_p)
+    step6 = estimate_percent_followers(
+        segment_type=segment.segment_type,
+        vertical_class=vertical_class,
+        segment_length_mi=segment.segment_length_mi,
+        free_flow_speed_mph=ffs,
+        heavy_vehicle_percent=segment.heavy_vehicle_percent,
+        demand_flow_rate_veh_h=demand,
+        opposing_flow_veh_h=opposing_flow,
+        capacity_veh_h=capacity,
+    )
+    pf_cap = step6.percent_followers_at_capacity
+    pf_25_cap = step6.percent_followers_at_25_capacity
+    pf_m = step6.percent_followers_slope_coefficient_m
+    pf_p = step6.percent_followers_power_coefficient_p
+    followers = step6.percent_followers
     density = follower_density(demand, speed, followers)
     los = level_of_service(density, segment.posted_speed_mph)
 
@@ -827,6 +813,9 @@ def _calculate_facility_segment(
         "percent_followers_at_25_percent_capacity": pf_25_cap,
         "percent_followers_slope_coefficient": pf_m,
         "percent_followers_power_coefficient": pf_p,
+        "percent_followers_slope_coefficient_m": pf_m,
+        "percent_followers_power_coefficient_p": pf_p,
+        "percent_followers_source_reference": "; ".join(step6.source_references),
         "percent_followers": followers,
         "follower_density_followers_mi_ln": density,
         "level_of_service": los,
@@ -928,6 +917,36 @@ def _single_segment_intermediate_values(
             "HCM Eq. 15-7 through Eq. 15-11 and Exhibits 15-13 through 15-20",
         ),
         ("average_speed", "average_speed_mph", "mph", "HCM Eq. 15-7"),
+        (
+            "percent_followers_at_capacity",
+            "percent_followers_at_capacity",
+            "%",
+            "HCM Eq. 15-18 or Eq. 15-19",
+        ),
+        (
+            "percent_followers_at_25_capacity",
+            "percent_followers_at_25_percent_capacity",
+            "%",
+            "HCM Eq. 15-20 or Eq. 15-21",
+        ),
+        (
+            "percent_followers_slope_coefficient_m",
+            "percent_followers_slope_coefficient_m",
+            None,
+            "HCM Eq. 15-22 and Exhibit 15-28",
+        ),
+        (
+            "percent_followers_power_coefficient_p",
+            "percent_followers_power_coefficient_p",
+            None,
+            "HCM Eq. 15-23 and Exhibit 15-29",
+        ),
+        (
+            "percent_followers_source_reference",
+            "percent_followers_source_reference",
+            None,
+            "HCM Eq. 15-17 through Eq. 15-23 and Exhibits 15-24 through 15-29",
+        ),
         ("percent_followers", "percent_followers", "%", "HCM Eq. 15-17"),
         (
             "follower_density",
@@ -1034,6 +1053,24 @@ def _facility_intermediate_values(
                     segment["percent_followers_at_25_percent_capacity"],
                     "%",
                     "HCM Eq. 15-20 or Eq. 15-21",
+                ),
+                IntermediateValue(
+                    f"segment_{segment_id}_percent_followers_slope_coefficient_m",
+                    segment["percent_followers_slope_coefficient_m"],
+                    source="HCM Eq. 15-22 and Exhibit 15-28",
+                ),
+                IntermediateValue(
+                    f"segment_{segment_id}_percent_followers_power_coefficient_p",
+                    segment["percent_followers_power_coefficient_p"],
+                    source="HCM Eq. 15-23 and Exhibit 15-29",
+                ),
+                IntermediateValue(
+                    f"segment_{segment_id}_percent_followers_source_reference",
+                    segment["percent_followers_source_reference"],
+                    source=(
+                        "HCM Eq. 15-17 through Eq. 15-23 and "
+                        "Exhibits 15-24 through 15-29"
+                    ),
                 ),
                 IntermediateValue(
                     f"segment_{segment_id}_percent_followers",
@@ -2265,6 +2302,98 @@ def passing_lane_average_speed_power_coefficient(
     )
 
 
+def estimate_percent_followers(
+    *,
+    segment_type: str,
+    vertical_class: int,
+    segment_length_mi: float,
+    free_flow_speed_mph: float,
+    heavy_vehicle_percent: float,
+    demand_flow_rate_veh_h: float,
+    opposing_flow_veh_h: float,
+    capacity_veh_h: float,
+) -> PercentFollowersEstimate:
+    """Calculate and expose all HCM Chapter 15 Step 6 values."""
+
+    required_values = (
+        ("segment length", segment_length_mi),
+        ("free-flow speed", free_flow_speed_mph),
+        ("heavy-vehicle percentage", heavy_vehicle_percent),
+        ("demand flow rate", demand_flow_rate_veh_h),
+        ("opposing flow rate", opposing_flow_veh_h),
+        ("capacity", capacity_veh_h),
+    )
+    for label, value in required_values:
+        if value is None:
+            raise HCMCalcError(f"Step 6 {label} is required.")
+
+    _validate_step6_common_inputs(
+        segment_type=segment_type,
+        vertical_class=vertical_class,
+        segment_length_mi=segment_length_mi,
+        free_flow_speed_mph=free_flow_speed_mph,
+        heavy_vehicle_percent=heavy_vehicle_percent,
+        demand_flow_rate_veh_h=demand_flow_rate_veh_h,
+        opposing_flow_veh_h=opposing_flow_veh_h,
+        capacity_veh_h=capacity_veh_h,
+    )
+    if segment_type == PASSING_LANE:
+        pf_cap = passing_lane_percent_followers_at_capacity(
+            vertical_class,
+            segment_length_mi,
+            free_flow_speed_mph,
+            heavy_vehicle_percent,
+        )
+        pf_25_cap = passing_lane_percent_followers_at_25_percent_capacity(
+            vertical_class,
+            segment_length_mi,
+            free_flow_speed_mph,
+            heavy_vehicle_percent,
+        )
+        capacity_exhibits = ("HCM Exhibit 15-25", "HCM Exhibit 15-27")
+    else:
+        pf_cap = percent_followers_at_capacity(
+            vertical_class,
+            segment_length_mi,
+            free_flow_speed_mph,
+            heavy_vehicle_percent,
+            opposing_flow_veh_h,
+        )
+        pf_25_cap = percent_followers_at_25_percent_capacity(
+            vertical_class,
+            segment_length_mi,
+            free_flow_speed_mph,
+            heavy_vehicle_percent,
+            opposing_flow_veh_h,
+        )
+        capacity_exhibits = ("HCM Exhibit 15-24", "HCM Exhibit 15-26")
+
+    pf_m = percent_followers_slope_coefficient(
+        segment_type, pf_cap, pf_25_cap, capacity_veh_h
+    )
+    pf_p = percent_followers_power_coefficient(
+        segment_type, pf_cap, pf_25_cap, capacity_veh_h
+    )
+    followers = percent_followers(demand_flow_rate_veh_h, pf_m, pf_p)
+    return PercentFollowersEstimate(
+        percent_followers=followers,
+        percent_followers_at_capacity=pf_cap,
+        percent_followers_at_25_capacity=pf_25_cap,
+        percent_followers_slope_coefficient_m=pf_m,
+        percent_followers_power_coefficient_p=pf_p,
+        source_references=(
+            "HCM Eq. 15-17",
+            "HCM Eq. 15-18" if segment_type != PASSING_LANE else "HCM Eq. 15-19",
+            "HCM Eq. 15-20" if segment_type != PASSING_LANE else "HCM Eq. 15-21",
+            "HCM Eq. 15-22",
+            "HCM Eq. 15-23",
+            *capacity_exhibits,
+            "HCM Exhibit 15-28",
+            "HCM Exhibit 15-29",
+        ),
+    )
+
+
 def passing_lane_percent_followers_at_capacity(
     vertical_class: int,
     segment_length_mi: float,
@@ -2273,12 +2402,27 @@ def passing_lane_percent_followers_at_capacity(
 ) -> float:
     """HCM Eq. 15-19 PF at capacity for Passing Lane segments."""
 
+    _require_step6_values(
+        ("segment length", segment_length_mi),
+        ("free-flow speed", free_flow_speed_mph),
+        ("heavy-vehicle percentage", heavy_vehicle_percent),
+    )
+    _validate_step6_common_inputs(
+        segment_type=PASSING_LANE,
+        vertical_class=vertical_class,
+        segment_length_mi=segment_length_mi,
+        free_flow_speed_mph=free_flow_speed_mph,
+        heavy_vehicle_percent=heavy_vehicle_percent,
+    )
     coefficients = PASSING_LANE_PF_CAPACITY_COEFFICIENTS[vertical_class]
-    return _passing_lane_percent_followers_capacity_value(
-        coefficients,
-        segment_length_mi,
-        free_flow_speed_mph,
-        heavy_vehicle_percent,
+    return _validate_step6_capacity_percent(
+        _passing_lane_percent_followers_capacity_value(
+            coefficients,
+            segment_length_mi,
+            free_flow_speed_mph,
+            heavy_vehicle_percent,
+        ),
+        "PFcap",
     )
 
 
@@ -2290,12 +2434,27 @@ def passing_lane_percent_followers_at_25_percent_capacity(
 ) -> float:
     """HCM Eq. 15-21 PF at 25 percent capacity for Passing Lane segments."""
 
+    _require_step6_values(
+        ("segment length", segment_length_mi),
+        ("free-flow speed", free_flow_speed_mph),
+        ("heavy-vehicle percentage", heavy_vehicle_percent),
+    )
+    _validate_step6_common_inputs(
+        segment_type=PASSING_LANE,
+        vertical_class=vertical_class,
+        segment_length_mi=segment_length_mi,
+        free_flow_speed_mph=free_flow_speed_mph,
+        heavy_vehicle_percent=heavy_vehicle_percent,
+    )
     coefficients = PASSING_LANE_PF_25_CAPACITY_COEFFICIENTS[vertical_class]
-    return _passing_lane_percent_followers_capacity_value(
-        coefficients,
-        segment_length_mi,
-        free_flow_speed_mph,
-        heavy_vehicle_percent,
+    return _validate_step6_capacity_percent(
+        _passing_lane_percent_followers_capacity_value(
+            coefficients,
+            segment_length_mi,
+            free_flow_speed_mph,
+            heavy_vehicle_percent,
+        ),
+        "PF25cap",
     )
 
 
@@ -2699,15 +2858,32 @@ def percent_followers_at_capacity(
     heavy_vehicle_percent: float,
     opposing_flow_veh_h: float,
 ) -> float:
-    """HCM Eq. 15-18 PF at capacity for Passing Constrained segments."""
+    """HCM Eq. 15-18 PF at capacity for Passing Constrained/Zone segments."""
 
+    _require_step6_values(
+        ("segment length", segment_length_mi),
+        ("free-flow speed", free_flow_speed_mph),
+        ("heavy-vehicle percentage", heavy_vehicle_percent),
+        ("opposing flow rate", opposing_flow_veh_h),
+    )
+    _validate_step6_common_inputs(
+        segment_type=PASSING_CONSTRAINED,
+        vertical_class=vertical_class,
+        segment_length_mi=segment_length_mi,
+        free_flow_speed_mph=free_flow_speed_mph,
+        heavy_vehicle_percent=heavy_vehicle_percent,
+        opposing_flow_veh_h=opposing_flow_veh_h,
+    )
     coefficients = PF_CAPACITY_COEFFICIENTS[vertical_class]
-    return _percent_followers_capacity_value(
-        coefficients,
-        segment_length_mi,
-        free_flow_speed_mph,
-        heavy_vehicle_percent,
-        opposing_flow_veh_h,
+    return _validate_step6_capacity_percent(
+        _percent_followers_capacity_value(
+            coefficients,
+            segment_length_mi,
+            free_flow_speed_mph,
+            heavy_vehicle_percent,
+            opposing_flow_veh_h,
+        ),
+        "PFcap",
     )
 
 
@@ -2718,15 +2894,32 @@ def percent_followers_at_25_percent_capacity(
     heavy_vehicle_percent: float,
     opposing_flow_veh_h: float,
 ) -> float:
-    """HCM Eq. 15-20 PF at 25 percent capacity for Passing Constrained segments."""
+    """HCM Eq. 15-20 PF at 25 percent capacity for Passing Constrained/Zone."""
 
+    _require_step6_values(
+        ("segment length", segment_length_mi),
+        ("free-flow speed", free_flow_speed_mph),
+        ("heavy-vehicle percentage", heavy_vehicle_percent),
+        ("opposing flow rate", opposing_flow_veh_h),
+    )
+    _validate_step6_common_inputs(
+        segment_type=PASSING_CONSTRAINED,
+        vertical_class=vertical_class,
+        segment_length_mi=segment_length_mi,
+        free_flow_speed_mph=free_flow_speed_mph,
+        heavy_vehicle_percent=heavy_vehicle_percent,
+        opposing_flow_veh_h=opposing_flow_veh_h,
+    )
     coefficients = PF_25_CAPACITY_COEFFICIENTS[vertical_class]
-    return _percent_followers_capacity_value(
-        coefficients,
-        segment_length_mi,
-        free_flow_speed_mph,
-        heavy_vehicle_percent,
-        opposing_flow_veh_h,
+    return _validate_step6_capacity_percent(
+        _percent_followers_capacity_value(
+            coefficients,
+            segment_length_mi,
+            free_flow_speed_mph,
+            heavy_vehicle_percent,
+            opposing_flow_veh_h,
+        ),
+        "PF25cap",
     )
 
 
@@ -2758,6 +2951,17 @@ def percent_followers_slope_coefficient(
 ) -> float:
     """HCM Eq. 15-22 slope coefficient for Eq. 15-17."""
 
+    _require_step6_values(
+        ("PFcap", percent_followers_capacity),
+        ("PF25cap", percent_followers_25_capacity),
+        ("capacity", capacity_veh_h),
+    )
+    _validate_step6_curve_inputs(
+        segment_type,
+        percent_followers_capacity,
+        percent_followers_25_capacity,
+        capacity_veh_h,
+    )
     coefficients = PF_SLOPE_COEFFICIENTS[segment_type]
     term_25_cap = _percent_followers_capacity_log_term(
         percent_followers_25_capacity,
@@ -2780,6 +2984,17 @@ def percent_followers_power_coefficient(
 ) -> float:
     """HCM Eq. 15-23 power coefficient for Eq. 15-17."""
 
+    _require_step6_values(
+        ("PFcap", percent_followers_capacity),
+        ("PF25cap", percent_followers_25_capacity),
+        ("capacity", capacity_veh_h),
+    )
+    _validate_step6_curve_inputs(
+        segment_type,
+        percent_followers_capacity,
+        percent_followers_25_capacity,
+        capacity_veh_h,
+    )
     coefficients = PF_POWER_COEFFICIENTS[segment_type]
     term_25_cap = _percent_followers_capacity_log_term(
         percent_followers_25_capacity,
@@ -2810,17 +3025,110 @@ def _percent_followers_capacity_log_term(
     )
 
 
+def _validate_step6_common_inputs(
+    *,
+    segment_type: str,
+    vertical_class: int,
+    segment_length_mi: float | None = None,
+    free_flow_speed_mph: float | None = None,
+    heavy_vehicle_percent: float | None = None,
+    demand_flow_rate_veh_h: float | None = None,
+    opposing_flow_veh_h: float | None = None,
+    capacity_veh_h: float | None = None,
+) -> None:
+    if segment_type not in {PASSING_CONSTRAINED, PASSING_ZONE, PASSING_LANE}:
+        raise HCMCalcError(f"Unsupported Step 6 segment type: {segment_type!r}.")
+    if vertical_class not in {1, 2, 3, 4, 5}:
+        raise HCMCalcError("Step 6 vertical class must be an integer from 1 through 5.")
+    if segment_length_mi is not None and (
+        not isfinite(segment_length_mi) or segment_length_mi <= 0
+    ):
+        raise HCMCalcError(
+            "Step 6 segment length must be a finite value greater than zero."
+        )
+    if free_flow_speed_mph is not None and (
+        not isfinite(free_flow_speed_mph) or free_flow_speed_mph <= 0
+    ):
+        raise HCMCalcError(
+            "Step 6 free-flow speed must be a finite value greater than zero."
+        )
+    if heavy_vehicle_percent is not None and (
+        not isfinite(heavy_vehicle_percent) or not 0 <= heavy_vehicle_percent <= 100
+    ):
+        raise HCMCalcError(
+            "Step 6 heavy-vehicle percentage must be a finite value between 0 and 100."
+        )
+    if demand_flow_rate_veh_h is not None and (
+        not isfinite(demand_flow_rate_veh_h) or demand_flow_rate_veh_h < 0
+    ):
+        raise HCMCalcError("Step 6 demand flow rate must be a finite nonnegative value.")
+    if opposing_flow_veh_h is not None and (
+        not isfinite(opposing_flow_veh_h) or opposing_flow_veh_h < 0
+    ):
+        raise HCMCalcError(
+            "Step 6 opposing flow rate must be a finite nonnegative value."
+        )
+    if capacity_veh_h is not None and (
+        not isfinite(capacity_veh_h) or capacity_veh_h <= 0
+    ):
+        raise HCMCalcError("Step 6 capacity must be a finite value greater than zero.")
+
+
+def _require_step6_values(*values: tuple[str, object]) -> None:
+    for label, value in values:
+        if value is None:
+            raise HCMCalcError(f"Step 6 {label} is required.")
+
+
+def _validate_step6_capacity_percent(value: float, label: str) -> float:
+    if not isfinite(value) or not 0.0 <= value < 100.0:
+        raise HCMCalcError(
+            f"Step 6 {label} must be finite and at least 0 but less than 100 "
+            "for Eq. 15-22 and Eq. 15-23 logarithms."
+        )
+    return value
+
+
+def _validate_step6_curve_inputs(
+    segment_type: str,
+    percent_followers_capacity: float,
+    percent_followers_25_capacity: float,
+    capacity_veh_h: float,
+) -> None:
+    _validate_step6_common_inputs(
+        segment_type=segment_type,
+        vertical_class=1,
+        capacity_veh_h=capacity_veh_h,
+    )
+    _validate_step6_capacity_percent(percent_followers_capacity, "PFcap")
+    _validate_step6_capacity_percent(percent_followers_25_capacity, "PF25cap")
+
+
 def percent_followers(
     demand_flow_rate_veh_h: float,
     slope_coefficient: float,
     power_coefficient: float,
 ) -> float:
-    """HCM Eq. 15-17 Passing Constrained percent followers."""
+    """HCM Eq. 15-17 percent followers."""
 
-    return 100.0 * (
+    _require_step6_values(
+        ("demand flow rate", demand_flow_rate_veh_h),
+        ("slope coefficient m", slope_coefficient),
+        ("power coefficient p", power_coefficient),
+    )
+    if not isfinite(demand_flow_rate_veh_h) or demand_flow_rate_veh_h < 0:
+        raise HCMCalcError("Step 6 demand flow rate must be a finite nonnegative value.")
+    if not isfinite(slope_coefficient) or slope_coefficient >= 0:
+        raise HCMCalcError("Step 6 slope coefficient m must be finite and negative.")
+    if not isfinite(power_coefficient) or power_coefficient <= 0:
+        raise HCMCalcError("Step 6 power coefficient p must be finite and positive.")
+    value = 100.0 * (
         1.0
         - exp(slope_coefficient * (demand_flow_rate_veh_h / 1000.0) ** power_coefficient)
     )
+    if not isfinite(value) or not 0.0 <= value <= 100.0:
+        raise HCMCalcError("Step 6 percent followers must be finite and between 0 and 100.")
+    return value
 
 
 def follower_density(
