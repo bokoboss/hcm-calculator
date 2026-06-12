@@ -196,6 +196,7 @@ dependency.
 | Free-flow speed | Calculates and audits base free-flow speed, lane/shoulder adjustment, access-point adjustment, heavy-vehicle coefficient, and free-flow speed through a validated Step 4 helper. Exhibit 15-12 is table-driven for Classes 1-5. | Add independent validation fixtures before promoting additional nonlevel public calculation paths. |
 | Average speed | Calculates and audits Step 5 tangent average speed for supported straight segment types with table-driven Exhibits 15-13 through 15-20. The guarded horizontal-curve path uses table-driven Exhibit 15-22 and centralized Eq. 15-12 through Eq. 15-16 helpers. | Add independent validation before broadening beyond the existing level Example Problem 2 manual path and validated facility examples. |
 | Percent followers | Calculates and audits Step 6 percent followers through Eq. 15-17 to Eq. 15-23. Exhibits 15-24 through 15-29 are table-driven for vertical Classes 1-5, with explicit input and logarithm-domain validation. | Add independent validation fixtures before broadening guarded nonlevel or Passing Lane calculation support. |
+| Passing Lane midpoint measures | Calculates and audits Step 7 Passing Lane lane flow, heavy-vehicle split, speed differential, and midpoint speeds through Eq. 15-24 to Eq. 15-33. The HCM-defined faster-lane heavy-vehicle proportion multiplier remains `0.4`. | Preserve the validated Class 1, `8%` heavy-vehicle guardrails until independent fixtures authorize broader Passing Lane support. |
 | Follower density | Calculates and audits Passing Constrained/Passing Zone density with Eq. 15-35 and supported Passing Lane midpoint density with Eq. 15-34, including lane components. | Preserve the explicit endpoint-versus-midpoint basis as future Passing Lane and facility support expands. |
 | Follower-density adjustment, where applicable | Downstream adjustment exists in validated facility examples, but manual single-segment analysis explicitly excludes upstream/downstream effects. | Define when a standalone segment may validly receive an adjustment, what context is required, and when the UI must warn that facility context is missing. |
 | Segment LOS | Step 10 determines Motorized Vehicle LOS from follower density with centralized, boundary-tested HCM7 Exhibit 15-6 thresholds. Outputs audit the threshold group, thresholds used, density basis, posted speed, and source reference. | Document capacity-related LOS F behavior before expanding beyond the currently supported calculation paths. |
@@ -232,9 +233,10 @@ final percent-followers values using table-driven Exhibits 15-24 through 15-29.
 Step 8 follower density is hardened separately with Eq. 15-34 and Eq. 15-35.
 Step 10 Motorized Vehicle LOS determination is hardened with centralized HCM7
 Exhibit 15-6 thresholds, explicit upper-inclusive boundaries, input validation,
-and audit fields. This work does not implement Step 9 downstream Passing Lane
-adjustment or broaden unsupported calculation paths; existing guardrails remain
-in force.
+and audit fields. Step 7 Passing Lane midpoint measures are centralized and
+auditable through Eq. 15-24 to Eq. 15-33. This work does not implement Step 9
+downstream Passing Lane adjustment or broaden unsupported calculation paths;
+existing guardrails remain in force.
 
 ### Phase 1: Complete the level-terrain single-segment foundation
 
