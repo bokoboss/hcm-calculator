@@ -187,13 +187,14 @@ establish broad methodology validation or authorize other nonlevel inputs.
 
 ### Other current vertical class behavior
 
-- The complete Exhibit 15-12 heavy-vehicle free-flow-speed coefficient table and
-  Step 5 Exhibits 15-13 through 15-20 average-speed coefficient tables are
-  implemented for vertical Classes 1 through 5. Percent-followers coefficient
-  dictionaries remain limited to Classes 1, 4, and 5.
-- Passing Lane Step 5 coefficient tables cover Classes 1 through 5. Passing
-  Lane percent-followers dictionaries and lane-level capacity remain Class 1
-  only, so public calculation guardrails are unchanged.
+- The complete Exhibit 15-12 heavy-vehicle free-flow-speed coefficient table,
+  Step 5 Exhibits 15-13 through 15-20 average-speed coefficient tables, and
+  Step 6 Exhibits 15-24 through 15-29 percent-followers coefficient tables are
+  implemented for vertical Classes 1 through 5.
+- Passing Lane Step 5 and Step 6 coefficient tables cover Classes 1 through 5.
+  Passing Lane lane-level capacity remains Class 1 only, and independent
+  validation fixtures do not authorize new nonlevel paths, so public
+  calculation guardrails are unchanged.
 - The complete Exhibit 15-11 grade-length classification table is available
   through a pure lookup that reports matched row and column ranges.
 - Classification does not authorize downstream calculation. Validation-path
@@ -251,7 +252,7 @@ required HCM data and validation fixtures are available.
 | Any vertical class not represented by the current class-indexed dictionaries | Required coefficients and validated calculation behavior are absent. |
 | Any nonlevel manual path at a heavy-vehicle percentage other than exactly `8%` | Current nonlevel validation fixtures use `8%`; other percentages require independent validation fixtures before calculation. |
 | Any nonlevel manual Passing Zone path | No independent nonlevel Passing Zone validation fixture exists, so the scope guardrail rejects it before calculation. |
-| Passing Lane in vertical Class 4 or 5, or any other non-Class-1 path | Passing Lane speed, percent-followers, and lane-level capacity data are Class 1 only. |
+| Passing Lane in vertical Class 4 or 5, or any other non-Class-1 path | Passing Lane lane-level capacity data and independent validation fixtures do not authorize these paths, even though Step 5 and Step 6 coefficient tables are complete. |
 | Manual Passing Lane at a heavy-vehicle percentage other than exactly `8%` | Current path is restricted to the validated example percentage. |
 | Any downgrade other than `-3% / 0.5 mi` | No classification mapping or validation fixture exists. |
 | General mountainous horizontal-curve single segments | Manual curve support is explicitly limited to level Passing Constrained Example Problem 2. |
@@ -271,14 +272,14 @@ reviewed methodology source for:
   combinations before they are promoted through guarded public calculation
   paths. The complete Exhibit 15-12 heavy-vehicle coefficient table is present,
   but table availability alone does not authorize downstream support.
-- Coefficient rows for every intended vertical class for percent followers at
-  capacity and at 25% capacity. The repository currently contains relevant
-  Exhibit 15-24 and 15-26 rows only for Classes 1, 4, and 5.
+- Independent validation fixtures for additional vertical-class Step 6 paths.
+  Exhibits 15-24 through 15-29 are table-driven for Classes 1 through 5, but
+  table availability alone does not authorize broader calculation support.
 - Any class-specific auxiliary coefficients, minimum values, applicability
-  ranges, and rounding rules needed by those equations.
-- Passing Lane class-specific speed, percent-followers, and lane-capacity data
-  beyond Class 1. Current Passing Lane maps reference Exhibits 15-14, 15-16,
-  15-18, 15-20, 15-25, and 15-27 only for Class 1.
+  ranges, and rounding rules needed beyond the implemented Step 6 equations.
+- Passing Lane lane-capacity data and validation beyond Class 1. Step 5 and
+  Step 6 coefficient tables are complete, but the lane-level capacity path
+  remains intentionally guarded.
 - Methodology for grade changes within a segment, if Chapter 15 requires grade
   length to differ from segment length or requires segmentation rules.
 - Methodology and validation data for interactions among vertical class,
