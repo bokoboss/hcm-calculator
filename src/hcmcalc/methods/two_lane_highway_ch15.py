@@ -178,6 +178,28 @@ class PassingLaneStep7Estimate:
 
 
 @dataclass(frozen=True)
+class PassingLaneDownstreamAdjustmentEstimate:
+    """Auditable HCM Chapter 15 Step 9 downstream adjustment."""
+
+    downstream_percent_followers_improvement: float
+    downstream_speed_improvement: float
+    adjusted_follower_density: float
+    downstream_distance_mi: float
+    passing_lane_length_mi: float
+    unadjusted_percent_followers: float
+    entering_passing_lane_percent_followers: float
+    unadjusted_average_speed: float
+    unadjusted_flow_rate: float
+    unadjusted_follower_density: float
+    downstream_adjustment_applied: bool = True
+    source_references: tuple[str, ...] = (
+        "HCM Eq. 15-36",
+        "HCM Eq. 15-37",
+        "HCM Eq. 15-38",
+    )
+
+
+@dataclass(frozen=True)
 class MotorizedLOSDetermination:
     """Auditable HCM Chapter 15 Step 10 motorized-vehicle LOS result."""
 
@@ -781,13 +803,20 @@ def _calculate_facility_example_result(
         result["downstream_distance_mi"] = downstream_distance
         result["distance_from_facility_start_mi"] = distance_from_passing_lane_start
         result["within_passing_lane_effective_length"] = within_effective_length
+        result["downstream_adjustment_applied"] = False
         if within_effective_length:
-            adjustment = downstream_follower_density_adjustment(
-                percent_followers_value=float(result["percent_followers"]),
-                demand_flow_rate_veh_h=float(result["demand_flow_rate_veh_h"]),
-                average_speed_mph=float(result["average_speed_mph"]),
+            adjustment = estimate_passing_lane_downstream_adjustment(
+                downstream_segment_affected_by_passing_lane=True,
+                percent_followers=float(result["percent_followers"]),
+                flow_rate=float(result["demand_flow_rate_veh_h"]),
+                average_speed=float(result["average_speed_mph"]),
+                unadjusted_follower_density=float(
+                    result["follower_density_followers_mi_ln"]
+                ),
                 downstream_distance_mi=downstream_distance,
-                upstream_percent_followers=float(upstream_result["percent_followers"]),
+                entering_passing_lane_percent_followers=float(
+                    upstream_result["percent_followers"]
+                ),
                 passing_lane_length_mi=float(passing_lane_result["segment_length_mi"]),
             )
             result["unadjusted_follower_density_followers_mi_ln"] = result[
@@ -799,15 +828,27 @@ def _calculate_facility_example_result(
             result["unadjusted_follower_density_formula"] = result[
                 "follower_density_formula"
             ]
-            result["percent_followers_improvement_percent"] = adjustment[
-                "percent_followers_improvement_percent"
-            ]
-            result["speed_improvement_percent"] = adjustment[
-                "speed_improvement_percent"
-            ]
-            result["follower_density_followers_mi_ln"] = adjustment[
-                "adjusted_follower_density_followers_mi_ln"
-            ]
+            result["downstream_adjustment_applied"] = adjustment.downstream_adjustment_applied
+            result["downstream_percent_followers_improvement"] = (
+                adjustment.downstream_percent_followers_improvement
+            )
+            result["downstream_speed_improvement"] = adjustment.downstream_speed_improvement
+            result["adjusted_follower_density"] = adjustment.adjusted_follower_density
+            result["unadjusted_percent_followers"] = adjustment.unadjusted_percent_followers
+            result["unadjusted_average_speed"] = adjustment.unadjusted_average_speed
+            result["unadjusted_flow_rate"] = adjustment.unadjusted_flow_rate
+            result["unadjusted_follower_density"] = (
+                adjustment.unadjusted_follower_density
+            )
+            result["passing_lane_length_mi"] = adjustment.passing_lane_length_mi
+            result["passing_lane_downstream_source_reference"] = ", ".join(
+                adjustment.source_references
+            )
+            result["percent_followers_improvement_percent"] = (
+                adjustment.downstream_percent_followers_improvement
+            )
+            result["speed_improvement_percent"] = adjustment.downstream_speed_improvement
+            result["follower_density_followers_mi_ln"] = adjustment.adjusted_follower_density
             result["follower_density_source_reference"] = "HCM Eq. 15-38"
             result["follower_density_formula"] = (
                 "FDadj = (PF / 100) * (1 - percent_improvement_PF / 100) * "
@@ -1360,6 +1401,47 @@ def _facility_intermediate_values(
             intermediate_values.extend(
                 [
                     IntermediateValue(
+                        f"segment_{segment_id}_downstream_adjustment_applied",
+                        segment["downstream_adjustment_applied"],
+                        source="HCM Chapter 15 Step 9",
+                    ),
+                    IntermediateValue(
+                        f"segment_{segment_id}_downstream_distance",
+                        segment["downstream_distance_mi"],
+                        "mi",
+                        "HCM Eq. 15-36 through Eq. 15-38",
+                    ),
+                    IntermediateValue(
+                        f"segment_{segment_id}_passing_lane_length",
+                        segment["passing_lane_length_mi"],
+                        "mi",
+                        "HCM Eq. 15-36 through Eq. 15-38",
+                    ),
+                    IntermediateValue(
+                        f"segment_{segment_id}_unadjusted_percent_followers",
+                        segment["unadjusted_percent_followers"],
+                        "%",
+                        "HCM Eq. 15-38",
+                    ),
+                    IntermediateValue(
+                        f"segment_{segment_id}_unadjusted_average_speed",
+                        segment["unadjusted_average_speed"],
+                        "mph",
+                        "HCM Eq. 15-38",
+                    ),
+                    IntermediateValue(
+                        f"segment_{segment_id}_unadjusted_flow_rate",
+                        segment["unadjusted_flow_rate"],
+                        "veh/h",
+                        "HCM Eq. 15-36 through Eq. 15-38",
+                    ),
+                    IntermediateValue(
+                        f"segment_{segment_id}_unadjusted_follower_density",
+                        segment["unadjusted_follower_density"],
+                        "followers/mi/ln",
+                        "HCM Chapter 15 Step 8",
+                    ),
+                    IntermediateValue(
                         f"segment_{segment_id}_percent_followers_improvement",
                         segment["percent_followers_improvement_percent"],
                         "%",
@@ -1376,6 +1458,11 @@ def _facility_intermediate_values(
                         segment["follower_density_followers_mi_ln"],
                         "followers/mi/ln",
                         "HCM Eq. 15-38",
+                    ),
+                    IntermediateValue(
+                        f"segment_{segment_id}_passing_lane_downstream_source_reference",
+                        segment["passing_lane_downstream_source_reference"],
+                        source="HCM Chapter 15 Step 9",
                     ),
                 ]
             )
@@ -3334,68 +3421,228 @@ def downstream_follower_density_adjustment(
     upstream_percent_followers: float,
     passing_lane_length_mi: float,
 ) -> dict[str, float]:
-    """HCM Eq. 15-36 through Eq. 15-38 downstream passing-lane adjustment."""
+    """Return the legacy dictionary view of the Step 9 estimate."""
 
-    pf_improvement = downstream_percent_followers_improvement(
-        downstream_distance_mi,
-        upstream_percent_followers,
-        passing_lane_length_mi,
-        demand_flow_rate_veh_h,
+    unadjusted_density = estimate_adjusted_downstream_follower_density(
+        percent_followers=percent_followers_value,
+        flow_rate=demand_flow_rate_veh_h,
+        average_speed=average_speed_mph,
+        downstream_percent_followers_improvement=0.0,
+        downstream_speed_improvement=0.0,
     )
-    speed_improvement = downstream_speed_improvement(
-        downstream_distance_mi,
-        upstream_percent_followers,
-        passing_lane_length_mi,
-        demand_flow_rate_veh_h,
-    )
-    adjusted_density = (
-        percent_followers_value
-        / 100.0
-        * (1.0 - pf_improvement / 100.0)
-        * demand_flow_rate_veh_h
-        / (average_speed_mph * (1.0 + speed_improvement / 100.0))
+    estimate = estimate_passing_lane_downstream_adjustment(
+        downstream_segment_affected_by_passing_lane=True,
+        percent_followers=percent_followers_value,
+        flow_rate=demand_flow_rate_veh_h,
+        average_speed=average_speed_mph,
+        unadjusted_follower_density=unadjusted_density,
+        downstream_distance_mi=downstream_distance_mi,
+        entering_passing_lane_percent_followers=upstream_percent_followers,
+        passing_lane_length_mi=passing_lane_length_mi,
     )
     return {
-        "percent_followers_improvement_percent": pf_improvement,
-        "speed_improvement_percent": speed_improvement,
-        "adjusted_follower_density_followers_mi_ln": adjusted_density,
+        "percent_followers_improvement_percent": (
+            estimate.downstream_percent_followers_improvement
+        ),
+        "speed_improvement_percent": estimate.downstream_speed_improvement,
+        "adjusted_follower_density_followers_mi_ln": estimate.adjusted_follower_density,
     }
 
 
 def downstream_percent_followers_improvement(
-    downstream_distance_mi: float,
-    upstream_percent_followers: float,
-    passing_lane_length_mi: float,
-    demand_flow_rate_veh_h: float,
+    downstream_distance_mi: float | None,
+    upstream_percent_followers: float | None,
+    passing_lane_length_mi: float | None,
+    demand_flow_rate_veh_h: float | None,
 ) -> float:
     """HCM Eq. 15-36 percent-followers improvement downstream of a passing lane."""
 
-    return max(
+    downstream_distance = _validate_step9_number(
+        downstream_distance_mi, "downstream distance", allow_zero=True
+    )
+    entering_percent_followers = _validate_step9_percent(
+        upstream_percent_followers, "entering-passing-lane percent followers"
+    )
+    passing_lane_length = _validate_step9_number(
+        passing_lane_length_mi, "passing lane length", allow_zero=False
+    )
+    flow_rate = _validate_step9_number(
+        demand_flow_rate_veh_h, "flow rate", allow_zero=False
+    )
+    improvement = max(
         0.0,
         27.0
-        - 8.75 * log(max(0.1, downstream_distance_mi))
-        + 0.1 * max(0.0, upstream_percent_followers - 30.0)
-        + 3.5 * log(max(0.3, passing_lane_length_mi))
-        - 0.01 * demand_flow_rate_veh_h,
+        - 8.75 * log(max(0.1, downstream_distance))
+        + 0.1 * max(0.0, entering_percent_followers - 30.0)
+        + 3.5 * log(max(0.3, passing_lane_length))
+        - 0.01 * flow_rate,
     )
+    return _validate_step9_computed(improvement, "percent-followers improvement")
 
 
 def downstream_speed_improvement(
-    downstream_distance_mi: float,
-    upstream_percent_followers: float,
-    passing_lane_length_mi: float,
-    demand_flow_rate_veh_h: float,
+    downstream_distance_mi: float | None,
+    upstream_percent_followers: float | None,
+    passing_lane_length_mi: float | None,
+    demand_flow_rate_veh_h: float | None,
 ) -> float:
     """HCM Eq. 15-37 speed improvement downstream of a passing lane."""
 
-    return max(
+    downstream_distance = _validate_step9_number(
+        downstream_distance_mi, "downstream distance", allow_zero=True
+    )
+    entering_percent_followers = _validate_step9_percent(
+        upstream_percent_followers, "entering-passing-lane percent followers"
+    )
+    passing_lane_length = _validate_step9_number(
+        passing_lane_length_mi, "passing lane length", allow_zero=False
+    )
+    flow_rate = _validate_step9_number(
+        demand_flow_rate_veh_h, "flow rate", allow_zero=False
+    )
+    improvement = max(
         0.0,
         3.0
-        - 0.8 * downstream_distance_mi
-        + 0.1 * max(0.0, upstream_percent_followers - 30.0)
-        + 0.75 * passing_lane_length_mi
-        - 0.005 * demand_flow_rate_veh_h,
+        - 0.8 * downstream_distance
+        + 0.1 * max(0.0, entering_percent_followers - 30.0)
+        + 0.75 * passing_lane_length
+        - 0.005 * flow_rate,
     )
+    return _validate_step9_computed(improvement, "speed improvement")
+
+
+def estimate_adjusted_downstream_follower_density(
+    *,
+    percent_followers: float | None,
+    flow_rate: float | None,
+    average_speed: float | None,
+    downstream_percent_followers_improvement: float | None,
+    downstream_speed_improvement: float | None,
+) -> float:
+    """Estimate adjusted downstream follower density with HCM Eq. 15-38."""
+
+    subject_percent_followers = _validate_step9_percent(
+        percent_followers, "subject-segment percent followers"
+    )
+    subject_flow_rate = _validate_step9_number(flow_rate, "flow rate", allow_zero=False)
+    subject_average_speed = _validate_step9_number(
+        average_speed, "average speed", allow_zero=False
+    )
+    percent_followers_improvement = _validate_step9_number(
+        downstream_percent_followers_improvement,
+        "percent-followers improvement",
+        allow_zero=True,
+    )
+    speed_improvement = _validate_step9_number(
+        downstream_speed_improvement, "speed improvement", allow_zero=True
+    )
+    adjusted_density = (
+        subject_percent_followers
+        / 100.0
+        * (1.0 - percent_followers_improvement / 100.0)
+        * subject_flow_rate
+        / (subject_average_speed * (1.0 + speed_improvement / 100.0))
+    )
+    return _validate_step9_computed(adjusted_density, "adjusted follower density")
+
+
+def estimate_passing_lane_downstream_adjustment(
+    *,
+    downstream_segment_affected_by_passing_lane: bool | None,
+    downstream_distance_mi: float | None,
+    passing_lane_length_mi: float | None,
+    percent_followers: float | None,
+    entering_passing_lane_percent_followers: float | None,
+    flow_rate: float | None,
+    average_speed: float | None,
+    unadjusted_follower_density: float | None,
+) -> PassingLaneDownstreamAdjustmentEstimate:
+    """Estimate Step 9 only for an explicitly identified downstream segment."""
+
+    if downstream_segment_affected_by_passing_lane is not True:
+        raise HCMCalcError(
+            "Step 9 downstream adjustment requires an explicitly identified "
+            "downstream segment affected by a preceding passing lane."
+        )
+    downstream_distance = _validate_step9_number(
+        downstream_distance_mi, "downstream distance", allow_zero=True
+    )
+    passing_lane_length = _validate_step9_number(
+        passing_lane_length_mi, "passing lane length", allow_zero=False
+    )
+    subject_percent_followers = _validate_step9_percent(
+        percent_followers, "subject-segment percent followers"
+    )
+    entering_percent_followers = _validate_step9_percent(
+        entering_passing_lane_percent_followers,
+        "entering-passing-lane percent followers",
+    )
+    subject_flow_rate = _validate_step9_number(flow_rate, "flow rate", allow_zero=False)
+    subject_average_speed = _validate_step9_number(
+        average_speed, "average speed", allow_zero=False
+    )
+    unadjusted_density = _validate_step9_number(
+        unadjusted_follower_density, "unadjusted follower density", allow_zero=True
+    )
+    percent_followers_improvement = downstream_percent_followers_improvement(
+        downstream_distance,
+        entering_percent_followers,
+        passing_lane_length,
+        subject_flow_rate,
+    )
+    speed_improvement = downstream_speed_improvement(
+        downstream_distance,
+        entering_percent_followers,
+        passing_lane_length,
+        subject_flow_rate,
+    )
+    adjusted_density = estimate_adjusted_downstream_follower_density(
+        percent_followers=subject_percent_followers,
+        flow_rate=subject_flow_rate,
+        average_speed=subject_average_speed,
+        downstream_percent_followers_improvement=percent_followers_improvement,
+        downstream_speed_improvement=speed_improvement,
+    )
+    return PassingLaneDownstreamAdjustmentEstimate(
+        downstream_percent_followers_improvement=percent_followers_improvement,
+        downstream_speed_improvement=speed_improvement,
+        adjusted_follower_density=adjusted_density,
+        downstream_distance_mi=downstream_distance,
+        passing_lane_length_mi=passing_lane_length,
+        unadjusted_percent_followers=subject_percent_followers,
+        entering_passing_lane_percent_followers=entering_percent_followers,
+        unadjusted_average_speed=subject_average_speed,
+        unadjusted_flow_rate=subject_flow_rate,
+        unadjusted_follower_density=unadjusted_density,
+    )
+
+
+def _validate_step9_percent(value: object, label: str) -> float:
+    if value is None:
+        raise HCMCalcError(f"Step 9 {label} is required.")
+    if not isinstance(value, Real) or not isfinite(float(value)) or not 0 <= value <= 100:
+        raise HCMCalcError(
+            f"Step 9 {label} must be a finite value between 0 and 100."
+        )
+    return float(value)
+
+
+def _validate_step9_number(value: object, label: str, *, allow_zero: bool) -> float:
+    if value is None:
+        raise HCMCalcError(f"Step 9 {label} is required.")
+    if not isinstance(value, Real) or not isfinite(float(value)):
+        raise HCMCalcError(f"Step 9 {label} must be a finite numeric value.")
+    numeric_value = float(value)
+    if numeric_value < 0 or (numeric_value == 0 and not allow_zero):
+        required_range = "nonnegative" if allow_zero else "greater than zero"
+        raise HCMCalcError(f"Step 9 {label} must be {required_range}.")
+    return numeric_value
+
+
+def _validate_step9_computed(value: float, label: str) -> float:
+    if not isfinite(value):
+        raise HCMCalcError(f"Step 9 computed {label} must be finite.")
+    return value
 
 
 def passing_lane_effective_length(

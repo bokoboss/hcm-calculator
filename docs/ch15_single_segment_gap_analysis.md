@@ -234,9 +234,13 @@ Step 8 follower density is hardened separately with Eq. 15-34 and Eq. 15-35.
 Step 10 Motorized Vehicle LOS determination is hardened with centralized HCM7
 Exhibit 15-6 thresholds, explicit upper-inclusive boundaries, input validation,
 and audit fields. Step 7 Passing Lane midpoint measures are centralized and
-auditable through Eq. 15-24 to Eq. 15-33. This work does not implement Step 9
-downstream Passing Lane adjustment or broaden unsupported calculation paths;
-existing guardrails remain in force.
+auditable through Eq. 15-24 to Eq. 15-33. Step 9 downstream Passing Lane
+adjustment is centralized and auditable through Eq. 15-36 to Eq. 15-38 for the
+existing validated facility paths. It explicitly distinguishes the percent
+followers entering the Passing Lane from the subject segment's unadjusted
+percent followers used in adjusted follower density. This does not add general
+facility UI, broaden Passing Lane support, or enable downstream adjustment for
+manual single-segment calculations; existing guardrails remain in force.
 
 ### Phase 1: Complete the level-terrain single-segment foundation
 
