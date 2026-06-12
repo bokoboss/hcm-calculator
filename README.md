@@ -135,3 +135,8 @@ Before UI expansion or any production use, calculation correctness must continue
 See the [Chapter 15 Single-Segment Gap Analysis](docs/ch15_single_segment_gap_analysis.md)
 for the prioritized roadmap toward a more complete manual single-segment
 workflow.
+
+See the
+[Chapter 15 Calculator Coverage Status](docs/ch15_calculator_coverage_status.md)
+for a calculator-facing inventory of current engine, UI, test, segment-type,
+and workflow coverage and the recommended next capability PR.

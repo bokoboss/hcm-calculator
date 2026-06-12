@@ -11,6 +11,10 @@ The target remains an auditable, facility-type-aware calculation method whose
 inputs, assumptions, intermediate values, and outputs can be reviewed without
 depending on the UI.
 
+For a calculator-facing inventory of current engine, UI, test, segment-type,
+and workflow coverage, see the
+[Chapter 15 Calculator Coverage Status](ch15_calculator_coverage_status.md).
+
 ## Current Repository Capability
 
 ### Validated baseline
