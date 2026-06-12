@@ -16,6 +16,13 @@ from hcmcalc.ui.curve_editor import (
     generate_curve_subsegments,
     initial_curve_subsegments,
 )
+from hcmcalc.ui.manual_facility import (
+    build_manual_facility_audit_record,
+    facility_segment_result_rows,
+    facility_template_options,
+    load_facility_template,
+    run_manual_facility,
+)
 from hcmcalc.ui.manual_segment import run_manual_single_segment
 from hcmcalc.ui.project_io import (
     ProjectFileError,
@@ -45,12 +52,12 @@ IMPLEMENTED_CASE_IDS = (
     "TLH-CH15-004",
 )
 SCOPE_NOTICE = (
-    "Current scope: one two-lane highway segment, with level and limited "
-    "mountainous terrain support and Example Problem 2 horizontal curves."
+    "Current scope: limited manual single-segment and Example 3/4-backed "
+    "facility workflows."
 )
 LIMITATIONS_FOOTER = (
     "Current limitations: example-scoped validation, selected mountainous "
-    "combinations, and no downstream passing-lane effects."
+    "combinations, and no general downstream passing-lane support."
 )
 
 
@@ -211,6 +218,192 @@ def render_validated_case_viewer() -> None:
     if result_case_id != selected_case_id:
         st.info("Run the selected case to replace the currently displayed result.")
     render_result(result_case_id, result_data)
+
+
+def render_manual_facility_calculator() -> None:
+    """Render the limited Example 3/4-backed facility worksheet."""
+
+    st.warning(
+        "Limited template-backed facility workflow. This does not represent "
+        "full general Chapter 15 facility support."
+    )
+    controls = st.columns([2, 1])
+    template_options = facility_template_options()
+    template_id = controls[0].selectbox(
+        "Validated example-based workflow",
+        list(template_options),
+        format_func=template_options.__getitem__,
+        key="facility_template_id",
+    )
+    unit_label = controls[1].radio(
+        "Unit system",
+        ["Metric", "Imperial"],
+        horizontal=True,
+        key="facility_unit_label",
+    )
+    unit_system = str(unit_label).lower()
+
+    try:
+        template = load_facility_template(template_id, unit_system)
+    except HCMCalcError as exc:
+        st.error(str(exc))
+        return
+
+    editable_fields = set(template["editable_fields"])
+    disabled_fields = [
+        field
+        for field in template["segments"][0]
+        if field not in editable_fields
+    ]
+    st.caption(
+        f"Template source: {template['template_source_reference']}. "
+        "Segment sequence, types, terrain/curve context, passing-lane placement, "
+        "and downstream context remain locked."
+    )
+    edited_rows = st.data_editor(
+        template["segments"],
+        key=f"facility_segment_editor_{template_id}_{unit_system}",
+        hide_index=True,
+        num_rows="fixed",
+        disabled=disabled_fields,
+        use_container_width=True,
+        column_config={
+            "segment_length": st.column_config.NumberColumn(
+                f"Length ({'km' if unit_system == 'metric' else 'mi'})",
+                min_value=0.01,
+                required=True,
+            ),
+            "posted_speed": st.column_config.NumberColumn(
+                f"Posted speed ({'km/h' if unit_system == 'metric' else 'mph'})",
+                min_value=1.0,
+                required=True,
+            ),
+            "analysis_direction_volume_veh_h": st.column_config.NumberColumn(
+                "Analysis volume (veh/h)", min_value=0.0, required=True
+            ),
+            "opposing_direction_volume_veh_h": st.column_config.NumberColumn(
+                "Opposing volume (veh/h)", min_value=0.0
+            ),
+            "peak_hour_factor": st.column_config.NumberColumn(
+                "PHF", min_value=0.01, max_value=1.0, required=True
+            ),
+            "heavy_vehicle_percent": st.column_config.NumberColumn(
+                "Heavy vehicles (%)", min_value=0.0, max_value=100.0, required=True
+            ),
+            "passing_lane": st.column_config.CheckboxColumn("Passing lane"),
+            "downstream_affected": st.column_config.CheckboxColumn(
+                "Downstream context"
+            ),
+        },
+    )
+    st.caption(
+        "Unsupported combinations are blocked. Manual downstream adjustment and "
+        "arbitrary passing-lane or nonlevel facility edits are not available."
+    )
+
+    if st.button(
+        "Calculate facility",
+        type="primary",
+        use_container_width=True,
+        key="facility_calculate",
+    ):
+        st.session_state.pop("manual_facility_result", None)
+        st.session_state.pop("manual_facility_error", None)
+        try:
+            result = run_manual_facility(template_id, edited_rows, unit_system)
+            st.session_state["manual_facility_result"] = result_to_dict(result)
+            st.session_state["manual_facility_result_context"] = (
+                template_id,
+                unit_system,
+            )
+            st.session_state["manual_facility_result_rows"] = facility_segment_result_rows(
+                result, edited_rows
+            )
+            st.session_state["manual_facility_audit"] = (
+                build_manual_facility_audit_record(
+                    template_id, edited_rows, unit_system, result=result
+                )
+            )
+        except HCMCalcError as exc:
+            st.session_state["manual_facility_error"] = str(exc)
+            st.session_state["manual_facility_audit"] = (
+                build_manual_facility_audit_record(
+                    template_id, edited_rows, unit_system, error=exc
+                )
+            )
+
+    error = st.session_state.get("manual_facility_error")
+    audit = st.session_state.get("manual_facility_audit")
+    if error is not None:
+        st.error(f"Unsupported combination: {error}")
+        render_audit_record(audit)
+        return
+
+    result_data = st.session_state.get("manual_facility_result")
+    if result_data is None:
+        st.info("Review the template-backed segment table and click Calculate facility.")
+        return
+    if st.session_state.get("manual_facility_result_context") != (
+        template_id,
+        unit_system,
+    ):
+        st.info("Calculate the selected template to replace the displayed facility result.")
+        return
+
+    outputs = result_data["outputs"]
+    metric = unit_system == "metric"
+    summary = st.columns(6)
+    summary[0].metric(
+        "Facility follower density",
+        f"{outputs['facility_follower_density_followers_mi_ln'] / 1.609344:.2f} fol/km/ln"
+        if metric
+        else f"{outputs['facility_follower_density_followers_mi_ln']:.1f} fol/mi/ln",
+    )
+    summary[1].metric("Facility LOS", outputs["facility_level_of_service"])
+    summary[2].metric(
+        "Weighted average speed",
+        f"{outputs['facility_average_speed_mph'] * 1.609344:.1f} km/h"
+        if metric
+        else f"{outputs['facility_average_speed_mph']:.1f} mph",
+    )
+    summary[3].metric("Facility percent followers", "Not available")
+    summary[4].metric("Segments", len(outputs["segments"]))
+    summary[5].metric(
+        "Total length",
+        f"{outputs['facility_length_mi'] * 1.609344:.2f} km"
+        if metric
+        else f"{outputs['facility_length_mi']:.2f} mi",
+    )
+
+    st.subheader("Segment-level results")
+    st.dataframe(
+        st.session_state["manual_facility_result_rows"],
+        hide_index=True,
+        use_container_width=True,
+    )
+    render_list("Warnings", result_data["warnings"], "No warnings reported.")
+    render_list("Assumptions", result_data["assumptions"], "No assumptions reported.")
+    render_audit_record(audit)
+    full_result = {
+        "calculation_type": "manual_facility_v0",
+        "template_id": template_id,
+        "unit_system": unit_system,
+        "engine_result": result_data,
+        "audit_record": audit,
+    }
+    with st.expander("Full facility result JSON"):
+        st.json(full_result)
+        st.download_button(
+            "Download facility result JSON",
+            data=json.dumps(full_result, indent=2),
+            file_name=f"{template_id}-facility-result.json",
+            mime="application/json",
+            use_container_width=True,
+        )
+    st.caption(
+        "Facility project Save/Load is not included in v0.1. Existing Manual "
+        "Single Segment Save/Load remains unchanged."
+    )
 
 
 def render_manual_single_segment_calculator() -> None:
@@ -761,12 +954,18 @@ def main() -> None:
     with header_mode:
         mode = st.radio(
             "Choose the worksheet or validation viewer",
-            ["Manual single segment calculator", "Validated examples / QA"],
+            [
+                "Manual single segment calculator",
+                "Manual Facility Calculator v0.1",
+                "Validated examples / QA",
+            ],
             horizontal=True,
             label_visibility="collapsed",
         )
     if mode == "Manual single segment calculator":
         render_manual_single_segment_calculator()
+    elif mode == "Manual Facility Calculator v0.1":
+        render_manual_facility_calculator()
     else:
         render_validated_case_viewer()
     st.divider()
