@@ -4,13 +4,23 @@ import pytest
 
 from hcmcalc.core import UnsupportedScopeError
 from hcmcalc.ui.manual_segment import run_manual_single_segment
+from hcmcalc.ui.manual_facility import (
+    build_manual_facility_audit_record,
+    load_facility_template,
+    run_manual_facility,
+)
 from hcmcalc.ui.project_io import (
+    MANUAL_FACILITY_PROJECT_TYPE,
     PROJECT_SCHEMA_VERSION,
     ProjectFileError,
+    create_manual_facility_project_json,
+    create_manual_facility_project_payload,
     create_manual_project_json,
     create_manual_project_payload,
+    load_manual_facility_project_json,
     load_manual_project_json,
 )
+from hcmcalc.cli import result_to_dict
 from hcmcalc.ui.units import manual_horizontal_curve_defaults
 
 
@@ -203,3 +213,108 @@ def test_load_rejects_malformed_horizontal_curve_subsegments() -> None:
 
     with pytest.raises(ProjectFileError, match="Malformed horizontal curve subsegment"):
         load_manual_project_json(json.dumps(payload))
+
+
+@pytest.mark.parametrize(
+    ("template_id", "unit_system"),
+    [("level_example_3", "imperial"), ("mountainous_example_4", "metric")],
+)
+def test_manual_facility_project_round_trip(template_id: str, unit_system: str) -> None:
+    template = load_facility_template(template_id, unit_system)
+    result = run_manual_facility(template_id, template["segments"], unit_system)
+    audit = build_manual_facility_audit_record(
+        template_id, template["segments"], unit_system, result=result
+    )
+
+    loaded = load_manual_facility_project_json(
+        create_manual_facility_project_json(
+            template_id,
+            unit_system,
+            template["segments"],
+            result=result_to_dict(result),
+            audit_record=audit,
+        )
+    )
+
+    assert loaded["project_type"] == MANUAL_FACILITY_PROJECT_TYPE
+    assert loaded["template_id"] == template_id
+    assert loaded["segment_rows"] == template["segments"]
+    assert loaded["normalized_facility_inputs"]["segments"]
+    assert loaded["calculation_result"]["outputs"]["facility_level_of_service"]
+    rerun = run_manual_facility(
+        loaded["template_id"], loaded["segment_rows"], loaded["unit_system"]
+    )
+    assert rerun.outputs == loaded["calculation_result"]["outputs"]
+
+
+def test_manual_facility_project_payload_contains_auditable_context() -> None:
+    template = load_facility_template("level_example_3", "imperial")
+
+    payload = create_manual_facility_project_payload(
+        template["template_id"], template["unit_system"], template["segments"]
+    )
+
+    assert payload["template_name"] == template["template_label"]
+    assert payload["editable_facility_inputs"]["segments"] == template["segments"]
+    assert payload["normalized_facility_inputs"]["segments"]
+    assert payload["unsupported_behavior_notes"]
+    assert payload["app_version"]
+
+
+def test_facility_loader_rejects_single_segment_project() -> None:
+    with pytest.raises(ProjectFileError, match="Expected manual_facility_v0"):
+        load_manual_facility_project_json(create_manual_project_json(_manual_inputs()))
+
+
+def test_single_segment_loader_rejects_facility_project_without_breaking_round_trip() -> None:
+    template = load_facility_template("level_example_3", "imperial")
+    facility_json = create_manual_facility_project_json(
+        template["template_id"], template["unit_system"], template["segments"]
+    )
+
+    with pytest.raises(ProjectFileError, match="Expected manual_single_segment"):
+        load_manual_project_json(facility_json)
+    loaded = load_manual_project_json(create_manual_project_json(_manual_inputs()))
+    assert loaded["manual_inputs"] == _manual_inputs()
+
+
+def test_facility_load_rejects_unknown_template_id() -> None:
+    template = load_facility_template("level_example_3", "imperial")
+    payload = create_manual_facility_project_payload(
+        template["template_id"], template["unit_system"], template["segments"]
+    )
+    payload["template_id"] = "unknown"
+
+    with pytest.raises(ProjectFileError, match="Unknown template_id"):
+        load_manual_facility_project_json(json.dumps(payload))
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    [
+        (lambda payload: payload.pop("project_type"), "Missing required field: project_type"),
+        (lambda payload: payload.pop("template_id"), "Missing required field: template_id"),
+        (lambda payload: payload.pop("segment_rows"), "Missing required field: segment_rows"),
+        (
+            lambda payload: payload.__setitem__("segment_rows", [{"segment_id": 1}]),
+            "Malformed or unsupported segment rows",
+        ),
+        (
+            lambda payload: payload["segment_rows"][0].__setitem__(
+                "terrain_type", "mountainous"
+            ),
+            "Malformed or unsupported segment rows",
+        ),
+    ],
+)
+def test_facility_load_rejects_malformed_or_unsupported_projects(
+    mutation, message: str
+) -> None:
+    template = load_facility_template("level_example_3", "imperial")
+    payload = create_manual_facility_project_payload(
+        template["template_id"], template["unit_system"], template["segments"]
+    )
+    mutation(payload)
+
+    with pytest.raises(ProjectFileError, match=message):
+        load_manual_facility_project_json(json.dumps(payload))

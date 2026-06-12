@@ -22,6 +22,19 @@ MANUAL_FACILITY_CALCULATION_TYPE = "manual_facility_v0"
 FACILITY_TEMPLATES = {
     "level_example_3": {
         "label": "Level facility template (Example Problem 3)",
+        "basis": "Example Problem 3",
+        "supported_context": (
+            "Validated example-based level facility workflow with the template's "
+            "segment sequence and passing-lane/downstream context."
+        ),
+        "safe_edit_summary": (
+            "Segment names, lengths, posted speeds, directional volumes, PHF, "
+            "and heavy-vehicle percentages."
+        ),
+        "locked_summary": (
+            "Segment types, level terrain, horizontal alignment, passing-lane "
+            "placement, and downstream context."
+        ),
         "case_id": "TLH-CH15-003",
         "source_reference": "HCM Chapter 26 Two-Lane Highway Example Problem 3",
         "editable_fields": {
@@ -36,6 +49,18 @@ FACILITY_TEMPLATES = {
     },
     "mountainous_example_4": {
         "label": "Mountainous / passing-lane template (Example Problem 4)",
+        "basis": "Example Problem 4",
+        "supported_context": (
+            "Validated example-based mountainous facility workflow preserving "
+            "the Example Problem 4 curve, grade, passing-lane, and downstream context."
+        ),
+        "safe_edit_summary": (
+            "Segment names, posted speeds, analysis-direction volumes, and PHF."
+        ),
+        "locked_summary": (
+            "Segment lengths and types, opposing volumes, heavy vehicles, grades, "
+            "curves, passing-lane placement, and downstream context."
+        ),
         "case_id": "TLH-CH15-004",
         "source_reference": "HCM Chapter 26 Two-Lane Highway Example Problem 4",
         "editable_fields": {
@@ -57,6 +82,19 @@ def facility_template_options() -> dict[str, str]:
     }
 
 
+def clear_manual_facility_result_state(state: Any) -> None:
+    """Clear stale facility calculation state after selection or input changes."""
+
+    for key in (
+        "manual_facility_result",
+        "manual_facility_result_context",
+        "manual_facility_result_rows",
+        "manual_facility_audit",
+        "manual_facility_error",
+    ):
+        state.pop(key, None)
+
+
 def load_facility_template(
     template_id: str, unit_system: str = "imperial"
 ) -> dict[str, Any]:
@@ -70,6 +108,10 @@ def load_facility_template(
         "template_id": template_id,
         "template_label": template["label"],
         "template_source_reference": template["source_reference"],
+        "template_basis": template["basis"],
+        "supported_context": template["supported_context"],
+        "safe_edit_summary": template["safe_edit_summary"],
+        "locked_summary": template["locked_summary"],
         "unit_system": _normalize_unit_system(unit_system),
         "segments": rows,
         "editable_fields": sorted(template["editable_fields"]),

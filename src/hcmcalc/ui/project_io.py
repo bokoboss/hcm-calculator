@@ -1,4 +1,4 @@
-"""Save and load helpers for manual single-segment project files."""
+"""Save and load helpers for guarded manual project files."""
 
 from __future__ import annotations
 
@@ -9,11 +9,17 @@ from typing import Any
 from hcmcalc import __version__
 from hcmcalc.core import HCMCalcError
 from hcmcalc.ui.curve_editor import validate_curve_setup
+from hcmcalc.ui.manual_facility import (
+    FACILITY_TEMPLATES,
+    build_manual_facility_inputs,
+    load_facility_template,
+)
 from hcmcalc.ui.manual_segment import build_manual_segment_inputs
 
 
 PROJECT_SCHEMA_VERSION = "1.0"
 MANUAL_SINGLE_SEGMENT_PROJECT_TYPE = "manual_single_segment"
+MANUAL_FACILITY_PROJECT_TYPE = "manual_facility_v0"
 REQUIRED_MANUAL_INPUTS = {
     "segment_type",
     "terrain_type",
@@ -90,17 +96,7 @@ def create_manual_project_json(
 def load_manual_project_json(data: str | bytes) -> dict[str, Any]:
     """Parse and validate a manual single-segment project JSON document."""
 
-    try:
-        payload = json.loads(data)
-    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-        raise ProjectFileError("Invalid JSON project file.") from exc
-
-    if not isinstance(payload, dict):
-        raise ProjectFileError("Project JSON must contain an object.")
-    if payload.get("schema_version") != PROJECT_SCHEMA_VERSION:
-        raise ProjectFileError(
-            f"Unsupported schema_version. Expected {PROJECT_SCHEMA_VERSION}."
-        )
+    payload = _load_project_document(data)
     if payload.get("project_type") != MANUAL_SINGLE_SEGMENT_PROJECT_TYPE:
         raise ProjectFileError(
             "Wrong project_type. Expected manual_single_segment."
@@ -123,6 +119,111 @@ def load_manual_project_json(data: str | bytes) -> dict[str, Any]:
     if manual_inputs.get("unit_system", payload["unit_system"]) != payload["unit_system"]:
         raise ProjectFileError("manual_inputs unit_system must match unit_system.")
     _validate_manual_inputs(manual_inputs)
+    return payload
+
+
+def create_manual_facility_project_payload(
+    template_id: str,
+    unit_system: str,
+    segment_rows: list[dict[str, Any]],
+    *,
+    result: dict[str, Any] | None = None,
+    audit_record: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Create a JSON-ready guarded manual facility project payload."""
+
+    template = load_facility_template(template_id, unit_system)
+    segment_rows = _json_ready(segment_rows)
+    normalized_inputs = build_manual_facility_inputs(
+        template_id, segment_rows, unit_system
+    )
+    result = _json_ready(result) if result is not None else None
+    audit_record = _json_ready(audit_record) if audit_record is not None else None
+    outputs = result.get("outputs", {}) if result else {}
+    return {
+        "schema_version": PROJECT_SCHEMA_VERSION,
+        "project_type": MANUAL_FACILITY_PROJECT_TYPE,
+        "generated_by": f"hcm-calculator {__version__}",
+        "app_version": __version__,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "unit_system": template["unit_system"],
+        "template_id": template_id,
+        "template_name": template["template_label"],
+        "editable_facility_inputs": {"segments": segment_rows},
+        "normalized_facility_inputs": normalized_inputs,
+        "segment_rows": segment_rows,
+        "calculation_result": result,
+        "facility_outputs": {key: value for key, value in outputs.items() if key != "segments"},
+        "segment_outputs": outputs.get("segments", []),
+        "audit": audit_record,
+        "warnings": _calculation_context("warnings", result, audit_record),
+        "assumptions": _calculation_context("assumptions", result, audit_record),
+        "unsupported_behavior_notes": template["unsupported_behavior_notes"],
+    }
+
+
+def create_manual_facility_project_json(
+    template_id: str,
+    unit_system: str,
+    segment_rows: list[dict[str, Any]],
+    *,
+    result: dict[str, Any] | None = None,
+    audit_record: dict[str, Any] | None = None,
+) -> str:
+    """Create formatted JSON for a guarded manual facility project."""
+
+    return json.dumps(
+        create_manual_facility_project_payload(
+            template_id,
+            unit_system,
+            segment_rows,
+            result=result,
+            audit_record=audit_record,
+        ),
+        indent=2,
+    )
+
+
+def load_manual_facility_project_json(data: str | bytes) -> dict[str, Any]:
+    """Parse and validate a guarded manual facility project JSON document."""
+
+    payload = _load_project_document(data)
+    if payload.get("project_type") != MANUAL_FACILITY_PROJECT_TYPE:
+        raise ProjectFileError("Wrong project_type. Expected manual_facility_v0.")
+    if "template_id" not in payload:
+        raise ProjectFileError("Missing required field: template_id.")
+    if payload["template_id"] not in FACILITY_TEMPLATES:
+        raise ProjectFileError(f"Unknown template_id: {payload['template_id']}.")
+    if "unit_system" not in payload:
+        raise ProjectFileError("Missing required field: unit_system.")
+    if payload["unit_system"] not in {"metric", "imperial"}:
+        raise ProjectFileError("unit_system must be metric or imperial.")
+    if "segment_rows" not in payload:
+        raise ProjectFileError("Missing required field: segment_rows.")
+    if not isinstance(payload["segment_rows"], list):
+        raise ProjectFileError("Malformed segment rows: expected a list.")
+    try:
+        build_manual_facility_inputs(
+            payload["template_id"], payload["segment_rows"], payload["unit_system"]
+        )
+    except HCMCalcError as exc:
+        raise ProjectFileError(f"Malformed or unsupported segment rows: {exc}") from exc
+    return payload
+
+
+def _load_project_document(data: str | bytes) -> dict[str, Any]:
+    try:
+        payload = json.loads(data)
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise ProjectFileError("Invalid JSON project file.") from exc
+    if not isinstance(payload, dict):
+        raise ProjectFileError("Project JSON must contain an object.")
+    if "project_type" not in payload:
+        raise ProjectFileError("Missing required field: project_type.")
+    if payload.get("schema_version") != PROJECT_SCHEMA_VERSION:
+        raise ProjectFileError(
+            f"Unsupported schema_version. Expected {PROJECT_SCHEMA_VERSION}."
+        )
     return payload
 
 

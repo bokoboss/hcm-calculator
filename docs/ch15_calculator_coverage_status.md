@@ -37,7 +37,9 @@ The current calculator is best described as:
 - **Manual Facility Calculator v0.1 is limited and template-backed**. It exposes
   the existing Example 3/4 facility paths while keeping segment sequence,
   terrain/curve context, Passing Lane placement, and downstream context
-  guarded. It is not a general facility calculator.
+  guarded. Facility Project Save/Load v0.1 preserves this template-backed
+  boundary using `project_type = manual_facility_v0`. It is not a general
+  facility calculator.
 
 The presence of table-driven helpers or passing formula-level tests does not by
 itself make arbitrary inputs supported. Public calculation claims remain
@@ -74,11 +76,11 @@ limited by the scope guardrails and validation fixtures.
 | Manual Single Segment | Limited | Single-page worksheet for supported Passing Constrained, Passing Zone, and Passing Lane paths; unsupported combinations are rejected. |
 | Validated Examples / QA | Supported | Runs and displays exact Chapter 26 Examples 1-4, including facility examples. |
 | CLI run from YAML/JSON | Limited | Loads YAML or JSON fixture files with a top-level `cases` list and runs a selected validated/example-scoped case. It is not a general ad hoc calculator CLI. |
-| Save/Load Project JSON | Supported for Manual Single Segment | Manual single-segment project JSON preserves inputs, normalized engine inputs, result, and audit record. Facility Save/Load is not included in Manual Facility Calculator v0.1. |
+| Save/Load Project JSON | Supported for Manual Single Segment and guarded Manual Facility v0.1 | `manual_single_segment` project JSON remains supported. `manual_facility_v0` project JSON preserves the selected Example 3/4 template, unit system, edited segment rows, normalized facility inputs, result, outputs, audit, warnings, assumptions, and unsupported-behavior notes. Facility Save/Load remains template-backed and does not imply general facility support. |
 | Audit trail | Limited | Manual calculations and validated results expose assumptions, warnings, intermediate values, outputs, and selected provenance; this is not yet a formal calculation-sheet/report workflow. |
 | Metric/Imperial UI | Supported | Manual UI accepts and displays Metric or Imperial values; engine-native calculation values remain Imperial. |
 | Manual Facility Calculator | Limited | Manual Facility Calculator v0.1 is a guarded, template-backed workflow anchored to validated Examples 3 and 4. It is not a general Chapter 15 facility calculator. |
-| Export/reporting | Limited | Full result JSON and manual project JSON downloads exist; no formatted engineering calculation sheet or report export exists. |
+| Export/reporting | Limited | Full result JSON plus `manual_single_segment` and guarded `manual_facility_v0` project JSON downloads exist; no formatted engineering calculation sheet or report export exists. |
 
 ## What Is Safe to Claim Now
 

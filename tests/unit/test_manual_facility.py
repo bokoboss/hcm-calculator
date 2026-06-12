@@ -20,6 +20,10 @@ def test_facility_templates_load_successfully(template_id: str) -> None:
     assert template["template_id"] == template_id
     assert template["segments"]
     assert template["template_source_reference"].startswith("HCM Chapter 26")
+    assert template["template_basis"].startswith("Example Problem")
+    assert template["supported_context"]
+    assert template["safe_edit_summary"]
+    assert template["locked_summary"]
     assert template["unsupported_behavior_notes"]
 
 
