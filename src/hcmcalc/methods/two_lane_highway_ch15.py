@@ -115,6 +115,18 @@ class FollowerDensityEstimate:
     slower_lane_percent_followers: float | None = None
 
 
+@dataclass(frozen=True)
+class MotorizedLOSDetermination:
+    """Auditable HCM Chapter 15 Step 10 motorized-vehicle LOS result."""
+
+    level_of_service: str
+    los_threshold_group: str
+    los_thresholds_used: dict[str, float | None]
+    follower_density_for_los: float
+    posted_speed_limit_for_los: float
+    source_reference: str = "HCM7 Exhibit 15-6"
+
+
 class TwoLaneHighwayChapter15Method:
     """Partial two-lane highway motorized vehicle analysis implementation."""
 
@@ -315,7 +327,7 @@ def _calculate_passing_constrained_base_values(
         average_speed_mph=speed,
     )
     density = step8.follower_density
-    los = level_of_service(density, parsed_inputs.posted_speed_mph)
+    step10 = determine_motorized_los(density, parsed_inputs.posted_speed_mph)
 
     return {
         "demand_flow_rate_veh_h": demand,
@@ -345,13 +357,13 @@ def _calculate_passing_constrained_base_values(
         "follower_density_followers_mi_ln": density,
         "follower_density_source_reference": step8.source_reference,
         "follower_density_formula": step8.formula,
-        "level_of_service": los,
+        **_step10_output_fields(step10),
     }
 
 
 def _calculate_example_problem_1_result(
     parsed_inputs: TwoLaneExampleProblem1Inputs,
-    base: dict[str, float | int | str],
+    base: dict[str, Any],
 ) -> CalculationResult:
     return CalculationResult(
             method=TwoLaneHighwayChapter15Method.method_name,
@@ -402,6 +414,11 @@ def _calculate_example_problem_1_result(
                 ],
                 "follower_density_formula": base["follower_density_formula"],
                 "level_of_service": base["level_of_service"],
+                "los_source_reference": base["los_source_reference"],
+                "los_threshold_group": base["los_threshold_group"],
+                "los_thresholds_used": base["los_thresholds_used"],
+                "follower_density_for_los": base["follower_density_for_los"],
+                "posted_speed_limit_for_los": base["posted_speed_limit_for_los"],
             },
             intermediate_values=[
                 IntermediateValue(
@@ -523,6 +540,7 @@ def _calculate_example_problem_1_result(
                     base["follower_density_formula"],
                     source="HCM Chapter 15 Step 8",
                 ),
+                *_step10_intermediate_values(base),
             ],
             assumptions=[
                 "Validated only for HCM Chapter 26 Two-Lane Highway Example Problem 1.",
@@ -534,7 +552,7 @@ def _calculate_example_problem_1_result(
 
 def _calculate_example_problem_2_result(
     parsed_inputs: TwoLaneExampleProblem2Inputs,
-    base: dict[str, float | int | str],
+    base: dict[str, Any],
 ) -> CalculationResult:
     subsegment_results = horizontal_curve_subsegment_speeds(
         subsegments=parsed_inputs.horizontal_alignment_subsegments,
@@ -709,7 +727,8 @@ def _calculate_facility_example_result(
                 "demand_flow_rate / (average_speed * "
                 "(1 + percent_improvement_speed / 100))"
             )
-            result["level_of_service"] = level_of_service(
+            _apply_step10_output_fields(
+                result,
                 float(result["follower_density_followers_mi_ln"]),
                 float(result["posted_speed_mph"]),
             )
@@ -836,7 +855,7 @@ def _calculate_facility_segment(
     pf_p = step6.percent_followers_power_coefficient_p
     followers = step6.percent_followers
     density = follower_density(demand, speed, followers)
-    los = level_of_service(density, segment.posted_speed_mph)
+    step10 = determine_motorized_los(density, segment.posted_speed_mph)
 
     result: dict[str, Any] = {
         "segment_id": segment.segment_id,
@@ -872,7 +891,7 @@ def _calculate_facility_segment(
         "follower_density_followers_mi_ln": density,
         "follower_density_source_reference": "HCM Eq. 15-35",
         "follower_density_formula": "FD = (PF / 100) * demand_flow_rate / average_speed",
-        "level_of_service": los,
+        **_step10_output_fields(step10),
     }
 
     if segment.segment_type == PASSING_LANE:
@@ -892,7 +911,8 @@ def _calculate_facility_segment(
         result["follower_density_followers_mi_ln"] = passing_lane_values[
             "midpoint_follower_density_followers_mi_ln"
         ]
-        result["level_of_service"] = level_of_service(
+        _apply_step10_output_fields(
+            result,
             float(result["follower_density_followers_mi_ln"]),
             segment.posted_speed_mph,
         )
@@ -1025,6 +1045,7 @@ def _single_segment_intermediate_values(
         IntermediateValue(name, outputs[key], units, source)
         for name, key, units, source in specs
     ]
+    values.extend(_step10_intermediate_values(outputs))
     if outputs["segment_type"] == PASSING_LANE:
         values.extend(
             [
@@ -1178,6 +1199,7 @@ def _facility_intermediate_values(
                     segment["follower_density_formula"],
                     source="HCM Chapter 15 Step 8",
                 ),
+                *_step10_intermediate_values(segment, prefix=f"segment_{segment_id}_"),
             ]
         )
         for subsegment in segment["horizontal_curve_subsegments"]:
@@ -3412,19 +3434,129 @@ def level_of_service(
     follower_density_followers_mi_ln: float,
     posted_speed_mph: float,
 ) -> str:
-    """HCM Exhibit 15-6 LOS thresholds for two-lane highways."""
+    """Return the HCM7 Exhibit 15-6 motorized-vehicle LOS grade."""
 
-    if posted_speed_mph < 50.0:
-        thresholds = (2.5, 5.0, 10.0, 15.0)
+    return determine_motorized_los(
+        follower_density=follower_density_followers_mi_ln,
+        posted_speed_limit_mph=posted_speed_mph,
+    ).level_of_service
+
+
+def determine_motorized_los(
+    follower_density: float,
+    posted_speed_limit_mph: float,
+) -> MotorizedLOSDetermination:
+    """Determine and audit Step 10 LOS using HCM7 Exhibit 15-6."""
+
+    density = _validate_step10_follower_density(follower_density)
+    posted_speed = _validate_step10_posted_speed(posted_speed_limit_mph)
+
+    if posted_speed < 50.0:
+        threshold_group = "posted_speed_limit_below_50_mph"
+        thresholds = {"A": 2.5, "B": 5.0, "C": 10.0, "D": 15.0, "E": None}
     else:
-        thresholds = (2.0, 4.0, 8.0, 12.0)
+        threshold_group = "posted_speed_limit_at_least_50_mph"
+        thresholds = {"A": 2.0, "B": 4.0, "C": 8.0, "D": 12.0, "E": None}
 
-    if follower_density_followers_mi_ln <= thresholds[0]:
-        return "A"
-    if follower_density_followers_mi_ln <= thresholds[1]:
-        return "B"
-    if follower_density_followers_mi_ln <= thresholds[2]:
-        return "C"
-    if follower_density_followers_mi_ln <= thresholds[3]:
-        return "D"
-    return "E"
+    level = "E"
+    for candidate in ("A", "B", "C", "D"):
+        upper_boundary = thresholds[candidate]
+        if upper_boundary is not None and density <= upper_boundary:
+            level = candidate
+            break
+
+    return MotorizedLOSDetermination(
+        level_of_service=level,
+        los_threshold_group=threshold_group,
+        los_thresholds_used=thresholds,
+        follower_density_for_los=density,
+        posted_speed_limit_for_los=posted_speed,
+    )
+
+
+def _validate_step10_follower_density(value: object) -> float:
+    if value is None:
+        raise HCMCalcError("Step 10 follower density is required.")
+    if not isinstance(value, Real) or not isfinite(float(value)):
+        raise HCMCalcError("Step 10 follower density must be a finite numeric value.")
+    numeric_value = float(value)
+    if numeric_value < 0:
+        raise HCMCalcError("Step 10 follower density must be nonnegative.")
+    return numeric_value
+
+
+def _validate_step10_posted_speed(value: object) -> float:
+    if value is None:
+        raise HCMCalcError("Step 10 posted speed limit is required.")
+    if not isinstance(value, Real) or not isfinite(float(value)):
+        raise HCMCalcError("Step 10 posted speed limit must be a finite numeric value.")
+    numeric_value = float(value)
+    if numeric_value <= 0:
+        raise HCMCalcError("Step 10 posted speed limit must be greater than zero.")
+    return numeric_value
+
+
+def _step10_output_fields(step10: MotorizedLOSDetermination) -> dict[str, Any]:
+    return {
+        "level_of_service": step10.level_of_service,
+        "los_source_reference": step10.source_reference,
+        "los_threshold_group": step10.los_threshold_group,
+        "los_thresholds_used": step10.los_thresholds_used,
+        "follower_density_for_los": step10.follower_density_for_los,
+        "posted_speed_limit_for_los": step10.posted_speed_limit_for_los,
+    }
+
+
+def _step10_intermediate_values(
+    outputs: dict[str, Any],
+    *,
+    prefix: str = "",
+) -> list[IntermediateValue]:
+    source = str(outputs["los_source_reference"])
+    return [
+        IntermediateValue(
+            f"{prefix}level_of_service",
+            outputs["level_of_service"],
+            source=source,
+        ),
+        IntermediateValue(
+            f"{prefix}los_source_reference",
+            outputs["los_source_reference"],
+            source=source,
+        ),
+        IntermediateValue(
+            f"{prefix}los_threshold_group",
+            outputs["los_threshold_group"],
+            source=source,
+        ),
+        IntermediateValue(
+            f"{prefix}los_thresholds_used",
+            outputs["los_thresholds_used"],
+            "followers/mi/ln",
+            source,
+        ),
+        IntermediateValue(
+            f"{prefix}follower_density_for_los",
+            outputs["follower_density_for_los"],
+            "followers/mi/ln",
+            source,
+        ),
+        IntermediateValue(
+            f"{prefix}posted_speed_limit_for_los",
+            outputs["posted_speed_limit_for_los"],
+            "mph",
+            source,
+        ),
+    ]
+
+
+def _apply_step10_output_fields(
+    outputs: dict[str, Any],
+    follower_density: float,
+    posted_speed_limit_mph: float,
+) -> None:
+    outputs.update(
+        _step10_output_fields(
+            determine_motorized_los(follower_density, posted_speed_limit_mph)
+        )
+    )
