@@ -36,6 +36,21 @@ This formula hardening does not expand horizontal-curve support, implement Step
 facility calculation paths. Existing validated outputs and unsupported-scope
 decisions remain in force.
 
+### Step 8 follower-density estimation
+
+HCM7 Chapter 15 Step 8 follower-density estimation is implemented through
+validated, auditable helpers. Passing Constrained and Passing Zone segments use
+Eq. 15-35. Supported Passing Lane cases reuse the existing Step 7 faster-lane
+and slower-lane midpoint values and use Eq. 15-34, including separately
+reported lane components.
+
+The Step 8 helpers validate segment type, percent followers, demand flow,
+average speed, and required Passing Lane midpoint values. They expose the
+selected equation reference and formula while preserving existing follower
+density output names. This hardening does not implement or change Step 9
+downstream Passing Lane adjustment, change LOS thresholds, or broaden any
+guarded nonlevel, horizontal-curve, Passing Lane, or facility path.
+
 ### Exhibit 15-11 classification lookup
 
 The verified table from the supplied NCHRP/NAP Chapter 7 methodology document,

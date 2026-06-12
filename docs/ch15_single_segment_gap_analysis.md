@@ -59,6 +59,10 @@ Current manual support:
   `b3`, `b4`, `m`, `p`, tangent average speed, and source references using Eq.
   15-7 through Eq. 15-11 and table-driven Exhibits 15-13 through 15-20 for
   vertical Classes 1 through 5.
+- Hardened HCM7 Chapter 15 Step 8 follower-density helpers that use Eq. 15-35
+  for Passing Constrained and Passing Zone segments and Eq. 15-34 for supported
+  Passing Lane midpoint cases. The helpers expose the equation/formula and,
+  for Passing Lane, the faster-lane and slower-lane density components.
 
 Known unsupported or incomplete manual cases:
 
@@ -187,7 +191,7 @@ dependency.
 | Free-flow speed | Calculates and audits base free-flow speed, lane/shoulder adjustment, access-point adjustment, heavy-vehicle coefficient, and free-flow speed through a validated Step 4 helper. Exhibit 15-12 is table-driven for Classes 1-5. | Add independent validation fixtures before promoting additional nonlevel public calculation paths. |
 | Average speed | Calculates and audits Step 5 tangent average speed for supported straight segment types with table-driven Exhibits 15-13 through 15-20. A horizontal-curve path exists only in validated example/facility paths. | Add validated manual horizontal-curve inputs and clearly distinguish tangent, curve-subsegment, and length-weighted results. |
 | Percent followers | Calculates and audits Step 6 percent followers through Eq. 15-17 to Eq. 15-23. Exhibits 15-24 through 15-29 are table-driven for vertical Classes 1-5, with explicit input and logarithm-domain validation. | Add independent validation fixtures before broadening guarded nonlevel or Passing Lane calculation support. |
-| Follower density | Calculates Passing Constrained/Passing Zone density and Passing Lane midpoint density. | Make the selected density basis explicit in outputs and audit data, especially endpoint versus midpoint Passing Lane density. |
+| Follower density | Calculates and audits Passing Constrained/Passing Zone density with Eq. 15-35 and supported Passing Lane midpoint density with Eq. 15-34, including lane components. | Preserve the explicit endpoint-versus-midpoint basis as future Passing Lane and facility support expands. |
 | Follower-density adjustment, where applicable | Downstream adjustment exists in validated facility examples, but manual single-segment analysis explicitly excludes upstream/downstream effects. | Define when a standalone segment may validly receive an adjustment, what context is required, and when the UI must warn that facility context is missing. |
 | Segment LOS | Calculates Motorized Vehicle LOS from follower density for supported cases. | Document applicability and ensure LOS reports the exact density basis, threshold source, warnings, and capacity-related conditions used. |
 
@@ -220,8 +224,9 @@ as supported.
 The Step 4 through Step 6 formula hardening does not implement general nonlevel
 workflow support. Step 6 now exposes auditable PFcap, PF25cap, slope, power, and
 final percent-followers values using table-driven Exhibits 15-24 through 15-29.
-Unsupported downstream paths remain guarded. Passing-lane downstream
-adjustment, follower-density behavior, and LOS thresholds are unchanged.
+Step 8 follower density is hardened separately with Eq. 15-34 and Eq. 15-35.
+Unsupported downstream paths remain guarded. Step 9 passing-lane downstream
+adjustment and LOS thresholds are unchanged.
 
 ### Phase 1: Complete the level-terrain single-segment foundation
 

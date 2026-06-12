@@ -6,6 +6,7 @@ through 4 and are intentionally kept independent from any UI.
 
 from dataclasses import dataclass
 from math import exp, isfinite, log, sqrt
+from numbers import Real
 from typing import Any
 
 from hcmcalc.core import (
@@ -95,6 +96,23 @@ class PercentFollowersEstimate:
     percent_followers_slope_coefficient_m: float
     percent_followers_power_coefficient_p: float
     source_references: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class FollowerDensityEstimate:
+    """Auditable HCM Chapter 15 Step 8 follower-density estimate."""
+
+    follower_density: float
+    source_reference: str
+    formula: str
+    faster_lane_component: float | None = None
+    slower_lane_component: float | None = None
+    faster_lane_flow_rate: float | None = None
+    slower_lane_flow_rate: float | None = None
+    faster_lane_midpoint_speed: float | None = None
+    slower_lane_midpoint_speed: float | None = None
+    faster_lane_percent_followers: float | None = None
+    slower_lane_percent_followers: float | None = None
 
 
 class TwoLaneHighwayChapter15Method:
@@ -290,7 +308,13 @@ def _calculate_passing_constrained_base_values(
     pf_m = step6.percent_followers_slope_coefficient_m
     pf_p = step6.percent_followers_power_coefficient_p
     followers = step6.percent_followers
-    density = follower_density(demand, speed, followers)
+    step8 = estimate_follower_density(
+        segment_type=parsed_inputs.segment_type,
+        percent_followers=followers,
+        demand_flow_rate_veh_h=demand,
+        average_speed_mph=speed,
+    )
+    density = step8.follower_density
     los = level_of_service(density, parsed_inputs.posted_speed_mph)
 
     return {
@@ -319,6 +343,8 @@ def _calculate_passing_constrained_base_values(
         "percent_followers_source_reference": "; ".join(step6.source_references),
         "percent_followers": followers,
         "follower_density_followers_mi_ln": density,
+        "follower_density_source_reference": step8.source_reference,
+        "follower_density_formula": step8.formula,
         "level_of_service": los,
     }
 
@@ -371,6 +397,10 @@ def _calculate_example_problem_1_result(
                 "follower_density_followers_mi_ln": base[
                     "follower_density_followers_mi_ln"
                 ],
+                "follower_density_source_reference": base[
+                    "follower_density_source_reference"
+                ],
+                "follower_density_formula": base["follower_density_formula"],
                 "level_of_service": base["level_of_service"],
             },
             intermediate_values=[
@@ -482,6 +512,16 @@ def _calculate_example_problem_1_result(
                     base["follower_density_followers_mi_ln"],
                     "followers/mi/ln",
                     "HCM Eq. 15-35",
+                ),
+                IntermediateValue(
+                    "follower_density_source_reference",
+                    base["follower_density_source_reference"],
+                    source="HCM Chapter 15 Step 8",
+                ),
+                IntermediateValue(
+                    "follower_density_formula",
+                    base["follower_density_formula"],
+                    source="HCM Chapter 15 Step 8",
                 ),
             ],
             assumptions=[
@@ -648,6 +688,12 @@ def _calculate_facility_example_result(
             result["unadjusted_follower_density_followers_mi_ln"] = result[
                 "follower_density_followers_mi_ln"
             ]
+            result["unadjusted_follower_density_source_reference"] = result[
+                "follower_density_source_reference"
+            ]
+            result["unadjusted_follower_density_formula"] = result[
+                "follower_density_formula"
+            ]
             result["percent_followers_improvement_percent"] = adjustment[
                 "percent_followers_improvement_percent"
             ]
@@ -657,6 +703,12 @@ def _calculate_facility_example_result(
             result["follower_density_followers_mi_ln"] = adjustment[
                 "adjusted_follower_density_followers_mi_ln"
             ]
+            result["follower_density_source_reference"] = "HCM Eq. 15-38"
+            result["follower_density_formula"] = (
+                "FDadj = (PF / 100) * (1 - percent_improvement_PF / 100) * "
+                "demand_flow_rate / (average_speed * "
+                "(1 + percent_improvement_speed / 100))"
+            )
             result["level_of_service"] = level_of_service(
                 float(result["follower_density_followers_mi_ln"]),
                 float(result["posted_speed_mph"]),
@@ -818,6 +870,8 @@ def _calculate_facility_segment(
         "percent_followers_source_reference": "; ".join(step6.source_references),
         "percent_followers": followers,
         "follower_density_followers_mi_ln": density,
+        "follower_density_source_reference": "HCM Eq. 15-35",
+        "follower_density_formula": "FD = (PF / 100) * demand_flow_rate / average_speed",
         "level_of_service": los,
     }
 
@@ -954,11 +1008,41 @@ def _single_segment_intermediate_values(
             "followers/mi/ln",
             "HCM Eq. 15-35 or Eq. 15-34 for Passing Lane midpoint",
         ),
+        (
+            "follower_density_source_reference",
+            "follower_density_source_reference",
+            None,
+            "HCM Chapter 15 Step 8",
+        ),
+        (
+            "follower_density_formula",
+            "follower_density_formula",
+            None,
+            "HCM Chapter 15 Step 8",
+        ),
     ]
-    return [
+    values = [
         IntermediateValue(name, outputs[key], units, source)
         for name, key, units, source in specs
     ]
+    if outputs["segment_type"] == PASSING_LANE:
+        values.extend(
+            [
+                IntermediateValue(
+                    "faster_lane_component",
+                    outputs["faster_lane_component"],
+                    "followers/mi/ln",
+                    "HCM Eq. 15-34",
+                ),
+                IntermediateValue(
+                    "slower_lane_component",
+                    outputs["slower_lane_component"],
+                    "followers/mi/ln",
+                    "HCM Eq. 15-34",
+                ),
+            ]
+        )
+    return values
 
 
 def _facility_intermediate_values(
@@ -1082,7 +1166,17 @@ def _facility_intermediate_values(
                     f"segment_{segment_id}_follower_density",
                     segment["follower_density_followers_mi_ln"],
                     "followers/mi/ln",
-                    "HCM Eq. 15-35 or Eq. 15-34 for Passing Lane midpoint",
+                    segment["follower_density_source_reference"],
+                ),
+                IntermediateValue(
+                    f"segment_{segment_id}_follower_density_source_reference",
+                    segment["follower_density_source_reference"],
+                    source="HCM Chapter 15 Step 8",
+                ),
+                IntermediateValue(
+                    f"segment_{segment_id}_follower_density_formula",
+                    segment["follower_density_formula"],
+                    source="HCM Chapter 15 Step 8",
                 ),
             ]
         )
@@ -1114,6 +1208,18 @@ def _facility_intermediate_values(
                     IntermediateValue(
                         f"segment_{segment_id}_midpoint_follower_density",
                         segment["midpoint_follower_density_followers_mi_ln"],
+                        "followers/mi/ln",
+                        "HCM Eq. 15-34",
+                    ),
+                    IntermediateValue(
+                        f"segment_{segment_id}_faster_lane_component",
+                        segment["faster_lane_component"],
+                        "followers/mi/ln",
+                        "HCM Eq. 15-34",
+                    ),
+                    IntermediateValue(
+                        f"segment_{segment_id}_slower_lane_component",
+                        segment["slower_lane_component"],
                         "followers/mi/ln",
                         "HCM Eq. 15-34",
                     ),
@@ -2486,7 +2592,7 @@ def passing_lane_midpoint_values(
     segment_length_mi: float,
     heavy_vehicle_percent: float,
     capacity_veh_h: float,
-) -> dict[str, float]:
+) -> dict[str, Any]:
     """HCM Eq. 15-24 through Eq. 15-34 for Example Problem 3 Passing Lane."""
 
     heavy_vehicle_count = demand_flow_rate_veh_h * heavy_vehicle_percent / 100.0
@@ -2554,13 +2660,14 @@ def passing_lane_midpoint_values(
         slower_lane_flow,
         _passing_lane_lane_capacity(vertical_class, slower_lane_hv_percent),
     )
-    midpoint_density = passing_lane_midpoint_follower_density(
-        faster_lane_flow,
-        faster_lane_midpoint_speed,
-        faster_lane_pf,
-        slower_lane_flow,
-        slower_lane_midpoint_speed,
-        slower_lane_pf,
+    step8 = estimate_follower_density(
+        segment_type=PASSING_LANE,
+        faster_lane_percent_followers=faster_lane_pf,
+        slower_lane_percent_followers=slower_lane_pf,
+        faster_lane_flow_rate_veh_h_ln=faster_lane_flow,
+        slower_lane_flow_rate_veh_h_ln=slower_lane_flow,
+        faster_lane_midpoint_speed_mph=faster_lane_midpoint_speed,
+        slower_lane_midpoint_speed_mph=slower_lane_midpoint_speed,
     )
     return {
         "heavy_vehicle_count_veh_h": heavy_vehicle_count,
@@ -2579,7 +2686,11 @@ def passing_lane_midpoint_values(
         "slower_lane_midpoint_average_speed_mph": slower_lane_midpoint_speed,
         "faster_lane_midpoint_percent_followers": faster_lane_pf,
         "slower_lane_midpoint_percent_followers": slower_lane_pf,
-        "midpoint_follower_density_followers_mi_ln": midpoint_density,
+        "faster_lane_component": step8.faster_lane_component,
+        "slower_lane_component": step8.slower_lane_component,
+        "midpoint_follower_density_followers_mi_ln": step8.follower_density,
+        "follower_density_source_reference": step8.source_reference,
+        "follower_density_formula": step8.formula,
     }
 
 
@@ -2623,19 +2734,15 @@ def passing_lane_midpoint_follower_density(
 ) -> float:
     """HCM Eq. 15-34 Passing Lane midpoint follower density."""
 
-    faster_lane_density = (
-        faster_lane_midpoint_percent_followers
-        / 100.0
-        * faster_lane_flow_rate_veh_h_ln
-        / faster_lane_midpoint_speed_mph
-    )
-    slower_lane_density = (
-        slower_lane_midpoint_percent_followers
-        / 100.0
-        * slower_lane_flow_rate_veh_h_ln
-        / slower_lane_midpoint_speed_mph
-    )
-    return (faster_lane_density + slower_lane_density) / 2.0
+    return estimate_passing_lane_midpoint_follower_density(
+        segment_type=PASSING_LANE,
+        faster_lane_percent_followers=faster_lane_midpoint_percent_followers,
+        slower_lane_percent_followers=slower_lane_midpoint_percent_followers,
+        faster_lane_flow_rate_veh_h_ln=faster_lane_flow_rate_veh_h_ln,
+        slower_lane_flow_rate_veh_h_ln=slower_lane_flow_rate_veh_h_ln,
+        faster_lane_midpoint_speed_mph=faster_lane_midpoint_speed_mph,
+        slower_lane_midpoint_speed_mph=slower_lane_midpoint_speed_mph,
+    ).follower_density
 
 
 def downstream_follower_density_adjustment(
@@ -3138,7 +3245,167 @@ def follower_density(
 ) -> float:
     """HCM Eq. 15-35 follower density."""
 
-    return demand_flow_rate_veh_h / average_speed_mph * (percent_followers_value / 100.0)
+    return estimate_passing_constrained_or_zone_follower_density(
+        segment_type=PASSING_CONSTRAINED,
+        percent_followers=percent_followers_value,
+        demand_flow_rate_veh_h=demand_flow_rate_veh_h,
+        average_speed_mph=average_speed_mph,
+    ).follower_density
+
+
+def estimate_follower_density(
+    *,
+    segment_type: str,
+    percent_followers: float | None = None,
+    demand_flow_rate_veh_h: float | None = None,
+    average_speed_mph: float | None = None,
+    faster_lane_percent_followers: float | None = None,
+    slower_lane_percent_followers: float | None = None,
+    faster_lane_flow_rate_veh_h_ln: float | None = None,
+    slower_lane_flow_rate_veh_h_ln: float | None = None,
+    faster_lane_midpoint_speed_mph: float | None = None,
+    slower_lane_midpoint_speed_mph: float | None = None,
+) -> FollowerDensityEstimate:
+    """Estimate Step 8 follower density using the segment-type equation."""
+
+    if segment_type in {PASSING_CONSTRAINED, PASSING_ZONE}:
+        return estimate_passing_constrained_or_zone_follower_density(
+            segment_type=segment_type,
+            percent_followers=percent_followers,
+            demand_flow_rate_veh_h=demand_flow_rate_veh_h,
+            average_speed_mph=average_speed_mph,
+        )
+    if segment_type == PASSING_LANE:
+        return estimate_passing_lane_midpoint_follower_density(
+            segment_type=segment_type,
+            faster_lane_percent_followers=faster_lane_percent_followers,
+            slower_lane_percent_followers=slower_lane_percent_followers,
+            faster_lane_flow_rate_veh_h_ln=faster_lane_flow_rate_veh_h_ln,
+            slower_lane_flow_rate_veh_h_ln=slower_lane_flow_rate_veh_h_ln,
+            faster_lane_midpoint_speed_mph=faster_lane_midpoint_speed_mph,
+            slower_lane_midpoint_speed_mph=slower_lane_midpoint_speed_mph,
+        )
+    raise HCMCalcError(f"Unsupported Step 8 segment type: {segment_type!r}.")
+
+
+def estimate_passing_constrained_or_zone_follower_density(
+    *,
+    segment_type: str,
+    percent_followers: float | None,
+    demand_flow_rate_veh_h: float | None,
+    average_speed_mph: float | None,
+) -> FollowerDensityEstimate:
+    """Estimate Passing Constrained or Passing Zone density with Eq. 15-35."""
+
+    if segment_type not in {PASSING_CONSTRAINED, PASSING_ZONE}:
+        raise HCMCalcError(
+            "Step 8 Eq. 15-35 requires a Passing Constrained or Passing Zone "
+            f"segment type, not {segment_type!r}."
+        )
+    percent_followers_value = _validate_step8_percent(
+        percent_followers, "percent followers"
+    )
+    demand_flow_rate = _validate_step8_number(
+        demand_flow_rate_veh_h,
+        "demand flow rate",
+        allow_zero=True,
+    )
+    average_speed = _validate_step8_number(
+        average_speed_mph,
+        "average speed",
+        allow_zero=False,
+    )
+    density = percent_followers_value / 100.0 * demand_flow_rate / average_speed
+    return FollowerDensityEstimate(
+        follower_density=density,
+        source_reference="HCM Eq. 15-35",
+        formula="FD = (PF / 100) * demand_flow_rate / average_speed",
+    )
+
+
+def estimate_passing_lane_midpoint_follower_density(
+    *,
+    segment_type: str,
+    faster_lane_percent_followers: float | None,
+    slower_lane_percent_followers: float | None,
+    faster_lane_flow_rate_veh_h_ln: float | None,
+    slower_lane_flow_rate_veh_h_ln: float | None,
+    faster_lane_midpoint_speed_mph: float | None,
+    slower_lane_midpoint_speed_mph: float | None,
+) -> FollowerDensityEstimate:
+    """Estimate Passing Lane midpoint follower density with Eq. 15-34."""
+
+    if segment_type != PASSING_LANE:
+        raise HCMCalcError(
+            "Step 8 Eq. 15-34 requires a Passing Lane segment type, "
+            f"not {segment_type!r}."
+        )
+    faster_pf = _validate_step8_percent(
+        faster_lane_percent_followers, "faster-lane midpoint percent followers"
+    )
+    slower_pf = _validate_step8_percent(
+        slower_lane_percent_followers, "slower-lane midpoint percent followers"
+    )
+    faster_flow = _validate_step8_number(
+        faster_lane_flow_rate_veh_h_ln,
+        "faster-lane flow rate",
+        allow_zero=False,
+    )
+    slower_flow = _validate_step8_number(
+        slower_lane_flow_rate_veh_h_ln,
+        "slower-lane flow rate",
+        allow_zero=False,
+    )
+    faster_speed = _validate_step8_number(
+        faster_lane_midpoint_speed_mph,
+        "faster-lane midpoint speed",
+        allow_zero=False,
+    )
+    slower_speed = _validate_step8_number(
+        slower_lane_midpoint_speed_mph,
+        "slower-lane midpoint speed",
+        allow_zero=False,
+    )
+    faster_component = faster_pf / 100.0 * faster_flow / faster_speed
+    slower_component = slower_pf / 100.0 * slower_flow / slower_speed
+    return FollowerDensityEstimate(
+        follower_density=(faster_component + slower_component) / 2.0,
+        source_reference="HCM Eq. 15-34",
+        formula=(
+            "FDPLmid = ((PFPLmid_FL / 100 * FlowRateFL / SPLmid_FL) + "
+            "(PFPLmid_SL / 100 * FlowRateSL / SPLmid_SL)) / 2"
+        ),
+        faster_lane_component=faster_component,
+        slower_lane_component=slower_component,
+        faster_lane_flow_rate=faster_flow,
+        slower_lane_flow_rate=slower_flow,
+        faster_lane_midpoint_speed=faster_speed,
+        slower_lane_midpoint_speed=slower_speed,
+        faster_lane_percent_followers=faster_pf,
+        slower_lane_percent_followers=slower_pf,
+    )
+
+
+def _validate_step8_percent(value: object, label: str) -> float:
+    if value is None:
+        raise HCMCalcError(f"Step 8 {label} is required.")
+    if not isinstance(value, Real) or not isfinite(float(value)) or not 0 <= value <= 100:
+        raise HCMCalcError(
+            f"Step 8 {label} must be a finite value between 0 and 100."
+        )
+    return float(value)
+
+
+def _validate_step8_number(value: object, label: str, *, allow_zero: bool) -> float:
+    if value is None:
+        raise HCMCalcError(f"Step 8 {label} is required.")
+    if not isinstance(value, Real) or not isfinite(float(value)):
+        raise HCMCalcError(f"Step 8 {label} must be a finite numeric value.")
+    numeric_value = float(value)
+    if numeric_value < 0 or (numeric_value == 0 and not allow_zero):
+        required_range = "nonnegative" if allow_zero else "greater than zero"
+        raise HCMCalcError(f"Step 8 {label} must be {required_range}.")
+    return numeric_value
 
 
 def level_of_service(
