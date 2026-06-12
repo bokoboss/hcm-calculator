@@ -39,6 +39,7 @@ from hcmcalc.ui.reporting import (
     export_report,
     report_filename,
 )
+from hcmcalc.ui.schematics import get_segment_schematic_path
 from hcmcalc.ui.units import (
     DEFAULT_UNIT_SYSTEM,
     display_outputs,
@@ -592,6 +593,10 @@ def render_manual_single_segment_calculator() -> None:
 
     with input_column:
         st.caption("Manual single segment")
+        st.markdown(
+            '<div class="compact-section-label">Setup</div>',
+            unsafe_allow_html=True,
+        )
         setup_columns = st.columns(4)
         unit_label = setup_columns[0].radio(
             "Unit system",
@@ -628,6 +633,15 @@ def render_manual_single_segment_calculator() -> None:
             if horizontal_alignment_label == "Horizontal curve"
             else "straight"
         )
+        st.caption("Unsupported combinations remain guarded.")
+        schematic_path = get_segment_schematic_path(segment_type)
+        with st.expander("Segment schematic", expanded=False):
+            if schematic_path is not None:
+                st.image(
+                    schematic_path,
+                    caption=f"Segment schematic: {SEGMENT_TYPE_LABELS[segment_type]}",
+                    width=420,
+                )
         for name, default in defaults.items():
             if name == "heavy_vehicle_percent" and segment_type == "passing_lane":
                 default = 8.0
@@ -635,6 +649,10 @@ def render_manual_single_segment_calculator() -> None:
 
         metric = unit_system == "metric"
         with st.form(f"manual_single_segment_{unit_system}"):
+            st.markdown(
+                '<div class="compact-section-label">Geometry</div>',
+                unsafe_allow_html=True,
+            )
             row_one = st.columns(3)
             segment_length = row_one[0].number_input(
                 f"Segment length ({'km' if metric else 'mi'})",
@@ -667,10 +685,54 @@ def render_manual_single_segment_calculator() -> None:
                     "Grade (%)",
                     key=f"manual_grade_percent_{unit_system}",
                 )
-                row_two[2].caption("Limited to validated example-problem paths.")
+                row_two[2].caption("Validated paths only.")
             else:
                 grade_percent = 0.0
 
+            st.markdown(
+                '<div class="compact-section-label">Traffic</div>',
+                unsafe_allow_html=True,
+            )
+            row_three = st.columns(3)
+            analysis_volume = row_three[0].number_input(
+                "Analysis-direction volume (veh/h)",
+                min_value=0.0,
+                key=f"manual_analysis_direction_volume_{unit_system}",
+            )
+            peak_hour_factor = row_three[1].number_input(
+                "Peak hour factor (PHF)",
+                min_value=0.01,
+                max_value=1.0,
+                key=f"manual_peak_hour_factor_{unit_system}",
+            )
+            heavy_vehicle_percent = row_three[2].number_input(
+                "Heavy vehicles (%)",
+                min_value=0.0,
+                max_value=100.0,
+                key=f"manual_heavy_vehicle_percent_{unit_system}",
+            )
+            if segment_type == "passing_lane":
+                row_three[2].caption(
+                    "Single-segment result only — downstream/facility effects are "
+                    "not included here."
+                )
+            opposing_volume = None
+            if segment_type == "passing_zone":
+                opposing_columns = st.columns(3)
+                opposing_volume = opposing_columns[0].number_input(
+                    "Opposing-direction volume (veh/h)",
+                    min_value=1.0,
+                    help=(
+                        "Required for Passing Zone behavior and converted to opposing "
+                        "demand flow using the submitted PHF."
+                    ),
+                    key=f"manual_opposing_direction_volume_{unit_system}",
+                )
+
+            st.markdown(
+                '<div class="compact-section-label">Advanced / Optional</div>',
+                unsafe_allow_html=True,
+            )
             horizontal_subsegments: list[dict[str, Any]] = []
             curve_setup: dict[str, Any] | None = None
             generate_curve = False
@@ -680,7 +742,7 @@ def render_manual_single_segment_calculator() -> None:
                     st.session_state.setdefault(
                         f"manual_curve_setup_{name}_{unit_system}", default
                     )
-                with st.expander("Curve subsegments", expanded=False):
+                with st.expander("Horizontal curve subsegments", expanded=False):
                     curve_primary = st.columns(3)
                     total_curve_length = curve_primary[0].number_input(
                         f"Total curve length ({'m' if metric else 'ft'})",
@@ -775,44 +837,6 @@ def render_manual_single_segment_calculator() -> None:
                             ),
                         },
                     )
-
-            row_three = st.columns(3)
-            analysis_volume = row_three[0].number_input(
-                "Analysis-direction volume (veh/h)",
-                min_value=0.0,
-                key=f"manual_analysis_direction_volume_{unit_system}",
-            )
-            peak_hour_factor = row_three[1].number_input(
-                "Peak hour factor (PHF)",
-                min_value=0.01,
-                max_value=1.0,
-                key=f"manual_peak_hour_factor_{unit_system}",
-            )
-            heavy_vehicle_percent = row_three[2].number_input(
-                "Heavy vehicles (%)",
-                min_value=0.0,
-                max_value=100.0,
-                key=f"manual_heavy_vehicle_percent_{unit_system}",
-            )
-            if segment_type == "passing_lane":
-                row_three[2].caption(
-                    "Single-segment result only — does not include downstream or "
-                    "facility effects."
-                )
-            row_four = st.columns(3)
-            opposing_volume = (
-                row_four[0].number_input(
-                    "Opposing-direction volume (veh/h)",
-                    min_value=1.0,
-                    help=(
-                        "Required for Passing Zone behavior and converted to opposing "
-                        "demand flow using the submitted PHF."
-                    ),
-                    key=f"manual_opposing_direction_volume_{unit_system}",
-                )
-                if segment_type == "passing_zone"
-                else None
-            )
 
             run_manual = st.form_submit_button(
                 "Run calculation", type="primary", use_container_width=True
@@ -915,7 +939,7 @@ def render_manual_project_file_controls(manual_inputs: dict[str, Any]) -> None:
         manual_inputs, result=result, audit_record=audit_record
     )
 
-    st.caption("Save project JSON or load a project file to restore inputs.")
+    st.caption("Save or load project JSON to preserve inputs.")
     st.download_button(
         "Download project JSON",
         data=project_json,
@@ -1045,16 +1069,21 @@ def render_manual_result(
             metric["label"], format_display_metric(name, metric, unit_system)
         )
 
-    with st.expander("Audit", expanded=False):
+    with st.expander("Calculation details", expanded=False):
+        st.markdown("**Assumptions**")
         for assumption in result_data["assumptions"]:
             st.markdown(f"- {assumption}")
+        st.markdown("**Warnings**")
         for warning in result_data["warnings"]:
-            st.warning(warning)
+            st.markdown(f"- {warning}")
+        st.markdown("**Intermediate values**")
         st.dataframe(
             result_data["intermediate_values"],
             hide_index=True,
             use_container_width=True,
         )
+
+    with st.expander("Audit", expanded=False):
         if audit_record is not None:
             st.caption(
                 "Submitted values, engine-native imperial inputs, scope status, and "
