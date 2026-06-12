@@ -1,6 +1,6 @@
 from hcmcalc.ui.result_view import compact_rows, format_display_metric, los_colors
 from hcmcalc.ui.schematics import get_segment_schematic_path
-from hcmcalc.ui.streamlit_app import _clear_manual_facility_result_state
+from hcmcalc.ui.manual_facility import clear_manual_facility_result_state
 
 
 def test_supported_segment_types_map_to_existing_schematics() -> None:
@@ -67,6 +67,6 @@ def test_template_switching_clears_stale_facility_results() -> None:
         "unrelated": "preserved",
     }
 
-    _clear_manual_facility_result_state(state)
+    clear_manual_facility_result_state(state)
 
     assert state == {"unrelated": "preserved"}

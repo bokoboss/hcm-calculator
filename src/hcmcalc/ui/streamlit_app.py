@@ -18,6 +18,7 @@ from hcmcalc.ui.curve_editor import (
 )
 from hcmcalc.ui.manual_facility import (
     build_manual_facility_audit_record,
+    clear_manual_facility_result_state,
     facility_segment_result_rows,
     facility_template_options,
     load_facility_template,
@@ -255,7 +256,7 @@ def render_manual_facility_calculator() -> None:
     unit_system = str(unit_label).lower()
     selection_context = (template_id, unit_system)
     if st.session_state.get("manual_facility_selection_context") != selection_context:
-        _clear_manual_facility_result_state(st.session_state)
+        clear_manual_facility_result_state(st.session_state)
         st.session_state["manual_facility_selection_context"] = selection_context
 
     try:
@@ -337,7 +338,7 @@ def render_manual_facility_calculator() -> None:
         "Save/Load does not broaden methodology support."
     )
     if calculate:
-        _clear_manual_facility_result_state(st.session_state)
+        clear_manual_facility_result_state(st.session_state)
         try:
             result = run_manual_facility(template_id, edited_rows, unit_system)
             st.session_state["manual_facility_result"] = result_to_dict(result)
@@ -516,19 +517,6 @@ def _render_manual_facility_project_file_controls(
             else:
                 st.session_state["manual_facility_pending_project"] = project
                 st.rerun()
-
-
-def _clear_manual_facility_result_state(state: Any) -> None:
-    """Clear stale facility calculation state after selection or input changes."""
-
-    for key in (
-        "manual_facility_result",
-        "manual_facility_result_context",
-        "manual_facility_result_rows",
-        "manual_facility_audit",
-        "manual_facility_error",
-    ):
-        state.pop(key, None)
 
 
 def _restore_manual_facility_project(project: dict[str, Any]) -> None:

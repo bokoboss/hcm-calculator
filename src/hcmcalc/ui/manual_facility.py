@@ -82,6 +82,19 @@ def facility_template_options() -> dict[str, str]:
     }
 
 
+def clear_manual_facility_result_state(state: Any) -> None:
+    """Clear stale facility calculation state after selection or input changes."""
+
+    for key in (
+        "manual_facility_result",
+        "manual_facility_result_context",
+        "manual_facility_result_rows",
+        "manual_facility_audit",
+        "manual_facility_error",
+    ):
+        state.pop(key, None)
+
+
 def load_facility_template(
     template_id: str, unit_system: str = "imperial"
 ) -> dict[str, Any]:
