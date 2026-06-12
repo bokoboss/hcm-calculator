@@ -29,6 +29,9 @@ and workflow coverage, see the
   segments, downstream passing-lane adjustment, and facility follower density.
 - The validated examples are not evidence that arbitrary Chapter 15 inputs are
   supported.
+- Manual Facility Calculator v0.1 exposes those Example 3/4 paths through a
+  guarded template-backed workflow. It does not broaden the methodology or
+  authorize arbitrary facilities.
 
 ### Manual single-segment calculator
 
@@ -88,7 +91,8 @@ Known unsupported or incomplete manual cases:
 - Passing Lane cases outside Class 1 and `8%` heavy vehicles.
 - Upstream or downstream passing-lane effects and other corridor context.
 - General follower-density adjustment for a manual single segment.
-- Full facility manual input, facility LOS, and report export.
+- General facility manual input and report export. Facility LOS is exposed only
+  through the guarded Manual Facility Calculator v0.1 Example 3/4 templates.
 - A complete audit record that preserves normalized inputs and all
   decision-relevant intermediate values alongside the result.
 
@@ -119,6 +123,12 @@ final density includes upstream Passing Lane adjustment. Lookup metadata and
 guardrail tests now preserve these paths as facility-only. The exact straight
 Passing Constrained `6% / 0.5 mi`, Class 4, `8%` path from segment 3 remains
 the only validated mountainous manual single-segment path.
+
+Manual Facility Calculator v0.1 now exposes the facility-only Example 3/4
+paths without promoting them to standalone or general support. Segment
+sequence, nonlevel/curve context, Passing Lane placement, and downstream
+adjustment context remain template-controlled. Facility Save/Load is not
+included; Manual Single Segment Save/Load remains unchanged.
 
 The Phase 4
 [Chapter 15 Vertical Fixture Inventory](ch15_vertical_fixture_inventory.md)
@@ -274,10 +284,10 @@ complexity.
 
 ### Phase 3: Add facility and reporting workflows
 
-1. Add multi-segment facility input while preserving the single-page guided
-   worksheet concept.
-2. Add facility LOS and clearly distinguish segment results from facility
-   effects.
+1. Expand beyond the template-backed multi-segment facility workflow only
+   after additional methodology and validation fixtures authorize it.
+2. Broaden facility LOS exposure only with new validation, while clearly
+   distinguishing segment results from facility effects.
 3. Add export/report workflows that preserve the full audit record and
    validation provenance.
 

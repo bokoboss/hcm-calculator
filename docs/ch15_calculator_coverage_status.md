@@ -34,9 +34,10 @@ The current calculator is best described as:
   Problem 2 single-segment path and available internally in Example Problem 4.
 - **Guarded nonlevel support**, with one exact mountainous manual path and
   additional nonlevel paths retained only in validated facility examples.
-- **Facility examples validated internally but no general manual facility UI
-  yet**. Examples 3 and 4 exercise facility aggregation, Passing Lane behavior,
-  and downstream adjustment only for their exact fixture shapes.
+- **Manual Facility Calculator v0.1 is limited and template-backed**. It exposes
+  the existing Example 3/4 facility paths while keeping segment sequence,
+  terrain/curve context, Passing Lane placement, and downstream context
+  guarded. It is not a general facility calculator.
 
 The presence of table-driven helpers or passing formula-level tests does not by
 itself make arbitrary inputs supported. Public calculation claims remain
@@ -54,9 +55,9 @@ limited by the scope guardrails and validation fixtures.
 | Step 6 | Percent followers | Eq. 15-17 through Eq. 15-23; Exhibits 15-24 through 15-29 | Centralized, table-driven, and auditable for supported paths. | Supported where the selected manual or validated-example path is allowed. | Focused Step 6 tests, input-domain tests, and Examples 1-4. | Helper coverage is broader than publicly validated combinations. | Reuse in facility templates; preserve current scope checks. |
 | Step 7 | Passing Lane measures | Eq. 15-24 through Eq. 15-33 | Centralized and auditable for validated Passing Lane paths. | Limited manual Passing Lane result; no downstream or facility-wide effects in manual single segment. | Focused Step 7 tests and Examples 3/4. | Manual support remains Class 1 at exactly 8% heavy vehicles; no general Passing Lane workflow. | Make validated Passing Lane behavior visible in Manual Facility Calculator v0.1. |
 | Step 8 | Follower density | Eq. 15-34 and Eq. 15-35 | Centralized and auditable for Passing Constrained, Passing Zone, and supported Passing Lane midpoint cases. | Supported for allowed manual paths and validated examples. | Focused Step 8 tests, level-straight regression, and Examples 1-4. | Passing Lane midpoint density must not be confused with endpoint or downstream facility density. | Label density basis explicitly in broader UI and exports. |
-| Step 9 | Downstream Passing Lane adjustment | Eq. 15-36 through Eq. 15-38 | Centralized and auditable for explicitly identified downstream segments in validated facilities. | Internal only in Validated Examples / QA; deliberately excluded from Manual Single Segment. | Focused Step 9 tests and Examples 3/4 facility tests. | No general manual facility context or arbitrary downstream application. | Implement a template-backed Manual Facility Calculator v0.1 using Example 3/4 behavior. |
+| Step 9 | Downstream Passing Lane adjustment | Eq. 15-36 through Eq. 15-38 | Centralized and auditable for explicitly identified downstream segments in validated facilities. | Visible only through the guarded Example 3/4 Manual Facility Calculator v0.1 templates and Validated Examples / QA; deliberately excluded from Manual Single Segment. | Focused Step 9 tests, Examples 3/4 facility tests, and manual facility guardrail tests. | No arbitrary downstream application or general manual facility context. | Preserve template-controlled downstream context until new validation evidence exists. |
 | Step 10 | Motorized vehicle LOS | Exhibit 15-6 | Centralized, boundary-tested, and auditable for supported density bases. | Supported in manual results and validated examples. | Focused threshold/boundary tests plus Examples 1-4. | LOS validity depends on the upstream path and density basis being supported. | Preserve LOS guardrails and make basis/provenance clearer in facility and report views. |
-| Step 11 | Facility analysis | Facility length-weighted results, including Eq. 15-39 pattern | Implemented only for exact validated Example 3 and Example 4 facility shapes. | Internal only in Validated Examples / QA; no manual facility entry. | Example 3/4 unit and integration fixture tests. | Not a general facility calculator; arbitrary segment sequences and inputs are rejected. | Build Manual Facility Calculator v0.1 as a template-backed workflow before claiming broader facility support. |
+| Step 11 | Facility analysis | Facility length-weighted results, including Eq. 15-39 pattern | Implemented through the existing Example 3 and Example 4 facility engine paths. | Limited template-backed Manual Facility Calculator v0.1 plus Validated Examples / QA. | Example 3/4 unit and integration fixture tests plus manual facility adapter tests. | Not a general facility calculator; arbitrary segment sequences and unsupported inputs are rejected. | Keep the workflow template-backed until additional methodology and fixtures authorize expansion. |
 
 ## Segment-Type Coverage Matrix
 
@@ -73,10 +74,10 @@ limited by the scope guardrails and validation fixtures.
 | Manual Single Segment | Limited | Single-page worksheet for supported Passing Constrained, Passing Zone, and Passing Lane paths; unsupported combinations are rejected. |
 | Validated Examples / QA | Supported | Runs and displays exact Chapter 26 Examples 1-4, including facility examples. |
 | CLI run from YAML/JSON | Limited | Loads YAML or JSON fixture files with a top-level `cases` list and runs a selected validated/example-scoped case. It is not a general ad hoc calculator CLI. |
-| Save/Load Project JSON | Supported | Manual single-segment project JSON can preserve inputs, normalized engine inputs, result, and audit record. No facility project schema exists. |
+| Save/Load Project JSON | Supported for Manual Single Segment | Manual single-segment project JSON preserves inputs, normalized engine inputs, result, and audit record. Facility Save/Load is not included in Manual Facility Calculator v0.1. |
 | Audit trail | Limited | Manual calculations and validated results expose assumptions, warnings, intermediate values, outputs, and selected provenance; this is not yet a formal calculation-sheet/report workflow. |
 | Metric/Imperial UI | Supported | Manual UI accepts and displays Metric or Imperial values; engine-native calculation values remain Imperial. |
-| Manual Facility Calculator | Not implemented | Facility behavior is available only through exact validated Example 3/4 fixtures and QA execution. |
+| Manual Facility Calculator | Limited | Manual Facility Calculator v0.1 is a guarded, template-backed workflow anchored to validated Examples 3 and 4. It is not a general Chapter 15 facility calculator. |
 | Export/reporting | Limited | Full result JSON and manual project JSON downloads exist; no formatted engineering calculation sheet or report export exists. |
 
 ## What Is Safe to Claim Now
@@ -88,8 +89,8 @@ limited by the scope guardrails and validation fixtures.
 - Nonlevel support is still exact-path / guarded, not general.
 - Passing Lane support remains limited and does not imply broad
   downstream/facility behavior in manual single segment.
-- Facility examples are validated internally but manual facility input is not
-  yet exposed.
+- Facility behavior is exposed only through guarded Example 3/4-backed
+  templates; arbitrary facility construction remains unsupported.
 
 The calculator should not be described as a general HCM Chapter 15 calculator.
 It is an auditable, validation-led implementation with deliberately narrow
@@ -97,15 +98,15 @@ public workflows.
 
 ## What Should Be Implemented Next
 
-### 1. Manual Facility Calculator v0.1
+### 1. Harden Manual Facility Calculator Beyond v0.1
 
-Build a template-backed, single-page facility worksheet using the already
-validated Example 3 and Example 4 behavior. The first version should allow
-users to start from a validated facility template, edit only fields that remain
-inside the validated contract, show segment and facility results, and reject
-changes that would create an unsupported facility.
+Manual Facility Calculator v0.1 now provides a template-backed, single-page
+facility worksheet using the already validated Example 3 and Example 4
+behavior. Any future expansion must add methodology evidence and validation
+fixtures before unlocking additional segment sequences, nonlevel paths,
+passing-lane arrangements, or downstream contexts.
 
-This is the best next capability after Step 9 because:
+This remains the correct guarded facility direction after Step 9 because:
 
 - Step 7 and Step 9 are facility/downstream-related.
 - Example 3 and Example 4 already validate facility behavior.
@@ -135,7 +136,8 @@ provenance. Existing JSON downloads can remain the machine-readable baseline.
 ## Decision Summary
 
 The methodology engine is ahead of the general-purpose calculator workflows.
-The most useful next PR is therefore **Manual Facility Calculator v0.1,
-template-backed using validated Example 3/4 behavior**. It would expose the
-existing Step 7, Step 9, Step 11, and facility-only vertical capability while
-keeping the project's validation-led guardrails intact.
+Manual Facility Calculator v0.1 exposes the existing Step 7, Step 9, Step 11,
+and facility-only vertical capability through validated Example 3/4-backed
+templates while keeping the project's validation-led guardrails intact. The
+next facility expansion must remain evidence-led and should not claim general
+Chapter 15 facility support.

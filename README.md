@@ -19,13 +19,14 @@ Implemented:
 - Documentation scaffold
 - Methodology and validation references
 - HCM Chapter 26 Two-Lane Highway Example Problems 1 through 4 (`TLH-CH15-001` through `TLH-CH15-004`)
-- Streamlit Manual Single Segment Calculator and Validated examples / QA viewer
+- Streamlit Manual Single Segment Calculator, Manual Facility Calculator v0.1,
+  and Validated examples / QA viewer
 - Unit and validation fixture tests
 
 Not implemented yet:
 
 - Full HCM Chapter 15 calculation engine
-- Full facility manual input
+- General facility manual input
 - Multilane Highway LOS calculations
 - Production validation dataset
 
@@ -75,7 +76,7 @@ Run the single-page validated-case viewer from the repository root:
 streamlit run src/hcmcalc/ui/streamlit_app.py
 ```
 
-The single-page app provides two modes:
+The single-page app provides three modes:
 
 - **Manual Single Segment Calculator** accepts one straight or horizontal-curve
   Two-Lane Highway segment using Metric inputs by default or optional Imperial
@@ -89,6 +90,12 @@ The single-page app provides two modes:
   engine result in the downloadable JSON.
 - **Validated examples / QA** loads `references/example_inputs.yaml` and preserves
   Example Problems 1 through 4 validation behavior.
+- **Manual Facility Calculator v0.1** is a limited template-backed facility
+  workflow anchored to validated Example Problems 3 and 4. It provides a
+  guarded segment table, facility and segment results, warnings, assumptions,
+  audit details, and downloadable result JSON. Segment sequence, type,
+  terrain/curve context, passing-lane placement, and downstream adjustment
+  context remain controlled by the selected template.
 
 The engine and CLI validation behavior remains based on the existing validated
 fixtures. CLI inputs, outputs, and JSON schema are unchanged.
@@ -107,7 +114,12 @@ Manual v0.1 scope:
 
 Limitations:
 
-- No full facility manual input yet
+- Manual Facility Calculator v0.1 is not a general facility calculator.
+- Arbitrary segment sequences, nonlevel facilities, horizontal/nonlevel
+  combinations, passing-lane placement, and downstream adjustments remain
+  unsupported.
+- Facility project Save/Load is not included in v0.1; existing Manual Single
+  Segment Save/Load remains unchanged.
 - No general mountainous grade table; unsupported grade/length combinations are rejected
 - No downstream corridor effects for single passing-lane mode
 - Passing Lane calculation remains limited to the engine's validated Class 1, 8% heavy-vehicle path
