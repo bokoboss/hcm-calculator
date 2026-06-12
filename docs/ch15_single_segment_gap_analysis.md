@@ -193,7 +193,7 @@ dependency.
 | Percent followers | Calculates and audits Step 6 percent followers through Eq. 15-17 to Eq. 15-23. Exhibits 15-24 through 15-29 are table-driven for vertical Classes 1-5, with explicit input and logarithm-domain validation. | Add independent validation fixtures before broadening guarded nonlevel or Passing Lane calculation support. |
 | Follower density | Calculates and audits Passing Constrained/Passing Zone density with Eq. 15-35 and supported Passing Lane midpoint density with Eq. 15-34, including lane components. | Preserve the explicit endpoint-versus-midpoint basis as future Passing Lane and facility support expands. |
 | Follower-density adjustment, where applicable | Downstream adjustment exists in validated facility examples, but manual single-segment analysis explicitly excludes upstream/downstream effects. | Define when a standalone segment may validly receive an adjustment, what context is required, and when the UI must warn that facility context is missing. |
-| Segment LOS | Calculates Motorized Vehicle LOS from follower density for supported cases. | Document applicability and ensure LOS reports the exact density basis, threshold source, warnings, and capacity-related conditions used. |
+| Segment LOS | Step 10 determines Motorized Vehicle LOS from follower density with centralized, boundary-tested HCM7 Exhibit 15-6 thresholds. Outputs audit the threshold group, thresholds used, density basis, posted speed, and source reference. | Document capacity-related LOS F behavior before expanding beyond the currently supported calculation paths. |
 
 ## Input Schema Gaps
 
@@ -225,8 +225,11 @@ The Step 4 through Step 6 formula hardening does not implement general nonlevel
 workflow support. Step 6 now exposes auditable PFcap, PF25cap, slope, power, and
 final percent-followers values using table-driven Exhibits 15-24 through 15-29.
 Step 8 follower density is hardened separately with Eq. 15-34 and Eq. 15-35.
-Unsupported downstream paths remain guarded. Step 9 passing-lane downstream
-adjustment and LOS thresholds are unchanged.
+Step 10 Motorized Vehicle LOS determination is hardened with centralized HCM7
+Exhibit 15-6 thresholds, explicit upper-inclusive boundaries, input validation,
+and audit fields. This work does not implement Step 9 downstream Passing Lane
+adjustment or broaden unsupported calculation paths; existing guardrails remain
+in force.
 
 ### Phase 1: Complete the level-terrain single-segment foundation
 
