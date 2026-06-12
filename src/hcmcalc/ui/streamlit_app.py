@@ -589,59 +589,59 @@ def render_manual_single_segment_calculator() -> None:
     if generation_message is not None:
         st.success(generation_message)
 
-    input_column, result_column = st.columns([1, 1.15], gap="large")
+    worksheet_column, result_column = st.columns([2.15, 1.15], gap="large")
 
-    with input_column:
+    with worksheet_column:
         st.caption("Manual single segment")
-        st.markdown(
-            '<div class="compact-section-label">Setup</div>',
-            unsafe_allow_html=True,
-        )
-        setup_columns = st.columns(4)
-        unit_label = setup_columns[0].radio(
-            "Unit system",
-            ["Metric", "Imperial"],
-            index=0 if DEFAULT_UNIT_SYSTEM == "metric" else 1,
-            horizontal=True,
-            key="manual_unit_label",
-        )
-        unit_system = str(unit_label).lower()
-        defaults = manual_defaults(unit_system)
-        segment_type = setup_columns[1].selectbox(
-            "Segment type",
-            list(SEGMENT_TYPE_LABELS),
-            format_func=SEGMENT_TYPE_LABELS.__getitem__,
-            key="manual_segment_type",
-        )
-        terrain_type = setup_columns[2].selectbox(
-            "Terrain type",
-            ["level", "mountainous"],
-            format_func=str.title,
-            key="manual_terrain_type",
-        )
-        horizontal_alignment_label = setup_columns[3].selectbox(
-            "Horizontal alignment",
-            ["Straight", "Horizontal curve"],
-            help=(
-                "Horizontal curve adjustment uses the validated Example "
-                "Problem 2 calculation path."
-            ),
-            key="manual_horizontal_alignment_label",
-        )
-        horizontal_alignment = (
-            "horizontal_curves"
-            if horizontal_alignment_label == "Horizontal curve"
-            else "straight"
-        )
-        st.caption("Unsupported combinations remain guarded.")
-        schematic_path = get_segment_schematic_path(segment_type)
-        with st.expander("Segment schematic", expanded=False):
+        setup_column, schematic_column = st.columns([1.25, 0.9], gap="medium")
+        with setup_column:
+            st.markdown("**Setup**")
+            setup_row_one = st.columns(2)
+            unit_label = setup_row_one[0].radio(
+                "Unit system",
+                ["Metric", "Imperial"],
+                index=0 if DEFAULT_UNIT_SYSTEM == "metric" else 1,
+                horizontal=True,
+                key="manual_unit_label",
+            )
+            unit_system = str(unit_label).lower()
+            defaults = manual_defaults(unit_system)
+            segment_type = setup_row_one[1].selectbox(
+                "Segment type",
+                list(SEGMENT_TYPE_LABELS),
+                format_func=SEGMENT_TYPE_LABELS.__getitem__,
+                key="manual_segment_type",
+            )
+            setup_row_two = st.columns(2)
+            terrain_type = setup_row_two[0].selectbox(
+                "Terrain type",
+                ["level", "mountainous"],
+                format_func=str.title,
+                key="manual_terrain_type",
+            )
+            horizontal_alignment_label = setup_row_two[1].selectbox(
+                "Horizontal alignment",
+                ["Straight", "Horizontal curve"],
+                help=(
+                    "Horizontal curve adjustment uses the validated Example "
+                    "Problem 2 calculation path."
+                ),
+                key="manual_horizontal_alignment_label",
+            )
+            horizontal_alignment = (
+                "horizontal_curves"
+                if horizontal_alignment_label == "Horizontal curve"
+                else "straight"
+            )
+            st.caption("Unsupported combinations remain guarded.")
+
+        with schematic_column:
+            st.markdown("**Segment schematic**")
+            schematic_path = get_segment_schematic_path(segment_type)
             if schematic_path is not None:
-                st.image(
-                    schematic_path,
-                    caption=f"Segment schematic: {SEGMENT_TYPE_LABELS[segment_type]}",
-                    width=420,
-                )
+                st.image(schematic_path, width="stretch")
+            st.caption("Schematic updates with the selected segment type.")
+
         for name, default in defaults.items():
             if name == "heavy_vehicle_percent" and segment_type == "passing_lane":
                 default = 8.0
@@ -649,198 +649,200 @@ def render_manual_single_segment_calculator() -> None:
 
         metric = unit_system == "metric"
         with st.form(f"manual_single_segment_{unit_system}"):
-            st.markdown(
-                '<div class="compact-section-label">Geometry</div>',
-                unsafe_allow_html=True,
+            form_input_column, form_advanced_column = st.columns(
+                [1.25, 0.9], gap="medium"
             )
-            row_one = st.columns(3)
-            segment_length = row_one[0].number_input(
-                f"Segment length ({'km' if metric else 'mi'})",
-                min_value=0.01,
-                key=f"manual_segment_length_{unit_system}",
-            )
-            posted_speed = row_one[1].number_input(
-                f"Posted speed / base speed ({'km/h' if metric else 'mph'})",
-                min_value=1.0,
-                key=f"manual_posted_speed_{unit_system}",
-            )
-            lane_width = row_one[2].number_input(
-                f"Lane width ({'m' if metric else 'ft'})",
-                min_value=0.01,
-                key=f"manual_lane_width_{unit_system}",
-            )
-            row_two = st.columns(3)
-            shoulder_width = row_two[0].number_input(
-                f"Shoulder width ({'m' if metric else 'ft'})",
-                min_value=0.0,
-                key=f"manual_shoulder_width_{unit_system}",
-            )
-            access_density = row_two[1].number_input(
-                f"Access point density (points/{'km' if metric else 'mi'})",
-                min_value=0.0,
-                key=f"manual_access_point_density_{unit_system}",
-            )
-            if terrain_type == "mountainous":
-                grade_percent = row_two[2].number_input(
-                    "Grade (%)",
-                    key=f"manual_grade_percent_{unit_system}",
+            with form_input_column:
+                st.markdown("**Geometry**")
+                geometry_row_one = st.columns(2)
+                segment_length = geometry_row_one[0].number_input(
+                    f"Segment length ({'km' if metric else 'mi'})",
+                    min_value=0.01,
+                    key=f"manual_segment_length_{unit_system}",
                 )
-                row_two[2].caption("Validated paths only.")
-            else:
-                grade_percent = 0.0
-
-            st.markdown(
-                '<div class="compact-section-label">Traffic</div>',
-                unsafe_allow_html=True,
-            )
-            row_three = st.columns(3)
-            analysis_volume = row_three[0].number_input(
-                "Analysis-direction volume (veh/h)",
-                min_value=0.0,
-                key=f"manual_analysis_direction_volume_{unit_system}",
-            )
-            peak_hour_factor = row_three[1].number_input(
-                "Peak hour factor (PHF)",
-                min_value=0.01,
-                max_value=1.0,
-                key=f"manual_peak_hour_factor_{unit_system}",
-            )
-            heavy_vehicle_percent = row_three[2].number_input(
-                "Heavy vehicles (%)",
-                min_value=0.0,
-                max_value=100.0,
-                key=f"manual_heavy_vehicle_percent_{unit_system}",
-            )
-            if segment_type == "passing_lane":
-                row_three[2].caption(
-                    "Single-segment result only — downstream/facility effects are "
-                    "not included here."
-                )
-            opposing_volume = None
-            if segment_type == "passing_zone":
-                opposing_columns = st.columns(3)
-                opposing_volume = opposing_columns[0].number_input(
-                    "Opposing-direction volume (veh/h)",
+                posted_speed = geometry_row_one[1].number_input(
+                    f"Posted speed / base speed ({'km/h' if metric else 'mph'})",
                     min_value=1.0,
-                    help=(
-                        "Required for Passing Zone behavior and converted to opposing "
-                        "demand flow using the submitted PHF."
-                    ),
-                    key=f"manual_opposing_direction_volume_{unit_system}",
+                    key=f"manual_posted_speed_{unit_system}",
+                )
+                geometry_row_two = st.columns(2)
+                lane_width = geometry_row_two[0].number_input(
+                    f"Lane width ({'m' if metric else 'ft'})",
+                    min_value=0.01,
+                    key=f"manual_lane_width_{unit_system}",
+                )
+                shoulder_width = geometry_row_two[1].number_input(
+                    f"Shoulder width ({'m' if metric else 'ft'})",
+                    min_value=0.0,
+                    key=f"manual_shoulder_width_{unit_system}",
+                )
+                geometry_row_three = st.columns(2)
+                access_density = geometry_row_three[0].number_input(
+                    f"Access point density (points/{'km' if metric else 'mi'})",
+                    min_value=0.0,
+                    key=f"manual_access_point_density_{unit_system}",
+                )
+                if terrain_type == "mountainous":
+                    grade_percent = geometry_row_three[1].number_input(
+                        "Grade (%)",
+                        key=f"manual_grade_percent_{unit_system}",
+                    )
+                    geometry_row_three[1].caption("Validated paths only.")
+                else:
+                    grade_percent = 0.0
+
+                st.markdown("**Traffic**")
+                traffic_row_one = st.columns(2)
+                analysis_volume = traffic_row_one[0].number_input(
+                    "Analysis-direction volume (veh/h)",
+                    min_value=0.0,
+                    key=f"manual_analysis_direction_volume_{unit_system}",
+                )
+                peak_hour_factor = traffic_row_one[1].number_input(
+                    "Peak hour factor (PHF)",
+                    min_value=0.01,
+                    max_value=1.0,
+                    key=f"manual_peak_hour_factor_{unit_system}",
+                )
+                traffic_row_two = st.columns(2)
+                heavy_vehicle_percent = traffic_row_two[0].number_input(
+                    "Heavy vehicles (%)",
+                    min_value=0.0,
+                    max_value=100.0,
+                    key=f"manual_heavy_vehicle_percent_{unit_system}",
+                )
+                opposing_volume = None
+                if segment_type == "passing_zone":
+                    opposing_volume = traffic_row_two[1].number_input(
+                        "Opposing-direction volume (veh/h)",
+                        min_value=1.0,
+                        help=(
+                            "Required for Passing Zone behavior and converted to "
+                            "opposing demand flow using the submitted PHF."
+                        ),
+                        key=f"manual_opposing_direction_volume_{unit_system}",
+                    )
+                if segment_type == "passing_lane":
+                    st.caption(
+                        "Single-segment result only — downstream/facility effects "
+                        "are not included here."
+                    )
+
+                run_manual = st.form_submit_button(
+                    "Run calculation", type="primary", use_container_width=True
                 )
 
-            st.markdown(
-                '<div class="compact-section-label">Advanced / Optional</div>',
-                unsafe_allow_html=True,
-            )
-            horizontal_subsegments: list[dict[str, Any]] = []
-            curve_setup: dict[str, Any] | None = None
-            generate_curve = False
-            if horizontal_alignment == "horizontal_curves":
-                setup_defaults = curve_setup_defaults(unit_system, segment_length)
-                for name, default in setup_defaults.items():
-                    st.session_state.setdefault(
-                        f"manual_curve_setup_{name}_{unit_system}", default
-                    )
-                with st.expander("Horizontal curve subsegments", expanded=False):
-                    curve_primary = st.columns(3)
-                    total_curve_length = curve_primary[0].number_input(
-                        f"Total curve length ({'m' if metric else 'ft'})",
-                        key=f"manual_curve_setup_total_curve_length_{unit_system}",
-                    )
-                    curve_radius = curve_primary[1].number_input(
-                        f"Curve radius ({'m' if metric else 'ft'})",
-                        key=f"manual_curve_setup_radius_{unit_system}",
-                    )
-                    superelevation = curve_primary[2].number_input(
-                        "Superelevation (%)",
-                        key=f"manual_curve_setup_superelevation_percent_{unit_system}",
-                    )
-                    curve_secondary = st.columns(3)
-                    central_angle = curve_secondary[0].number_input(
-                        "Central angle (deg)",
-                        key=f"manual_curve_setup_central_angle_deg_{unit_system}",
-                    )
-                    horizontal_class = curve_secondary[1].number_input(
-                        "Horizontal class",
-                        min_value=1,
-                        max_value=5,
-                        step=1,
-                        key=f"manual_curve_setup_horizontal_class_{unit_system}",
-                    )
-                    subsegment_count = curve_secondary[2].number_input(
-                        "Number of subsegments",
-                        min_value=1,
-                        step=1,
-                        key=f"manual_curve_setup_subsegment_count_{unit_system}",
-                    )
-                    curve_setup = {
-                        "total_curve_length": total_curve_length,
-                        "radius": curve_radius,
-                        "superelevation_percent": superelevation,
-                        "central_angle_deg": central_angle,
-                        "horizontal_class": horizontal_class,
-                        "subsegment_count": subsegment_count,
-                    }
-                    generate_curve = st.form_submit_button(
-                        "Generate curve subsegments", use_container_width=True
-                    )
-                    editor_version = st.session_state.get(
-                        f"manual_horizontal_subsegments_version_{unit_system}", 0
-                    )
-                    editor_data = st.session_state.pop(
-                        f"manual_horizontal_subsegments_seed_{unit_system}",
-                        initial_curve_subsegments(
-                            horizontal_alignment, unit_system, segment_length
-                        ),
-                    )
-                    st.caption(
-                        "Review or edit generated rows. Subsegment lengths must total "
-                        f"the segment length; lengths and radii are in "
-                        f"{'m' if metric else 'ft'}."
-                    )
-                    horizontal_subsegments = st.data_editor(
-                        editor_data,
-                        key=(
-                            f"manual_horizontal_subsegments_{unit_system}_"
-                            f"{editor_version}"
-                        ),
-                        hide_index=True,
-                        num_rows="fixed",
-                        use_container_width=True,
-                        column_config={
-                            "type": st.column_config.SelectboxColumn(
-                                "Subsegment type",
-                                options=["tangent", "horizontal_curve"],
-                                required=True,
+            with form_advanced_column:
+                st.markdown("**Advanced / Optional**")
+                horizontal_subsegments: list[dict[str, Any]] = []
+                curve_setup: dict[str, Any] | None = None
+                generate_curve = False
+                if horizontal_alignment == "horizontal_curves":
+                    setup_defaults = curve_setup_defaults(unit_system, segment_length)
+                    for name, default in setup_defaults.items():
+                        st.session_state.setdefault(
+                            f"manual_curve_setup_{name}_{unit_system}", default
+                        )
+                    with st.expander(
+                        "Horizontal curve subsegments", expanded=False
+                    ):
+                        total_curve_length = st.number_input(
+                            f"Total curve length ({'m' if metric else 'ft'})",
+                            key=f"manual_curve_setup_total_curve_length_{unit_system}",
+                        )
+                        curve_radius = st.number_input(
+                            f"Curve radius ({'m' if metric else 'ft'})",
+                            key=f"manual_curve_setup_radius_{unit_system}",
+                        )
+                        superelevation = st.number_input(
+                            "Superelevation (%)",
+                            key=(
+                                "manual_curve_setup_superelevation_percent_"
+                                f"{unit_system}"
                             ),
-                            "length": st.column_config.NumberColumn(
-                                f"Length ({'m' if metric else 'ft'})",
-                                min_value=0.01,
-                                required=True,
+                        )
+                        central_angle = st.number_input(
+                            "Central angle (deg)",
+                            key=f"manual_curve_setup_central_angle_deg_{unit_system}",
+                        )
+                        horizontal_class = st.number_input(
+                            "Horizontal class",
+                            min_value=1,
+                            max_value=5,
+                            step=1,
+                            key=f"manual_curve_setup_horizontal_class_{unit_system}",
+                        )
+                        subsegment_count = st.number_input(
+                            "Number of subsegments",
+                            min_value=1,
+                            step=1,
+                            key=f"manual_curve_setup_subsegment_count_{unit_system}",
+                        )
+                        curve_setup = {
+                            "total_curve_length": total_curve_length,
+                            "radius": curve_radius,
+                            "superelevation_percent": superelevation,
+                            "central_angle_deg": central_angle,
+                            "horizontal_class": horizontal_class,
+                            "subsegment_count": subsegment_count,
+                        }
+                        generate_curve = st.form_submit_button(
+                            "Generate curve subsegments", use_container_width=True
+                        )
+                        editor_version = st.session_state.get(
+                            f"manual_horizontal_subsegments_version_{unit_system}", 0
+                        )
+                        editor_data = st.session_state.pop(
+                            f"manual_horizontal_subsegments_seed_{unit_system}",
+                            initial_curve_subsegments(
+                                horizontal_alignment, unit_system, segment_length
                             ),
-                            "superelevation_percent": st.column_config.NumberColumn(
-                                "Superelevation (%)"
+                        )
+                        st.caption(
+                            "Review or edit generated rows. Subsegment lengths must "
+                            f"total the segment length; lengths and radii are in "
+                            f"{'m' if metric else 'ft'}."
+                        )
+                        horizontal_subsegments = st.data_editor(
+                            editor_data,
+                            key=(
+                                f"manual_horizontal_subsegments_{unit_system}_"
+                                f"{editor_version}"
                             ),
-                            "radius": st.column_config.NumberColumn(
-                                f"Radius ({'m' if metric else 'ft'})",
-                                min_value=0.01,
-                            ),
-                            "central_angle_deg": st.column_config.NumberColumn(
-                                "Central angle (deg)"
-                            ),
-                            "horizontal_class": st.column_config.NumberColumn(
-                                "Horizontal class",
-                                min_value=1,
-                                max_value=5,
-                                step=1,
-                            ),
-                        },
-                    )
-
-            run_manual = st.form_submit_button(
-                "Run calculation", type="primary", use_container_width=True
-            )
+                            hide_index=True,
+                            num_rows="fixed",
+                            use_container_width=True,
+                            column_config={
+                                "type": st.column_config.SelectboxColumn(
+                                    "Subsegment type",
+                                    options=["tangent", "horizontal_curve"],
+                                    required=True,
+                                ),
+                                "length": st.column_config.NumberColumn(
+                                    f"Length ({'m' if metric else 'ft'})",
+                                    min_value=0.01,
+                                    required=True,
+                                ),
+                                "superelevation_percent": (
+                                    st.column_config.NumberColumn(
+                                        "Superelevation (%)"
+                                    )
+                                ),
+                                "radius": st.column_config.NumberColumn(
+                                    f"Radius ({'m' if metric else 'ft'})",
+                                    min_value=0.01,
+                                ),
+                                "central_angle_deg": st.column_config.NumberColumn(
+                                    "Central angle (deg)"
+                                ),
+                                "horizontal_class": st.column_config.NumberColumn(
+                                    "Horizontal class",
+                                    min_value=1,
+                                    max_value=5,
+                                    step=1,
+                                ),
+                            },
+                        )
 
         values = {
             "unit_system": unit_system,
@@ -880,11 +882,13 @@ def render_manual_single_segment_calculator() -> None:
                     f"Generated {len(generated_subsegments)} editable curve subsegments."
                 )
                 st.rerun()
-        render_manual_project_file_controls(values)
-        st.caption(
-            "Locked assumptions: no upstream passing lane; single segment only. "
-            "Horizontal curves are limited to the validated Example Problem 2 path."
-        )
+        project_spacer, project_column = st.columns([1.25, 0.9], gap="medium")
+        with project_column:
+            render_manual_project_file_controls(values)
+            st.caption(
+                "Locked assumptions: no upstream passing lane; single segment only. "
+                "Horizontal curves are limited to the validated Example Problem 2 path."
+            )
 
     if run_manual:
         st.session_state.pop("manual_segment_result", None)
@@ -1069,7 +1073,7 @@ def render_manual_result(
             metric["label"], format_display_metric(name, metric, unit_system)
         )
 
-    with st.expander("Calculation details", expanded=False):
+    with st.expander("Calculation details & audit", expanded=False):
         st.markdown("**Assumptions**")
         for assumption in result_data["assumptions"]:
             st.markdown(f"- {assumption}")
@@ -1082,9 +1086,8 @@ def render_manual_result(
             hide_index=True,
             use_container_width=True,
         )
-
-    with st.expander("Audit", expanded=False):
         if audit_record is not None:
+            st.markdown("**Audit record**")
             st.caption(
                 "Submitted values, engine-native imperial inputs, scope status, and "
                 "calculation metadata."
