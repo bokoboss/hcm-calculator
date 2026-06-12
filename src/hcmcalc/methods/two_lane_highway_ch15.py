@@ -126,6 +126,58 @@ class FollowerDensityEstimate:
 
 
 @dataclass(frozen=True)
+class PassingLaneFlowSplitEstimate:
+    """Auditable HCM Chapter 15 Step 7a/7b Passing Lane flow split."""
+
+    number_heavy_vehicles: float
+    faster_lane_flow_proportion: float
+    faster_lane_flow_rate: float
+    slower_lane_flow_rate: float
+    faster_lane_heavy_vehicle_percent: float
+    slower_lane_heavy_vehicle_count: float
+    slower_lane_heavy_vehicle_percent: float
+    heavy_vehicle_proportion_multiplier_faster_lane: float
+    source_references: tuple[str, ...] = (
+        "HCM Eq. 15-24",
+        "HCM Eq. 15-25",
+        "HCM Eq. 15-26",
+        "HCM Eq. 15-27",
+        "HCM Eq. 15-28",
+        "HCM Eq. 15-29",
+        "HCM Eq. 15-30",
+    )
+
+
+@dataclass(frozen=True)
+class PassingLaneStep7Estimate:
+    """Auditable HCM Chapter 15 Step 7 Passing Lane midpoint measures."""
+
+    number_heavy_vehicles: float
+    faster_lane_flow_proportion: float
+    faster_lane_flow_rate: float
+    slower_lane_flow_rate: float
+    faster_lane_heavy_vehicle_percent: float
+    slower_lane_heavy_vehicle_count: float
+    slower_lane_heavy_vehicle_percent: float
+    average_speed_lane_differential_adjustment: float
+    faster_lane_midpoint_speed: float
+    slower_lane_midpoint_speed: float
+    heavy_vehicle_proportion_multiplier_faster_lane: float
+    source_references: tuple[str, ...] = (
+        "HCM Eq. 15-24",
+        "HCM Eq. 15-25",
+        "HCM Eq. 15-26",
+        "HCM Eq. 15-27",
+        "HCM Eq. 15-28",
+        "HCM Eq. 15-29",
+        "HCM Eq. 15-30",
+        "HCM Eq. 15-31",
+        "HCM Eq. 15-32",
+        "HCM Eq. 15-33",
+    )
+
+
+@dataclass(frozen=True)
 class MotorizedLOSDetermination:
     """Auditable HCM Chapter 15 Step 10 motorized-vehicle LOS result."""
 
@@ -1096,6 +1148,7 @@ def _single_segment_intermediate_values(
     if outputs["segment_type"] == PASSING_LANE:
         values.extend(
             [
+                *_passing_lane_step7_intermediate_values(outputs),
                 IntermediateValue(
                     "faster_lane_component",
                     outputs["faster_lane_component"],
@@ -1262,6 +1315,9 @@ def _facility_intermediate_values(
         if segment["segment_type"] == PASSING_LANE:
             intermediate_values.extend(
                 [
+                    *_passing_lane_step7_intermediate_values(
+                        segment, prefix=f"segment_{segment_id}_"
+                    ),
                     IntermediateValue(
                         f"segment_{segment_id}_faster_lane_flow_rate",
                         segment["faster_lane_flow_rate_veh_h_ln"],
@@ -1340,6 +1396,45 @@ def _facility_intermediate_values(
         ]
     )
     return intermediate_values
+
+
+def _passing_lane_step7_intermediate_values(
+    outputs: dict[str, Any],
+    *,
+    prefix: str = "",
+) -> list[IntermediateValue]:
+    specs = (
+        ("passing_lane_number_heavy_vehicles", "veh/h", "HCM Eq. 15-24"),
+        ("passing_lane_faster_lane_flow_proportion", None, "HCM Eq. 15-25"),
+        ("passing_lane_faster_lane_flow_rate", "veh/h/ln", "HCM Eq. 15-26"),
+        ("passing_lane_slower_lane_flow_rate", "veh/h/ln", "HCM Eq. 15-27"),
+        (
+            "passing_lane_faster_lane_heavy_vehicle_percent",
+            "%",
+            "HCM Eq. 15-28",
+        ),
+        (
+            "passing_lane_slower_lane_heavy_vehicle_percent",
+            "%",
+            "HCM Eq. 15-30",
+        ),
+        (
+            "passing_lane_speed_differential_adjustment",
+            "mph",
+            "HCM Eq. 15-31",
+        ),
+        ("passing_lane_faster_lane_midpoint_speed", "mph", "HCM Eq. 15-32"),
+        ("passing_lane_slower_lane_midpoint_speed", "mph", "HCM Eq. 15-33"),
+        (
+            "passing_lane_step7_source_reference",
+            None,
+            "HCM Eq. 15-24 through Eq. 15-33",
+        ),
+    )
+    return [
+        IntermediateValue(prefix + name, outputs[name], units, source)
+        for name, units, source in specs
+    ]
 
 
 def _parse_example_problem_1_inputs(
@@ -2790,98 +2885,114 @@ def passing_lane_midpoint_values(
     segment_length_mi: float,
     heavy_vehicle_percent: float,
     capacity_veh_h: float,
+    segment_type: str = PASSING_LANE,
 ) -> dict[str, Any]:
     """HCM Eq. 15-24 through Eq. 15-34 for Example Problem 3 Passing Lane."""
 
-    heavy_vehicle_count = demand_flow_rate_veh_h * heavy_vehicle_percent / 100.0
-    faster_lane_proportion = passing_lane_faster_lane_flow_proportion(
-        demand_flow_rate_veh_h,
-        heavy_vehicle_count,
+    flow_split = estimate_passing_lane_flow_split(
+        segment_type=segment_type,
+        demand_flow_rate_veh_h=demand_flow_rate_veh_h,
+        heavy_vehicle_percent=heavy_vehicle_percent,
     )
-    faster_lane_flow = demand_flow_rate_veh_h * faster_lane_proportion
-    slower_lane_flow = demand_flow_rate_veh_h * (1.0 - faster_lane_proportion)
-    faster_lane_hv_percent = passing_lane_faster_lane_heavy_vehicle_percent(
-        heavy_vehicle_percent
-    )
-    slower_lane_hv_count = heavy_vehicle_count - (
-        faster_lane_flow * faster_lane_hv_percent / 100.0
-    )
-    slower_lane_hv_percent = slower_lane_hv_count / slower_lane_flow * 100.0
 
     faster_lane_ffs = estimated_free_flow_speed(
         base_free_flow_speed_mph,
         heavy_vehicle_coefficient,
-        faster_lane_hv_percent,
+        flow_split.faster_lane_heavy_vehicle_percent,
         lane_shoulder_adjustment_mph,
         access_point_adjustment_mph,
     )
     slower_lane_ffs = estimated_free_flow_speed(
         base_free_flow_speed_mph,
         heavy_vehicle_coefficient,
-        slower_lane_hv_percent,
+        flow_split.slower_lane_heavy_vehicle_percent,
         lane_shoulder_adjustment_mph,
         access_point_adjustment_mph,
     )
     faster_lane_initial_speed = _passing_lane_lane_average_speed(
         vertical_class,
         faster_lane_ffs,
-        faster_lane_flow,
+        flow_split.faster_lane_flow_rate,
         segment_length_mi,
-        faster_lane_hv_percent,
+        flow_split.faster_lane_heavy_vehicle_percent,
     )
     slower_lane_initial_speed = _passing_lane_lane_average_speed(
         vertical_class,
         slower_lane_ffs,
-        slower_lane_flow,
+        flow_split.slower_lane_flow_rate,
         segment_length_mi,
-        slower_lane_hv_percent,
+        flow_split.slower_lane_heavy_vehicle_percent,
     )
-    speed_difference = passing_lane_average_speed_differential_adjustment(
-        demand_flow_rate_veh_h,
-        heavy_vehicle_percent,
+    step7 = estimate_passing_lane_midpoint_measures(
+        segment_type=segment_type,
+        demand_flow_rate_veh_h=demand_flow_rate_veh_h,
+        heavy_vehicle_percent=heavy_vehicle_percent,
+        faster_lane_initial_speed_mph=faster_lane_initial_speed,
+        slower_lane_initial_speed_mph=slower_lane_initial_speed,
     )
-    faster_lane_midpoint_speed = faster_lane_initial_speed + speed_difference / 2.0
-    slower_lane_midpoint_speed = slower_lane_initial_speed - speed_difference / 2.0
     faster_lane_pf = _passing_lane_lane_percent_followers(
         vertical_class,
         segment_length_mi,
         faster_lane_ffs,
-        faster_lane_hv_percent,
-        faster_lane_flow,
-        _passing_lane_lane_capacity(vertical_class, faster_lane_hv_percent),
+        step7.faster_lane_heavy_vehicle_percent,
+        step7.faster_lane_flow_rate,
+        _passing_lane_lane_capacity(
+            vertical_class, step7.faster_lane_heavy_vehicle_percent
+        ),
     )
     slower_lane_pf = _passing_lane_lane_percent_followers(
         vertical_class,
         segment_length_mi,
         slower_lane_ffs,
-        slower_lane_hv_percent,
-        slower_lane_flow,
-        _passing_lane_lane_capacity(vertical_class, slower_lane_hv_percent),
+        step7.slower_lane_heavy_vehicle_percent,
+        step7.slower_lane_flow_rate,
+        _passing_lane_lane_capacity(
+            vertical_class, step7.slower_lane_heavy_vehicle_percent
+        ),
     )
     step8 = estimate_follower_density(
         segment_type=PASSING_LANE,
         faster_lane_percent_followers=faster_lane_pf,
         slower_lane_percent_followers=slower_lane_pf,
-        faster_lane_flow_rate_veh_h_ln=faster_lane_flow,
-        slower_lane_flow_rate_veh_h_ln=slower_lane_flow,
-        faster_lane_midpoint_speed_mph=faster_lane_midpoint_speed,
-        slower_lane_midpoint_speed_mph=slower_lane_midpoint_speed,
+        faster_lane_flow_rate_veh_h_ln=step7.faster_lane_flow_rate,
+        slower_lane_flow_rate_veh_h_ln=step7.slower_lane_flow_rate,
+        faster_lane_midpoint_speed_mph=step7.faster_lane_midpoint_speed,
+        slower_lane_midpoint_speed_mph=step7.slower_lane_midpoint_speed,
     )
+    step7_source_reference = "; ".join(step7.source_references)
     return {
-        "heavy_vehicle_count_veh_h": heavy_vehicle_count,
-        "faster_lane_flow_proportion": faster_lane_proportion,
-        "faster_lane_flow_rate_veh_h_ln": faster_lane_flow,
-        "slower_lane_flow_rate_veh_h_ln": slower_lane_flow,
-        "faster_lane_heavy_vehicle_percent": faster_lane_hv_percent,
-        "slower_lane_heavy_vehicle_count_veh_h": slower_lane_hv_count,
-        "slower_lane_heavy_vehicle_percent": slower_lane_hv_percent,
+        "heavy_vehicle_count_veh_h": step7.number_heavy_vehicles,
+        "faster_lane_flow_proportion": step7.faster_lane_flow_proportion,
+        "faster_lane_flow_rate_veh_h_ln": step7.faster_lane_flow_rate,
+        "slower_lane_flow_rate_veh_h_ln": step7.slower_lane_flow_rate,
+        "faster_lane_heavy_vehicle_percent": step7.faster_lane_heavy_vehicle_percent,
+        "slower_lane_heavy_vehicle_count_veh_h": step7.slower_lane_heavy_vehicle_count,
+        "slower_lane_heavy_vehicle_percent": step7.slower_lane_heavy_vehicle_percent,
         "faster_lane_free_flow_speed_mph": faster_lane_ffs,
         "slower_lane_free_flow_speed_mph": slower_lane_ffs,
         "faster_lane_initial_average_speed_mph": faster_lane_initial_speed,
         "slower_lane_initial_average_speed_mph": slower_lane_initial_speed,
-        "average_speed_differential_adjustment_mph": speed_difference,
-        "faster_lane_midpoint_average_speed_mph": faster_lane_midpoint_speed,
-        "slower_lane_midpoint_average_speed_mph": slower_lane_midpoint_speed,
+        "average_speed_differential_adjustment_mph": (
+            step7.average_speed_lane_differential_adjustment
+        ),
+        "faster_lane_midpoint_average_speed_mph": step7.faster_lane_midpoint_speed,
+        "slower_lane_midpoint_average_speed_mph": step7.slower_lane_midpoint_speed,
+        "passing_lane_number_heavy_vehicles": step7.number_heavy_vehicles,
+        "passing_lane_faster_lane_flow_proportion": step7.faster_lane_flow_proportion,
+        "passing_lane_faster_lane_flow_rate": step7.faster_lane_flow_rate,
+        "passing_lane_slower_lane_flow_rate": step7.slower_lane_flow_rate,
+        "passing_lane_faster_lane_heavy_vehicle_percent": (
+            step7.faster_lane_heavy_vehicle_percent
+        ),
+        "passing_lane_slower_lane_heavy_vehicle_percent": (
+            step7.slower_lane_heavy_vehicle_percent
+        ),
+        "passing_lane_speed_differential_adjustment": (
+            step7.average_speed_lane_differential_adjustment
+        ),
+        "passing_lane_faster_lane_midpoint_speed": step7.faster_lane_midpoint_speed,
+        "passing_lane_slower_lane_midpoint_speed": step7.slower_lane_midpoint_speed,
+        "passing_lane_step7_source_reference": step7_source_reference,
         "faster_lane_midpoint_percent_followers": faster_lane_pf,
         "slower_lane_midpoint_percent_followers": slower_lane_pf,
         "faster_lane_component": step8.faster_lane_component,
@@ -2892,23 +3003,131 @@ def passing_lane_midpoint_values(
     }
 
 
+def estimate_passing_lane_heavy_vehicles(
+    *,
+    segment_type: str,
+    demand_flow_rate_veh_h: float | None,
+    heavy_vehicle_percent: float | None,
+) -> float:
+    """HCM Eq. 15-24 number of heavy vehicles entering a Passing Lane segment."""
+
+    _validate_step7_segment_type(segment_type)
+    demand_flow_rate = _validate_step7_number(
+        demand_flow_rate_veh_h, "demand flow rate", allow_zero=False
+    )
+    heavy_vehicle_percentage = _validate_step7_percent(
+        heavy_vehicle_percent, "heavy vehicle percent"
+    )
+    return _validate_step7_computed_value(
+        demand_flow_rate * heavy_vehicle_percentage / 100.0,
+        "number of heavy vehicles",
+    )
+
+
 def passing_lane_faster_lane_flow_proportion(
     demand_flow_rate_veh_h: float,
     heavy_vehicle_count_veh_h: float,
 ) -> float:
     """HCM Eq. 15-25 faster-lane flow proportion."""
 
-    return 0.92183 - 0.05022 * log(demand_flow_rate_veh_h) - (
-        0.00030 * heavy_vehicle_count_veh_h
+    demand_flow_rate = _validate_step7_number(
+        demand_flow_rate_veh_h, "demand flow rate", allow_zero=False
     )
+    heavy_vehicle_count = _validate_step7_number(
+        heavy_vehicle_count_veh_h, "number of heavy vehicles", allow_zero=True
+    )
+    proportion = 0.92183 - 0.05022 * log(demand_flow_rate) - (
+        0.00030 * heavy_vehicle_count
+    )
+    if not isfinite(proportion) or not 0.0 < proportion < 1.0:
+        raise HCMCalcError(
+            "Step 7 faster-lane flow proportion must be finite and greater than "
+            "0 but less than 1."
+        )
+    return proportion
 
 
 def passing_lane_faster_lane_heavy_vehicle_percent(
     heavy_vehicle_percent: float,
+    heavy_vehicle_proportion_multiplier_faster_lane: float = 0.4,
 ) -> float:
     """HCM Eq. 15-28 faster-lane heavy vehicle percentage."""
 
-    return heavy_vehicle_percent * 0.4
+    heavy_vehicle_percentage = _validate_step7_percent(
+        heavy_vehicle_percent, "heavy vehicle percent"
+    )
+    multiplier = _validate_step7_hv_proportion_multiplier(
+        heavy_vehicle_proportion_multiplier_faster_lane
+    )
+    return _validate_step7_percent(
+        heavy_vehicle_percentage * multiplier,
+        "faster-lane heavy vehicle percent",
+    )
+
+
+def estimate_passing_lane_flow_split(
+    *,
+    segment_type: str,
+    demand_flow_rate_veh_h: float | None,
+    heavy_vehicle_percent: float | None,
+    heavy_vehicle_proportion_multiplier_faster_lane: float | None = 0.4,
+) -> PassingLaneFlowSplitEstimate:
+    """Estimate HCM Eq. 15-24 through Eq. 15-30 Passing Lane lane splits."""
+
+    _validate_step7_segment_type(segment_type)
+    demand_flow_rate = _validate_step7_number(
+        demand_flow_rate_veh_h, "demand flow rate", allow_zero=False
+    )
+    heavy_vehicle_percentage = _validate_step7_percent(
+        heavy_vehicle_percent, "heavy vehicle percent"
+    )
+    multiplier = _validate_step7_hv_proportion_multiplier(
+        heavy_vehicle_proportion_multiplier_faster_lane
+    )
+    number_heavy_vehicles = estimate_passing_lane_heavy_vehicles(
+        segment_type=segment_type,
+        demand_flow_rate_veh_h=demand_flow_rate,
+        heavy_vehicle_percent=heavy_vehicle_percentage,
+    )
+    faster_lane_flow_proportion = passing_lane_faster_lane_flow_proportion(
+        demand_flow_rate,
+        number_heavy_vehicles,
+    )
+    faster_lane_flow_rate = _validate_step7_computed_value(
+        demand_flow_rate * faster_lane_flow_proportion,
+        "faster-lane flow rate",
+        require_positive=True,
+    )
+    slower_lane_flow_rate = _validate_step7_computed_value(
+        demand_flow_rate * (1.0 - faster_lane_flow_proportion),
+        "slower-lane flow rate",
+        require_positive=True,
+    )
+    faster_lane_heavy_vehicle_percent = (
+        passing_lane_faster_lane_heavy_vehicle_percent(
+            heavy_vehicle_percentage,
+            multiplier,
+        )
+    )
+    slower_lane_heavy_vehicle_count = _validate_step7_computed_value(
+        number_heavy_vehicles
+        - faster_lane_flow_rate * faster_lane_heavy_vehicle_percent / 100.0,
+        "slower-lane heavy vehicle count",
+    )
+    slower_lane_heavy_vehicle_percent = _validate_step7_percent(
+        slower_lane_heavy_vehicle_count / slower_lane_flow_rate * 100.0,
+        "slower-lane heavy vehicle percent",
+    )
+    return PassingLaneFlowSplitEstimate(
+        number_heavy_vehicles=number_heavy_vehicles,
+        faster_lane_flow_proportion=faster_lane_flow_proportion,
+        faster_lane_flow_rate=faster_lane_flow_rate,
+        slower_lane_flow_rate=slower_lane_flow_rate,
+        faster_lane_heavy_vehicle_percent=faster_lane_heavy_vehicle_percent,
+        slower_lane_heavy_vehicle_count=slower_lane_heavy_vehicle_count,
+        slower_lane_heavy_vehicle_percent=slower_lane_heavy_vehicle_percent,
+        heavy_vehicle_proportion_multiplier_faster_lane=multiplier,
+    )
 
 
 def passing_lane_average_speed_differential_adjustment(
@@ -2917,9 +3136,173 @@ def passing_lane_average_speed_differential_adjustment(
 ) -> float:
     """HCM Eq. 15-31 midpoint lane speed differential adjustment."""
 
-    return 2.750 + 0.00056 * demand_flow_rate_veh_h + (
-        3.8521 * heavy_vehicle_percent / 100.0
+    demand_flow_rate = _validate_step7_number(
+        demand_flow_rate_veh_h, "demand flow rate", allow_zero=False
     )
+    heavy_vehicle_percentage = _validate_step7_percent(
+        heavy_vehicle_percent, "heavy vehicle percent"
+    )
+    return _validate_step7_computed_value(
+        2.750
+        + 0.00056 * demand_flow_rate
+        + 3.8521 * heavy_vehicle_percentage / 100.0,
+        "average speed lane differential adjustment",
+        require_positive=True,
+    )
+
+
+def estimate_passing_lane_midpoint_speeds(
+    *,
+    segment_type: str,
+    demand_flow_rate_veh_h: float | None,
+    heavy_vehicle_percent: float | None,
+    faster_lane_initial_speed_mph: float | None,
+    slower_lane_initial_speed_mph: float | None,
+) -> tuple[float, float, float]:
+    """Estimate HCM Eq. 15-31 through Eq. 15-33 Passing Lane midpoint speeds."""
+
+    _validate_step7_segment_type(segment_type)
+    faster_initial_speed = _validate_step7_number(
+        faster_lane_initial_speed_mph, "faster-lane initial speed", allow_zero=False
+    )
+    slower_initial_speed = _validate_step7_number(
+        slower_lane_initial_speed_mph, "slower-lane initial speed", allow_zero=False
+    )
+    demand_flow_rate = _validate_step7_number(
+        demand_flow_rate_veh_h, "demand flow rate", allow_zero=False
+    )
+    heavy_vehicle_percentage = _validate_step7_percent(
+        heavy_vehicle_percent, "heavy vehicle percent"
+    )
+    speed_differential = passing_lane_average_speed_differential_adjustment(
+        demand_flow_rate,
+        heavy_vehicle_percentage,
+    )
+    faster_midpoint_speed = _validate_step7_computed_value(
+        faster_initial_speed + speed_differential / 2.0,
+        "faster-lane midpoint speed",
+        require_positive=True,
+    )
+    slower_midpoint_speed = _validate_step7_computed_value(
+        slower_initial_speed - speed_differential / 2.0,
+        "slower-lane midpoint speed",
+        require_positive=True,
+    )
+    return speed_differential, faster_midpoint_speed, slower_midpoint_speed
+
+
+def estimate_passing_lane_midpoint_measures(
+    *,
+    segment_type: str,
+    demand_flow_rate_veh_h: float | None,
+    heavy_vehicle_percent: float | None,
+    faster_lane_initial_speed_mph: float | None,
+    slower_lane_initial_speed_mph: float | None,
+    heavy_vehicle_proportion_multiplier_faster_lane: float | None = 0.4,
+) -> PassingLaneStep7Estimate:
+    """Estimate auditable HCM Eq. 15-24 through Eq. 15-33 Step 7 measures."""
+
+    flow_split = estimate_passing_lane_flow_split(
+        segment_type=segment_type,
+        demand_flow_rate_veh_h=demand_flow_rate_veh_h,
+        heavy_vehicle_percent=heavy_vehicle_percent,
+        heavy_vehicle_proportion_multiplier_faster_lane=(
+            heavy_vehicle_proportion_multiplier_faster_lane
+        ),
+    )
+    speed_differential, faster_midpoint_speed, slower_midpoint_speed = (
+        estimate_passing_lane_midpoint_speeds(
+            segment_type=segment_type,
+            demand_flow_rate_veh_h=demand_flow_rate_veh_h,
+            heavy_vehicle_percent=heavy_vehicle_percent,
+            faster_lane_initial_speed_mph=faster_lane_initial_speed_mph,
+            slower_lane_initial_speed_mph=slower_lane_initial_speed_mph,
+        )
+    )
+    return PassingLaneStep7Estimate(
+        number_heavy_vehicles=flow_split.number_heavy_vehicles,
+        faster_lane_flow_proportion=flow_split.faster_lane_flow_proportion,
+        faster_lane_flow_rate=flow_split.faster_lane_flow_rate,
+        slower_lane_flow_rate=flow_split.slower_lane_flow_rate,
+        faster_lane_heavy_vehicle_percent=flow_split.faster_lane_heavy_vehicle_percent,
+        slower_lane_heavy_vehicle_count=flow_split.slower_lane_heavy_vehicle_count,
+        slower_lane_heavy_vehicle_percent=flow_split.slower_lane_heavy_vehicle_percent,
+        average_speed_lane_differential_adjustment=speed_differential,
+        faster_lane_midpoint_speed=faster_midpoint_speed,
+        slower_lane_midpoint_speed=slower_midpoint_speed,
+        heavy_vehicle_proportion_multiplier_faster_lane=(
+            flow_split.heavy_vehicle_proportion_multiplier_faster_lane
+        ),
+    )
+
+
+def _validate_step7_segment_type(segment_type: str) -> None:
+    if segment_type != PASSING_LANE:
+        raise HCMCalcError(
+            "Step 7 Eq. 15-24 through Eq. 15-33 require a Passing Lane segment "
+            f"type, not {segment_type!r}."
+        )
+
+
+def _validate_step7_number(
+    value: object,
+    label: str,
+    *,
+    allow_zero: bool,
+) -> float:
+    if value is None:
+        raise HCMCalcError(f"Step 7 {label} is required.")
+    if not isinstance(value, Real) or not isfinite(float(value)):
+        raise HCMCalcError(f"Step 7 {label} must be a finite numeric value.")
+    numeric_value = float(value)
+    if numeric_value < 0.0 or (numeric_value == 0.0 and not allow_zero):
+        required_range = "nonnegative" if allow_zero else "greater than zero"
+        raise HCMCalcError(f"Step 7 {label} must be {required_range}.")
+    return numeric_value
+
+
+def _validate_step7_percent(value: object, label: str) -> float:
+    if value is None:
+        raise HCMCalcError(f"Step 7 {label} is required.")
+    if not isinstance(value, Real) or not isfinite(float(value)):
+        raise HCMCalcError(f"Step 7 {label} must be a finite numeric value.")
+    numeric_value = float(value)
+    if not 0.0 <= numeric_value <= 100.0:
+        raise HCMCalcError(f"Step 7 {label} must be between 0 and 100.")
+    return numeric_value
+
+
+def _validate_step7_hv_proportion_multiplier(value: object) -> float:
+    if value is None:
+        raise HCMCalcError(
+            "Step 7 faster-lane heavy vehicle proportion multiplier is required."
+        )
+    if not isinstance(value, Real) or not isfinite(float(value)):
+        raise HCMCalcError(
+            "Step 7 faster-lane heavy vehicle proportion multiplier must be a "
+            "finite numeric value."
+        )
+    numeric_value = float(value)
+    if numeric_value != 0.4:
+        raise HCMCalcError(
+            "Step 7 supports only the HCM-defined faster-lane heavy vehicle "
+            "proportion multiplier of 0.4."
+        )
+    return numeric_value
+
+
+def _validate_step7_computed_value(
+    value: float,
+    label: str,
+    *,
+    require_positive: bool = False,
+) -> float:
+    if not isfinite(value):
+        raise HCMCalcError(f"Step 7 computed {label} must be finite.")
+    if value < 0.0 or (require_positive and value == 0.0):
+        required_range = "greater than zero" if require_positive else "nonnegative"
+        raise HCMCalcError(f"Step 7 computed {label} must be {required_range}.")
+    return value
 
 
 def passing_lane_midpoint_follower_density(
