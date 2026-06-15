@@ -1,6 +1,8 @@
+from math import inf, nan
+
 import pytest
 
-from hcmcalc.core import UnsupportedScopeError
+from hcmcalc.core import HCMCalcError, UnsupportedScopeError
 from hcmcalc.multilane.method import (
     access_point_adjustment,
     adjusted_free_flow_speed,
@@ -46,12 +48,79 @@ def test_example_4_heavy_vehicle_flow_density_and_los() -> None:
     assert level_of_service(density) == "C"
 
 
+def test_supported_equation_boundaries() -> None:
+    assert heavy_vehicle_adjustment_factor(0.0, 2.24) == 1.0
+    assert heavy_vehicle_adjustment_factor(6.0, 2.24) == pytest.approx(
+        1.0 / (1.0 + 0.06 * (2.24 - 1.0))
+    )
+    assert demand_flow_rate(1.0, 1.0, 2, 1.0) == 0.5
+    assert mean_speed_below_breakpoint(1400.0, 50.0) == 50.0
+    assert traffic_density(1.0, 50.0) == 0.02
+
+
 @pytest.mark.parametrize(
     ("density", "expected"),
-    [(11.0, "A"), (18.0, "B"), (26.0, "C"), (35.0, "D"), (45.0, "E"), (45.1, "F")],
+    [
+        (10.999, "A"),
+        (11.0, "A"),
+        (11.001, "B"),
+        (17.999, "B"),
+        (18.0, "B"),
+        (18.001, "C"),
+        (25.999, "C"),
+        (26.0, "C"),
+        (26.001, "D"),
+        (34.999, "D"),
+        (35.0, "D"),
+        (35.001, "E"),
+        (44.999, "E"),
+        (45.0, "E"),
+        (45.001, "F"),
+    ],
 )
 def test_los_boundaries(density: float, expected: str) -> None:
     assert level_of_service(density) == expected
+
+
+@pytest.mark.parametrize("value", [nan, inf, -inf])
+def test_formula_helpers_reject_non_finite_values(value: float) -> None:
+    with pytest.raises(HCMCalcError, match="finite"):
+        demand_flow_rate(value, 1.0, 2, 1.0)
+    with pytest.raises(HCMCalcError, match="finite"):
+        adjusted_free_flow_speed(value, 0.0, 0.0, 0.0, 0.0)
+    with pytest.raises(HCMCalcError, match="finite"):
+        level_of_service(value)
+
+
+@pytest.mark.parametrize(
+    ("args", "message"),
+    [
+        ((0.0, 1.0, 2, 1.0), "Demand volume"),
+        ((-1.0, 1.0, 2, 1.0), "Demand volume"),
+        ((1.0, 0.0, 2, 1.0), "Peak hour factor"),
+        ((1.0, 1.01, 2, 1.0), "Peak hour factor"),
+        ((1.0, 1.0, 0, 1.0), "Lane count"),
+        ((1.0, 1.0, 2, 0.0), "Heavy vehicle adjustment factor"),
+    ],
+)
+def test_demand_flow_rate_rejects_invalid_inputs(
+    args: tuple[float, float, int, float], message: str
+) -> None:
+    with pytest.raises(HCMCalcError, match=message):
+        demand_flow_rate(*args)
+
+
+@pytest.mark.parametrize("heavy_vehicle_percent", [-0.1, 100.1])
+def test_heavy_vehicle_factor_rejects_invalid_percentage(
+    heavy_vehicle_percent: float,
+) -> None:
+    with pytest.raises(HCMCalcError, match="between 0 and 100"):
+        heavy_vehicle_adjustment_factor(heavy_vehicle_percent, 2.24)
+
+
+def test_adjusted_free_flow_speed_rejects_nonpositive_result() -> None:
+    with pytest.raises(HCMCalcError, match="Adjusted FFS"):
+        adjusted_free_flow_speed(10.0, 10.0, 0.0, 0.0, 0.0)
 
 
 def test_formula_helpers_reject_unimplemented_branches() -> None:

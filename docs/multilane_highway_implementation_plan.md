@@ -10,7 +10,10 @@ continuing to use neutral shared contracts where appropriate.
 
 This plan defines the scope and validation sequence for Multilane Highway
 development. Phase ML-1 and the first Example Problem 4 validation path are
-implemented as Multilane Basic Segment engine v0.1.
+implemented as Multilane Basic Segment engine v0.1. Phase ML-2 hardens that
+implemented-example-only path with validation, audit, table/equation boundary,
+guardrail, fixture, and documentation coverage. It does not broaden the
+calculation methodology.
 
 ## Scope Separation
 
@@ -66,6 +69,10 @@ The two directions are implemented as independent cases:
 Both cases remain locked to the published example inputs. Their grade,
 directional, access-point, lane, median, truck, and demand conditions must not
 be generalized beyond what the reference validates.
+
+Valid equation or table boundaries tested during ML-2, such as PHF 1.0, zero
+heavy vehicles, and LOS density thresholds, are helper-level verification only.
+They do not authorize arbitrary full-engine input combinations.
 
 ## Implemented v0.1 Methodology
 
@@ -175,12 +182,18 @@ facility/corridor analyses through the Multilane Highway v0.1 method.
   decisions as auditable data.
 - Add formulas and lookup data only with traceable reference mappings.
 
-### Phase ML-2: Validated Chapter 26 Example Problem - Initial Path Implemented
+### Phase ML-2: Example Problem 4 Engine Hardening - Implemented
 
 - Create reviewed input and expected-output fixtures for the selected example.
 - Validate each supported directional segment independently.
 - Document tolerances, rounding, provenance, and reviewer sign-off.
 - Add regression fixtures before broadening the engine contract.
+- Reject missing, non-finite, physically invalid, and unsupported-scope inputs
+  with clear errors.
+- Verify implemented table/equation boundaries without exposing unvalidated
+  general Multilane cases.
+- Expose calculation type, support/scope status, capacity check, density speed,
+  source references, warnings, assumptions, and unsupported-scope notes.
 
 ### Phase ML-3: Manual Streamlit UI
 
@@ -226,6 +239,8 @@ Multilane Basic Segment v0.1 does not:
 - add a Multilane Highway UI workflow;
 - add Multilane Highway Save/Load support;
 - add Multilane Highway export or reporting support;
+- accept user-supplied base/adjusted free-flow speed or driver-population
+  adjustment inputs;
 - implement Basic Freeway, ramp, merge/diverge, weaving, managed-lane,
   reliability, or facility/corridor analysis; or
 - change existing Chapter 15 Two-Lane Highway calculation or UI behavior.

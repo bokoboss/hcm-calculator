@@ -1,11 +1,16 @@
 metadata:
-  fixture_version: 0.1.0
+  fixture_version: 0.2.0
   purpose: HCM7 Chapter 26 Multilane Highway Example Problem 4 published validation values
   status: validation_fixture
   local_reference: HCM7 CH26 Multilane HW EX Problems.pdf, Example Problem 4
+  source_references:
+    - HCM7 Chapter 26 Multilane Highway Example Problem 4
+    - HCM7 Chapter 12 Basic Freeway and Multilane Highway Segments
+  rounding_note: Published expected outputs and tolerances remain unchanged from v0.1
 
 cases:
   - id: MLH-CH26-004-EB
+    description: Chapter 26 Example Problem 4 eastbound published outputs
     expected_outputs:
       base_free_flow_speed_mph: 52.0
       access_point_adjustment_mph: 2.5
@@ -24,6 +29,7 @@ cases:
       density_pc_mi_ln_absolute: 0.1
 
   - id: MLH-CH26-004-WB
+    description: Chapter 26 Example Problem 4 westbound published outputs
     expected_outputs:
       base_free_flow_speed_mph: 52.0
       access_point_adjustment_mph: 0.0
