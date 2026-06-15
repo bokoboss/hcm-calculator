@@ -15,6 +15,11 @@ implemented-example-only path with validation, audit, table/equation boundary,
 guardrail, fixture, and documentation coverage. It does not broaden the
 calculation methodology.
 
+A second-case review of the available Chapter 26 examples found no additional
+Multilane Highway motorized-vehicle example or unused Example Problem 4 subcase
+that can safely broaden the current validation evidence. The engine therefore
+remains limited to Example Problem 4 EB/WB.
+
 ## Scope Separation
 
 The initial calculator family must distinguish the following analysis types:
@@ -52,9 +57,9 @@ repository.
 No HCM tables, equations, coefficients, or expected numerical outputs are
 reproduced in this plan.
 
-### Candidate First Validation Example
+### Validated Example Problem 4 Cases
 
-Chapter 26 Example Problem 4 is the proposed first validation anchor because it
+Chapter 26 Example Problem 4 is the validation anchor because it
 is the available example explicitly identified as a Multilane Highway
 operational analysis. The example evaluates the two travel directions
 separately. For an initial one-direction, one-segment engine contract, each
@@ -73,6 +78,29 @@ be generalized beyond what the reference validates.
 Valid equation or table boundaries tested during ML-2, such as PHF 1.0, zero
 heavy vehicles, and LOS density thresholds, are helper-level verification only.
 They do not authorize arbitrary full-engine input combinations.
+
+### Second Validation Case Review
+
+No safe second validation case was added. The Chapter 26 example inventory was
+reviewed against the requirement for a one-direction, one-segment,
+uninterrupted-flow Multilane Highway motorized-vehicle case close to the
+implemented v0.1 path and with published density and LOS results.
+
+| Chapter 26 candidate | Classification | Decision |
+| --- | --- | --- |
+| Example Problem 1 | Basic Freeway Segment operational analysis | Rejected: Basic Freeway methodology is outside scope. |
+| Example Problem 2 | Basic Freeway Segment design analysis | Rejected: Basic Freeway methodology and lane-design workflow are outside scope. |
+| Example Problem 3 | Basic Freeway Segment operational and planning analysis | Rejected: Basic Freeway methodology and planning workflow are outside scope. |
+| Example Problem 4 EB/WB | Multilane Highway Segment operational analysis | Already validated as `MLH-CH26-004-EB` and `MLH-CH26-004-WB`; no additional direction or subcase is published. |
+| Example Problem 5 | Mixed-flow freeway operational analysis | Rejected: freeway and mixed-flow methodology are outside scope. |
+| Example Problem 6 | Basic Freeway Segment with severe-weather adjustments | Rejected: Basic Freeway and adverse-weather adjustment methodology are outside scope. |
+| Example Problem 7 | Basic managed lane segment operational analysis | Rejected: managed-lane methodology is outside scope. |
+
+The review used the Chapter 26 example inventory and Example Problem 4 result
+pages, together with the Chapter 12 scope distinctions between Multilane
+Highway, Basic Freeway, and managed-lane methods. No formula/table branch,
+fixture, expected output, or engine guardrail was changed because none can be
+validated by an additional compatible example in the available reference.
 
 ## Implemented v0.1 Methodology
 
@@ -194,6 +222,14 @@ facility/corridor analyses through the Multilane Highway v0.1 method.
   general Multilane cases.
 - Expose calculation type, support/scope status, capacity check, density speed,
   source references, warnings, assumptions, and unsupported-scope notes.
+
+### Phase ML-2A: Second Validation Case Review - Completed, No Case Added
+
+- Inventory the remaining Chapter 26 examples against the current Multilane
+  Highway basic segment scope.
+- Record why each non-Example-4 candidate is outside scope.
+- Preserve Example Problem 4 EB/WB fixtures, outputs, guardrails, and engine
+  behavior because no compatible additional validation case is available.
 
 ### Phase ML-3: Manual Streamlit UI
 
