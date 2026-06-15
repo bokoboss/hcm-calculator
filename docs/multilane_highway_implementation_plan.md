@@ -8,8 +8,9 @@ Highway calculator. It will have its own inputs, models, methodology
 implementation, validation fixtures, guardrails, and future UI adapter while
 continuing to use neutral shared contracts where appropriate.
 
-This plan defines the scope and validation sequence before any Multilane
-Highway formulas, tables, coefficients, or expected outputs are implemented.
+This plan defines the scope and validation sequence for Multilane Highway
+development. Phase ML-1 and the first Example Problem 4 validation path are
+implemented as Multilane Basic Segment engine v0.1.
 
 ## Scope Separation
 
@@ -57,9 +58,35 @@ separately. For an initial one-direction, one-segment engine contract, each
 direction should be represented and validated as an independent case derived
 from the same source example.
 
-This candidate still requires a deliberate fixture-definition review before
-implementation. Its grade, directional, and access-point conditions must not
+The two directions are implemented as independent cases:
+
+- `MLH-CH26-004-EB`: 3.5% downgrade, 10 access points/mi;
+- `MLH-CH26-004-WB`: 3.5% upgrade, 0 access points/mi.
+
+Both cases remain locked to the published example inputs. Their grade,
+directional, access-point, lane, median, truck, and demand conditions must not
 be generalized beyond what the reference validates.
+
+## Implemented v0.1 Methodology
+
+The engine implements only the Chapter 12 path exercised by Chapter 26
+Multilane Highway Example Problem 4:
+
+- Equation 12-3 and Exhibits 12-20, 12-22, 12-23, and 12-24 for Multilane
+  Highway FFS;
+- Equation 12-4 for total lateral clearance;
+- Equation 12-7 for Multilane Highway capacity;
+- Equation 12-9 and Equation 12-10 with the two required Exhibit 12-26 PCEs;
+- Equation 12-1's flow-below-breakpoint branch;
+- Equation 12-11 for density; and
+- Exhibit 12-15 for LOS.
+
+Published Example Problem 4 validation targets are:
+
+| Direction | FFS (mi/h) | Capacity (pc/h/ln) | PCE | fHV | Flow (pc/h/ln) | Density (pc/mi/ln) | LOS |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| Eastbound | 49.5 | 1,990 | 2.24 | 0.93 | 896 | 18.1 | C |
+| Westbound | 52.0 | 2,040 | 3.97 | 0.85 | 980 | 18.8 | C |
 
 ## Proposed Module Structure
 
@@ -140,7 +167,7 @@ facility/corridor analyses through the Multilane Highway v0.1 method.
 - Propose module, fixture, validation, and guardrail structure.
 - Add no formulas, coefficient values, or working UI behavior.
 
-### Phase ML-1: Reference-Backed Basic Segment Engine
+### Phase ML-1: Reference-Backed Basic Segment Engine - Implemented v0.1
 
 - Define typed one-direction, one-segment input and result contracts.
 - Implement only the methodology required by the selected validation example.
@@ -148,7 +175,7 @@ facility/corridor analyses through the Multilane Highway v0.1 method.
   decisions as auditable data.
 - Add formulas and lookup data only with traceable reference mappings.
 
-### Phase ML-2: Validated Chapter 26 Example Problem
+### Phase ML-2: Validated Chapter 26 Example Problem - Initial Path Implemented
 
 - Create reviewed input and expected-output fixtures for the selected example.
 - Validate each supported directional segment independently.
@@ -191,12 +218,11 @@ Tests must distinguish exact example validation from general methodology
 coverage. Passing a selected Chapter 26 example does not authorize unsupported
 inputs or workflows.
 
-## Non-Goals
+## Current Non-Goals
 
-This planning PR does not:
+Multilane Basic Segment v0.1 does not:
 
-- implement Multilane Highway formulas, HCM tables, coefficients, or expected
-  outputs;
+- implement a general Multilane Highway calculator beyond Example Problem 4;
 - add a Multilane Highway UI workflow;
 - add Multilane Highway Save/Load support;
 - add Multilane Highway export or reporting support;

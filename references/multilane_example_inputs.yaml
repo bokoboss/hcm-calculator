@@ -1,0 +1,41 @@
+metadata:
+  fixture_version: 0.1.0
+  purpose: HCM7 Chapter 26 Multilane Highway Example Problem 4 validation inputs
+  status: validation_fixture
+  local_reference: HCM7 CH26 Multilane HW EX Problems.pdf, Example Problem 4
+
+cases:
+  - id: MLH-CH26-004-EB
+    facility_type: multilane_highway
+    method: hcm7_multilane_los
+    description: eastbound 3.5% downgrade with 10 access points per mile
+    inputs: &common
+      case_id: MLH-CH26-004-EB
+      facility_type: multilane_highway
+      analysis_type: basic_segment
+      direction: eastbound
+      number_of_lanes: 2
+      segment_length_ft: 6600.0
+      demand_volume_veh_h: 1500.0
+      peak_hour_factor: 0.90
+      heavy_vehicle_percent: 6.0
+      truck_mix: default_30_sut_70_tt
+      grade_percent: -3.5
+      posted_speed_limit_mph: 45.0
+      lane_width_ft: 12.0
+      roadside_lateral_clearance_ft: 12.0
+      median_type: twltl
+      access_point_density_per_mi: 10.0
+    validation_status: implemented_example_only
+
+  - id: MLH-CH26-004-WB
+    facility_type: multilane_highway
+    method: hcm7_multilane_los
+    description: westbound 3.5% upgrade with no access points
+    inputs:
+      <<: *common
+      case_id: MLH-CH26-004-WB
+      direction: westbound
+      grade_percent: 3.5
+      access_point_density_per_mi: 0.0
+    validation_status: implemented_example_only

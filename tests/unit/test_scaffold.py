@@ -6,8 +6,11 @@ def test_package_imports() -> None:
     assert __version__ == "0.1.0"
 
 
-def test_method_registry_includes_initial_and_future_targets() -> None:
+def test_method_registry_includes_implemented_example_targets() -> None:
     methods = {method.key: method for method in available_methods()}
 
     assert methods["hcm7_ch15_two_lane_motorized"].status == "implemented_example_only"
-    assert methods["hcm7_multilane_los"].status == "future"
+    assert (
+        methods["hcm7_multilane_los"].status
+        == "implemented_example_only"
+    )

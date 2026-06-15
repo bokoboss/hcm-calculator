@@ -3,6 +3,7 @@ from pathlib import Path
 import pytest
 
 from hcmcalc.methods.two_lane_highway_ch15 import TwoLaneHighwayChapter15Method
+from hcmcalc.methods import get_method
 from hcmcalc.validation import load_yaml_fixture
 
 
@@ -18,6 +19,24 @@ def test_example_problem_1_validation_fixtures_load() -> None:
     assert {case["id"] for case in inputs["cases"]} == {
         case["id"] for case in expected["cases"]
     }
+
+
+def test_multilane_example_problem_4_fixtures_load_through_registry() -> None:
+    inputs = load_yaml_fixture(ROOT / "references" / "multilane_example_inputs.yaml")
+    expected = load_yaml_fixture(
+        ROOT / "references" / "multilane_expected_outputs.yaml"
+    )
+
+    assert inputs["metadata"]["status"] == "validation_fixture"
+    assert expected["metadata"]["status"] == "validation_fixture"
+    assert {case["id"] for case in inputs["cases"]} == {
+        case["id"] for case in expected["cases"]
+    }
+    for case in inputs["cases"]:
+        result = get_method(case["method"], case["facility_type"]).calculate(
+            case["inputs"]
+        )
+        assert result.facility_type == "multilane_highway"
 
 
 def test_example_problem_1_matches_hcm_chapter_26_expected_values() -> None:
