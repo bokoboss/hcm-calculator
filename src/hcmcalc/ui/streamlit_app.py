@@ -120,9 +120,6 @@ def apply_ui_styles() -> None:
             font-size: 0.92rem;
             margin-top: 0.3rem;
         }
-        .stMainBlockContainer {
-            padding-top: 1.4rem;
-        }
         </style>
         """,
         unsafe_allow_html=True,
@@ -1214,15 +1211,16 @@ def main() -> None:
 
     st.set_page_config(page_title="HCM Calculator", layout="wide")
     apply_ui_styles()
-    header_content, header_mode = st.columns([1.8, 1.0])
-    with header_content:
+    header_left, header_right = st.columns([1.4, 1.0], gap="large")
+    with header_left:
         st.markdown("**HCM Calculator** — Chapter 15 Two-Lane Highway")
-    with header_mode:
+    with header_right:
         mode_label = st.radio(
-            "Choose the worksheet or validation viewer",
+            "Calculator mode",
             ["Single", "Facility", "Examples"],
             horizontal=True,
             label_visibility="collapsed",
+            key="calculator_mode",
         )
     st.caption(SCOPE_NOTICE)
     mode = {
