@@ -19,6 +19,8 @@ Implemented:
 - Documentation scaffold
 - Methodology and validation references
 - HCM Chapter 26 Two-Lane Highway Example Problems 1 through 4 (`TLH-CH15-001` through `TLH-CH15-004`)
+- HCM7 Multilane Basic Segment engine v0.1, limited to the eastbound and
+  westbound Chapter 26 Multilane Highway Example Problem 4 validation path
 - Streamlit Manual Single Segment Calculator, Manual Facility Calculator v0.1,
   and Validated examples / QA viewer
 - Unit and validation fixture tests
@@ -27,7 +29,7 @@ Not implemented yet:
 
 - Full HCM Chapter 15 calculation engine
 - General facility manual input
-- Multilane Highway LOS calculations
+- General Multilane Highway LOS calculations beyond Chapter 26 Example Problem 4
 - Production validation dataset
 
 ## Local Setup
@@ -137,7 +139,9 @@ Limitations:
 - Horizontal curves remain limited to the validated Example Problem 2 path; other
   segment types, terrain combinations, and subsegment structures are rejected.
   Curve setup generation does not expand this single-segment validated scope
-- No Multilane Highway yet
+- Multilane Highway v0.1 has no UI, Save/Load, or export/report integration.
+- Basic Freeway, ramps, weaving, merge/diverge, managed lanes, work zones,
+  reliability analysis, and facility/corridor workflows remain unsupported.
 - PDF and DOCX report export are not implemented.
 - Export availability does not imply broader Chapter 15 methodology support.
 

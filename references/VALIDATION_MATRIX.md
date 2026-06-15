@@ -8,7 +8,8 @@ This matrix defines the validation work required before calculation outputs are 
 | TLH-CH15-002 | Two-Lane Highway | HCM 7th Edition Chapter 26 | Example Problem 2 | `references/example_inputs.yaml` | `references/expected_outputs.yaml` | Implemented example only | Passing Constrained segment with horizontal curve speed adjustment only |
 | TLH-CH15-003 | Two-Lane Highway | HCM 7th Edition Chapter 26 | Example Problem 3 | `references/example_inputs.yaml` | `references/expected_outputs.yaml` | Implemented example only | Level, straight five-segment facility with Passing Constrained, Passing Lane, and Passing Zone segments |
 | TLH-CH15-004 | Two-Lane Highway | HCM 7th Edition Chapter 26 | Example Problem 4 | `references/example_inputs.yaml` | `references/expected_outputs.yaml` | Implemented example only | Mountainous six-segment facility with upgrades, downgrades, horizontal curves, a Passing Lane, and downstream adjustment |
-| MLH-LOS-001 | Multilane Highway LOS | HCM 7th Edition Chapter 26 | TBD | TBD | TBD | Future | Future method target |
+| MLH-CH26-004-EB | Multilane Highway Segment | HCM 7th Edition Chapters 12 and 26 | Example Problem 4 eastbound | `references/multilane_example_inputs.yaml` | `references/multilane_expected_outputs.yaml` | Implemented example only | 3.5% downgrade, TWLTL, 10 access points/mi |
+| MLH-CH26-004-WB | Multilane Highway Segment | HCM 7th Edition Chapters 12 and 26 | Example Problem 4 westbound | `references/multilane_example_inputs.yaml` | `references/multilane_expected_outputs.yaml` | Implemented example only | 3.5% upgrade, TWLTL, 0 access points/mi |
 
 ## Required Validation Gates
 

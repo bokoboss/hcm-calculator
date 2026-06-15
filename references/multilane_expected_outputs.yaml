@@ -1,0 +1,39 @@
+metadata:
+  fixture_version: 0.1.0
+  purpose: HCM7 Chapter 26 Multilane Highway Example Problem 4 published validation values
+  status: validation_fixture
+  local_reference: HCM7 CH26 Multilane HW EX Problems.pdf, Example Problem 4
+
+cases:
+  - id: MLH-CH26-004-EB
+    expected_outputs:
+      base_free_flow_speed_mph: 52.0
+      access_point_adjustment_mph: 2.5
+      adjusted_free_flow_speed_mph: 49.5
+      capacity_pc_h_ln: 1990.0
+      passenger_car_equivalent: 2.24
+      heavy_vehicle_adjustment_factor: 0.93
+      demand_flow_rate_pc_h_ln: 896.0
+      mean_speed_mph: 49.5
+      density_pc_mi_ln: 18.1
+      level_of_service: C
+    tolerances: &tolerances
+      adjustment_factor_absolute: 0.01
+      flow_rate_pc_h_ln_absolute: 2.0
+      speed_mph_absolute: 0.1
+      density_pc_mi_ln_absolute: 0.1
+
+  - id: MLH-CH26-004-WB
+    expected_outputs:
+      base_free_flow_speed_mph: 52.0
+      access_point_adjustment_mph: 0.0
+      adjusted_free_flow_speed_mph: 52.0
+      capacity_pc_h_ln: 2040.0
+      passenger_car_equivalent: 3.97
+      heavy_vehicle_adjustment_factor: 0.85
+      demand_flow_rate_pc_h_ln: 980.0
+      mean_speed_mph: 52.0
+      density_pc_mi_ln: 18.8
+      level_of_service: C
+    tolerances:
+      <<: *tolerances
