@@ -14,12 +14,21 @@ from hcmcalc.ui.manual_facility import (
     build_manual_facility_inputs,
     load_facility_template,
 )
+from hcmcalc.ui.manual_multilane import (
+    MANUAL_MULTILANE_LIMITATIONS,
+    TEMPLATE_LABELS,
+    load_multilane_template,
+    multilane_display_outputs,
+    multilane_ui_inputs_to_engine,
+    run_manual_multilane,
+)
 from hcmcalc.ui.manual_segment import build_manual_segment_inputs
 
 
 PROJECT_SCHEMA_VERSION = "1.0"
 MANUAL_SINGLE_SEGMENT_PROJECT_TYPE = "manual_single_segment"
 MANUAL_FACILITY_PROJECT_TYPE = "manual_facility_v0"
+MANUAL_MULTILANE_PROJECT_TYPE = "manual_multilane_v0"
 REQUIRED_MANUAL_INPUTS = {
     "segment_type",
     "terrain_type",
@@ -211,6 +220,110 @@ def load_manual_facility_project_json(data: str | bytes) -> dict[str, Any]:
     return payload
 
 
+def create_manual_multilane_project_payload(
+    template_id: str,
+    unit_system: str,
+    displayed_inputs: dict[str, Any],
+    *,
+    result: dict[str, Any] | None = None,
+    audit_record: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Create a JSON-ready guarded Manual Multilane project payload."""
+
+    template = load_multilane_template(template_id)
+    unit_system = _validate_multilane_unit_system(unit_system)
+    displayed_inputs = _json_ready(displayed_inputs)
+    normalized_inputs = _build_multilane_inputs(
+        template_id, unit_system, displayed_inputs
+    )
+    try:
+        run_manual_multilane(normalized_inputs)
+    except HCMCalcError as exc:
+        raise ProjectFileError(f"Malformed or unsupported input payload: {exc}") from exc
+    result = _json_ready(result) if result is not None else None
+    audit_record = _json_ready(audit_record) if audit_record is not None else None
+    outputs = result.get("outputs", {}) if result else {}
+    return {
+        "schema_version": PROJECT_SCHEMA_VERSION,
+        "project_type": MANUAL_MULTILANE_PROJECT_TYPE,
+        "generated_by": f"hcm-calculator {__version__}",
+        "app_version": __version__,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "unit_system": unit_system,
+        "template_id": template_id,
+        "template_name": template["template_label"],
+        "direction": template["inputs"]["direction"],
+        "displayed_ui_inputs": displayed_inputs,
+        "normalized_engine_inputs": normalized_inputs,
+        "calculation_result": result,
+        "display_result": (
+            multilane_display_outputs(outputs, unit_system) if outputs else None
+        ),
+        "audit": audit_record,
+        "warnings": _calculation_context("warnings", result, audit_record),
+        "assumptions": _calculation_context("assumptions", result, audit_record),
+        "limitations": list(MANUAL_MULTILANE_LIMITATIONS),
+        "unsupported_behavior_notes": list(MANUAL_MULTILANE_LIMITATIONS),
+    }
+
+
+def create_manual_multilane_project_json(
+    template_id: str,
+    unit_system: str,
+    displayed_inputs: dict[str, Any],
+    *,
+    result: dict[str, Any] | None = None,
+    audit_record: dict[str, Any] | None = None,
+) -> str:
+    """Create formatted JSON for a guarded Manual Multilane project."""
+
+    return json.dumps(
+        create_manual_multilane_project_payload(
+            template_id,
+            unit_system,
+            displayed_inputs,
+            result=result,
+            audit_record=audit_record,
+        ),
+        indent=2,
+    )
+
+
+def load_manual_multilane_project_json(data: str | bytes) -> dict[str, Any]:
+    """Parse and validate a guarded Manual Multilane project JSON document."""
+
+    payload = _load_project_document(data)
+    if payload.get("project_type") != MANUAL_MULTILANE_PROJECT_TYPE:
+        raise ProjectFileError("Wrong project_type. Expected manual_multilane_v0.")
+    if "unit_system" not in payload:
+        raise ProjectFileError("Missing required field: unit_system.")
+    unit_system = _validate_multilane_unit_system(payload["unit_system"])
+    if "template_id" not in payload:
+        raise ProjectFileError("Missing required field: template_id.")
+    template_id = payload["template_id"]
+    if template_id not in TEMPLATE_LABELS:
+        raise ProjectFileError(f"Unknown template_id: {template_id}.")
+    displayed_inputs = payload.get("displayed_ui_inputs")
+    if not isinstance(displayed_inputs, dict):
+        raise ProjectFileError(
+            "Malformed input payload: displayed_ui_inputs must be an object."
+        )
+    saved_normalized_inputs = payload.get("normalized_engine_inputs")
+    normalized_inputs = _build_multilane_inputs(
+        template_id, unit_system, displayed_inputs
+    )
+    try:
+        run_manual_multilane(normalized_inputs)
+    except HCMCalcError as exc:
+        raise ProjectFileError(f"Malformed or unsupported input payload: {exc}") from exc
+    payload["normalized_engine_inputs"] = normalized_inputs
+    if saved_normalized_inputs != normalized_inputs:
+        payload["calculation_result"] = None
+        payload["display_result"] = None
+        payload["audit"] = None
+    return payload
+
+
 def _load_project_document(data: str | bytes) -> dict[str, Any]:
     try:
         payload = json.loads(data)
@@ -225,6 +338,25 @@ def _load_project_document(data: str | bytes) -> dict[str, Any]:
             f"Unsupported schema_version. Expected {PROJECT_SCHEMA_VERSION}."
         )
     return payload
+
+
+def _validate_multilane_unit_system(unit_system: Any) -> str:
+    normalized = str(unit_system).strip().lower()
+    if normalized not in {"metric", "imperial"}:
+        raise ProjectFileError("unit_system must be metric or imperial.")
+    return normalized
+
+
+def _build_multilane_inputs(
+    template_id: str, unit_system: str, displayed_inputs: dict[str, Any]
+) -> dict[str, Any]:
+    try:
+        template_inputs = load_multilane_template(template_id)["inputs"]
+        return multilane_ui_inputs_to_engine(
+            displayed_inputs, template_inputs, unit_system
+        )
+    except (HCMCalcError, KeyError, TypeError, ValueError) as exc:
+        raise ProjectFileError(f"Malformed input payload: {exc}") from exc
 
 
 def _validate_manual_inputs(manual_inputs: dict[str, Any]) -> None:

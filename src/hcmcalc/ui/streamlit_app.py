@@ -38,8 +38,10 @@ from hcmcalc.ui.manual_segment import run_manual_single_segment
 from hcmcalc.ui.project_io import (
     ProjectFileError,
     create_manual_facility_project_json,
+    create_manual_multilane_project_json,
     create_manual_project_json,
     load_manual_facility_project_json,
+    load_manual_multilane_project_json,
     load_manual_project_json,
 )
 from hcmcalc.ui.result_view import compact_rows, format_display_metric, los_colors
@@ -243,6 +245,13 @@ def render_validated_case_viewer() -> None:
 def render_manual_multilane_calculator() -> None:
     """Render the Example Problem 4-backed Multilane segment worksheet."""
 
+    pending_project = st.session_state.pop("manual_multilane_pending_project", None)
+    if pending_project is not None:
+        _restore_manual_multilane_project(pending_project)
+    load_message = st.session_state.pop("manual_multilane_project_load_message", None)
+    if load_message is not None:
+        st.success(load_message)
+
     st.info("Limited validated-path Multilane Highway workflow")
     st.caption(
         "This v0.1 workflow is anchored to Chapter 26 Example Problem 4 and is "
@@ -265,6 +274,7 @@ def render_manual_multilane_calculator() -> None:
     st.caption(
         "Templates are constrained to the validated Chapter 26 Example Problem 4 paths."
     )
+    _render_manual_multilane_load_controls()
     template_context = (template_id, unit_system)
     if st.session_state.get("manual_multilane_template_context") != template_context:
         clear_manual_multilane_state(st.session_state)
@@ -520,13 +530,103 @@ def render_manual_multilane_calculator() -> None:
         with st.expander("Full JSON"):
             st.json(
                 {
-                    "calculation_type": "manual_multilane_segment_v0_1",
+                    "calculation_type": "manual_multilane_v0",
                     "unit_system": result_unit_system,
                     "display_outputs": display,
                     "engine_result": result_data,
                     "audit_record": audit,
                 }
             )
+        project_json = create_manual_multilane_project_json(
+            template_id,
+            result_unit_system,
+            audit.get("displayed_inputs", displayed_inputs)
+            if isinstance(audit, dict)
+            else displayed_inputs,
+            result=result_data,
+            audit_record=audit,
+        )
+        st.download_button(
+            "Download Multilane project JSON",
+            data=project_json,
+            file_name=f"{template_id}-manual-multilane-project.json",
+            mime="application/json",
+            use_container_width=True,
+        )
+        render_export_report_section(
+            "manual_multilane_v0",
+            result_data,
+            result_unit_system,
+            inputs=(
+                audit.get("displayed_inputs", displayed_inputs)
+                if isinstance(audit, dict)
+                else displayed_inputs
+            ),
+            audit_record=audit,
+            template_id=template_id,
+        )
+
+
+def _render_manual_multilane_load_controls() -> None:
+    """Render guarded Manual Multilane project loading controls."""
+
+    with st.expander("Load Project"):
+        uploaded_project = st.file_uploader(
+            "Load Manual Multilane project JSON",
+            type=["json"],
+            key="manual_multilane_project_file_uploader",
+        )
+        if st.button(
+            "Load Multilane project",
+            disabled=uploaded_project is None,
+            use_container_width=True,
+        ):
+            try:
+                project = load_manual_multilane_project_json(uploaded_project.getvalue())
+            except ProjectFileError as exc:
+                st.error(str(exc))
+            else:
+                st.session_state["manual_multilane_pending_project"] = project
+                st.rerun()
+
+
+def _restore_manual_multilane_project(project: dict[str, Any]) -> None:
+    """Restore validated Manual Multilane project data into worksheet state."""
+
+    template_id = project["template_id"]
+    unit_system = project["unit_system"]
+    displayed = project["displayed_ui_inputs"]
+    st.session_state["manual_multilane_unit_label"] = unit_system.title()
+    st.session_state["multilane_template_id"] = template_id
+    st.session_state["manual_multilane_template_context"] = (template_id, unit_system)
+    widget_fields = {
+        "lanes": "number_of_lanes",
+        "length": "segment_length",
+        "speed": "posted_speed_limit",
+        "lane_width": "lane_width",
+        "clearance": "roadside_lateral_clearance",
+        "access": "access_point_density",
+        "demand": "demand_volume_veh_h",
+        "phf": "peak_hour_factor",
+        "heavy": "heavy_vehicle_percent",
+        "grade": "grade_percent",
+    }
+    for widget_name, input_name in widget_fields.items():
+        st.session_state[
+            f"manual_multilane_input_{widget_name}_{template_id}_{unit_system}"
+        ] = displayed[input_name]
+    for state_key, project_key in (
+        ("manual_multilane_result", "calculation_result"),
+        ("manual_multilane_audit", "audit"),
+    ):
+        if project.get(project_key) is None:
+            st.session_state.pop(state_key, None)
+        else:
+            st.session_state[state_key] = project[project_key]
+    st.session_state.pop("manual_multilane_error", None)
+    st.session_state["manual_multilane_project_load_message"] = (
+        "Manual Multilane project loaded. Review the restored validated-path inputs."
+    )
 
 
 def render_manual_facility_calculator() -> None:

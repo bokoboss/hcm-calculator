@@ -9,15 +9,25 @@ from hcmcalc.ui.manual_facility import (
     load_facility_template,
     run_manual_facility,
 )
+from hcmcalc.ui.manual_multilane import (
+    build_manual_multilane_audit_record,
+    load_multilane_template,
+    multilane_template_ui_inputs,
+    run_manual_multilane,
+)
 from hcmcalc.ui.project_io import (
     MANUAL_FACILITY_PROJECT_TYPE,
+    MANUAL_MULTILANE_PROJECT_TYPE,
     PROJECT_SCHEMA_VERSION,
     ProjectFileError,
     create_manual_facility_project_json,
     create_manual_facility_project_payload,
+    create_manual_multilane_project_json,
+    create_manual_multilane_project_payload,
     create_manual_project_json,
     create_manual_project_payload,
     load_manual_facility_project_json,
+    load_manual_multilane_project_json,
     load_manual_project_json,
 )
 from hcmcalc.cli import result_to_dict
@@ -318,3 +328,92 @@ def test_facility_load_rejects_malformed_or_unsupported_projects(
 
     with pytest.raises(ProjectFileError, match=message):
         load_manual_facility_project_json(json.dumps(payload))
+
+
+@pytest.mark.parametrize(
+    ("template_id", "unit_system"),
+    [
+        ("MLH-CH26-004-EB", "imperial"),
+        ("MLH-CH26-004-EB", "metric"),
+        ("MLH-CH26-004-WB", "imperial"),
+        ("MLH-CH26-004-WB", "metric"),
+    ],
+)
+def test_manual_multilane_project_round_trip(
+    template_id: str, unit_system: str
+) -> None:
+    template = load_multilane_template(template_id)
+    displayed = multilane_template_ui_inputs(template_id, unit_system)
+    result = run_manual_multilane(template["inputs"])
+    audit = build_manual_multilane_audit_record(
+        template_id,
+        template["inputs"],
+        unit_system=unit_system,
+        displayed_inputs=displayed,
+        result=result,
+    )
+
+    loaded = load_manual_multilane_project_json(
+        create_manual_multilane_project_json(
+            template_id,
+            unit_system,
+            displayed,
+            result=result_to_dict(result),
+            audit_record=audit,
+        )
+    )
+
+    assert loaded["project_type"] == MANUAL_MULTILANE_PROJECT_TYPE
+    assert loaded["unit_system"] == unit_system
+    assert loaded["template_id"] == template_id
+    assert loaded["displayed_ui_inputs"] == displayed
+    assert loaded["normalized_engine_inputs"] == template["inputs"]
+    assert loaded["calculation_result"]["outputs"]["level_of_service"] == "C"
+    assert loaded["limitations"]
+    assert loaded["unsupported_behavior_notes"]
+
+
+def test_manual_multilane_project_payload_contains_display_and_engine_values() -> None:
+    displayed = multilane_template_ui_inputs("MLH-CH26-004-EB", "metric")
+
+    payload = create_manual_multilane_project_payload(
+        "MLH-CH26-004-EB", "metric", displayed
+    )
+
+    assert payload["direction"] == "eastbound"
+    assert payload["displayed_ui_inputs"] == displayed
+    assert payload["normalized_engine_inputs"]["segment_length_ft"] == 6600.0
+    assert payload["display_result"] is None
+    assert payload["app_version"]
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    [
+        (lambda payload: payload.pop("project_type"), "Missing required field: project_type"),
+        (
+            lambda payload: payload.__setitem__("project_type", "manual_facility_v0"),
+            "Expected manual_multilane_v0",
+        ),
+        (lambda payload: payload.pop("unit_system"), "Missing required field: unit_system"),
+        (lambda payload: payload.__setitem__("template_id", "unknown"), "Unknown template_id"),
+        (
+            lambda payload: payload.__setitem__("displayed_ui_inputs", []),
+            "Malformed input payload",
+        ),
+        (
+            lambda payload: payload["displayed_ui_inputs"].pop("segment_length"),
+            "Malformed input payload",
+        ),
+    ],
+)
+def test_manual_multilane_load_rejects_invalid_projects(mutation, message: str) -> None:
+    payload = create_manual_multilane_project_payload(
+        "MLH-CH26-004-EB",
+        "imperial",
+        multilane_template_ui_inputs("MLH-CH26-004-EB", "imperial"),
+    )
+    mutation(payload)
+
+    with pytest.raises(ProjectFileError, match=message):
+        load_manual_multilane_project_json(json.dumps(payload))
