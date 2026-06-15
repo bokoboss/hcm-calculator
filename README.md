@@ -22,6 +22,9 @@ Implemented:
 - HCM7 Multilane Basic Segment engine v0.1, limited to the eastbound and
   westbound Chapter 26 Multilane Highway Example Problem 4 validation path,
   with ML-2 validation, audit, boundary, and unsupported-scope hardening
+- Chapter 26 second-case inventory documenting that no additional compatible
+  Multilane Highway motorized-vehicle validation case is available in the
+  supplied example-problem reference
 - Streamlit Manual Single Segment Calculator, Manual Facility Calculator v0.1,
   and Validated examples / QA viewer
 - Unit and validation fixture tests
@@ -143,7 +146,10 @@ Limitations:
 - Multilane Highway v0.1 has no UI, Save/Load, or export/report integration.
 - Multilane Highway v0.1 remains implemented-example-only. Example Problem 4
   eastbound and westbound are the only validated paths; boundary-tested helper
-  behavior does not imply general Multilane Highway support.
+  behavior does not imply general Multilane Highway support. The remaining
+  Chapter 26 examples are Basic Freeway, mixed-flow freeway, adverse-weather
+  Basic Freeway, or managed-lane cases and cannot safely serve as a second
+  Multilane validation case.
 - Basic Freeway, ramps, weaving, merge/diverge, managed lanes, work zones,
   reliability analysis, and facility/corridor workflows remain unsupported.
 - User-supplied base/adjusted free-flow speed and driver-population adjustment
