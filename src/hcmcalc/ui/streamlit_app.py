@@ -26,8 +26,12 @@ from hcmcalc.ui.manual_facility import (
 )
 from hcmcalc.ui.manual_multilane import (
     build_manual_multilane_audit_record,
+    clear_manual_multilane_state,
     load_multilane_template,
+    multilane_display_outputs,
     multilane_template_options,
+    multilane_template_ui_inputs,
+    multilane_ui_inputs_to_engine,
     run_manual_multilane,
 )
 from hcmcalc.ui.manual_segment import run_manual_single_segment
@@ -244,21 +248,35 @@ def render_manual_multilane_calculator() -> None:
         "This v0.1 workflow is anchored to Chapter 26 Example Problem 4 and is "
         "not a general Multilane Highway calculator."
     )
+    unit_label = st.radio(
+        "Unit system",
+        ["Metric", "Imperial"],
+        horizontal=True,
+        key="manual_multilane_unit_label",
+    )
+    unit_system = unit_label.lower()
     template_options = multilane_template_options()
     template_id = st.selectbox(
-        "Case direction / template",
+        "Validated template",
         list(template_options),
         format_func=template_options.__getitem__,
         key="multilane_template_id",
     )
-    if st.session_state.get("manual_multilane_template_context") != template_id:
-        for state_key in (
-            "manual_multilane_result",
-            "manual_multilane_error",
-            "manual_multilane_audit",
-        ):
-            st.session_state.pop(state_key, None)
-        st.session_state["manual_multilane_template_context"] = template_id
+    st.caption(
+        "Templates are constrained to the validated Chapter 26 Example Problem 4 paths."
+    )
+    template_context = (template_id, unit_system)
+    if st.session_state.get("manual_multilane_template_context") != template_context:
+        clear_manual_multilane_state(st.session_state)
+        if "manual_multilane_template_context" in st.session_state:
+            st.session_state["manual_multilane_reset_message"] = (
+                "Unit system or template changed. Inputs were reset to the selected "
+                "validated template."
+            )
+        st.session_state["manual_multilane_template_context"] = template_context
+    reset_message = st.session_state.pop("manual_multilane_reset_message", None)
+    if reset_message is not None:
+        st.caption(reset_message)
     try:
         template = load_multilane_template(template_id)
     except (HCMCalcError, ValueError) as exc:
@@ -266,21 +284,27 @@ def render_manual_multilane_calculator() -> None:
         return
 
     inputs = template["inputs"]
+    ui_inputs = multilane_template_ui_inputs(template_id, unit_system)
+    metric = unit_system == "metric"
+    length_unit = "km" if metric else "ft"
+    speed_unit = "km/h" if metric else "mph"
+    width_unit = "m" if metric else "ft"
+    access_unit = "points/km" if metric else "per mi"
     input_column, result_column = st.columns([1.05, 0.95], gap="large")
     with input_column:
-        st.markdown("**Inputs**")
+        st.markdown("**Validated-path inputs**")
+        st.caption(
+            "Some fields are intentionally constrained to preserve the validated "
+            "Example 4 calculation path."
+        )
         with st.form(f"multilane_form_{template_id}"):
             st.markdown('<div class="compact-section-label">Setup</div>', unsafe_allow_html=True)
-            setup_columns = st.columns(2)
-            setup_columns[0].text_input(
-                "Analysis type",
-                value="Multilane Highway Segment",
-                disabled=True,
+            st.caption(
+                "Analysis: Multilane Highway Segment validated-template workflow."
             )
-            setup_columns[1].text_input(
-                "Unit system",
-                value="Imperial (engine-native)",
-                disabled=True,
+            st.caption(
+                "Calculations remain engine-native Imperial; Metric values are "
+                "converted at the UI boundary."
             )
             st.caption(
                 f"{template['description']}. Support status: "
@@ -296,32 +320,38 @@ def render_manual_multilane_calculator() -> None:
                 "Lanes in analysis direction",
                 min_value=1,
                 step=1,
-                value=int(inputs["number_of_lanes"]),
+                value=int(ui_inputs["number_of_lanes"]),
+                key=f"manual_multilane_input_lanes_{template_id}_{unit_system}",
             )
-            segment_length_ft = roadway_columns[1].number_input(
-                "Segment length (ft)",
+            segment_length = roadway_columns[1].number_input(
+                f"Segment length ({length_unit})",
+                min_value=0.001,
+                value=float(ui_inputs["segment_length"]),
+                key=f"manual_multilane_input_length_{template_id}_{unit_system}",
+            )
+            posted_speed_limit = roadway_columns[0].number_input(
+                f"Posted speed limit ({speed_unit})",
                 min_value=1.0,
-                value=float(inputs["segment_length_ft"]),
+                value=float(ui_inputs["posted_speed_limit"]),
+                key=f"manual_multilane_input_speed_{template_id}_{unit_system}",
             )
-            posted_speed_limit_mph = roadway_columns[0].number_input(
-                "Posted speed limit (mph)",
-                min_value=1.0,
-                value=float(inputs["posted_speed_limit_mph"]),
+            lane_width = roadway_columns[1].number_input(
+                f"Lane width ({width_unit})",
+                min_value=0.1,
+                value=float(ui_inputs["lane_width"]),
+                key=f"manual_multilane_input_lane_width_{template_id}_{unit_system}",
             )
-            lane_width_ft = roadway_columns[1].number_input(
-                "Lane width (ft)",
-                min_value=1.0,
-                value=float(inputs["lane_width_ft"]),
-            )
-            roadside_lateral_clearance_ft = roadway_columns[0].number_input(
-                "Roadside lateral clearance (ft)",
+            roadside_lateral_clearance = roadway_columns[0].number_input(
+                f"Roadside lateral clearance ({width_unit})",
                 min_value=0.0,
-                value=float(inputs["roadside_lateral_clearance_ft"]),
+                value=float(ui_inputs["roadside_lateral_clearance"]),
+                key=f"manual_multilane_input_clearance_{template_id}_{unit_system}",
             )
-            access_point_density_per_mi = roadway_columns[1].number_input(
-                "Access point density (per mi)",
+            access_point_density = roadway_columns[1].number_input(
+                f"Access point density ({access_unit})",
                 min_value=0.0,
-                value=float(inputs["access_point_density_per_mi"]),
+                value=float(ui_inputs["access_point_density"]),
+                key=f"manual_multilane_input_access_{template_id}_{unit_system}",
             )
 
             st.markdown(
@@ -332,23 +362,27 @@ def render_manual_multilane_calculator() -> None:
             demand_volume_veh_h = traffic_columns[0].number_input(
                 "Demand volume (veh/h)",
                 min_value=1.0,
-                value=float(inputs["demand_volume_veh_h"]),
+                value=float(ui_inputs["demand_volume_veh_h"]),
+                key=f"manual_multilane_input_demand_{template_id}_{unit_system}",
             )
             peak_hour_factor = traffic_columns[1].number_input(
                 "Peak hour factor",
                 min_value=0.01,
                 max_value=1.0,
-                value=float(inputs["peak_hour_factor"]),
+                value=float(ui_inputs["peak_hour_factor"]),
+                key=f"manual_multilane_input_phf_{template_id}_{unit_system}",
             )
             heavy_vehicle_percent = traffic_columns[0].number_input(
                 "Heavy vehicles (%)",
                 min_value=0.0,
                 max_value=100.0,
-                value=float(inputs["heavy_vehicle_percent"]),
+                value=float(ui_inputs["heavy_vehicle_percent"]),
+                key=f"manual_multilane_input_heavy_{template_id}_{unit_system}",
             )
             grade_percent = traffic_columns[1].number_input(
                 "Grade (%)",
-                value=float(inputs["grade_percent"]),
+                value=float(ui_inputs["grade_percent"]),
+                key=f"manual_multilane_input_grade_{template_id}_{unit_system}",
             )
             st.caption(
                 "Locked template context: one direction, one segment, TWLTL median, "
@@ -358,19 +392,21 @@ def render_manual_multilane_calculator() -> None:
                 "Run calculation", type="primary", use_container_width=True
             )
 
-        submitted_inputs = {
-            **inputs,
+        displayed_inputs = {
             "number_of_lanes": int(number_of_lanes),
-            "segment_length_ft": segment_length_ft,
-            "posted_speed_limit_mph": posted_speed_limit_mph,
-            "lane_width_ft": lane_width_ft,
-            "roadside_lateral_clearance_ft": roadside_lateral_clearance_ft,
-            "access_point_density_per_mi": access_point_density_per_mi,
+            "segment_length": segment_length,
+            "posted_speed_limit": posted_speed_limit,
+            "lane_width": lane_width,
+            "roadside_lateral_clearance": roadside_lateral_clearance,
+            "access_point_density": access_point_density,
             "demand_volume_veh_h": demand_volume_veh_h,
             "peak_hour_factor": peak_hour_factor,
             "heavy_vehicle_percent": heavy_vehicle_percent,
             "grade_percent": grade_percent,
         }
+        submitted_inputs = multilane_ui_inputs_to_engine(
+            displayed_inputs, inputs, unit_system
+        )
         with st.expander("Unsupported scope", expanded=False):
             st.caption(
                 "Basic Freeway, ramps, weaving, merge/diverge, managed lanes, work "
@@ -389,14 +425,22 @@ def render_manual_multilane_calculator() -> None:
             st.session_state["manual_multilane_result"] = result_to_dict(result)
             st.session_state["manual_multilane_audit"] = (
                 build_manual_multilane_audit_record(
-                    template_id, submitted_inputs, result=result
+                    template_id,
+                    submitted_inputs,
+                    unit_system=unit_system,
+                    displayed_inputs=displayed_inputs,
+                    result=result,
                 )
             )
         except HCMCalcError as exc:
             st.session_state["manual_multilane_error"] = str(exc)
             st.session_state["manual_multilane_audit"] = (
                 build_manual_multilane_audit_record(
-                    template_id, submitted_inputs, error=exc
+                    template_id,
+                    submitted_inputs,
+                    unit_system=unit_system,
+                    displayed_inputs=displayed_inputs,
+                    error=exc,
                 )
             )
 
@@ -415,29 +459,47 @@ def render_manual_multilane_calculator() -> None:
             return
 
         outputs = result_data["outputs"]
+        result_unit_system = (
+            str(audit.get("unit_system", unit_system))
+            if isinstance(audit, dict)
+            else unit_system
+        )
+        display = multilane_display_outputs(outputs, result_unit_system)
         summary = st.columns(3)
-        summary[0].metric("Density", f"{outputs['density_pc_mi_ln']:.1f} pc/mi/ln")
+        summary[0].metric(
+            "Density",
+            f"{display['density']['value']:.1f} {display['density']['unit']}",
+        )
         summary[1].metric("LOS", outputs["level_of_service"])
         summary[2].metric(
             "Speed used for density",
-            f"{outputs['speed_used_for_density_mph']:.1f} mph",
+            f"{display['speed_used_for_density']['value']:.1f} "
+            f"{display['speed_used_for_density']['unit']}",
         )
         metrics = st.columns(2)
         metrics[0].metric(
-            "Demand flow rate", f"{outputs['demand_flow_rate_pc_h_ln']:.0f} pc/h/ln"
+            "Demand flow rate",
+            f"{display['demand_flow_rate']['value']:.0f} "
+            f"{display['demand_flow_rate']['unit']}",
         )
         metrics[1].metric(
             "Adjusted free-flow speed",
-            f"{outputs['adjusted_free_flow_speed_mph']:.1f} mph",
+            f"{display['adjusted_free_flow_speed']['value']:.1f} "
+            f"{display['adjusted_free_flow_speed']['unit']}",
         )
         metrics[0].metric(
-            "Base free-flow speed", f"{outputs['base_free_flow_speed_mph']:.1f} mph"
+            "Base free-flow speed",
+            f"{display['base_free_flow_speed']['value']:.1f} "
+            f"{display['base_free_flow_speed']['unit']}",
         )
         metrics[1].metric(
             "Heavy vehicle adjustment factor",
             f"{outputs['heavy_vehicle_adjustment_factor']:.3f}",
         )
-        metrics[0].metric("Capacity", f"{outputs['capacity_pc_h_ln']:.0f} pc/h/ln")
+        metrics[0].metric(
+            "Capacity",
+            f"{display['capacity']['value']:.0f} {display['capacity']['unit']}",
+        )
         metrics[1].metric("Capacity check", outputs["capacity_check"].replace("_", " "))
 
         with st.expander("Calculation details"):
@@ -459,7 +521,8 @@ def render_manual_multilane_calculator() -> None:
             st.json(
                 {
                     "calculation_type": "manual_multilane_segment_v0_1",
-                    "unit_system": "imperial",
+                    "unit_system": result_unit_system,
+                    "display_outputs": display,
                     "engine_result": result_data,
                     "audit_record": audit,
                 }
