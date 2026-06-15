@@ -164,3 +164,8 @@ See the
 [Chapter 15 Calculator Coverage Status](docs/ch15_calculator_coverage_status.md)
 for a calculator-facing inventory of current engine, UI, test, segment-type,
 and workflow coverage and the recommended next capability PR.
+
+See the
+[Multilane Highway Implementation Plan](docs/multilane_highway_implementation_plan.md)
+for the separately scoped reference inventory, architecture proposal, and
+validation-led implementation phases for a future Multilane Highway calculator.

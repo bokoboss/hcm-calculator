@@ -10,6 +10,11 @@ PR can be selected without broadening methodology claims.
 This is a status document only. It does not authorize new formulas, HCM table
 values, calculation paths, or user-interface scope.
 
+Multilane Highway analysis is planned as a separate calculator family and is
+not part of this Chapter 15 Two-Lane Highway coverage inventory. See the
+[Multilane Highway Implementation Plan](multilane_highway_implementation_plan.md)
+for its scope boundary and phased validation plan.
+
 Status terms used below:
 
 - **Supported**: available in the stated workflow with tests and explicit scope.
