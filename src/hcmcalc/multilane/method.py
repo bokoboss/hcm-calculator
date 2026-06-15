@@ -31,6 +31,8 @@ class MultilaneHighwayLOSMethod:
     def calculate(self, inputs: dict[str, Any]) -> CalculationResult:
         """Calculate one validated Multilane Highway Example Problem 4 direction."""
 
+        if not isinstance(inputs, dict):
+            raise HCMCalcError("Multilane Basic Segment inputs must be a mapping.")
         reject_unsupported_scope_keys(inputs)
         try:
             parsed = MultilaneBasicSegmentInputs.from_mapping(inputs)
@@ -71,7 +73,33 @@ class MultilaneHighwayLOSMethod:
         density = traffic_density(flow_rate, speed)
         los = level_of_service(density, demand_exceeds_capacity=flow_rate > capacity)
 
+        assumptions = [
+            "One-direction, one-segment uninterrupted-flow Multilane Highway analysis.",
+            "Base FFS is posted speed limit plus 7 mi/h because the posted speed is below 50 mi/h.",
+            "TWLTL supplies 6 ft left-side clearance; roadside clearance is capped at 6 ft.",
+            "Default truck mix is 30% SUTs and 70% TTs.",
+            "Downgrades steeper than 2% use the Exhibit 12-26 2% downgrade PCE.",
+            "Demand is below the 1,400 pc/h/ln Multilane Highway breakpoint, so speed equals FFS.",
+        ]
+        warnings = [
+            "Multilane Basic Segment v0.1 is validated only for Chapter 26 Example Problem 4."
+        ]
+        unsupported_scope_notes = [
+            "No general Multilane Highway cases outside Example Problem 4 EB/WB.",
+            "No Basic Freeway, ramp, weaving, merge/diverge, managed-lane, work-zone, reliability, or facility/corridor analysis.",
+            "No Multilane UI, Save/Load, or export/reporting integration.",
+        ]
+        source_references = [
+            "HCM7 Eq. 12-3; Exhibits 12-20, 12-22, 12-23, 12-24",
+            "HCM7 Eq. 12-7",
+            "HCM7 Eq. 12-9 and Eq. 12-10; Exhibit 12-26",
+            "HCM7 Eq. 12-1 constant-speed branch; Eq. 12-11; Exhibit 12-15",
+            "HCM7 Chapter 26 Multilane Highway Example Problem 4",
+        ]
         outputs = {
+            "calculation_type": "multilane_basic_segment_v0_1",
+            "support_status": "implemented_example_only",
+            "scope_status": "supported_exact_example_problem_4",
             "base_free_flow_speed_mph": base_ffs,
             "lane_width_adjustment_mph": lane_adjustment,
             "total_lateral_clearance_ft": total_clearance,
@@ -88,33 +116,23 @@ class MultilaneHighwayLOSMethod:
             "demand_flow_rate_pc_h_ln": flow_rate,
             "demand_capacity_ratio": flow_rate / capacity,
             "demand_exceeds_capacity": flow_rate > capacity,
+            "capacity_check": "demand_exceeds_capacity" if flow_rate > capacity else "within_capacity",
             "mean_speed_mph": speed,
+            "speed_used_for_density_mph": speed,
             "density_pc_mi_ln": density,
             "level_of_service": los,
-            "source_references": [
-                "HCM7 Eq. 12-3; Exhibits 12-20, 12-22, 12-23, 12-24",
-                "HCM7 Eq. 12-7",
-                "HCM7 Eq. 12-9 and Eq. 12-10; Exhibit 12-26",
-                "HCM7 Eq. 12-1 constant-speed branch; Eq. 12-11; Exhibit 12-15",
-                "HCM7 Chapter 26 Multilane Highway Example Problem 4",
-            ],
+            "source_references": source_references,
+            "assumptions": assumptions,
+            "warnings": warnings,
+            "unsupported_scope_notes": unsupported_scope_notes,
         }
         return CalculationResult(
             method=self.method_name,
             facility_type=self.facility_type,
             outputs=outputs,
             intermediate_values=_intermediate_values(outputs),
-            assumptions=[
-                "One-direction, one-segment uninterrupted-flow Multilane Highway analysis.",
-                "Base FFS is posted speed limit plus 7 mi/h because the posted speed is below 50 mi/h.",
-                "TWLTL supplies 6 ft left-side clearance; roadside clearance is capped at 6 ft.",
-                "Default truck mix is 30% SUTs and 70% TTs.",
-                "Downgrades steeper than 2% use the Exhibit 12-26 2% downgrade PCE.",
-                "Demand is below the 1,400 pc/h/ln Multilane Highway breakpoint, so speed equals FFS.",
-            ],
-            warnings=[
-                "Multilane Basic Segment v0.1 is validated only for Chapter 26 Example Problem 4."
-            ],
+            assumptions=assumptions,
+            warnings=warnings,
         )
 
 
@@ -122,6 +140,8 @@ def estimate_base_free_flow_speed(posted_speed_limit_mph: float) -> float:
     """HCM7 Chapter 12 base-FFS estimate used by Example Problem 4."""
 
     _finite(posted_speed_limit_mph, "posted speed limit")
+    if posted_speed_limit_mph <= 0:
+        raise HCMCalcError("Posted speed limit must be greater than zero.")
     if posted_speed_limit_mph >= 50:
         raise UnsupportedScopeError(
             "v0.1 implements only the posted-speed-below-50 base-FFS branch."
@@ -199,13 +219,24 @@ def adjusted_free_flow_speed(
 ) -> float:
     """HCM7 Eq. 12-3."""
 
-    return (
+    for value, label in (
+        (base_ffs, "base FFS"),
+        (lane_width_reduction, "lane width adjustment"),
+        (clearance_reduction, "total lateral clearance adjustment"),
+        (median_reduction, "median type adjustment"),
+        (access_reduction, "access point adjustment"),
+    ):
+        _finite(value, label)
+    ffs = (
         base_ffs
         - lane_width_reduction
         - clearance_reduction
         - median_reduction
         - access_reduction
     )
+    if ffs <= 0:
+        raise HCMCalcError("Adjusted FFS must be greater than zero.")
+    return ffs
 
 
 def multilane_capacity(adjusted_ffs_mph: float) -> float:
@@ -249,18 +280,45 @@ def example_4_passenger_car_equivalent(
 def heavy_vehicle_adjustment_factor(heavy_vehicle_percent: float, pce: float) -> float:
     """HCM7 Eq. 12-10."""
 
+    _finite(heavy_vehicle_percent, "heavy vehicle percentage")
+    _finite(pce, "passenger car equivalent")
+    if not 0 <= heavy_vehicle_percent <= 100:
+        raise HCMCalcError("Heavy vehicle percentage must be between 0 and 100.")
+    if pce <= 0:
+        raise HCMCalcError("Passenger car equivalent must be greater than zero.")
     return 1.0 / (1.0 + heavy_vehicle_percent / 100.0 * (pce - 1.0))
 
 
 def demand_flow_rate(volume: float, phf: float, lanes: int, hv_factor: float) -> float:
     """HCM7 Eq. 12-9."""
 
+    for value, label in (
+        (volume, "demand volume"),
+        (phf, "peak hour factor"),
+        (lanes, "lane count"),
+        (hv_factor, "heavy vehicle adjustment factor"),
+    ):
+        _finite(value, label)
+    if volume <= 0:
+        raise HCMCalcError("Demand volume must be greater than zero.")
+    if not 0 < phf <= 1:
+        raise HCMCalcError("Peak hour factor must be greater than zero and at most 1.")
+    if lanes <= 0 or isinstance(lanes, bool) or int(lanes) != lanes:
+        raise HCMCalcError("Lane count must be a positive integer.")
+    if hv_factor <= 0:
+        raise HCMCalcError("Heavy vehicle adjustment factor must be greater than zero.")
     return volume / (phf * lanes * hv_factor)
 
 
 def mean_speed_below_breakpoint(flow_rate: float, adjusted_ffs_mph: float) -> float:
     """HCM7 Eq. 12-1 constant-speed branch used by Example Problem 4."""
 
+    _finite(flow_rate, "demand flow rate")
+    _finite(adjusted_ffs_mph, "adjusted FFS")
+    if flow_rate <= 0:
+        raise HCMCalcError("Demand flow rate must be greater than zero.")
+    if adjusted_ffs_mph <= 0:
+        raise HCMCalcError("Adjusted FFS must be greater than zero.")
     if flow_rate > MULTILANE_BREAKPOINT_PC_H_LN:
         raise UnsupportedScopeError(
             "v0.1 implements only the Example Problem 4 flow-below-breakpoint branch."
@@ -271,12 +329,21 @@ def mean_speed_below_breakpoint(flow_rate: float, adjusted_ffs_mph: float) -> fl
 def traffic_density(flow_rate: float, mean_speed_mph: float) -> float:
     """HCM7 Eq. 12-11."""
 
+    _finite(flow_rate, "demand flow rate")
+    _finite(mean_speed_mph, "mean speed")
+    if flow_rate <= 0:
+        raise HCMCalcError("Demand flow rate must be greater than zero.")
+    if mean_speed_mph <= 0:
+        raise HCMCalcError("Mean speed must be greater than zero.")
     return flow_rate / mean_speed_mph
 
 
 def level_of_service(density: float, *, demand_exceeds_capacity: bool = False) -> str:
     """HCM7 Exhibit 12-15."""
 
+    _finite(density, "density")
+    if density < 0:
+        raise HCMCalcError("Density must be nonnegative.")
     if demand_exceeds_capacity:
         return "F"
     for level, upper_bound in LOS_DENSITY_UPPER_BOUNDS:
@@ -286,7 +353,11 @@ def level_of_service(density: float, *, demand_exceeds_capacity: bool = False) -
 
 
 def _finite(value: float, label: str) -> None:
-    if not isfinite(float(value)):
+    try:
+        finite = isfinite(float(value))
+    except (TypeError, ValueError) as exc:
+        raise HCMCalcError(f"{label} must be finite.") from exc
+    if not finite:
         raise HCMCalcError(f"{label} must be finite.")
 
 
@@ -303,7 +374,11 @@ def _intermediate_values(outputs: dict[str, Any]) -> list[IntermediateValue]:
         "passenger_car_equivalent": "HCM7 Exhibit 12-26",
         "heavy_vehicle_adjustment_factor": "HCM7 Eq. 12-10",
         "demand_flow_rate_pc_h_ln": "HCM7 Eq. 12-9",
+        "demand_capacity_ratio": "HCM7 Eq. 12-7 capacity check",
+        "demand_exceeds_capacity": "HCM7 Eq. 12-7 capacity check",
+        "capacity_check": "HCM7 Eq. 12-7 capacity check",
         "mean_speed_mph": "HCM7 Eq. 12-1",
+        "speed_used_for_density_mph": "HCM7 Eq. 12-11 input",
         "density_pc_mi_ln": "HCM7 Eq. 12-11",
         "level_of_service": "HCM7 Exhibit 12-15",
     }
