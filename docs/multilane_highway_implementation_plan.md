@@ -13,7 +13,9 @@ development. Phase ML-1 and the first Example Problem 4 validation path are
 implemented as Multilane Basic Segment engine v0.1. Phase ML-2 hardens that
 implemented-example-only path with validation, audit, table/equation boundary,
 guardrail, fixture, and documentation coverage. It does not broaden the
-calculation methodology.
+calculation methodology. Phase ML-3 adds Manual Multilane Highway Segment UI
+v0.1 for the same exact EB/WB validated paths without changing formulas,
+outputs, or engine scope.
 
 A second-case review of the available Chapter 26 examples found no additional
 Multilane Highway motorized-vehicle example or unused Example Problem 4 subcase
@@ -231,11 +233,19 @@ facility/corridor analyses through the Multilane Highway v0.1 method.
 - Preserve Example Problem 4 EB/WB fixtures, outputs, guardrails, and engine
   behavior because no compatible additional validation case is available.
 
-### Phase ML-3: Manual Streamlit UI
+### Phase ML-3: Manual Streamlit UI - Implemented v0.1
 
-- Add a single-page guided worksheet only after the engine is stable.
-- Keep UI normalization and display concerns outside calculation modules.
-- Expose only validated inputs and reject unsupported conditions clearly.
+- Adds a single-page guided Multilane segment worksheet alongside the existing
+  Two-Lane modes.
+- Provides Chapter 26 Example Problem 4 EB and WB starter templates loaded from
+  `references/multilane_example_inputs.yaml`.
+- Displays engine-native imperial inputs and outputs, calculation details,
+  intermediate values, audit data, and full JSON.
+- Delegates calculation to the existing Multilane engine and relies on its
+  exact-example validation to reject unsupported edits.
+- Does not add Save/Load, export/reporting, Basic Freeway, ramp,
+  merge/diverge, weaving, managed-lane, work-zone, reliability, or
+  facility/corridor support.
 
 ### Phase ML-4: Save/Load + Export Integration
 
@@ -272,7 +282,6 @@ inputs or workflows.
 Multilane Basic Segment v0.1 does not:
 
 - implement a general Multilane Highway calculator beyond Example Problem 4;
-- add a Multilane Highway UI workflow;
 - add Multilane Highway Save/Load support;
 - add Multilane Highway export or reporting support;
 - accept user-supplied base/adjusted free-flow speed or driver-population
@@ -280,3 +289,7 @@ Multilane Basic Segment v0.1 does not:
 - implement Basic Freeway, ramp, merge/diverge, weaving, managed-lane,
   reliability, or facility/corridor analysis; or
 - change existing Chapter 15 Two-Lane Highway calculation or UI behavior.
+
+Manual Multilane Highway Segment UI v0.1 is implemented only as a guided
+interface to the exact Example Problem 4 EB/WB engine paths. Its presence does
+not broaden any engine methodology or authorize arbitrary Multilane inputs.

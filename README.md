@@ -26,7 +26,7 @@ Implemented:
   Multilane Highway motorized-vehicle validation case is available in the
   supplied example-problem reference
 - Streamlit Manual Single Segment Calculator, Manual Facility Calculator v0.1,
-  and Validated examples / QA viewer
+  Manual Multilane Highway Segment v0.1, and Validated examples / QA viewer
 - Unit and validation fixture tests
 
 Not implemented yet:
@@ -82,7 +82,7 @@ Run the single-page validated-case viewer from the repository root:
 streamlit run src/hcmcalc/ui/streamlit_app.py
 ```
 
-The single-page app provides three modes:
+The single-page app provides four modes:
 
 - **Manual Single Segment Calculator** accepts one straight or horizontal-curve
   Two-Lane Highway segment using Metric inputs by default or optional Imperial
@@ -106,6 +106,14 @@ The single-page app provides three modes:
   Save/Load JSON using `project_type = manual_facility_v0`. Segment sequence, type,
   terrain/curve context, passing-lane placement, and downstream adjustment
   context remain controlled by the selected template.
+- **Manual Multilane Highway Segment v0.1** is a limited validated-path
+  worksheet anchored only to Chapter 26 Example Problem 4 EB and WB. It
+  prefills the supported fixture inputs, displays engine-native imperial units,
+  delegates calculations directly to the existing Multilane engine, and shows
+  density, LOS, speed, flow, free-flow speed, heavy-vehicle factor, capacity,
+  intermediate values, audit details, and full JSON. Any edit outside the exact
+  validated EB/WB path is rejected by the existing engine guardrails. This mode
+  has no Save/Load or export/reporting controls.
 
 The engine and CLI validation behavior remains based on the existing validated
 fixtures. CLI inputs, outputs, and JSON schema are unchanged.
@@ -143,7 +151,9 @@ Limitations:
 - Horizontal curves remain limited to the validated Example Problem 2 path; other
   segment types, terrain combinations, and subsegment structures are rejected.
   Curve setup generation does not expand this single-segment validated scope
-- Multilane Highway v0.1 has no UI, Save/Load, or export/report integration.
+- Manual Multilane Highway Segment v0.1 provides only the Chapter 26 Example
+  Problem 4 EB/WB validated-path UI. It is not a general Multilane Highway
+  calculator and has no Save/Load or export/report integration.
 - Multilane Highway v0.1 remains implemented-example-only. Example Problem 4
   eastbound and westbound are the only validated paths; boundary-tested helper
   behavior does not imply general Multilane Highway support. The remaining

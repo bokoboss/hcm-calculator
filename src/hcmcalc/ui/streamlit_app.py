@@ -24,6 +24,12 @@ from hcmcalc.ui.manual_facility import (
     load_facility_template,
     run_manual_facility,
 )
+from hcmcalc.ui.manual_multilane import (
+    build_manual_multilane_audit_record,
+    load_multilane_template,
+    multilane_template_options,
+    run_manual_multilane,
+)
 from hcmcalc.ui.manual_segment import run_manual_single_segment
 from hcmcalc.ui.project_io import (
     ProjectFileError,
@@ -61,12 +67,13 @@ IMPLEMENTED_CASE_IDS = (
     "TLH-CH15-004",
 )
 SCOPE_NOTICE = (
-    "Current scope: limited manual single-segment and Example 3/4-backed "
-    "facility workflows."
+    "Current scope: limited Two-Lane manual workflows and an Example Problem "
+    "4-backed Multilane segment workflow."
 )
 LIMITATIONS_FOOTER = (
     "Current limitations: example-scoped validation, selected mountainous "
-    "combinations, and no general downstream passing-lane support."
+    "combinations, no general downstream passing-lane support, and no general "
+    "Multilane Highway support."
 )
 
 
@@ -227,6 +234,236 @@ def render_validated_case_viewer() -> None:
     if result_case_id != selected_case_id:
         st.info("Run the selected case to replace the currently displayed result.")
     render_result(result_case_id, result_data)
+
+
+def render_manual_multilane_calculator() -> None:
+    """Render the Example Problem 4-backed Multilane segment worksheet."""
+
+    st.info("Limited validated-path Multilane Highway workflow")
+    st.caption(
+        "This v0.1 workflow is anchored to Chapter 26 Example Problem 4 and is "
+        "not a general Multilane Highway calculator."
+    )
+    template_options = multilane_template_options()
+    template_id = st.selectbox(
+        "Case direction / template",
+        list(template_options),
+        format_func=template_options.__getitem__,
+        key="multilane_template_id",
+    )
+    if st.session_state.get("manual_multilane_template_context") != template_id:
+        for state_key in (
+            "manual_multilane_result",
+            "manual_multilane_error",
+            "manual_multilane_audit",
+        ):
+            st.session_state.pop(state_key, None)
+        st.session_state["manual_multilane_template_context"] = template_id
+    try:
+        template = load_multilane_template(template_id)
+    except (HCMCalcError, ValueError) as exc:
+        st.error(str(exc))
+        return
+
+    inputs = template["inputs"]
+    input_column, result_column = st.columns([1.05, 0.95], gap="large")
+    with input_column:
+        st.markdown("**Inputs**")
+        with st.form(f"multilane_form_{template_id}"):
+            st.markdown('<div class="compact-section-label">Setup</div>', unsafe_allow_html=True)
+            setup_columns = st.columns(2)
+            setup_columns[0].text_input(
+                "Analysis type",
+                value="Multilane Highway Segment",
+                disabled=True,
+            )
+            setup_columns[1].text_input(
+                "Unit system",
+                value="Imperial (engine-native)",
+                disabled=True,
+            )
+            st.caption(
+                f"{template['description']}. Support status: "
+                f"{template['validation_status']}."
+            )
+
+            st.markdown(
+                '<div class="compact-section-label">Roadway / Free-flow speed</div>',
+                unsafe_allow_html=True,
+            )
+            roadway_columns = st.columns(2)
+            number_of_lanes = roadway_columns[0].number_input(
+                "Lanes in analysis direction",
+                min_value=1,
+                step=1,
+                value=int(inputs["number_of_lanes"]),
+            )
+            segment_length_ft = roadway_columns[1].number_input(
+                "Segment length (ft)",
+                min_value=1.0,
+                value=float(inputs["segment_length_ft"]),
+            )
+            posted_speed_limit_mph = roadway_columns[0].number_input(
+                "Posted speed limit (mph)",
+                min_value=1.0,
+                value=float(inputs["posted_speed_limit_mph"]),
+            )
+            lane_width_ft = roadway_columns[1].number_input(
+                "Lane width (ft)",
+                min_value=1.0,
+                value=float(inputs["lane_width_ft"]),
+            )
+            roadside_lateral_clearance_ft = roadway_columns[0].number_input(
+                "Roadside lateral clearance (ft)",
+                min_value=0.0,
+                value=float(inputs["roadside_lateral_clearance_ft"]),
+            )
+            access_point_density_per_mi = roadway_columns[1].number_input(
+                "Access point density (per mi)",
+                min_value=0.0,
+                value=float(inputs["access_point_density_per_mi"]),
+            )
+
+            st.markdown(
+                '<div class="compact-section-label">Traffic</div>',
+                unsafe_allow_html=True,
+            )
+            traffic_columns = st.columns(2)
+            demand_volume_veh_h = traffic_columns[0].number_input(
+                "Demand volume (veh/h)",
+                min_value=1.0,
+                value=float(inputs["demand_volume_veh_h"]),
+            )
+            peak_hour_factor = traffic_columns[1].number_input(
+                "Peak hour factor",
+                min_value=0.01,
+                max_value=1.0,
+                value=float(inputs["peak_hour_factor"]),
+            )
+            heavy_vehicle_percent = traffic_columns[0].number_input(
+                "Heavy vehicles (%)",
+                min_value=0.0,
+                max_value=100.0,
+                value=float(inputs["heavy_vehicle_percent"]),
+            )
+            grade_percent = traffic_columns[1].number_input(
+                "Grade (%)",
+                value=float(inputs["grade_percent"]),
+            )
+            st.caption(
+                "Locked template context: one direction, one segment, TWLTL median, "
+                "and default 30% SUT / 70% TT truck mix."
+            )
+            run_multilane = st.form_submit_button(
+                "Run calculation", type="primary", use_container_width=True
+            )
+
+        submitted_inputs = {
+            **inputs,
+            "number_of_lanes": int(number_of_lanes),
+            "segment_length_ft": segment_length_ft,
+            "posted_speed_limit_mph": posted_speed_limit_mph,
+            "lane_width_ft": lane_width_ft,
+            "roadside_lateral_clearance_ft": roadside_lateral_clearance_ft,
+            "access_point_density_per_mi": access_point_density_per_mi,
+            "demand_volume_veh_h": demand_volume_veh_h,
+            "peak_hour_factor": peak_hour_factor,
+            "heavy_vehicle_percent": heavy_vehicle_percent,
+            "grade_percent": grade_percent,
+        }
+        with st.expander("Unsupported scope", expanded=False):
+            st.caption(
+                "Basic Freeway, ramps, weaving, merge/diverge, managed lanes, work "
+                "zones, reliability, and facility/corridor workflows are not supported."
+            )
+            st.caption(
+                "Any edit outside the exact validated Example Problem 4 EB/WB path "
+                "is rejected by the existing Multilane engine validation."
+            )
+
+    if run_multilane:
+        st.session_state.pop("manual_multilane_result", None)
+        st.session_state.pop("manual_multilane_error", None)
+        try:
+            result = run_manual_multilane(submitted_inputs)
+            st.session_state["manual_multilane_result"] = result_to_dict(result)
+            st.session_state["manual_multilane_audit"] = (
+                build_manual_multilane_audit_record(
+                    template_id, submitted_inputs, result=result
+                )
+            )
+        except HCMCalcError as exc:
+            st.session_state["manual_multilane_error"] = str(exc)
+            st.session_state["manual_multilane_audit"] = (
+                build_manual_multilane_audit_record(
+                    template_id, submitted_inputs, error=exc
+                )
+            )
+
+    with result_column:
+        st.markdown("**Results**")
+        error = st.session_state.get("manual_multilane_error")
+        audit = st.session_state.get("manual_multilane_audit")
+        if error is not None:
+            st.error(f"Unsupported Multilane case: {error}")
+            with st.expander("Audit / intermediate values"):
+                st.json(audit)
+            return
+        result_data = st.session_state.get("manual_multilane_result")
+        if result_data is None:
+            st.caption("Run calculation to see results.")
+            return
+
+        outputs = result_data["outputs"]
+        summary = st.columns(3)
+        summary[0].metric("Density", f"{outputs['density_pc_mi_ln']:.1f} pc/mi/ln")
+        summary[1].metric("LOS", outputs["level_of_service"])
+        summary[2].metric(
+            "Speed used for density",
+            f"{outputs['speed_used_for_density_mph']:.1f} mph",
+        )
+        metrics = st.columns(2)
+        metrics[0].metric(
+            "Demand flow rate", f"{outputs['demand_flow_rate_pc_h_ln']:.0f} pc/h/ln"
+        )
+        metrics[1].metric(
+            "Adjusted free-flow speed",
+            f"{outputs['adjusted_free_flow_speed_mph']:.1f} mph",
+        )
+        metrics[0].metric(
+            "Base free-flow speed", f"{outputs['base_free_flow_speed_mph']:.1f} mph"
+        )
+        metrics[1].metric(
+            "Heavy vehicle adjustment factor",
+            f"{outputs['heavy_vehicle_adjustment_factor']:.3f}",
+        )
+        metrics[0].metric("Capacity", f"{outputs['capacity_pc_h_ln']:.0f} pc/h/ln")
+        metrics[1].metric("Capacity check", outputs["capacity_check"].replace("_", " "))
+
+        with st.expander("Calculation details"):
+            render_list("Assumptions", result_data["assumptions"], "No assumptions reported.")
+            render_list("Warnings", result_data["warnings"], "No warnings reported.")
+            render_list(
+                "Unsupported scope notes",
+                outputs["unsupported_scope_notes"],
+                "No unsupported scope notes reported.",
+            )
+        with st.expander("Audit / intermediate values"):
+            st.json(audit)
+            st.dataframe(
+                result_data["intermediate_values"],
+                hide_index=True,
+                use_container_width=True,
+            )
+        with st.expander("Full JSON"):
+            st.json(
+                {
+                    "calculation_type": "manual_multilane_segment_v0_1",
+                    "unit_system": "imperial",
+                    "engine_result": result_data,
+                    "audit_record": audit,
+                }
+            )
 
 
 def render_manual_facility_calculator() -> None:
@@ -1213,25 +1450,28 @@ def main() -> None:
     apply_ui_styles()
     header_left, header_right = st.columns([1.4, 1.0], gap="large")
     with header_left:
-        st.markdown("**HCM Calculator** — Chapter 15 Two-Lane Highway")
+        st.markdown("**HCM Calculator** - Two-Lane and Multilane Highway")
     with header_right:
         mode_label = st.radio(
             "Calculator mode",
-            ["Single", "Facility", "Examples"],
+            ["Two-Lane", "Facility", "Multilane", "Examples"],
             horizontal=True,
             label_visibility="collapsed",
             key="calculator_mode",
         )
     st.caption(SCOPE_NOTICE)
     mode = {
-        "Single": "Manual single segment calculator",
+        "Two-Lane": "Manual single segment calculator",
         "Facility": "Manual Facility Calculator v0.1",
+        "Multilane": "Manual Multilane Highway Segment v0.1",
         "Examples": "Validated examples / QA",
     }[mode_label]
     if mode == "Manual single segment calculator":
         render_manual_single_segment_calculator()
     elif mode == "Manual Facility Calculator v0.1":
         render_manual_facility_calculator()
+    elif mode == "Manual Multilane Highway Segment v0.1":
+        render_manual_multilane_calculator()
     else:
         render_validated_case_viewer()
     st.divider()
