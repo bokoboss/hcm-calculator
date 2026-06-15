@@ -18,6 +18,9 @@ v0.1 for the same exact EB/WB validated paths without changing formulas,
 outputs, or engine scope. The Manual Multilane UI now accepts and displays
 Metric or Imperial values while preserving the engine-native Imperial
 calculation path.
+Phase ML-4 adds guarded Save/Load and export/reporting integration for those
+same exact paths using `project_type = manual_multilane_v0`; it does not
+broaden methodology support.
 
 A second-case review of the available Chapter 26 examples found no additional
 Multilane Highway motorized-vehicle example or unused Example Problem 4 subcase
@@ -248,20 +251,28 @@ facility/corridor analyses through the Multilane Highway v0.1 method.
   or template changes, preventing unit switching from altering the underlying
   validated engine inputs.
 - Displays calculation details, intermediate values, audit data, and full JSON.
+- Supports guarded Manual Multilane Project JSON Save/Load and CSV, Excel,
+  Markdown, and Report JSON exports for successful calculations.
 - Delegates calculation to the existing Multilane engine and relies on its
   exact-example validation to reject unsupported edits.
 - Does not change Multilane formulas, engine-native outputs, or validated
   Example Problem 4 EB/WB results.
-- Does not add Save/Load, export/reporting, Basic Freeway, ramp,
-  merge/diverge, weaving, managed-lane, work-zone, reliability, or
-  facility/corridor support.
+- Does not add Basic Freeway, ramp, merge/diverge, weaving, managed-lane,
+  work-zone, reliability, or facility/corridor support.
 
-### Phase ML-4: Save/Load + Export Integration
+### Phase ML-4: Save/Load + Export Integration - Implemented v0.1
 
-- Add a distinct Multilane project type and schema.
-- Integrate reporting without changing calculation behavior.
-- Preserve inputs, assumptions, intermediates, outputs, warnings, and
-  validation provenance.
+- Adds the distinct `manual_multilane_v0` project type using the shared project
+  schema and guarded Example Problem 4 EB/WB templates.
+- Preserves selected units, displayed UI inputs, normalized engine-native
+  Imperial inputs, calculation result, audit context, assumptions, warnings,
+  limitations, and unsupported-behavior notes.
+- Adds CSV, Excel `.xlsx`, Markdown, and Report JSON exports from the current
+  calculated result without a separate calculation path.
+- Displays exports in the selected unit system with explicit unit labels;
+  engine-native values are labeled Imperial where included.
+- Does not change Multilane formulas, validated outputs, exact-path
+  guardrails, or Two-Lane behavior.
 
 ### Phase ML-5: Broader HCM Features Only After Validated References Exist
 
@@ -291,8 +302,6 @@ inputs or workflows.
 Multilane Basic Segment v0.1 does not:
 
 - implement a general Multilane Highway calculator beyond Example Problem 4;
-- add Multilane Highway Save/Load support;
-- add Multilane Highway export or reporting support;
 - accept user-supplied base/adjusted free-flow speed or driver-population
   adjustment inputs;
 - implement Basic Freeway, ramp, merge/diverge, weaving, managed-lane,
@@ -303,5 +312,5 @@ Manual Multilane Highway Segment UI v0.1 is implemented only as a guided
 interface to the exact Example Problem 4 EB/WB engine paths. Its presence does
 not broaden any engine methodology or authorize arbitrary Multilane inputs.
 Metric/Imperial conversion occurs only at the UI boundary; calculations remain
-engine-native Imperial, and Multilane Save/Load and export/reporting remain
-unimplemented.
+engine-native Imperial. Save/Load and export/reporting remain limited to
+`manual_multilane_v0` and the exact Example Problem 4 EB/WB validated paths.

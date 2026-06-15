@@ -13,6 +13,13 @@ from hcmcalc.ui.manual_facility import (
     run_manual_facility,
 )
 from hcmcalc.ui.manual_segment import run_manual_single_segment
+from hcmcalc.ui.manual_multilane import (
+    MANUAL_MULTILANE_LIMITATIONS,
+    build_manual_multilane_audit_record,
+    load_multilane_template,
+    multilane_template_ui_inputs,
+    run_manual_multilane,
+)
 from hcmcalc.ui.reporting import (
     FACILITY_LIMITATIONS,
     SINGLE_SEGMENT_LIMITATIONS,
@@ -71,6 +78,27 @@ def _facility_report(unit_system: str = "metric"):
     )
 
 
+def _multilane_report(unit_system: str = "metric", template_id: str = "MLH-CH26-004-EB"):
+    template = load_multilane_template(template_id)
+    displayed = multilane_template_ui_inputs(template_id, unit_system)
+    result = run_manual_multilane(template["inputs"])
+    audit = build_manual_multilane_audit_record(
+        template_id,
+        template["inputs"],
+        unit_system=unit_system,
+        displayed_inputs=displayed,
+        result=result,
+    )
+    return build_report(
+        "manual_multilane_v0",
+        result_to_dict(result),
+        unit_system,
+        inputs=displayed,
+        audit_record=audit,
+        template_id=template_id,
+    )
+
+
 def test_single_segment_report_json_generation_includes_units_and_limitations() -> None:
     report = _single_report()
     exported = json.loads(export_report(report, "json"))
@@ -93,11 +121,28 @@ def test_facility_report_json_generation_includes_segment_rows_and_limitations()
     assert exported["warnings"]
 
 
+def test_multilane_report_json_includes_units_context_and_limitations() -> None:
+    exported = json.loads(export_report(_multilane_report(), "json"))
+
+    assert exported["calculation_type"] == "manual_multilane_v0"
+    assert exported["selected_validated_template"] == "MLH-CH26-004-EB"
+    assert any(item["unit"] == "km/h" for item in exported["results_summary"])
+    assert any(
+        item["unit"] == "ft (engine-native Imperial)"
+        for item in exported["normalized_engine_inputs_summary"]
+    )
+    assert exported["limitations"] == MANUAL_MULTILANE_LIMITATIONS
+    assert exported["assumptions"]
+    assert exported["warnings"]
+    assert exported["intermediate_values"]
+
+
 @pytest.mark.parametrize(
     ("report_factory", "expected"),
     [
         (_single_report, "Manual Single Segment"),
         (_facility_report, "Manual Facility Calculator v0.1"),
+        (_multilane_report, "Manual Multilane Highway Segment v0.1"),
     ],
 )
 def test_markdown_generation(report_factory, expected: str) -> None:
@@ -109,7 +154,7 @@ def test_markdown_generation(report_factory, expected: str) -> None:
     assert "## Assumptions" in markdown
 
 
-@pytest.mark.parametrize("report_factory", [_single_report, _facility_report])
+@pytest.mark.parametrize("report_factory", [_single_report, _facility_report, _multilane_report])
 def test_csv_generation_includes_units_limitations_and_warnings(report_factory) -> None:
     csv_text = export_report(report_factory(), "csv")
 
@@ -119,7 +164,7 @@ def test_csv_generation_includes_units_limitations_and_warnings(report_factory) 
     assert "Assumptions" in csv_text
 
 
-@pytest.mark.parametrize("report_factory", [_single_report, _facility_report])
+@pytest.mark.parametrize("report_factory", [_single_report, _facility_report, _multilane_report])
 def test_excel_generation_has_required_sheets_units_and_limitations(report_factory) -> None:
     workbook = load_workbook(BytesIO(export_report(report_factory(), "xlsx")))
 
@@ -138,7 +183,7 @@ def test_excel_generation_has_required_sheets_units_and_limitations(report_facto
         if cell.value is not None
     )
     assert "km/h" in cells
-    assert "Unsupported combinations remain guarded." in cells
+    assert any(limitation in cells for limitation in report_factory()["limitations"])
 
 
 def test_facility_csv_contains_segment_result_rows() -> None:
@@ -147,6 +192,31 @@ def test_facility_csv_contains_segment_result_rows() -> None:
     assert "Segment Results" in csv_text
     assert "Segment ID,Segment type,Length (mi)" in csv_text
     assert csv_text.count("passing_constrained") >= 1
+
+
+def test_multilane_metric_and_imperial_exports_use_selected_display_units() -> None:
+    metric_report = _multilane_report("metric")
+    imperial_report = _multilane_report("imperial")
+    metric_csv = export_report(metric_report, "csv")
+    imperial_csv = export_report(imperial_report, "csv")
+
+    assert "pc/km/ln" in metric_csv
+    assert "km/h" in metric_csv
+    assert "pc/mi/ln" in imperial_csv
+    assert "mph" in imperial_csv
+    assert "Normalized Engine Inputs" in metric_csv
+    assert "engine-native Imperial" in metric_csv
+    assert next(
+        item for item in imperial_report["inputs_summary"]
+        if item["label"] == "Segment Length"
+    )["unit"] == "ft"
+    assert "Manual Multilane v0.1 is limited" in metric_csv
+    assert "## Intermediate Values" in export_report(
+        _multilane_report("metric"), "markdown"
+    )
+    assert "## Normalized Engine Inputs" in export_report(
+        _multilane_report("metric"), "markdown"
+    )
 
 
 def test_report_generation_rejects_missing_result() -> None:

@@ -27,6 +27,8 @@ Implemented:
   supplied example-problem reference
 - Streamlit Manual Single Segment Calculator, Manual Facility Calculator v0.1,
   Manual Multilane Highway Segment v0.1, and Validated examples / QA viewer
+- Manual Multilane Save/Load and CSV, Excel, Markdown, and Report JSON export
+  integration using `project_type = manual_multilane_v0`
 - Unit and validation fixture tests
 
 Not implemented yet:
@@ -114,7 +116,12 @@ The single-page app provides four modes:
   or template resets the worksheet to the selected validated template. Engine
   formulas and engine-native outputs remain unchanged. Any edit outside the
   exact validated EB/WB path is rejected by the existing engine guardrails.
-  This mode has no Save/Load or export/reporting controls.
+  After a successful calculation, this mode supports guarded Project JSON
+  Save/Load using `project_type = manual_multilane_v0` and CSV, Excel `.xlsx`,
+  Markdown, and Report JSON exports. Saved projects preserve displayed values
+  in the selected unit system and normalized engine-native Imperial inputs.
+  Reports display the selected unit system and label engine-native Imperial
+  values explicitly where included.
 
 The engine and CLI validation behavior remains based on the existing validated
 fixtures. CLI inputs, outputs, and JSON schema are unchanged.
@@ -142,10 +149,11 @@ Limitations:
   general facility support; unsupported combinations remain guarded.
 - Existing Manual Single Segment Save/Load using
   `project_type = manual_single_segment` remains supported.
-- Export/reporting v0.1 supports Manual Single Segment and guarded Manual
-  Facility v0.1 results only. Exports use the selected UI display unit system,
-  label units explicitly, include workflow limitations, and format the existing
-  calculated result without changing or re-running calculation behavior.
+- Export/reporting v0.1 supports Manual Single Segment, guarded Manual Facility
+  v0.1, and guarded Manual Multilane v0.1 results. Exports use the selected UI
+  display unit system, label units explicitly, include workflow limitations,
+  and format the existing calculated result without changing calculation
+  behavior.
 - No general mountainous grade table; unsupported grade/length combinations are rejected
 - No downstream corridor effects for single passing-lane mode
 - Passing Lane calculation remains limited to the engine's validated Class 1, 8% heavy-vehicle path
@@ -154,9 +162,10 @@ Limitations:
   Curve setup generation does not expand this single-segment validated scope
 - Manual Multilane Highway Segment v0.1 provides only the Chapter 26 Example
   Problem 4 EB/WB validated-path UI. It is not a general Multilane Highway
-  calculator and has no Save/Load or export/report integration. Metric/Imperial
-  selection changes only UI inputs and displayed outputs; calculations remain
-  engine-native Imperial.
+  calculator. Save/Load and reporting are supported only for
+  `project_type = manual_multilane_v0` and the exact validated templates.
+  Metric/Imperial selection changes only UI inputs and displayed/report values;
+  calculations remain engine-native Imperial.
 - Multilane Highway v0.1 remains implemented-example-only. Example Problem 4
   eastbound and westbound are the only validated paths; boundary-tested helper
   behavior does not imply general Multilane Highway support. The remaining

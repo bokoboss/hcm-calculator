@@ -18,6 +18,13 @@ TEMPLATE_LABELS = {
     "MLH-CH26-004-WB": "Example 4 — Westbound direction",
 }
 SUPPORTED_UNIT_SYSTEMS = {"metric", "imperial"}
+MANUAL_MULTILANE_CALCULATION_TYPE = "manual_multilane_v0"
+MANUAL_MULTILANE_LIMITATIONS = [
+    "Manual Multilane v0.1 is limited to Chapter 26 Example Problem 4 EB/WB-compatible validated paths.",
+    "It is not a general Multilane Highway calculator.",
+    "Basic Freeway, ramps, weaving, merge/diverge, managed lanes, work zones, reliability, and facility/corridor workflows are unsupported.",
+    "Calculations remain engine-native Imperial; Metric values are UI/reporting conversions.",
+]
 
 
 def multilane_template_options() -> dict[str, str]:
@@ -199,7 +206,7 @@ def build_manual_multilane_audit_record(
     """Build a compact audit record without adding calculation behavior."""
 
     return {
-        "calculation_type": "manual_multilane_segment_v0_1",
+        "calculation_type": MANUAL_MULTILANE_CALCULATION_TYPE,
         "template_id": template_id,
         "unit_system": _normalize_unit_system(unit_system),
         "support_status": "implemented_example_only",
@@ -207,6 +214,7 @@ def build_manual_multilane_audit_record(
         "submitted_inputs": deepcopy(inputs),
         "calculation_succeeded": result is not None,
         "validation_error": str(error) if error is not None else None,
+        "unsupported_behavior_notes": list(MANUAL_MULTILANE_LIMITATIONS),
     }
 
 
