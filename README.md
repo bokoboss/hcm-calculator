@@ -108,12 +108,13 @@ The single-page app provides four modes:
   context remain controlled by the selected template.
 - **Manual Multilane Highway Segment v0.1** is a limited validated-path
   worksheet anchored only to Chapter 26 Example Problem 4 EB and WB. It
-  prefills the supported fixture inputs, displays engine-native imperial units,
-  delegates calculations directly to the existing Multilane engine, and shows
-  density, LOS, speed, flow, free-flow speed, heavy-vehicle factor, capacity,
-  intermediate values, audit details, and full JSON. Any edit outside the exact
-  validated EB/WB path is rejected by the existing engine guardrails. This mode
-  has no Save/Load or export/reporting controls.
+  prefills the supported fixture inputs in Metric or Imperial units, converts
+  Metric inputs to engine-native Imperial values at the UI boundary, and
+  converts speed and density back to Metric for display. Changing unit system
+  or template resets the worksheet to the selected validated template. Engine
+  formulas and engine-native outputs remain unchanged. Any edit outside the
+  exact validated EB/WB path is rejected by the existing engine guardrails.
+  This mode has no Save/Load or export/reporting controls.
 
 The engine and CLI validation behavior remains based on the existing validated
 fixtures. CLI inputs, outputs, and JSON schema are unchanged.
@@ -153,7 +154,9 @@ Limitations:
   Curve setup generation does not expand this single-segment validated scope
 - Manual Multilane Highway Segment v0.1 provides only the Chapter 26 Example
   Problem 4 EB/WB validated-path UI. It is not a general Multilane Highway
-  calculator and has no Save/Load or export/report integration.
+  calculator and has no Save/Load or export/report integration. Metric/Imperial
+  selection changes only UI inputs and displayed outputs; calculations remain
+  engine-native Imperial.
 - Multilane Highway v0.1 remains implemented-example-only. Example Problem 4
   eastbound and westbound are the only validated paths; boundary-tested helper
   behavior does not imply general Multilane Highway support. The remaining

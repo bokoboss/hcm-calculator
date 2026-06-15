@@ -15,7 +15,9 @@ implemented-example-only path with validation, audit, table/equation boundary,
 guardrail, fixture, and documentation coverage. It does not broaden the
 calculation methodology. Phase ML-3 adds Manual Multilane Highway Segment UI
 v0.1 for the same exact EB/WB validated paths without changing formulas,
-outputs, or engine scope.
+outputs, or engine scope. The Manual Multilane UI now accepts and displays
+Metric or Imperial values while preserving the engine-native Imperial
+calculation path.
 
 A second-case review of the available Chapter 26 examples found no additional
 Multilane Highway motorized-vehicle example or unused Example Problem 4 subcase
@@ -239,10 +241,17 @@ facility/corridor analyses through the Multilane Highway v0.1 method.
   Two-Lane modes.
 - Provides Chapter 26 Example Problem 4 EB and WB starter templates loaded from
   `references/multilane_example_inputs.yaml`.
-- Displays engine-native imperial inputs and outputs, calculation details,
-  intermediate values, audit data, and full JSON.
+- Provides Metric and Imperial UI unit selection. Metric inputs are converted
+  to engine-native Imperial values before calculation; engine speed and density
+  outputs are converted back to Metric for display.
+- Resets visible values to the selected validated template when the unit system
+  or template changes, preventing unit switching from altering the underlying
+  validated engine inputs.
+- Displays calculation details, intermediate values, audit data, and full JSON.
 - Delegates calculation to the existing Multilane engine and relies on its
   exact-example validation to reject unsupported edits.
+- Does not change Multilane formulas, engine-native outputs, or validated
+  Example Problem 4 EB/WB results.
 - Does not add Save/Load, export/reporting, Basic Freeway, ramp,
   merge/diverge, weaving, managed-lane, work-zone, reliability, or
   facility/corridor support.
@@ -293,3 +302,6 @@ Multilane Basic Segment v0.1 does not:
 Manual Multilane Highway Segment UI v0.1 is implemented only as a guided
 interface to the exact Example Problem 4 EB/WB engine paths. Its presence does
 not broaden any engine methodology or authorize arbitrary Multilane inputs.
+Metric/Imperial conversion occurs only at the UI boundary; calculations remain
+engine-native Imperial, and Multilane Save/Load and export/reporting remain
+unimplemented.
