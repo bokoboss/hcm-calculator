@@ -14,8 +14,8 @@ from hcmcalc.ui.manual_multilane import (
 
 def test_multilane_template_options_expose_only_example_4_directions() -> None:
     assert multilane_template_options() == {
-        "MLH-CH26-004-EB": "Chapter 26 Example 4 EB",
-        "MLH-CH26-004-WB": "Chapter 26 Example 4 WB",
+        "MLH-CH26-004-EB": "Example 4 — Eastbound direction",
+        "MLH-CH26-004-WB": "Example 4 — Westbound direction",
     }
 
 
