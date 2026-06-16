@@ -67,8 +67,15 @@ from hcmcalc.ui.schematics import get_segment_schematic_path
 from hcmcalc.ui.supported_workflows import (
     APP_MODE_LABELS,
     APP_MODE_TO_VIEW,
+    AUDIT_EXPANDER_LABEL,
+    BASIC_FREEWAY_RAMP_DENSITY_HELP,
+    BASIC_FREEWAY_RAMP_DENSITY_LABEL,
+    CALCULATION_DETAILS_LABEL,
     EXAMPLE_WORKFLOW_NOTE,
+    PRERUN_RESULTS_PLACEHOLDER,
+    STARTING_VALUES_CAPTION,
     SUPPORTED_WORKFLOW_SECTIONS,
+    VALIDATION_EXPANDER_LABEL,
 )
 from hcmcalc.ui.units import (
     DEFAULT_UNIT_SYSTEM,
@@ -99,16 +106,6 @@ LIMITATIONS_FOOTER = (
     "Unsupported combinations remain guarded. Save/Load and Export / Report "
     "preserve only the supported manual workflows."
 )
-VALIDATION_EXPANDER_LABEL = "Validation basis and limitations"
-CALCULATION_DETAILS_LABEL = "Calculation details"
-AUDIT_EXPANDER_LABEL = "Audit / intermediate values"
-STARTING_VALUES_CAPTION = (
-    "Starting values only prefill supported inputs. You may edit values before "
-    "running the calculation."
-)
-PRERUN_RESULTS_PLACEHOLDER = "Results will appear after calculation."
-
-
 def render_page_header(title: str, caption: str) -> None:
     """Render the standard calculator page heading."""
 
@@ -804,14 +801,11 @@ def render_manual_freeway_calculator() -> None:
                     key=f"manual_freeway_input_right_clearance_{preset_id}_{unit_system}",
                 )
                 total_ramp_density = roadway_columns[0].number_input(
-                    f"Ramp density for FFS adjustment ({ramp_density_unit})",
+                    f"{BASIC_FREEWAY_RAMP_DENSITY_LABEL} ({ramp_density_unit})",
                     min_value=0.0,
                     value=float(ui_inputs["total_ramp_density"]),
                     key=f"manual_freeway_input_ramp_density_{preset_id}_{unit_system}",
-                    help=(
-                        "Used for Basic Freeway speed adjustment only; not a ramp "
-                        "analysis workflow."
-                    ),
+                    help=BASIC_FREEWAY_RAMP_DENSITY_HELP,
                 )
 
             st.markdown(

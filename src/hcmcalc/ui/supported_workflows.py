@@ -31,6 +31,19 @@ APP_MODE_TO_VIEW = {
     "Validation Examples": "validated_examples",
 }
 
+VALIDATION_EXPANDER_LABEL = "Validation basis and limitations"
+CALCULATION_DETAILS_LABEL = "Calculation details"
+AUDIT_EXPANDER_LABEL = "Audit / intermediate values"
+STARTING_VALUES_CAPTION = (
+    "Starting values only prefill supported inputs. You may edit values before "
+    "running the calculation."
+)
+PRERUN_RESULTS_PLACEHOLDER = "Results will appear after calculation."
+BASIC_FREEWAY_RAMP_DENSITY_LABEL = "Ramp density for FFS adjustment"
+BASIC_FREEWAY_RAMP_DENSITY_HELP = (
+    "Used for Basic Freeway speed adjustment only; not a ramp analysis workflow."
+)
+
 SUPPORTED_WORKFLOW_SECTIONS: tuple[WorkflowSection, ...] = (
     {
         "title": "Two-Lane Highway",
