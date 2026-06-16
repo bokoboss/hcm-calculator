@@ -207,3 +207,8 @@ See the
 [Multilane Highway Implementation Plan](docs/multilane_highway_implementation_plan.md)
 for the separately scoped reference inventory, architecture proposal, and
 validation-led implementation phases for a future Multilane Highway calculator.
+
+See the
+[Basic Freeway Segment Implementation Plan](docs/basic_freeway_implementation_plan.md)
+for the separately scoped architecture, product direction, and validation-led
+phases for future HCM7 Chapter 12 Basic Freeway Segment support.

@@ -36,7 +36,9 @@ The initial calculator family must distinguish the following analysis types:
   weaving areas. This is the only analysis type targeted by v0.1.
 - **Basic Freeway Segment**: covered by the shared Chapter 12 reference but
   operationally distinct from a Multilane Highway Segment. It is outside the
-  v0.1 scope.
+  v0.1 scope. Future Basic Freeway Segment support is planned as a separate
+  calculator family and should not be mixed into the Multilane Highway Segment
+  package, validation fixtures, UI, Save/Load, or export workflow.
 - **Ramp / merge / diverge**: separate influence-area methodologies and outside
   the v0.1 scope.
 - **Weaving**: a separate methodology and outside the v0.1 scope.
