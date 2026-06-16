@@ -617,13 +617,6 @@ def render_manual_multilane_calculator() -> None:
             ),
             secondary_metrics=[
                 {
-                    "label": "Density",
-                    "value": (
-                        f"{display['density']['value']:.1f} "
-                        f"{display['density']['unit']}"
-                    ),
-                },
-                {
                     "label": "Speed used for density",
                     "value": (
                         f"{display['speed_used_for_density']['value']:.1f} "
@@ -1061,13 +1054,6 @@ def render_manual_freeway_calculator() -> None:
                 f"{display['density']['value']:.1f} {display['density']['unit']}"
             ),
             secondary_metrics=[
-                {
-                    "label": "Density",
-                    "value": (
-                        f"{display['density']['value']:.1f} "
-                        f"{display['density']['unit']}"
-                    ),
-                },
                 {
                     "label": "Speed used for density",
                     "value": (
@@ -1554,10 +1540,6 @@ def render_manual_facility_result_panel(
         hero_supporting_label="Facility follower density",
         hero_supporting_value=facility_follower_density,
         secondary_metrics=[
-            {
-                "label": "Facility follower density",
-                "value": facility_follower_density,
-            },
             {
                 "label": "Weighted average speed",
                 "value": (
@@ -2316,6 +2298,7 @@ def render_manual_result(
                 "value": format_display_metric(name, metric, unit_system),
             }
             for name, metric in metrics.items()
+            if name != "follower_density"
         ],
     )
 
