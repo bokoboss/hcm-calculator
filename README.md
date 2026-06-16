@@ -32,7 +32,8 @@ Implemented:
   Multilane Highway motorized-vehicle validation case is available in the
   supplied example-problem reference
 - Streamlit Manual Single Segment Calculator, Manual Facility Calculator v0.1,
-  Manual Multilane Highway Segment v0.1, and Validated examples / QA viewer
+  Manual Multilane Highway Segment v0.1, Manual Basic Freeway Segment
+  Calculator v0.1, and Validated examples / QA viewer
 - Manual Multilane Save/Load and CSV, Excel, Markdown, and Report JSON export
   integration using `project_type = manual_multilane_v0`
 - Unit and validation fixture tests
@@ -42,9 +43,9 @@ Not implemented yet:
 - Full HCM Chapter 15 calculation engine
 - General facility manual input
 - General Multilane Highway LOS calculations beyond Chapter 26 Example Problem 4
-- Basic Freeway UI, Save/Load, export/reporting, ramps, weaving,
-  merge/diverge, managed lanes, work zones, reliability, facility/corridor
-  workflows, and specific-grade PCE tables
+- Basic Freeway Save/Load, export/reporting, ramps, weaving, merge/diverge,
+  managed lanes, work zones, reliability, facility/corridor workflows, and
+  specific-grade PCE tables
 - Production validation dataset
 
 ## Local Setup
@@ -93,7 +94,7 @@ Run the single-page validated-case viewer from the repository root:
 streamlit run src/hcmcalc/ui/streamlit_app.py
 ```
 
-The single-page app provides four modes:
+The single-page app provides five modes:
 
 - **Manual Single Segment Calculator** accepts one straight or horizontal-curve
   Two-Lane Highway segment using Metric inputs by default or optional Imperial
@@ -131,6 +132,18 @@ The single-page app provides four modes:
   in the selected unit system and normalized engine-native Imperial inputs.
   Reports display the selected unit system and label engine-native Imperial
   values explicitly where included.
+- **Manual Basic Freeway Segment Calculator** is a calculator-first v0.1
+  worksheet anchored only to BF-CH26-001, the HCM7 Chapter 26 Example Problem
+  1-compatible Basic Freeway Segment path. It exposes Setup, Roadway /
+  Geometry, Traffic, Advanced / Optional, Results, Details, Audit, and Full
+  JSON sections for one direction, one segment, uninterrupted flow, and
+  general-purpose lanes only. The Chapter 26 Example 1 input preset supplies
+  starting values from `references/freeway_example_inputs.yaml`; it is not a
+  template-only viewer. Metric inputs are converted to engine-native Imperial
+  values at the UI boundary and speed/density outputs are converted back for
+  display. The page calls only the existing `src/hcmcalc/freeway` engine and
+  does not add or change formulas. Save/Load and export/reporting are not
+  exposed for Basic Freeway v0.1.
 
 The engine and CLI validation behavior remains based on the existing validated
 fixtures. CLI inputs, outputs, and JSON schema are unchanged.
@@ -181,10 +194,11 @@ Limitations:
   Chapter 26 examples are Basic Freeway, mixed-flow freeway, adverse-weather
   Basic Freeway, or managed-lane cases and cannot safely serve as a second
   Multilane validation case.
-- Basic Freeway UI, Save/Load, export/reporting, ramps, weaving,
-  merge/diverge, managed lanes, work zones, reliability analysis,
-  facility/corridor workflows, and specific-grade Basic Freeway PCE tables
-  remain unsupported. The Basic Freeway engine is Chapter 12 formula-backed and
+- Basic Freeway Save/Load, export/reporting, ramps, weaving, merge/diverge,
+  managed lanes, work zones, reliability analysis, facility/corridor workflows,
+  and specific-grade Basic Freeway PCE tables remain unsupported. The Manual
+  Basic Freeway Segment Calculator v0.1 is not a general freeway facility
+  calculator; it is Chapter 12 formula-backed through the existing engine and
   validated against Chapter 26 Basic Freeway Example Problem 1 for the current
   one-segment operational v0.1 path only.
 - User-supplied Multilane base/adjusted free-flow speed and driver-population

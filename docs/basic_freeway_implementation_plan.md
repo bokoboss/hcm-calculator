@@ -17,7 +17,9 @@ presents a common motorized vehicle core methodology.
 
 This document began as the planning artifact for PR #59. Basic Freeway Segment
 engine v0.1 is now implemented as an engine-only package under
-`src/hcmcalc/freeway/`. It does not implement UI, Save/Load, export behavior,
+`src/hcmcalc/freeway/`. A Manual Basic Freeway Segment Calculator v0.1 now
+exposes that existing engine path in Streamlit for the BF-CH26-001-compatible
+validated workflow only. It does not implement Save/Load, export behavior,
 ramps, weaving, merge/diverge, managed lanes, work zones, reliability, or
 facility/corridor workflows.
 
@@ -55,11 +57,11 @@ reliability analysis, or facility/corridor workflows.
 
 ## Product/UI Direction
 
-Future Basic Freeway UI work should follow the current Two-Lane calculator UX:
+Basic Freeway UI work should follow the current Two-Lane calculator UX:
 calculator-first, engineering-data-entry oriented, and single-page. It should
 not be designed as a template selector page or example viewer.
 
-The future user-facing workflow should be input-driven, not template-driven.
+The user-facing workflow should be input-driven, not template-driven.
 Validated presets may exist, but they should be optional starting values that
 help users begin from a known reference case. The validation basis,
 limitations, source notes, and unsupported-scope details should remain
@@ -69,7 +71,7 @@ Unsupported combinations must remain guarded. If a user selects or enters
 conditions outside the implemented Basic Freeway scope, the UI and engine
 should reject those conditions clearly instead of producing misleading outputs.
 
-Recommended future page structure:
+Implemented v0.1 page structure:
 
 - Setup
 - Roadway / Geometry
@@ -77,7 +79,9 @@ Recommended future page structure:
 - Advanced / Optional
 - Results
 - Calculation details / Audit
-- Save / Load / Export
+
+Save / Load / Export remains future work and is intentionally absent from the
+Basic Freeway v0.1 UI.
 
 Recommended wording for optional examples:
 
@@ -180,8 +184,9 @@ Implemented outputs:
   intermediate values;
 - formula source references.
 
-These outputs are engine-only. They do not imply UI, Save/Load, export,
-facility, ramp, weaving, or managed-lane support.
+These outputs are displayed by the guarded Manual Basic Freeway Segment UI.
+They do not imply Save/Load, export, facility, ramp, weaving, or managed-lane
+support.
 
 ## Guardrails
 
@@ -279,15 +284,23 @@ workflow, or freeway facility/corridor analysis.
 
 ### BF-3: Manual Basic Freeway UI v0.1
 
-- Add a single-page Manual Basic Freeway Segment Calculator only after the
-  engine is stable and validated.
-- Follow the Two-Lane calculator structure: Setup, Roadway / Geometry, Traffic,
-  Advanced / Optional, Results, Calculation details / Audit, and Save / Load /
-  Export.
-- Treat validated example presets as optional starting values.
-- Keep the workflow input-driven rather than template-driven.
-- Display validation basis and limitations in audit/details/limitations areas.
-- Preserve engine guardrails for unsupported combinations.
+- Added a single-page Manual Basic Freeway Segment Calculator after the engine
+  was stable and validated.
+- Added a Streamlit Freeway mode without changing Two-Lane or Multilane modes.
+- Followed the calculator-first structure: Setup, Roadway / Geometry, Traffic,
+  Advanced / Optional, Results, Calculation details, Audit / intermediate
+  values, and Full JSON.
+- Added the Chapter 26 Example Problem 1 input preset as starting values from
+  `references/freeway_example_inputs.yaml`.
+- Kept the workflow input-driven rather than template-driven.
+- Displayed validation basis and limitations in collapsed details areas.
+- Added Metric/Imperial UI conversion at the UI boundary while keeping the
+  engine-native Imperial calculation contract.
+- Preserved engine guardrails for unsupported combinations.
+- Added no Save/Load controls and no export/reporting buttons.
+- Added no ramp, weaving, merge/diverge, managed-lane, work-zone,
+  reliability, or facility/corridor support.
+- Changed no Basic Freeway formulas or outputs.
 
 ### BF-4: Save/Load + Export Integration
 
@@ -326,9 +339,8 @@ general Basic Freeway, freeway facility, or adjacent-methodology support.
 
 ## Non-Goals
 
-Basic Freeway Segment engine v0.1 does not implement:
+Basic Freeway Segment v0.1 does not implement:
 
-- UI workflow;
 - Save/Load;
 - export/reporting;
 - ramps;
@@ -338,5 +350,5 @@ Basic Freeway Segment engine v0.1 does not implement:
 - work zones;
 - reliability;
 - facility/corridor workflow;
-- expected-output fixtures; or
+- additional expected-output fixtures beyond BF-CH26-001; or
 - changes to existing Two-Lane or Multilane behavior.

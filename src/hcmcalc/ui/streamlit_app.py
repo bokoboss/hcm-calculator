@@ -24,6 +24,16 @@ from hcmcalc.ui.manual_facility import (
     load_facility_template,
     run_manual_facility,
 )
+from hcmcalc.ui.manual_freeway import (
+    build_manual_freeway_audit_record,
+    clear_manual_freeway_state,
+    freeway_display_outputs,
+    freeway_preset_options,
+    freeway_preset_ui_inputs,
+    freeway_ui_inputs_to_engine,
+    load_freeway_preset,
+    run_manual_freeway,
+)
 from hcmcalc.ui.manual_multilane import (
     build_manual_multilane_audit_record,
     clear_manual_multilane_state,
@@ -73,13 +83,14 @@ IMPLEMENTED_CASE_IDS = (
     "TLH-CH15-004",
 )
 SCOPE_NOTICE = (
-    "Current scope: limited Two-Lane manual workflows and an Example Problem "
-    "4-backed Multilane segment workflow."
+    "Current scope: limited Two-Lane manual workflows, an Example Problem "
+    "4-backed Multilane segment workflow, and a Chapter 26 Example Problem "
+    "1-backed Basic Freeway Segment workflow."
 )
 LIMITATIONS_FOOTER = (
     "Current limitations: example-scoped validation, selected mountainous "
-    "combinations, no general downstream passing-lane support, and no general "
-    "Multilane Highway support."
+    "combinations, no general downstream passing-lane support, no general "
+    "Multilane Highway support, and no general freeway facility support."
 )
 
 
@@ -565,6 +576,363 @@ def render_manual_multilane_calculator() -> None:
             audit_record=audit,
             template_id=template_id,
         )
+
+
+def render_manual_freeway_calculator() -> None:
+    """Render the Basic Freeway Segment validated-path worksheet."""
+
+    st.title("Manual Basic Freeway Segment Calculator")
+    st.caption("Limited validated-path Basic Freeway Segment workflow.")
+    st.info(
+        "This v0.1 workflow is validated against HCM7 Chapter 26 Example Problem 1 "
+        "and is not a general freeway facility calculator."
+    )
+    with st.expander("Validation basis and limitations", expanded=False):
+        st.caption(
+            "Validation basis: BF-CH26-001, HCM7 Chapter 26 Basic Freeway "
+            "Example Problem 1."
+        )
+        st.caption(
+            "Supported path: one direction, one segment, uninterrupted flow, no ramps, "
+            "no weaving, no merge/diverge, no managed lanes, no work zones, no "
+            "reliability analysis, and no facility/corridor workflow."
+        )
+        st.caption(
+            "Unsupported combinations remain guarded by the existing Basic Freeway "
+            "engine validation."
+        )
+        st.caption("Save/Load and export/reporting are not available in this PR.")
+
+    unit_label = st.radio(
+        "Unit system",
+        ["Metric", "Imperial"],
+        horizontal=True,
+        key="manual_freeway_unit_label",
+    )
+    unit_system = unit_label.lower()
+    preset_options = freeway_preset_options()
+    preset_id = st.selectbox(
+        "Input preset",
+        list(preset_options),
+        format_func=preset_options.__getitem__,
+        key="freeway_preset_id",
+    )
+    st.caption(
+        "Preset values are starting values for the calculator, not a template-only viewer."
+    )
+    preset_context = (preset_id, unit_system)
+    if st.session_state.get("manual_freeway_preset_context") != preset_context:
+        clear_manual_freeway_state(st.session_state)
+        if "manual_freeway_preset_context" in st.session_state:
+            st.session_state["manual_freeway_reset_message"] = (
+                "Unit system or input preset changed. Inputs were reset to the "
+                "selected starting values."
+            )
+        st.session_state["manual_freeway_preset_context"] = preset_context
+    reset_message = st.session_state.pop("manual_freeway_reset_message", None)
+    if reset_message is not None:
+        st.caption(reset_message)
+    try:
+        preset = load_freeway_preset(preset_id)
+    except (HCMCalcError, ValueError) as exc:
+        st.error(str(exc))
+        return
+
+    inputs = preset["inputs"]
+    ui_inputs = freeway_preset_ui_inputs(preset_id, unit_system)
+    metric = unit_system == "metric"
+    length_unit = "km" if metric else "mi"
+    speed_unit = "km/h" if metric else "mph"
+    width_unit = "m" if metric else "ft"
+    ramp_density_unit = "ramps/km" if metric else "ramps/mi"
+    input_column, result_column = st.columns([1.05, 0.95], gap="large")
+    with input_column:
+        st.markdown("**Inputs**")
+        with st.form(f"freeway_form_{preset_id}"):
+            st.markdown(
+                '<div class="compact-section-label">Setup</div>',
+                unsafe_allow_html=True,
+            )
+            st.caption("Analysis type: Basic Freeway Segment.")
+            st.caption(
+                "Support status: Chapter 26 Example Problem 1-compatible validated path."
+            )
+            st.caption(
+                "Calculations remain engine-native Imperial; Metric values are "
+                "converted at the UI boundary."
+            )
+
+            st.markdown(
+                '<div class="compact-section-label">Roadway / Geometry</div>',
+                unsafe_allow_html=True,
+            )
+            roadway_columns = st.columns(2)
+            number_of_lanes = roadway_columns[0].number_input(
+                "Lanes in analysis direction",
+                min_value=2,
+                step=1,
+                value=int(ui_inputs["number_of_lanes"]),
+                key=f"manual_freeway_input_lanes_{preset_id}_{unit_system}",
+            )
+            segment_length = roadway_columns[1].number_input(
+                f"Segment length ({length_unit})",
+                min_value=0.001,
+                value=float(ui_inputs["segment_length"]),
+                key=f"manual_freeway_input_length_{preset_id}_{unit_system}",
+            )
+            ffs_source_label = roadway_columns[0].selectbox(
+                "Free-flow speed source",
+                ["Estimated from geometry", "Measured"],
+                index=0 if ui_inputs["ffs_source"] == "estimated" else 1,
+                key=f"manual_freeway_input_ffs_source_{preset_id}_{unit_system}",
+            )
+            ffs_source = (
+                "estimated"
+                if ffs_source_label == "Estimated from geometry"
+                else "measured"
+            )
+            if ffs_source == "measured":
+                free_flow_speed = roadway_columns[1].number_input(
+                    f"Free-flow speed ({speed_unit})",
+                    min_value=1.0,
+                    value=float(
+                        ui_inputs["free_flow_speed"]
+                        or ui_inputs["base_free_flow_speed"]
+                    ),
+                    key=f"manual_freeway_input_free_flow_speed_{preset_id}_{unit_system}",
+                )
+                base_free_flow_speed = ui_inputs["base_free_flow_speed"]
+                lane_width = ui_inputs["lane_width"]
+                right_side_lateral_clearance = ui_inputs[
+                    "right_side_lateral_clearance"
+                ]
+                total_ramp_density = ui_inputs["total_ramp_density"]
+            else:
+                free_flow_speed = ui_inputs["free_flow_speed"]
+                base_free_flow_speed = roadway_columns[1].number_input(
+                    f"Base free-flow speed ({speed_unit})",
+                    min_value=1.0,
+                    value=float(ui_inputs["base_free_flow_speed"]),
+                    key=f"manual_freeway_input_base_ffs_{preset_id}_{unit_system}",
+                )
+                lane_width = roadway_columns[0].number_input(
+                    f"Lane width ({width_unit})",
+                    min_value=0.1,
+                    value=float(ui_inputs["lane_width"]),
+                    key=f"manual_freeway_input_lane_width_{preset_id}_{unit_system}",
+                )
+                right_side_lateral_clearance = roadway_columns[1].number_input(
+                    f"Right-side lateral clearance ({width_unit})",
+                    min_value=0.0,
+                    value=float(ui_inputs["right_side_lateral_clearance"]),
+                    key=f"manual_freeway_input_right_clearance_{preset_id}_{unit_system}",
+                )
+                total_ramp_density = roadway_columns[0].number_input(
+                    f"Total ramp density ({ramp_density_unit})",
+                    min_value=0.0,
+                    value=float(ui_inputs["total_ramp_density"]),
+                    key=f"manual_freeway_input_ramp_density_{preset_id}_{unit_system}",
+                )
+
+            st.markdown(
+                '<div class="compact-section-label">Traffic</div>',
+                unsafe_allow_html=True,
+            )
+            traffic_columns = st.columns(2)
+            demand_volume_veh_h = traffic_columns[0].number_input(
+                "Demand volume (veh/h)",
+                min_value=1.0,
+                value=float(ui_inputs["demand_volume_veh_h"]),
+                key=f"manual_freeway_input_demand_{preset_id}_{unit_system}",
+            )
+            peak_hour_factor = traffic_columns[1].number_input(
+                "Peak hour factor",
+                min_value=0.01,
+                max_value=1.0,
+                value=float(ui_inputs["peak_hour_factor"]),
+                key=f"manual_freeway_input_phf_{preset_id}_{unit_system}",
+            )
+            heavy_vehicle_percent = traffic_columns[0].number_input(
+                "Heavy vehicles (%)",
+                min_value=0.0,
+                max_value=100.0,
+                value=float(ui_inputs["heavy_vehicle_percent"]),
+                key=f"manual_freeway_input_heavy_{preset_id}_{unit_system}",
+            )
+            terrain_type = traffic_columns[1].selectbox(
+                "Terrain type",
+                ["level", "rolling"],
+                index=0 if ui_inputs["terrain_type"] == "level" else 1,
+                key=f"manual_freeway_input_terrain_{preset_id}_{unit_system}",
+            )
+
+            st.markdown(
+                '<div class="compact-section-label">Advanced / Optional</div>',
+                unsafe_allow_html=True,
+            )
+            advanced_columns = st.columns(2)
+            speed_adjustment_factor = advanced_columns[0].number_input(
+                "Speed adjustment factor",
+                min_value=0.01,
+                max_value=1.0,
+                value=float(ui_inputs["speed_adjustment_factor"]),
+                key=f"manual_freeway_input_saf_{preset_id}_{unit_system}",
+            )
+            capacity_adjustment_factor = advanced_columns[1].number_input(
+                "Capacity adjustment factor",
+                min_value=0.01,
+                max_value=1.0,
+                value=float(ui_inputs["capacity_adjustment_factor"]),
+                key=f"manual_freeway_input_caf_{preset_id}_{unit_system}",
+            )
+            st.caption(
+                "Locked assumptions: default 30% SUT / 70% TT truck mix, driver "
+                "population factor 1.0, no ramp/weaving/merge-diverge/facility support."
+            )
+            run_freeway = st.form_submit_button(
+                "Run calculation", type="primary", use_container_width=True
+            )
+
+        displayed_inputs = {
+            "number_of_lanes": int(number_of_lanes),
+            "segment_length": segment_length,
+            "ffs_source": ffs_source,
+            "free_flow_speed": free_flow_speed,
+            "base_free_flow_speed": base_free_flow_speed,
+            "lane_width": lane_width,
+            "right_side_lateral_clearance": right_side_lateral_clearance,
+            "total_ramp_density": total_ramp_density,
+            "demand_volume_veh_h": demand_volume_veh_h,
+            "peak_hour_factor": peak_hour_factor,
+            "heavy_vehicle_percent": heavy_vehicle_percent,
+            "terrain_type": terrain_type,
+            "speed_adjustment_factor": speed_adjustment_factor,
+            "capacity_adjustment_factor": capacity_adjustment_factor,
+        }
+        submitted_inputs = freeway_ui_inputs_to_engine(
+            displayed_inputs, inputs, unit_system
+        )
+        with st.expander("Unsupported combinations remain guarded", expanded=False):
+            st.caption(
+                "Ramp analysis, merge/diverge, weaving, managed lanes, work zones, "
+                "reliability, facility/corridor workflow, and arbitrary freeway "
+                "facility cases are not exposed."
+            )
+            st.caption(
+                "If edited values leave the current supported path, the existing "
+                "Basic Freeway engine rejects them with a validation error."
+            )
+
+    if run_freeway:
+        st.session_state.pop("manual_freeway_result", None)
+        st.session_state.pop("manual_freeway_error", None)
+        try:
+            result = run_manual_freeway(submitted_inputs)
+            st.session_state["manual_freeway_result"] = result_to_dict(result)
+            st.session_state["manual_freeway_audit"] = (
+                build_manual_freeway_audit_record(
+                    preset_id,
+                    submitted_inputs,
+                    unit_system=unit_system,
+                    displayed_inputs=displayed_inputs,
+                    result=result,
+                )
+            )
+        except HCMCalcError as exc:
+            st.session_state["manual_freeway_error"] = str(exc)
+            st.session_state["manual_freeway_audit"] = (
+                build_manual_freeway_audit_record(
+                    preset_id,
+                    submitted_inputs,
+                    unit_system=unit_system,
+                    displayed_inputs=displayed_inputs,
+                    error=exc,
+                )
+            )
+
+    with result_column:
+        st.markdown("**Results**")
+        error = st.session_state.get("manual_freeway_error")
+        audit = st.session_state.get("manual_freeway_audit")
+        if error is not None:
+            st.error(f"Unsupported Basic Freeway case: {error}")
+            with st.expander("Audit / intermediate values"):
+                st.json(audit)
+            return
+        result_data = st.session_state.get("manual_freeway_result")
+        if result_data is None:
+            st.caption("Run calculation to see results.")
+            return
+
+        outputs = result_data["outputs"]
+        result_unit_system = (
+            str(audit.get("unit_system", unit_system))
+            if isinstance(audit, dict)
+            else unit_system
+        )
+        display = freeway_display_outputs(outputs, result_unit_system)
+        summary = st.columns(3)
+        summary[0].metric("LOS", outputs["level_of_service"])
+        summary[1].metric(
+            "Density",
+            f"{display['density']['value']:.1f} {display['density']['unit']}",
+        )
+        summary[2].metric(
+            "Speed used for density",
+            f"{display['speed_used_for_density']['value']:.1f} "
+            f"{display['speed_used_for_density']['unit']}",
+        )
+        metrics = st.columns(2)
+        metrics[0].metric(
+            "Demand flow rate",
+            f"{display['demand_flow_rate']['value']:.0f} "
+            f"{display['demand_flow_rate']['unit']}",
+        )
+        metrics[1].metric(
+            "Adjusted free-flow speed",
+            f"{display['adjusted_free_flow_speed']['value']:.1f} "
+            f"{display['adjusted_free_flow_speed']['unit']}",
+        )
+        metrics[0].metric(
+            "Base free-flow speed",
+            f"{display['base_free_flow_speed']['value']:.1f} "
+            f"{display['base_free_flow_speed']['unit']}",
+        )
+        metrics[1].metric(
+            "Heavy vehicle adjustment factor",
+            f"{outputs['heavy_vehicle_adjustment_factor']:.3f}",
+        )
+        metrics[0].metric(
+            "Capacity",
+            f"{display['capacity']['value']:.0f} {display['capacity']['unit']}",
+        )
+        metrics[1].metric("Capacity check", outputs["capacity_check"].replace("_", " "))
+
+        with st.expander("Calculation details"):
+            render_list("Assumptions", result_data["assumptions"], "No assumptions reported.")
+            render_list("Warnings", result_data["warnings"], "No warnings reported.")
+            render_list(
+                "Unsupported scope notes",
+                outputs["unsupported_scope_notes"],
+                "No unsupported scope notes reported.",
+            )
+        with st.expander("Audit / intermediate values"):
+            st.json(audit)
+            st.dataframe(
+                result_data["intermediate_values"],
+                hide_index=True,
+                use_container_width=True,
+            )
+        with st.expander("Full JSON"):
+            st.json(
+                {
+                    "calculation_type": "manual_basic_freeway_segment_v0_1",
+                    "unit_system": result_unit_system,
+                    "display_outputs": display,
+                    "engine_result": result_data,
+                    "audit_record": audit,
+                }
+            )
 
 
 def _render_manual_multilane_load_controls() -> None:
@@ -1617,7 +1985,7 @@ def main() -> None:
     with header_right:
         mode_label = st.radio(
             "Calculator mode",
-            ["Two-Lane", "Facility", "Multilane", "Examples"],
+            ["Two-Lane", "Facility", "Multilane", "Freeway", "Examples"],
             horizontal=True,
             label_visibility="collapsed",
             key="calculator_mode",
@@ -1627,6 +1995,7 @@ def main() -> None:
         "Two-Lane": "Manual single segment calculator",
         "Facility": "Manual Facility Calculator v0.1",
         "Multilane": "Manual Multilane Highway Segment v0.1",
+        "Freeway": "Manual Basic Freeway Segment v0.1",
         "Examples": "Validated examples / QA",
     }[mode_label]
     if mode == "Manual single segment calculator":
@@ -1635,6 +2004,8 @@ def main() -> None:
         render_manual_facility_calculator()
     elif mode == "Manual Multilane Highway Segment v0.1":
         render_manual_multilane_calculator()
+    elif mode == "Manual Basic Freeway Segment v0.1":
+        render_manual_freeway_calculator()
     else:
         render_validated_case_viewer()
     st.divider()
