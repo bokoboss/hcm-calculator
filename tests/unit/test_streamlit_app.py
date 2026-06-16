@@ -8,9 +8,13 @@ from hcmcalc.ui.supported_workflows import (
     BASIC_FREEWAY_RAMP_DENSITY_HELP,
     BASIC_FREEWAY_RAMP_DENSITY_LABEL,
     CALCULATION_DETAILS_LABEL,
+    EXPORT_REPORT_LABEL,
     EXAMPLE_WORKFLOW_NOTE,
+    PROJECT_LOAD_LABEL,
+    PROJECT_OUTPUT_LABEL,
     PRERUN_RESULTS_PLACEHOLDER,
     STARTING_VALUES_CAPTION,
+    STARTING_VALUES_LABEL,
     SUPPORTED_WORKFLOW_SECTIONS,
     VALIDATION_EXPANDER_LABEL,
 )
@@ -33,6 +37,20 @@ def test_supported_segment_types_map_to_existing_schematics() -> None:
 
 def test_unknown_segment_type_has_no_schematic() -> None:
     assert get_segment_schematic_path("unknown") is None
+
+
+def test_required_two_lane_schematic_assets_exist() -> None:
+    schematic_paths = {
+        get_segment_schematic_path(segment_type)
+        for segment_type in ("passing_constrained", "passing_zone", "passing_lane")
+    }
+
+    assert {path.name for path in schematic_paths if path is not None} == {
+        "passing_constrained.png",
+        "passing_zone.png",
+        "passing_lane.png",
+    }
+    assert all(path is not None and path.is_file() for path in schematic_paths)
 
 
 def test_compact_rows_excludes_nested_outputs() -> None:
@@ -103,6 +121,10 @@ def test_calculator_ui_shared_grammar_labels_are_standardized() -> None:
     assert VALIDATION_EXPANDER_LABEL == "Validation basis and limitations"
     assert CALCULATION_DETAILS_LABEL == "Calculation details"
     assert AUDIT_EXPANDER_LABEL == "Audit / intermediate values"
+    assert STARTING_VALUES_LABEL == "Starting values"
+    assert PROJECT_LOAD_LABEL == "Project file / Load"
+    assert PROJECT_OUTPUT_LABEL == "Project output"
+    assert EXPORT_REPORT_LABEL == "Export / Report"
     assert PRERUN_RESULTS_PLACEHOLDER == "Results will appear after calculation."
     assert STARTING_VALUES_CAPTION == (
         "Starting values only prefill supported inputs. You may edit values before "
@@ -119,11 +141,14 @@ def test_supported_workflows_content_names_current_scope() -> None:
 
     assert set(sections) == {
         "Two-Lane Highway",
+        "Two-Lane Facility",
         "Multilane Highway",
         "Basic Freeway",
+        "Examples / Validation",
     }
     assert "Manual Single Segment Calculator" in sections["Two-Lane Highway"]["supported"]
-    assert "Manual Facility Calculator" in sections["Two-Lane Highway"]["supported"]
+    assert "Manual Facility Calculator" in sections["Two-Lane Facility"]["supported"]
+    assert "Save/Load" in sections["Two-Lane Highway"]["save_load_export"]
     assert (
         "Chapter 26 Example 4 EB/WB-compatible validated path"
         in sections["Multilane Highway"]["supported"]
@@ -134,4 +159,5 @@ def test_supported_workflows_content_names_current_scope() -> None:
     )
     assert "not a general freeway facility calculator" in sections["Basic Freeway"]["limitations"]
     assert "not a Basic Freeway calculator" in sections["Multilane Highway"]["limitations"]
+    assert "Reference-backed checks" in sections["Examples / Validation"]["supported"]
     assert "not the main product model" in EXAMPLE_WORKFLOW_NOTE

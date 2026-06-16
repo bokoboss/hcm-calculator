@@ -11,6 +11,7 @@ class WorkflowSection(TypedDict):
     title: str
     supported: list[str]
     limitations: list[str]
+    save_load_export: str
 
 
 APP_MODE_LABELS = (
@@ -34,6 +35,10 @@ APP_MODE_TO_VIEW = {
 VALIDATION_EXPANDER_LABEL = "Validation basis and limitations"
 CALCULATION_DETAILS_LABEL = "Calculation details"
 AUDIT_EXPANDER_LABEL = "Audit / intermediate values"
+STARTING_VALUES_LABEL = "Starting values"
+PROJECT_LOAD_LABEL = "Project file / Load"
+PROJECT_OUTPUT_LABEL = "Project output"
+EXPORT_REPORT_LABEL = "Export / Report"
 STARTING_VALUES_CAPTION = (
     "Starting values only prefill supported inputs. You may edit values before "
     "running the calculation."
@@ -58,6 +63,24 @@ SUPPORTED_WORKFLOW_SECTIONS: tuple[WorkflowSection, ...] = (
             "only implemented HCM7 Chapter 15 paths",
             "unsupported combinations remain guarded",
         ],
+        "save_load_export": (
+            "Project JSON Save/Load and CSV, Excel, Markdown, and report JSON exports."
+        ),
+    },
+    {
+        "title": "Two-Lane Facility",
+        "supported": [
+            "Manual Facility Calculator",
+            "Chapter 26 Example 3 and 4 facility-backed starting values",
+            "guarded segment table edits",
+        ],
+        "limitations": [
+            "not full general Chapter 15 facility support",
+            "arbitrary segment sequences and unsupported passing-lane contexts remain guarded",
+        ],
+        "save_load_export": (
+            "Project JSON Save/Load with table-oriented segment results and report exports."
+        ),
     },
     {
         "title": "Multilane Highway",
@@ -73,6 +96,9 @@ SUPPORTED_WORKFLOW_SECTIONS: tuple[WorkflowSection, ...] = (
             "not ramp/weaving/merge/diverge/facility workflow",
             "unsupported combinations remain guarded",
         ],
+        "save_load_export": (
+            "Project JSON Save/Load and CSV, Excel, Markdown, and report JSON exports."
+        ),
     },
     {
         "title": "Basic Freeway",
@@ -93,6 +119,24 @@ SUPPORTED_WORKFLOW_SECTIONS: tuple[WorkflowSection, ...] = (
             "no reliability",
             "no facility/corridor workflow",
         ],
+        "save_load_export": (
+            "Project JSON Save/Load and CSV, Excel, Markdown, and report JSON exports."
+        ),
+    },
+    {
+        "title": "Examples / Validation",
+        "supported": [
+            "Validation examples",
+            "Reference-backed checks",
+            "Example-backed regression cases",
+        ],
+        "limitations": [
+            "not the primary calculator data-entry workflow",
+            "limited to implemented fixture cases",
+        ],
+        "save_load_export": (
+            "Selected-case result JSON remains available where current result rendering supports it."
+        ),
     },
 )
 
