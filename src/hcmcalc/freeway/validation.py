@@ -36,6 +36,29 @@ UNSUPPORTED_INPUT_KEYS = {
     "total_lateral_clearance_ft": "Multilane Highway total lateral clearance",
     "left_side_lateral_clearance_ft": "Multilane Highway left-side lateral clearance",
     "grade_percent": "specific grade PCE branch",
+    "driver_population_factor": "driver population adjustment inputs",
+}
+
+ALLOWED_INPUT_KEYS = {
+    "case_id",
+    "facility_type",
+    "analysis_type",
+    "direction",
+    "number_of_lanes",
+    "segment_length_mi",
+    "demand_volume_veh_h",
+    "peak_hour_factor",
+    "heavy_vehicle_percent",
+    "truck_mix",
+    "terrain_type",
+    "ffs_source",
+    "free_flow_speed_mph",
+    "base_free_flow_speed_mph",
+    "lane_width_ft",
+    "right_side_lateral_clearance_ft",
+    "total_ramp_density_per_mi",
+    "speed_adjustment_factor",
+    "capacity_adjustment_factor",
 }
 
 SUPPORTED_ANALYSIS_TYPES = {"basic_segment", "basic_freeway_segment"}
@@ -59,6 +82,13 @@ def reject_unsupported_scope_keys(values: dict[str, Any]) -> None:
                 f"Basic Freeway Segment v0.1 does not accept {label}.",
                 unsupported_reason=label,
             )
+    extra_keys = sorted(set(values) - ALLOWED_INPUT_KEYS)
+    if extra_keys:
+        raise UnsupportedScopeError(
+            "Basic Freeway Segment v0.1 does not accept unrecognized or "
+            "out-of-scope inputs: " + ", ".join(extra_keys) + ".",
+            unsupported_reason="unrecognized or out-of-scope inputs",
+        )
 
 
 def validate_inputs(inputs: BasicFreewaySegmentInputs) -> None:

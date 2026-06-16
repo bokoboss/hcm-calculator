@@ -67,6 +67,7 @@ def test_unsupported_workflows_are_rejected(unsupported_key: str) -> None:
         "total_lateral_clearance_ft",
         "left_side_lateral_clearance_ft",
         "grade_percent",
+        "driver_population_factor",
     ],
 )
 def test_adjacent_methodology_inputs_are_rejected_even_when_zero(
@@ -76,6 +77,14 @@ def test_adjacent_methodology_inputs_are_rejected_even_when_zero(
     inputs[unsupported_key] = 0.0
 
     with pytest.raises(UnsupportedScopeError):
+        BasicFreewaySegmentMethod().calculate(inputs)
+
+
+def test_unrecognized_out_of_scope_input_is_rejected() -> None:
+    inputs = _inputs()
+    inputs["queue_discharge_rate_pc_h_ln"] = 1800.0
+
+    with pytest.raises(UnsupportedScopeError, match="unrecognized"):
         BasicFreewaySegmentMethod().calculate(inputs)
 
 

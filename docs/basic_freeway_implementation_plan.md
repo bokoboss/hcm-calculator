@@ -21,12 +21,12 @@ engine v0.1 is now implemented as an engine-only package under
 ramps, weaving, merge/diverge, managed lanes, work zones, reliability, or
 facility/corridor workflows.
 
-No Chapter 26 Basic Freeway validation fixture files are added yet. The local
-Chapter 12 methodology reference provides the formulas and tables needed for
-formula-level implementation, but this repository does not currently contain a
-published Chapter 26 Basic Freeway example with complete mapped expected
-outputs suitable for `references/freeway_example_inputs.yaml` and
-`references/freeway_expected_outputs.yaml`.
+BF-2 adds Chapter 26 Basic Freeway Segment validation fixtures for Example
+Problem 1. The local Chapter 12 methodology reference provides the formulas and
+tables used by the engine, while the local Chapter 26 example reference provides
+the published example inputs and rounded expected outputs used for validation.
+The PDF references remain local read-only sources and are not copied into the
+repository.
 
 ## Scope Separation
 
@@ -126,8 +126,8 @@ Implemented responsibilities:
 - `validation.py`: physical input validation and unsupported-scope guardrails.
 - `coefficients.py`: reference-backed Chapter 12 constants used by Basic
   Freeway v0.1.
-- `references/`: no Basic Freeway fixtures yet because no complete published
-  Chapter 26 Basic Freeway expected-output mapping is available in this repo.
+- `references/`: Basic Freeway Example Problem 1 validation fixtures for the
+  selected Chapter 26 operational segment case.
 - `tests/`: formula, boundary, invalid input, guardrail, and audit coverage.
 
 The current Multilane code may inform neutral helper patterns, such as explicit
@@ -172,6 +172,7 @@ Implemented input groups:
 Implemented outputs:
 
 - support and scope status;
+- input summary for audit traceability;
 - adjusted free-flow speed and capacity-related values;
 - demand flow rate under the implemented methodology basis;
 - speed, density, demand-capacity status, and level of service;
@@ -216,19 +217,65 @@ facility/corridor analyses through the Basic Freeway Segment method.
   12-18, 12-20, 12-21, and 12-25.
 - Exposes auditable inputs, assumptions, intermediate values, outputs, warnings,
   source references, and unsupported-scope notes.
-- Does not add Chapter 26 validation fixtures because no complete Basic
-  Freeway example expected-output mapping is available in this repo yet.
+
+## Chapter 26 Basic Freeway Candidate Inventory
+
+The supplied Chapter 26 freeway/multilane example reference was inspected for
+Basic Freeway Segment candidates. The selected validation case is:
+
+- **BF-CH26-001: Example Problem 1, Four-Lane Freeway LOS**. Selected for v0.1
+  validation because it is a one-direction, one-segment, uninterrupted-flow
+  Basic Freeway Segment operational analysis. It uses the implemented estimated
+  FFS path, level-terrain general PCE, regular-user driver population, base
+  SAF/CAF values, and publishes/checks adjusted FFS, capacity, demand flow
+  rate, breakpoint, speed, density, and LOS.
+
+Rejected or deferred candidates:
+
+- **Example Problem 2, Number of Lanes Required for Target LOS**. Basic Freeway
+  design analysis, but v0.1 is an operational engine and does not determine
+  required lane count.
+- **Example Problem 3, Six-Lane Freeway LOS and Capacity**. Basic Freeway
+  operational/planning candidate with present/future conditions. Deferred
+  because Example Problem 1 is simpler and sufficient for the first validation
+  fixture.
+- **Example Problem 4, LOS on a Five-Lane Highway with a Two-Way Left-Turn
+  Lane**. Multilane Highway Segment, already separate from Basic Freeway.
+- **Example Problem 5, Mixed-Flow Operational Performance**. Freeway mixed-flow
+  analysis requiring branches outside Basic Freeway v0.1.
+- **Example Problem 6, Severe Weather Effects on a Basic Freeway Segment**.
+  Basic Freeway operational analysis with adverse-weather SAF/CAF inputs.
+  Deferred because v0.1 validation starts with the base-condition operational
+  case; weather effects are not a broader supported workflow.
+- **Example Problem 7, Basic Managed Lane Segment**. Managed-lane analysis and
+  out of scope for Basic Freeway Segment v0.1.
+
+Basic Freeway Segment remains separate from Multilane Highway Segment. Passing
+the BF-CH26-001 fixture does not imply support for Multilane Highway, ramps,
+merge/diverge, weaving, managed lanes, work zones, reliability, adverse-weather
+workflow, or freeway facility/corridor analysis.
 
 ### BF-2: Validation, Boundary, and Guardrail Hardening
 
-- Add formula-level unit tests for implemented steps.
-- Add table lookup and boundary tests for implemented reference ranges.
-- Add invalid input and unsupported-condition tests.
-- Add validated HCM example tests with documented tolerances.
-- Add regression checks ensuring Two-Lane and Multilane behavior remain
-  unchanged.
-- Harden errors so unsupported Basic Freeway, adjacent freeway, or facility
-  cases fail clearly.
+- Added Chapter 26 Example Problem 1 fixtures:
+  `references/freeway_example_inputs.yaml` and
+  `references/freeway_expected_outputs.yaml`.
+- Added validation tests with documented tolerances for demand flow rate,
+  adjusted FFS, capacity, breakpoint, speed, density, and LOS.
+- Added boundary tests for PHF = 1.0, zero heavy vehicles, minimum positive
+  volume, LOS thresholds, capacity threshold behavior, non-finite values, and
+  FFS range endpoints.
+- Added guardrail tests for Multilane Highway, ramp, weaving, merge/diverge,
+  managed lanes, work zones, reliability, facility/corridor, driver-population
+  adjustment inputs, adjacent-methodology inputs, and arbitrary out-of-scope
+  inputs.
+- Hardened audit outputs with a normalized input summary, validation status,
+  driver-population factor, Chapter 26 source reference, and computed speed and
+  density sanity checks.
+- Corrected the Basic Freeway adjusted breakpoint helper to use the Chapter 12
+  `CAF^2` relationship.
+- No UI, Save/Load, export/reporting, ramps, weaving, merge/diverge, managed
+  lane, work-zone, reliability, or facility/corridor support was added.
 
 ### BF-3: Manual Basic Freeway UI v0.1
 

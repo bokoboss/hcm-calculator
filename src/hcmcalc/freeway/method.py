@@ -1,5 +1,6 @@
 """HCM7 Chapter 12 Basic Freeway Segment engine v0.1."""
 
+from dataclasses import asdict
 from math import isfinite
 from typing import Any
 
@@ -73,6 +74,7 @@ class BasicFreewaySegmentMethod:
         )
         pce = general_terrain_passenger_car_equivalent(parsed.terrain_type)
         hv_factor = heavy_vehicle_adjustment_factor(parsed.heavy_vehicle_percent, pce)
+        driver_population_factor = 1.0
         flow_rate = demand_flow_rate(
             parsed.demand_volume_veh_h,
             parsed.peak_hour_factor,
@@ -82,11 +84,13 @@ class BasicFreewaySegmentMethod:
         demand_exceeds_capacity = flow_rate > adjusted_capacity
         speed = speed_from_flow_rate(flow_rate, adjusted_ffs, breakpoint, adjusted_capacity)
         density = traffic_density(flow_rate, speed)
+        _validate_computed_output(speed, "computed speed")
+        _validate_computed_output(density, "computed density", allow_zero=True)
         los = level_of_service(density, demand_exceeds_capacity=demand_exceeds_capacity)
 
         warnings = [
-            "Basic Freeway Segment v0.1 is reference-backed to Chapter 12 formulas "
-            "but has no published Chapter 26 Basic Freeway validation fixture in this repository."
+            "Basic Freeway Segment v0.1 is validated only against Chapter 26 "
+            "Example Problem 1 for the supported one-segment operational path."
         ]
         if demand_exceeds_capacity:
             warnings.append(
@@ -95,6 +99,7 @@ class BasicFreewaySegmentMethod:
             )
         assumptions = [
             "One-direction, one-segment uninterrupted-flow Basic Freeway Segment analysis.",
+            "Driver population consists of regular users; driver population factor = 1.0.",
             "General-purpose lanes only; no ramps, weaving, merge/diverge, managed lanes, work zones, reliability, or facility workflow.",
             "Heavy-vehicle PCE uses Chapter 12 general-terrain level/rolling defaults only.",
         ]
@@ -116,11 +121,13 @@ class BasicFreewaySegmentMethod:
             "HCM7 Eq. 12-5, Eq. 12-6, Eq. 12-8",
             "HCM7 Eq. 12-9 and Eq. 12-10; Exhibit 12-25",
             "HCM7 Eq. 12-11; Exhibit 12-15",
+            "HCM7 Chapter 26 Freeway and Multilane Highway Example Problem 1",
         ]
         outputs = {
             "calculation_type": "basic_freeway_segment_v0_1",
-            "support_status": "chapter_12_formula_backed_no_chapter_26_fixture",
+            "support_status": "chapter_26_example_validated_v0_1",
             "scope_status": "supported_basic_freeway_segment_v0_1",
+            "input_summary": asdict(parsed),
             "ffs_source": parsed.ffs_source,
             "base_free_flow_speed_mph": base_free_flow_speed,
             "lane_width_adjustment_mph": lane_adjustment,
@@ -134,6 +141,7 @@ class BasicFreewaySegmentMethod:
             "breakpoint_flow_rate_pc_h_ln": breakpoint,
             "passenger_car_equivalent": pce,
             "heavy_vehicle_adjustment_factor": hv_factor,
+            "driver_population_factor": driver_population_factor,
             "demand_flow_rate_pc_h_ln": flow_rate,
             "demand_capacity_ratio": flow_rate / adjusted_capacity,
             "demand_exceeds_capacity": demand_exceeds_capacity,
@@ -282,7 +290,9 @@ def breakpoint_flow_rate(
     _finite(capacity_adjustment_factor, "capacity adjustment factor")
     if capacity_adjustment_factor <= 0:
         raise HCMCalcError("Capacity adjustment factor must be greater than zero.")
-    return (1000.0 + 40.0 * (75.0 - adjusted_ffs_mph)) * capacity_adjustment_factor
+    return (1000.0 + 40.0 * (75.0 - adjusted_ffs_mph)) * (
+        capacity_adjustment_factor**2
+    )
 
 
 def general_terrain_passenger_car_equivalent(terrain_type: str) -> float:
@@ -401,6 +411,14 @@ def _finite(value: float, label: str) -> None:
         raise HCMCalcError(f"{label} must be finite.")
 
 
+def _validate_computed_output(
+    value: float, label: str, *, allow_zero: bool = False
+) -> None:
+    _finite(value, label)
+    if value < 0 or (value == 0 and not allow_zero):
+        raise HCMCalcError(f"{label} must be greater than zero.")
+
+
 def _intermediate_values(outputs: dict[str, Any]) -> list[IntermediateValue]:
     sources = {
         "base_free_flow_speed_mph": "HCM7 Step 2; measured FFS or Eq. 12-2",
@@ -415,6 +433,7 @@ def _intermediate_values(outputs: dict[str, Any]) -> list[IntermediateValue]:
         "breakpoint_flow_rate_pc_h_ln": "HCM7 Exhibit 12-6",
         "passenger_car_equivalent": "HCM7 Exhibit 12-25",
         "heavy_vehicle_adjustment_factor": "HCM7 Eq. 12-10",
+        "driver_population_factor": "HCM7 Chapter 26 Example Problem 1 regular users",
         "demand_flow_rate_pc_h_ln": "HCM7 Eq. 12-9",
         "demand_capacity_ratio": "HCM7 capacity check",
         "demand_exceeds_capacity": "HCM7 capacity check",
