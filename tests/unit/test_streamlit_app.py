@@ -105,11 +105,11 @@ def test_template_switching_clears_stale_facility_results() -> None:
 
 def test_app_mode_list_includes_supported_workflows() -> None:
     assert APP_MODE_LABELS == (
-        "Supported Workflows",
         "Two-Lane Segment",
         "Two-Lane Facility",
         "Multilane Segment",
         "Basic Freeway Segment",
+        "Supported Workflows",
         "Validation Examples",
     )
     assert APP_MODE_TO_VIEW["Supported Workflows"] == "supported_workflows"
@@ -121,13 +121,13 @@ def test_calculator_ui_shared_grammar_labels_are_standardized() -> None:
     assert VALIDATION_EXPANDER_LABEL == "Validation basis and limitations"
     assert CALCULATION_DETAILS_LABEL == "Calculation details"
     assert AUDIT_EXPANDER_LABEL == "Audit / intermediate values"
-    assert STARTING_VALUES_LABEL == "Starting values"
-    assert PROJECT_LOAD_LABEL == "Project file / Load"
+    assert STARTING_VALUES_LABEL == "Optional defaults"
+    assert PROJECT_LOAD_LABEL == "Load saved project"
     assert PROJECT_OUTPUT_LABEL == "Project output"
     assert EXPORT_REPORT_LABEL == "Export / Report"
     assert PRERUN_RESULTS_PLACEHOLDER == "Results will appear after calculation."
     assert STARTING_VALUES_CAPTION == (
-        "Starting values only prefill supported inputs. You may edit values before "
+        "Optional defaults only prefill supported inputs. You may edit values before "
         "running the calculation."
     )
     assert BASIC_FREEWAY_RAMP_DENSITY_LABEL == "Ramp density for FFS adjustment"
