@@ -49,6 +49,34 @@ Not implemented yet:
   reliability, facility/corridor workflows, and specific-grade PCE tables
 - Production validation dataset
 
+## Supported Workflows
+
+The app is an engineering calculator, not an example-template viewer. Presets
+and examples provide starting values and validation references only. The primary
+workflow is: choose calculator, enter inputs, run calculation, review results,
+inspect calculation details and audit / intermediate values, then Save Project
+or Export / Report.
+
+Currently supported:
+
+- **Two-Lane Highway:** Manual Single Segment Calculator, Manual Facility
+  Calculator, validated Chapter 26 example-backed paths where available,
+  Save/Load, and Export/reporting. Only implemented HCM7 Chapter 15 paths are
+  supported; unsupported combinations remain guarded.
+- **Multilane Highway:** Manual Multilane Segment Calculator, Chapter 26
+  Example 4 EB/WB-compatible validated path, Metric/Imperial UI-boundary
+  conversion, Save/Load, and Export/reporting. It is not a Basic Freeway
+  calculator and does not support ramp, weaving, merge/diverge, or facility
+  workflows.
+- **Basic Freeway:** Manual Basic Freeway Segment Calculator, Chapter 26
+  Example 1-compatible validated path, Metric/Imperial UI-boundary conversion,
+  Save/Load, and Export/reporting. It is not a general freeway facility
+  calculator and does not support ramps, weaving, merge/diverge, managed lanes,
+  work zones, reliability, or facility/corridor workflows.
+
+See [Supported Workflows](docs/supported_workflows.md) for the concise app-wide
+scope summary.
+
 ## Local Setup
 
 Requires Python 3.12.
@@ -95,7 +123,7 @@ Run the single-page validated-case viewer from the repository root:
 streamlit run src/hcmcalc/ui/streamlit_app.py
 ```
 
-The single-page app provides five modes:
+The single-page app provides six modes:
 
 - **Manual Single Segment Calculator** accepts one straight or horizontal-curve
   Two-Lane Highway segment using Metric inputs by default or optional Imperial
@@ -140,7 +168,7 @@ The single-page app provides five modes:
   JSON sections for one direction, one segment, uninterrupted flow, and
   general-purpose lanes only. The Chapter 26 Example 1 input preset supplies
   starting values from `references/freeway_example_inputs.yaml`; it is not a
-  template-only viewer. Metric inputs are converted to engine-native Imperial
+  separate example viewer. Metric inputs are converted to engine-native Imperial
   values at the UI boundary and speed/density outputs are converted back for
   display. The page calls only the existing `src/hcmcalc/freeway` engine and
   does not add or change formulas. Save/Load controls are compactly placed
@@ -152,6 +180,10 @@ The single-page app provides five modes:
   engine-native Imperial inputs, limitations, warnings, assumptions, and any
   matching current result. Export/reporting preserves the same BF-CH26-001-
   compatible Basic Freeway Segment v0.1 scope only.
+- **Supported Workflows** summarizes current Two-Lane Highway, Multilane
+  Highway, Basic Freeway, Save/Load, Export / Report, and validation-reference
+  scope in the app. Limitations are visible but kept secondary to the calculator
+  workflow.
 
 The engine and CLI validation behavior remains based on the existing validated
 fixtures. CLI inputs, outputs, and JSON schema are unchanged.
