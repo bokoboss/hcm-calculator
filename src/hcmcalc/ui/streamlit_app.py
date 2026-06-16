@@ -47,9 +47,11 @@ from hcmcalc.ui.manual_multilane import (
 from hcmcalc.ui.manual_segment import run_manual_single_segment
 from hcmcalc.ui.project_io import (
     ProjectFileError,
+    create_manual_freeway_project_json,
     create_manual_facility_project_json,
     create_manual_multilane_project_json,
     create_manual_project_json,
+    load_manual_freeway_project_json,
     load_manual_facility_project_json,
     load_manual_multilane_project_json,
     load_manual_project_json,
@@ -581,6 +583,13 @@ def render_manual_multilane_calculator() -> None:
 def render_manual_freeway_calculator() -> None:
     """Render the Basic Freeway Segment validated-path worksheet."""
 
+    pending_project = st.session_state.pop("manual_freeway_pending_project", None)
+    if pending_project is not None:
+        _restore_manual_freeway_project(pending_project)
+    load_message = st.session_state.pop("manual_freeway_project_load_message", None)
+    if load_message is not None:
+        st.success(load_message)
+
     st.title("Manual Basic Freeway Segment Calculator")
     st.caption("Limited validated-path Basic Freeway Segment workflow.")
     st.info(
@@ -601,7 +610,10 @@ def render_manual_freeway_calculator() -> None:
             "Unsupported combinations remain guarded by the existing Basic Freeway "
             "engine validation."
         )
-        st.caption("Save/Load and export/reporting are not available in this PR.")
+        st.caption(
+            "Save/Load and export/reporting preserve only this Basic Freeway "
+            "Segment validated path."
+        )
 
     unit_label = st.radio(
         "Unit system",
@@ -620,6 +632,7 @@ def render_manual_freeway_calculator() -> None:
     st.caption(
         "Preset values are starting values for the calculator, not a template-only viewer."
     )
+    _render_manual_freeway_load_controls()
     preset_context = (preset_id, unit_system)
     if st.session_state.get("manual_freeway_preset_context") != preset_context:
         clear_manual_freeway_state(st.session_state)
@@ -822,6 +835,35 @@ def render_manual_freeway_calculator() -> None:
                 "If edited values leave the current supported path, the existing "
                 "Basic Freeway engine rejects them with a validation error."
             )
+        stored_audit = st.session_state.get("manual_freeway_audit")
+        calculation_matches_inputs = (
+            isinstance(stored_audit, dict)
+            and stored_audit.get("displayed_inputs") == displayed_inputs
+            and stored_audit.get("submitted_inputs") == submitted_inputs
+            and stored_audit.get("unit_system") == unit_system
+            and stored_audit.get("preset_id") == preset_id
+        )
+        project_json = create_manual_freeway_project_json(
+            preset_id,
+            unit_system,
+            displayed_inputs,
+            result=st.session_state.get("manual_freeway_result")
+            if calculation_matches_inputs
+            else None,
+            audit_record=stored_audit if calculation_matches_inputs else None,
+        )
+        with st.expander("Save Project", expanded=False):
+            st.caption(
+                "Project JSON restores displayed inputs and engine-native values for "
+                "this guarded Basic Freeway Segment workflow."
+            )
+            st.download_button(
+                "Download Basic Freeway project JSON",
+                data=project_json,
+                file_name=f"{preset_id}-manual-basic-freeway-project.json",
+                mime="application/json",
+                use_container_width=True,
+            )
 
     if run_freeway:
         st.session_state.pop("manual_freeway_result", None)
@@ -933,6 +975,95 @@ def render_manual_freeway_calculator() -> None:
                     "audit_record": audit,
                 }
             )
+        render_export_report_section(
+            "manual_basic_freeway_v0",
+            result_data,
+            result_unit_system,
+            inputs=(
+                audit.get("displayed_inputs", displayed_inputs)
+                if isinstance(audit, dict)
+                else displayed_inputs
+            ),
+            audit_record=audit,
+            template_id=preset_id,
+        )
+
+
+def _render_manual_freeway_load_controls() -> None:
+    """Render guarded Manual Basic Freeway project loading controls."""
+
+    with st.expander("Load Project"):
+        uploaded_project = st.file_uploader(
+            "Load Manual Basic Freeway project JSON",
+            type=["json"],
+            key="manual_freeway_project_file_uploader",
+        )
+        if st.button(
+            "Load Basic Freeway project",
+            disabled=uploaded_project is None,
+            use_container_width=True,
+        ):
+            try:
+                project = load_manual_freeway_project_json(uploaded_project.getvalue())
+            except ProjectFileError as exc:
+                st.error(str(exc))
+            else:
+                st.session_state["manual_freeway_pending_project"] = project
+                st.rerun()
+
+
+def _restore_manual_freeway_project(project: dict[str, Any]) -> None:
+    """Restore validated Manual Basic Freeway project data into worksheet state."""
+
+    preset_id = project["preset_id"]
+    unit_system = project["unit_system"]
+    displayed = project["displayed_ui_inputs"]
+    st.session_state["manual_freeway_unit_label"] = unit_system.title()
+    st.session_state["freeway_preset_id"] = preset_id
+    st.session_state["manual_freeway_preset_context"] = (preset_id, unit_system)
+    ffs_source_label = (
+        "Estimated from geometry"
+        if displayed["ffs_source"] == "estimated"
+        else "Measured"
+    )
+    widget_fields = {
+        "lanes": "number_of_lanes",
+        "length": "segment_length",
+        "base_ffs": "base_free_flow_speed",
+        "lane_width": "lane_width",
+        "right_clearance": "right_side_lateral_clearance",
+        "ramp_density": "total_ramp_density",
+        "demand": "demand_volume_veh_h",
+        "phf": "peak_hour_factor",
+        "heavy": "heavy_vehicle_percent",
+        "terrain": "terrain_type",
+        "saf": "speed_adjustment_factor",
+        "caf": "capacity_adjustment_factor",
+    }
+    for widget_name, input_name in widget_fields.items():
+        st.session_state[
+            f"manual_freeway_input_{widget_name}_{preset_id}_{unit_system}"
+        ] = displayed[input_name]
+    st.session_state[
+        f"manual_freeway_input_ffs_source_{preset_id}_{unit_system}"
+    ] = ffs_source_label
+    if displayed.get("free_flow_speed") is not None:
+        st.session_state[
+            f"manual_freeway_input_free_flow_speed_{preset_id}_{unit_system}"
+        ] = displayed["free_flow_speed"]
+    for state_key, project_key in (
+        ("manual_freeway_result", "calculation_result"),
+        ("manual_freeway_audit", "audit"),
+    ):
+        if project.get(project_key) is None:
+            st.session_state.pop(state_key, None)
+        else:
+            st.session_state[state_key] = project[project_key]
+    st.session_state.pop("manual_freeway_error", None)
+    st.session_state["manual_freeway_project_load_message"] = (
+        "Manual Basic Freeway project loaded. Review the restored inputs and "
+        "click Run calculation to calculate again."
+    )
 
 
 def _render_manual_multilane_load_controls() -> None:

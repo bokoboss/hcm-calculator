@@ -36,6 +36,8 @@ Implemented:
   Calculator v0.1, and Validated examples / QA viewer
 - Manual Multilane Save/Load and CSV, Excel, Markdown, and Report JSON export
   integration using `project_type = manual_multilane_v0`
+- Manual Basic Freeway Segment Save/Load and CSV, Excel, Markdown, and Report
+  JSON export integration using `project_type = manual_basic_freeway_v0`
 - Unit and validation fixture tests
 
 Not implemented yet:
@@ -43,9 +45,8 @@ Not implemented yet:
 - Full HCM Chapter 15 calculation engine
 - General facility manual input
 - General Multilane Highway LOS calculations beyond Chapter 26 Example Problem 4
-- Basic Freeway Save/Load, export/reporting, ramps, weaving, merge/diverge,
-  managed lanes, work zones, reliability, facility/corridor workflows, and
-  specific-grade PCE tables
+- Basic Freeway ramps, weaving, merge/diverge, managed lanes, work zones,
+  reliability, facility/corridor workflows, and specific-grade PCE tables
 - Production validation dataset
 
 ## Local Setup
@@ -142,8 +143,15 @@ The single-page app provides five modes:
   template-only viewer. Metric inputs are converted to engine-native Imperial
   values at the UI boundary and speed/density outputs are converted back for
   display. The page calls only the existing `src/hcmcalc/freeway` engine and
-  does not add or change formulas. Save/Load and export/reporting are not
-  exposed for Basic Freeway v0.1.
+  does not add or change formulas. Save/Load controls are compactly placed
+  around the calculator inputs: load sits near the input preset controls and
+  save sits below the worksheet inputs. After a successful calculation, an
+  **Export / Report** section provides CSV, Excel `.xlsx`, Markdown, and
+  report-friendly JSON downloads. Project JSON uses
+  `project_type = manual_basic_freeway_v0`, preserves displayed UI values,
+  engine-native Imperial inputs, limitations, warnings, assumptions, and any
+  matching current result. Export/reporting preserves the same BF-CH26-001-
+  compatible Basic Freeway Segment v0.1 scope only.
 
 The engine and CLI validation behavior remains based on the existing validated
 fixtures. CLI inputs, outputs, and JSON schema are unchanged.
@@ -172,10 +180,10 @@ Limitations:
 - Existing Manual Single Segment Save/Load using
   `project_type = manual_single_segment` remains supported.
 - Export/reporting v0.1 supports Manual Single Segment, guarded Manual Facility
-  v0.1, and guarded Manual Multilane v0.1 results. Exports use the selected UI
-  display unit system, label units explicitly, include workflow limitations,
-  and format the existing calculated result without changing calculation
-  behavior.
+  v0.1, guarded Manual Multilane v0.1, and guarded Manual Basic Freeway
+  Segment v0.1 results. Exports use the selected UI display unit system, label
+  units explicitly, include workflow limitations, and format the existing
+  calculated result without changing calculation behavior.
 - No general mountainous grade table; unsupported grade/length combinations are rejected
 - No downstream corridor effects for single passing-lane mode
 - Passing Lane calculation remains limited to the engine's validated Class 1, 8% heavy-vehicle path
@@ -194,10 +202,12 @@ Limitations:
   Chapter 26 examples are Basic Freeway, mixed-flow freeway, adverse-weather
   Basic Freeway, or managed-lane cases and cannot safely serve as a second
   Multilane validation case.
-- Basic Freeway Save/Load, export/reporting, ramps, weaving, merge/diverge,
-  managed lanes, work zones, reliability analysis, facility/corridor workflows,
-  and specific-grade Basic Freeway PCE tables remain unsupported. The Manual
-  Basic Freeway Segment Calculator v0.1 is not a general freeway facility
+- Manual Basic Freeway Segment Save/Load and reporting are supported only for
+  `project_type = manual_basic_freeway_v0` and the BF-CH26-001-compatible
+  validated path. Basic Freeway ramps, weaving, merge/diverge, managed lanes,
+  work zones, reliability analysis, facility/corridor workflows, and
+  specific-grade Basic Freeway PCE tables remain unsupported. The Manual Basic
+  Freeway Segment Calculator v0.1 is not a general freeway facility
   calculator; it is Chapter 12 formula-backed through the existing engine and
   validated against Chapter 26 Basic Freeway Example Problem 1 for the current
   one-segment operational v0.1 path only.
