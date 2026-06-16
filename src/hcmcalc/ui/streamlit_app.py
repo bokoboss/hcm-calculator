@@ -45,6 +45,16 @@ from hcmcalc.ui.manual_multilane import (
     run_manual_multilane,
 )
 from hcmcalc.ui.manual_segment import run_manual_single_segment
+from hcmcalc.ui.layout import (
+    render_calculator_shell,
+    render_export_report_section_container,
+    render_page_header,
+    render_project_load_section,
+    render_project_output_section,
+    render_section_label,
+    render_starting_values_section,
+    render_validation_basis_and_limitations,
+)
 from hcmcalc.ui.project_io import (
     ProjectFileError,
     create_manual_freeway_project_json,
@@ -71,11 +81,11 @@ from hcmcalc.ui.supported_workflows import (
     BASIC_FREEWAY_RAMP_DENSITY_HELP,
     BASIC_FREEWAY_RAMP_DENSITY_LABEL,
     CALCULATION_DETAILS_LABEL,
+    EXPORT_REPORT_LABEL,
     EXAMPLE_WORKFLOW_NOTE,
     PRERUN_RESULTS_PLACEHOLDER,
-    STARTING_VALUES_CAPTION,
+    STARTING_VALUES_LABEL,
     SUPPORTED_WORKFLOW_SECTIONS,
-    VALIDATION_EXPANDER_LABEL,
 )
 from hcmcalc.ui.units import (
     DEFAULT_UNIT_SYSTEM,
@@ -106,30 +116,6 @@ LIMITATIONS_FOOTER = (
     "Unsupported combinations remain guarded. Save/Load and Export / Report "
     "preserve only the supported manual workflows."
 )
-def render_page_header(title: str, caption: str) -> None:
-    """Render the standard calculator page heading."""
-
-    st.title(title)
-    st.caption(caption)
-
-
-def render_validation_basis_and_limitations(
-    *,
-    validation_basis: str,
-    supported_scope: str,
-    not_supported: str,
-) -> None:
-    """Render the standard collapsed validation and limitation summary."""
-
-    with st.expander(VALIDATION_EXPANDER_LABEL, expanded=False):
-        st.markdown("**Validation basis**")
-        st.caption(validation_basis)
-        st.markdown("**Current supported scope**")
-        st.caption(supported_scope)
-        st.markdown("**Not supported**")
-        st.caption(not_supported)
-
-
 def apply_ui_styles() -> None:
     """Apply restrained presentation styles without changing app behavior."""
 
@@ -307,30 +293,35 @@ def render_validated_case_viewer() -> None:
 def render_supported_workflows_page() -> None:
     """Render the app-wide supported workflow and scope summary."""
 
-    st.title("Supported Workflows")
-    st.caption(
-        "Use this page to confirm current calculator scope before saving, loading, "
-        "or exporting a project."
+    render_page_header(
+        "Supported Workflows",
+        "Current calculator modes, limitations, and project/export availability.",
     )
     st.markdown(
-        "The app is an engineering calculator: choose a calculator, enter inputs, "
+        "Choose a calculator, optionally load a project, enter inputs, "
         "run the calculation, review results, inspect calculation details and audit "
         "records, then save or export."
     )
 
     for section in SUPPORTED_WORKFLOW_SECTIONS:
         st.subheader(section["title"])
-        columns = st.columns(2)
+        columns = st.columns([1.1, 1.1, 0.9], gap="medium")
         with columns[0]:
             st.markdown("**Supported**")
             for item in section["supported"]:
                 st.markdown(f"- {item}")
         with columns[1]:
-            with st.expander("Validation basis and limitations", expanded=False):
-                for item in section["limitations"]:
-                    st.markdown(f"- {item}")
+            st.markdown("**Current limitations**")
+            for item in section["limitations"]:
+                st.markdown(f"- {item}")
+        with columns[2]:
+            st.markdown("**Save/Load and Export availability**")
+            st.caption(section["save_load_export"])
 
-    st.subheader("Example / Validation Workflows")
+    st.subheader("Examples / Validation")
+    st.markdown("**Validation examples**")
+    st.markdown("**Reference-backed checks**")
+    st.markdown("**Example-backed regression cases**")
     st.caption(EXAMPLE_WORKFLOW_NOTE)
 
 
@@ -348,22 +339,26 @@ def render_manual_multilane_calculator() -> None:
         "Multilane Highway Calculator",
         "Limited Multilane Highway Segment workflow with guarded Chapter 26 validation paths.",
     )
-    unit_label = st.radio(
-        "Unit system",
-        ["Metric", "Imperial"],
-        horizontal=True,
-        key="manual_multilane_unit_label",
-    )
-    unit_system = unit_label.lower()
+    input_column, result_column = render_calculator_shell()
     template_options = multilane_template_options()
-    template_id = st.selectbox(
-        "Starting values",
-        list(template_options),
-        format_func=template_options.__getitem__,
-        key="multilane_template_id",
-    )
-    st.caption(STARTING_VALUES_CAPTION)
-    _render_manual_multilane_load_controls()
+    with input_column:
+        render_project_load_section(_render_manual_multilane_load_controls)
+        render_starting_values_section()
+        start_columns = st.columns([1.15, 0.85], gap="medium")
+        template_id = start_columns[0].selectbox(
+            STARTING_VALUES_LABEL,
+            list(template_options),
+            format_func=template_options.__getitem__,
+            key="multilane_template_id",
+            label_visibility="collapsed",
+        )
+        unit_label = start_columns[1].radio(
+            "Unit system",
+            ["Metric", "Imperial"],
+            horizontal=True,
+            key="manual_multilane_unit_label",
+        )
+    unit_system = unit_label.lower()
     template_context = (template_id, unit_system)
     if st.session_state.get("manual_multilane_template_context") != template_context:
         clear_manual_multilane_state(st.session_state)
@@ -389,15 +384,13 @@ def render_manual_multilane_calculator() -> None:
     speed_unit = "km/h" if metric else "mph"
     width_unit = "m" if metric else "ft"
     access_unit = "points/km" if metric else "per mi"
-    input_column, result_column = st.columns([1.05, 0.95], gap="large")
     with input_column:
-        st.markdown("**Inputs**")
         st.caption(
             "Some fields are intentionally constrained to preserve the validated "
             "Example 4 calculation path."
         )
         with st.form(f"multilane_form_{template_id}"):
-            st.markdown('<div class="compact-section-label">Setup</div>', unsafe_allow_html=True)
+            render_section_label("Setup")
             st.caption(
                 "Analysis type: Multilane Highway Segment."
             )
@@ -410,10 +403,7 @@ def render_manual_multilane_calculator() -> None:
                 f"{template['validation_status']}."
             )
 
-            st.markdown(
-                '<div class="compact-section-label">Roadway / Free-flow speed</div>',
-                unsafe_allow_html=True,
-            )
+            render_section_label("Roadway / Geometry")
             roadway_columns = st.columns(2)
             number_of_lanes = roadway_columns[0].number_input(
                 "Lanes in analysis direction",
@@ -453,10 +443,7 @@ def render_manual_multilane_calculator() -> None:
                 key=f"manual_multilane_input_access_{template_id}_{unit_system}",
             )
 
-            st.markdown(
-                '<div class="compact-section-label">Traffic</div>',
-                unsafe_allow_html=True,
-            )
+            render_section_label("Traffic")
             traffic_columns = st.columns(2)
             demand_volume_veh_h = traffic_columns[0].number_input(
                 "Demand volume (veh/h)",
@@ -487,6 +474,8 @@ def render_manual_multilane_calculator() -> None:
                 "Locked validation context: one direction, one segment, TWLTL median, "
                 "and default 30% SUT / 70% TT truck mix."
             )
+            render_section_label("Advanced / Optional")
+            st.caption("No optional Multilane controls are supported in this guarded path.")
             run_multilane = st.form_submit_button(
                 "Run calculation", type="primary", use_container_width=True
             )
@@ -521,6 +510,31 @@ def render_manual_multilane_calculator() -> None:
                 "outside the validated path are rejected by engine validation."
             ),
         )
+        def render_multilane_project_download() -> None:
+            stored_audit = st.session_state.get("manual_multilane_audit")
+            calculation_matches_inputs = (
+                isinstance(stored_audit, dict)
+                and stored_audit.get("displayed_inputs") == displayed_inputs
+                and stored_audit.get("submitted_inputs") == submitted_inputs
+                and stored_audit.get("unit_system") == unit_system
+                and stored_audit.get("template_id") == template_id
+            )
+            project_json = create_manual_multilane_project_json(
+                template_id,
+                unit_system,
+                displayed_inputs,
+                result=st.session_state.get("manual_multilane_result")
+                if calculation_matches_inputs
+                else None,
+                audit_record=stored_audit if calculation_matches_inputs else None,
+            )
+            st.download_button(
+                "Save Project",
+                data=project_json,
+                file_name=f"{template_id}-manual-multilane-project.json",
+                mime="application/json",
+                use_container_width=True,
+            )
 
     if run_multilane:
         st.session_state.pop("manual_multilane_result", None)
@@ -555,12 +569,20 @@ def render_manual_multilane_calculator() -> None:
         audit = st.session_state.get("manual_multilane_audit")
         if error is not None:
             st.error(f"Unsupported Multilane case: {error}")
+            render_project_output_section(
+                "Save the current guarded Multilane Segment worksheet and result.",
+                render_multilane_project_download,
+            )
             with st.expander(AUDIT_EXPANDER_LABEL):
                 st.json(audit)
             return
         result_data = st.session_state.get("manual_multilane_result")
         if result_data is None:
             st.caption(PRERUN_RESULTS_PLACEHOLDER)
+            render_project_output_section(
+                "Save the current guarded Multilane Segment worksheet and result.",
+                render_multilane_project_download,
+            )
             return
 
         outputs = result_data["outputs"]
@@ -632,21 +654,9 @@ def render_manual_multilane_calculator() -> None:
                     "audit_record": audit,
                 }
             )
-        project_json = create_manual_multilane_project_json(
-            template_id,
-            result_unit_system,
-            audit.get("displayed_inputs", displayed_inputs)
-            if isinstance(audit, dict)
-            else displayed_inputs,
-            result=result_data,
-            audit_record=audit,
-        )
-        st.download_button(
-            "Save Project",
-            data=project_json,
-            file_name=f"{template_id}-manual-multilane-project.json",
-            mime="application/json",
-            use_container_width=True,
+        render_project_output_section(
+            "Save the current guarded Multilane Segment worksheet and result.",
+            render_multilane_project_download,
         )
         render_export_report_section(
             "manual_multilane_v0",
@@ -677,22 +687,26 @@ def render_manual_freeway_calculator() -> None:
         "Limited Basic Freeway Segment workflow with a guarded Chapter 26 validation path.",
     )
 
-    unit_label = st.radio(
-        "Unit system",
-        ["Metric", "Imperial"],
-        horizontal=True,
-        key="manual_freeway_unit_label",
-    )
-    unit_system = unit_label.lower()
+    input_column, result_column = render_calculator_shell()
     preset_options = freeway_preset_options()
-    preset_id = st.selectbox(
-        "Starting values",
-        list(preset_options),
-        format_func=preset_options.__getitem__,
-        key="freeway_preset_id",
-    )
-    st.caption(STARTING_VALUES_CAPTION)
-    _render_manual_freeway_load_controls()
+    with input_column:
+        render_project_load_section(_render_manual_freeway_load_controls)
+        render_starting_values_section()
+        start_columns = st.columns([1.15, 0.85], gap="medium")
+        preset_id = start_columns[0].selectbox(
+            STARTING_VALUES_LABEL,
+            list(preset_options),
+            format_func=preset_options.__getitem__,
+            key="freeway_preset_id",
+            label_visibility="collapsed",
+        )
+        unit_label = start_columns[1].radio(
+            "Unit system",
+            ["Metric", "Imperial"],
+            horizontal=True,
+            key="manual_freeway_unit_label",
+        )
+    unit_system = unit_label.lower()
     preset_context = (preset_id, unit_system)
     if st.session_state.get("manual_freeway_preset_context") != preset_context:
         clear_manual_freeway_state(st.session_state)
@@ -718,14 +732,9 @@ def render_manual_freeway_calculator() -> None:
     speed_unit = "km/h" if metric else "mph"
     width_unit = "m" if metric else "ft"
     ramp_density_unit = "ramps/km" if metric else "ramps/mi"
-    input_column, result_column = st.columns([1.05, 0.95], gap="large")
     with input_column:
-        st.markdown("**Inputs**")
         with st.form(f"freeway_form_{preset_id}"):
-            st.markdown(
-                '<div class="compact-section-label">Setup</div>',
-                unsafe_allow_html=True,
-            )
+            render_section_label("Setup")
             st.caption("Analysis type: Basic Freeway Segment.")
             st.caption(
                 "Support status: Chapter 26 Example Problem 1-compatible validated path."
@@ -735,10 +744,7 @@ def render_manual_freeway_calculator() -> None:
                 "converted at the UI boundary."
             )
 
-            st.markdown(
-                '<div class="compact-section-label">Roadway / Geometry</div>',
-                unsafe_allow_html=True,
-            )
+            render_section_label("Roadway / Geometry")
             roadway_columns = st.columns(2)
             number_of_lanes = roadway_columns[0].number_input(
                 "Lanes in analysis direction",
@@ -808,10 +814,7 @@ def render_manual_freeway_calculator() -> None:
                     help=BASIC_FREEWAY_RAMP_DENSITY_HELP,
                 )
 
-            st.markdown(
-                '<div class="compact-section-label">Traffic</div>',
-                unsafe_allow_html=True,
-            )
+            render_section_label("Traffic")
             traffic_columns = st.columns(2)
             demand_volume_veh_h = traffic_columns[0].number_input(
                 "Demand volume (veh/h)",
@@ -840,10 +843,7 @@ def render_manual_freeway_calculator() -> None:
                 key=f"manual_freeway_input_terrain_{preset_id}_{unit_system}",
             )
 
-            st.markdown(
-                '<div class="compact-section-label">Advanced / Optional</div>',
-                unsafe_allow_html=True,
-            )
+            render_section_label("Advanced / Optional")
             advanced_columns = st.columns(2)
             speed_adjustment_factor = advanced_columns[0].number_input(
                 "Speed adjustment factor",
@@ -898,27 +898,23 @@ def render_manual_freeway_calculator() -> None:
                 "guarded by engine validation."
             ),
         )
-        stored_audit = st.session_state.get("manual_freeway_audit")
-        calculation_matches_inputs = (
-            isinstance(stored_audit, dict)
-            and stored_audit.get("displayed_inputs") == displayed_inputs
-            and stored_audit.get("submitted_inputs") == submitted_inputs
-            and stored_audit.get("unit_system") == unit_system
-            and stored_audit.get("preset_id") == preset_id
-        )
-        project_json = create_manual_freeway_project_json(
-            preset_id,
-            unit_system,
-            displayed_inputs,
-            result=st.session_state.get("manual_freeway_result")
-            if calculation_matches_inputs
-            else None,
-            audit_record=stored_audit if calculation_matches_inputs else None,
-        )
-        with st.expander("Project", expanded=False):
-            st.caption(
-                "Project JSON restores displayed inputs and engine-native values for "
-                "this guarded Basic Freeway Segment workflow."
+        def render_freeway_project_download() -> None:
+            stored_audit = st.session_state.get("manual_freeway_audit")
+            calculation_matches_inputs = (
+                isinstance(stored_audit, dict)
+                and stored_audit.get("displayed_inputs") == displayed_inputs
+                and stored_audit.get("submitted_inputs") == submitted_inputs
+                and stored_audit.get("unit_system") == unit_system
+                and stored_audit.get("preset_id") == preset_id
+            )
+            project_json = create_manual_freeway_project_json(
+                preset_id,
+                unit_system,
+                displayed_inputs,
+                result=st.session_state.get("manual_freeway_result")
+                if calculation_matches_inputs
+                else None,
+                audit_record=stored_audit if calculation_matches_inputs else None,
             )
             st.download_button(
                 "Save Project",
@@ -961,12 +957,20 @@ def render_manual_freeway_calculator() -> None:
         audit = st.session_state.get("manual_freeway_audit")
         if error is not None:
             st.error(f"Unsupported Basic Freeway case: {error}")
+            render_project_output_section(
+                "Project JSON restores displayed inputs and engine-native values for this guarded Basic Freeway Segment workflow.",
+                render_freeway_project_download,
+            )
             with st.expander(AUDIT_EXPANDER_LABEL):
                 st.json(audit)
             return
         result_data = st.session_state.get("manual_freeway_result")
         if result_data is None:
             st.caption(PRERUN_RESULTS_PLACEHOLDER)
+            render_project_output_section(
+                "Project JSON restores displayed inputs and engine-native values for this guarded Basic Freeway Segment workflow.",
+                render_freeway_project_download,
+            )
             return
 
         outputs = result_data["outputs"]
@@ -1038,6 +1042,10 @@ def render_manual_freeway_calculator() -> None:
                     "audit_record": audit,
                 }
             )
+        render_project_output_section(
+            "Project JSON restores displayed inputs and engine-native values for this guarded Basic Freeway Segment workflow.",
+            render_freeway_project_download,
+        )
         render_export_report_section(
             "manual_basic_freeway_v0",
             result_data,
@@ -1055,24 +1063,23 @@ def render_manual_freeway_calculator() -> None:
 def _render_manual_freeway_load_controls() -> None:
     """Render guarded Manual Basic Freeway project loading controls."""
 
-    with st.expander("Load Project", expanded=False):
-        uploaded_project = st.file_uploader(
-            "Load Manual Basic Freeway project JSON",
-            type=["json"],
-            key="manual_freeway_project_file_uploader",
-        )
-        if st.button(
-            "Load Basic Freeway project",
-            disabled=uploaded_project is None,
-            use_container_width=True,
-        ):
-            try:
-                project = load_manual_freeway_project_json(uploaded_project.getvalue())
-            except ProjectFileError as exc:
-                st.error(str(exc))
-            else:
-                st.session_state["manual_freeway_pending_project"] = project
-                st.rerun()
+    uploaded_project = st.file_uploader(
+        "Load Manual Basic Freeway project JSON",
+        type=["json"],
+        key="manual_freeway_project_file_uploader",
+    )
+    if st.button(
+        "Load Basic Freeway project",
+        disabled=uploaded_project is None,
+        use_container_width=True,
+    ):
+        try:
+            project = load_manual_freeway_project_json(uploaded_project.getvalue())
+        except ProjectFileError as exc:
+            st.error(str(exc))
+        else:
+            st.session_state["manual_freeway_pending_project"] = project
+            st.rerun()
 
 
 def _restore_manual_freeway_project(project: dict[str, Any]) -> None:
@@ -1132,24 +1139,23 @@ def _restore_manual_freeway_project(project: dict[str, Any]) -> None:
 def _render_manual_multilane_load_controls() -> None:
     """Render guarded Manual Multilane project loading controls."""
 
-    with st.expander("Load Project", expanded=False):
-        uploaded_project = st.file_uploader(
-            "Load Manual Multilane project JSON",
-            type=["json"],
-            key="manual_multilane_project_file_uploader",
-        )
-        if st.button(
-            "Load Multilane project",
-            disabled=uploaded_project is None,
-            use_container_width=True,
-        ):
-            try:
-                project = load_manual_multilane_project_json(uploaded_project.getvalue())
-            except ProjectFileError as exc:
-                st.error(str(exc))
-            else:
-                st.session_state["manual_multilane_pending_project"] = project
-                st.rerun()
+    uploaded_project = st.file_uploader(
+        "Load Manual Multilane project JSON",
+        type=["json"],
+        key="manual_multilane_project_file_uploader",
+    )
+    if st.button(
+        "Load Multilane project",
+        disabled=uploaded_project is None,
+        use_container_width=True,
+    ):
+        try:
+            project = load_manual_multilane_project_json(uploaded_project.getvalue())
+        except ProjectFileError as exc:
+            st.error(str(exc))
+        else:
+            st.session_state["manual_multilane_pending_project"] = project
+            st.rerun()
 
 
 def _restore_manual_multilane_project(project: dict[str, Any]) -> None:
@@ -1205,105 +1211,127 @@ def render_manual_facility_calculator() -> None:
         "Two-Lane Facility Calculator",
         "Limited HCM7 Chapter 15 facility workflow with guarded validation paths.",
     )
-    controls = st.columns([2, 1])
+    input_column, result_column = render_calculator_shell()
     template_options = facility_template_options()
-    template_id = controls[0].selectbox(
-        "Starting values",
-        list(template_options),
-        format_func=template_options.__getitem__,
-        key="facility_template_id",
-        help="Load example starting values for the editable facility worksheet.",
-    )
-    st.caption(STARTING_VALUES_CAPTION)
-    unit_label = controls[1].radio(
-        "Unit system",
-        ["Metric", "Imperial"],
-        horizontal=True,
-        key="facility_unit_label",
-    )
-    unit_system = str(unit_label).lower()
-    selection_context = (template_id, unit_system)
-    if st.session_state.get("manual_facility_selection_context") != selection_context:
-        clear_manual_facility_result_state(st.session_state)
-        st.session_state["manual_facility_selection_context"] = selection_context
+    with input_column:
+        render_project_load_section(_render_manual_facility_load_controls)
+        render_starting_values_section()
+        controls = st.columns([2, 1])
+        template_id = controls[0].selectbox(
+            STARTING_VALUES_LABEL,
+            list(template_options),
+            format_func=template_options.__getitem__,
+            key="facility_template_id",
+            help="Load example starting values for the editable facility worksheet.",
+            label_visibility="collapsed",
+        )
+        unit_label = controls[1].radio(
+            "Unit system",
+            ["Metric", "Imperial"],
+            horizontal=True,
+            key="facility_unit_label",
+        )
+        unit_system = str(unit_label).lower()
+        selection_context = (template_id, unit_system)
+        if st.session_state.get("manual_facility_selection_context") != selection_context:
+            clear_manual_facility_result_state(st.session_state)
+            st.session_state["manual_facility_selection_context"] = selection_context
 
-    try:
-        template = load_facility_template(template_id, unit_system)
-    except HCMCalcError as exc:
-        st.error(str(exc))
-        return
+        try:
+            template = load_facility_template(template_id, unit_system)
+        except HCMCalcError as exc:
+            st.error(str(exc))
+            return
 
-    _render_manual_facility_load_controls()
-    editable_fields = set(template["editable_fields"])
-    disabled_fields = [
-        field
-        for field in template["segments"][0]
-        if field not in editable_fields
-    ]
-    st.markdown(f"**{template['template_label']}**")
-    st.caption(
-        f"Validation basis: {template['template_basis']}. "
-        f"{template['supported_context']}"
-    )
-    template_details = st.columns(2)
-    template_details[0].caption(f"Supported edits: {template['safe_edit_summary']}")
-    template_details[1].caption(f"Guarded context: {template['locked_summary']}")
-    editor_version = st.session_state.get("manual_facility_editor_version", 0)
-    editor_seed = st.session_state.pop(
-        "manual_facility_segment_rows_seed", template["segments"]
-    )
-    edited_rows = st.data_editor(
-        editor_seed,
-        key=f"facility_segment_editor_{template_id}_{unit_system}_{editor_version}",
-        hide_index=True,
-        num_rows="fixed",
-        disabled=disabled_fields,
-        use_container_width=True,
-        column_config={
-            "segment_length": st.column_config.NumberColumn(
-                f"Length ({'km' if unit_system == 'metric' else 'mi'})",
-                min_value=0.01,
-                required=True,
+        editable_fields = set(template["editable_fields"])
+        disabled_fields = [
+            field
+            for field in template["segments"][0]
+            if field not in editable_fields
+        ]
+        render_section_label("Setup")
+        st.caption(
+            f"{template['template_label']}. Validation basis: "
+            f"{template['template_basis']}. {template['supported_context']}"
+        )
+        template_details = st.columns(2)
+        template_details[0].caption(f"Supported edits: {template['safe_edit_summary']}")
+        template_details[1].caption(f"Guarded context: {template['locked_summary']}")
+        render_section_label("Roadway / Geometry")
+        editor_version = st.session_state.get("manual_facility_editor_version", 0)
+        editor_seed = st.session_state.pop(
+            "manual_facility_segment_rows_seed", template["segments"]
+        )
+        edited_rows = st.data_editor(
+            editor_seed,
+            key=f"facility_segment_editor_{template_id}_{unit_system}_{editor_version}",
+            hide_index=True,
+            num_rows="fixed",
+            disabled=disabled_fields,
+            use_container_width=True,
+            column_config={
+                "segment_length": st.column_config.NumberColumn(
+                    f"Length ({'km' if unit_system == 'metric' else 'mi'})",
+                    min_value=0.01,
+                    required=True,
+                ),
+                "posted_speed": st.column_config.NumberColumn(
+                    f"Posted speed ({'km/h' if unit_system == 'metric' else 'mph'})",
+                    min_value=1.0,
+                    required=True,
+                ),
+                "analysis_direction_volume_veh_h": st.column_config.NumberColumn(
+                    "Analysis volume (veh/h)", min_value=0.0, required=True
+                ),
+                "opposing_direction_volume_veh_h": st.column_config.NumberColumn(
+                    "Opposing volume (veh/h)", min_value=0.0
+                ),
+                "peak_hour_factor": st.column_config.NumberColumn(
+                    "PHF", min_value=0.01, max_value=1.0, required=True
+                ),
+                "heavy_vehicle_percent": st.column_config.NumberColumn(
+                    "Heavy vehicles (%)", min_value=0.0, max_value=100.0, required=True
+                ),
+                "passing_lane": st.column_config.CheckboxColumn("Passing lane"),
+                "downstream_affected": st.column_config.CheckboxColumn(
+                    "Downstream context"
+                ),
+                "segment_name": st.column_config.TextColumn("Segment name"),
+                "segment_type": st.column_config.TextColumn("Segment type"),
+                "terrain_type": st.column_config.TextColumn("Terrain"),
+                "grade_percent": st.column_config.NumberColumn("Grade (%)"),
+                "horizontal_alignment": st.column_config.TextColumn("Alignment"),
+            },
+        )
+        render_section_label("Traffic")
+        st.caption("Traffic values are edited in the facility segment table.")
+        render_section_label("Advanced / Optional")
+        st.caption("Locked fields preserve the guarded validation context.")
+        calculate_column, scope_column = st.columns([1, 2])
+        calculate = calculate_column.button(
+            "Run calculation",
+            type="primary",
+            use_container_width=True,
+            key="facility_calculate",
+        )
+        scope_column.caption(
+            "Calculation uses the existing guarded Example 3/4 engine path. "
+            "Save/Load does not broaden methodology support."
+        )
+        render_validation_basis_and_limitations(
+            validation_basis=(
+                f"HCM Chapter 26 Two-Lane Highway {template['template_basis']}."
             ),
-            "posted_speed": st.column_config.NumberColumn(
-                f"Posted speed ({'km/h' if unit_system == 'metric' else 'mph'})",
-                min_value=1.0,
-                required=True,
+            supported_scope=(
+                "Guarded Example 3/4 facility paths with supported segment table "
+                "edits only."
             ),
-            "analysis_direction_volume_veh_h": st.column_config.NumberColumn(
-                "Analysis volume (veh/h)", min_value=0.0, required=True
+            not_supported=(
+                "Full general Chapter 15 facility support, manual downstream "
+                "adjustment, arbitrary passing-lane placement, arbitrary curves, "
+                "arbitrary nonlevel combinations, and arbitrary segment sequences."
             ),
-            "opposing_direction_volume_veh_h": st.column_config.NumberColumn(
-                "Opposing volume (veh/h)", min_value=0.0
-            ),
-            "peak_hour_factor": st.column_config.NumberColumn(
-                "PHF", min_value=0.01, max_value=1.0, required=True
-            ),
-            "heavy_vehicle_percent": st.column_config.NumberColumn(
-                "Heavy vehicles (%)", min_value=0.0, max_value=100.0, required=True
-            ),
-            "passing_lane": st.column_config.CheckboxColumn("Passing lane"),
-            "downstream_affected": st.column_config.CheckboxColumn(
-                "Downstream context"
-            ),
-            "segment_name": st.column_config.TextColumn("Segment name"),
-            "segment_type": st.column_config.TextColumn("Segment type"),
-            "terrain_type": st.column_config.TextColumn("Terrain"),
-            "grade_percent": st.column_config.NumberColumn("Grade (%)"),
-            "horizontal_alignment": st.column_config.TextColumn("Alignment"),
-        },
-    )
-    calculate_column, scope_column = st.columns([1, 2])
-    calculate = calculate_column.button(
-        "Run calculation",
-        type="primary",
-        use_container_width=True,
-        key="facility_calculate",
-    )
-    scope_column.caption(
-        "Calculation uses the existing guarded Example 3/4 engine path. "
-        "Save/Load does not broaden methodology support."
-    )
+        )
     if calculate:
         clear_manual_facility_result_state(st.session_state)
         try:
@@ -1329,24 +1357,24 @@ def render_manual_facility_calculator() -> None:
                 )
             )
 
-    render_validation_basis_and_limitations(
-        validation_basis=(
-            f"HCM Chapter 26 Two-Lane Highway {template['template_basis']}."
-        ),
-        supported_scope=(
-            "Guarded Example 3/4 facility paths with supported segment table "
-            "edits only."
-        ),
-        not_supported=(
-            "Full general Chapter 15 facility support, manual downstream "
-            "adjustment, arbitrary passing-lane placement, arbitrary curves, "
-            "arbitrary nonlevel combinations, and arbitrary segment sequences."
-        ),
-    )
+    with result_column:
+        st.markdown("**Results**")
+        render_manual_facility_result_panel(
+            template_id, unit_system, edited_rows, template
+        )
+
+
+def render_manual_facility_result_panel(
+    template_id: str,
+    unit_system: str,
+    edited_rows: list[dict[str, Any]],
+    template: dict[str, Any],
+) -> None:
+    """Render facility results, project output, audit, and exports."""
+
     _render_manual_facility_project_file_controls(
         template_id, unit_system, edited_rows, template["template_label"]
     )
-
     error = st.session_state.get("manual_facility_error")
     audit = st.session_state.get("manual_facility_audit")
     if error is not None:
@@ -1480,41 +1508,41 @@ def _render_manual_facility_project_file_controls(
         ),
         audit_record=stored_audit if calculation_matches_inputs else None,
     )
-    with st.expander("Project", expanded=False):
-        st.caption(
+    render_project_output_section(
+        (
             f"Save {template_name}. Facility projects remain guarded "
             "to the selected validation basis."
-        )
-        st.download_button(
+        ),
+        lambda: st.download_button(
             "Save Project",
             data=project_json,
             file_name=f"{template_id}-manual-facility-project.json",
             mime="application/json",
             use_container_width=True,
-        )
+        ),
+    )
 
 
 def _render_manual_facility_load_controls() -> None:
     """Render guarded facility project loading controls."""
 
-    with st.expander("Load Project", expanded=False):
-        uploaded_project = st.file_uploader(
-            "Load Facility project JSON",
-            type=["json"],
-            key="manual_facility_project_file_uploader",
-        )
-        if st.button(
-            "Load Facility project",
-            disabled=uploaded_project is None,
-            use_container_width=True,
-        ):
-            try:
-                project = load_manual_facility_project_json(uploaded_project.getvalue())
-            except ProjectFileError as exc:
-                st.error(str(exc))
-            else:
-                st.session_state["manual_facility_pending_project"] = project
-                st.rerun()
+    uploaded_project = st.file_uploader(
+        "Load Facility project JSON",
+        type=["json"],
+        key="manual_facility_project_file_uploader",
+    )
+    if st.button(
+        "Load Facility project",
+        disabled=uploaded_project is None,
+        use_container_width=True,
+    ):
+        try:
+            project = load_manual_facility_project_json(uploaded_project.getvalue())
+        except ProjectFileError as exc:
+            st.error(str(exc))
+        else:
+            st.session_state["manual_facility_pending_project"] = project
+            st.rerun()
 
 
 def _restore_manual_facility_project(project: dict[str, Any]) -> None:
@@ -1571,17 +1599,17 @@ def render_manual_single_segment_calculator() -> None:
     if generation_message is not None:
         st.success(generation_message)
 
-    worksheet_column, result_column = st.columns([1.55, 1.0], gap="large")
+    render_page_header(
+        "Two-Lane Highway Manual Segment Calculator",
+        "Limited HCM7 Chapter 15 single-segment workflow with guarded validation paths.",
+    )
+    worksheet_column, result_column = render_calculator_shell()
 
     with worksheet_column:
-        render_page_header(
-            "Two-Lane Highway Manual Segment Calculator",
-            "Limited HCM7 Chapter 15 single-segment workflow with guarded validation paths.",
-        )
-        _render_manual_project_load_controls()
+        render_project_load_section(_render_manual_project_load_controls)
         setup_column, schematic_column = st.columns([1.25, 1.0], gap="medium")
         with setup_column:
-            st.markdown("**Setup**")
+            render_section_label("Setup")
             setup_row_one = st.columns(2)
             unit_label = setup_row_one[0].radio(
                 "Unit system",
@@ -1637,7 +1665,7 @@ def render_manual_single_segment_calculator() -> None:
             form_input_column = st.container()
             form_advanced_column = st.container()
             with form_input_column:
-                st.markdown("**Roadway / Geometry**")
+                render_section_label("Roadway / Geometry")
                 geometry_row_one = st.columns(3)
                 segment_length = geometry_row_one[0].number_input(
                     f"Segment length ({'km' if metric else 'mi'})",
@@ -1674,7 +1702,7 @@ def render_manual_single_segment_calculator() -> None:
                 else:
                     grade_percent = 0.0
 
-                st.markdown("**Traffic**")
+                render_section_label("Traffic")
                 traffic_row_one = st.columns(3)
                 analysis_volume = traffic_row_one[0].number_input(
                     "Analysis-direction volume (veh/h)",
@@ -1716,7 +1744,7 @@ def render_manual_single_segment_calculator() -> None:
                 curve_setup: dict[str, Any] | None = None
                 generate_curve = False
                 if horizontal_alignment == "horizontal_curves":
-                    st.markdown("**Advanced / Optional**")
+                    render_section_label("Advanced / Optional")
                     setup_defaults = curve_setup_defaults(unit_system, segment_length)
                     for name, default in setup_defaults.items():
                         st.session_state.setdefault(
@@ -1866,7 +1894,7 @@ def render_manual_single_segment_calculator() -> None:
                 )
                 st.rerun()
         if horizontal_alignment == "straight":
-            st.markdown("**Advanced / Optional**")
+            render_section_label("Advanced / Optional")
         render_validation_basis_and_limitations(
             validation_basis=(
                 "HCM7 Chapter 26 Two-Lane Highway example-backed checks for "
@@ -1882,7 +1910,6 @@ def render_manual_single_segment_calculator() -> None:
                 "worksheet, and unsupported horizontal-curve combinations."
             ),
         )
-        render_manual_project_file_controls(values)
 
     if run_manual:
         st.session_state.pop("manual_segment_result", None)
@@ -1906,11 +1933,14 @@ def render_manual_single_segment_calculator() -> None:
         stored_error = st.session_state.get("manual_segment_error")
         if stored_error is not None:
             st.error(stored_error)
+            render_manual_project_file_controls(values)
             render_audit_record(audit_record)
             return
         if stored_result is None:
             st.caption(PRERUN_RESULTS_PLACEHOLDER)
+            render_manual_project_file_controls(values)
             return
+        render_manual_project_file_controls(values)
         render_manual_result(
             stored_result,
             str(audit_record.get("unit_system", unit_system))
@@ -1938,38 +1968,38 @@ def render_manual_project_file_controls(manual_inputs: dict[str, Any]) -> None:
         manual_inputs, result=result, audit_record=audit_record
     )
 
-    with st.expander("Project", expanded=False):
-        st.caption("Save Project JSON to preserve inputs.")
-        st.download_button(
+    render_project_output_section(
+        "Save Project JSON to preserve inputs.",
+        lambda: st.download_button(
             "Save Project",
             data=project_json,
             file_name="manual-single-segment-project.json",
             mime="application/json",
             use_container_width=False,
-        )
+        ),
+    )
 
 
 def _render_manual_project_load_controls() -> None:
     """Render compact manual project load controls."""
 
-    with st.expander("Load Project", expanded=False):
-        uploaded_project = st.file_uploader(
-            "Load Two-Lane Segment project JSON",
-            type=["json"],
-            key="manual_project_file_uploader",
-        )
-        if st.button(
-            "Load Two-Lane Segment project",
-            disabled=uploaded_project is None,
-            use_container_width=True,
-        ):
-            try:
-                project = load_manual_project_json(uploaded_project.getvalue())
-            except ProjectFileError as exc:
-                st.error(str(exc))
-            else:
-                st.session_state["manual_pending_project"] = project
-                st.rerun()
+    uploaded_project = st.file_uploader(
+        "Load Two-Lane Segment project JSON",
+        type=["json"],
+        key="manual_project_file_uploader",
+    )
+    if st.button(
+        "Load Two-Lane Segment project",
+        disabled=uploaded_project is None,
+        use_container_width=True,
+    ):
+        try:
+            project = load_manual_project_json(uploaded_project.getvalue())
+        except ProjectFileError as exc:
+            st.error(str(exc))
+        else:
+            st.session_state["manual_pending_project"] = project
+            st.rerun()
 
 
 def _restore_manual_project(project: dict[str, Any]) -> None:
@@ -2096,7 +2126,7 @@ def render_manual_result(
             )
             st.json(audit_record)
 
-    with st.expander("Export / Report", expanded=False):
+    with st.expander(EXPORT_REPORT_LABEL, expanded=False):
         render_export_report_downloads(
             "manual_single_segment",
             result_data,
@@ -2139,8 +2169,8 @@ def render_export_report_section(
 ) -> None:
     """Render compact report downloads from the existing calculated result."""
 
-    with st.expander("Export / Report"):
-        render_export_report_downloads(
+    render_export_report_section_container(
+        lambda: render_export_report_downloads(
             calculation_type,
             result_data,
             unit_system,
@@ -2148,6 +2178,7 @@ def render_export_report_section(
             audit_record=audit_record,
             template_id=template_id,
         )
+    )
 
 
 def render_export_report_downloads(
