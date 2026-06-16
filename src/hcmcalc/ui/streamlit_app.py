@@ -66,7 +66,11 @@ from hcmcalc.ui.project_io import (
     load_manual_multilane_project_json,
     load_manual_project_json,
 )
-from hcmcalc.ui.result_view import compact_rows, format_display_metric, los_colors
+from hcmcalc.ui.result_view import (
+    compact_rows,
+    format_display_metric,
+    render_result_summary_panel,
+)
 from hcmcalc.ui.reporting import (
     ReportingError,
     build_report,
@@ -603,42 +607,60 @@ def render_manual_multilane_calculator() -> None:
             else unit_system
         )
         display = multilane_display_outputs(outputs, result_unit_system)
-        summary = st.columns(3)
-        summary[0].metric(
-            "Density",
-            f"{display['density']['value']:.1f} {display['density']['unit']}",
+        render_result_summary_panel(
+            primary_label="Level of service",
+            primary_value=str(outputs["level_of_service"]),
+            primary_kind="los",
+            hero_supporting_label="Density",
+            hero_supporting_value=(
+                f"{display['density']['value']:.1f} {display['density']['unit']}"
+            ),
+            secondary_metrics=[
+                {
+                    "label": "Speed used for density",
+                    "value": (
+                        f"{display['speed_used_for_density']['value']:.1f} "
+                        f"{display['speed_used_for_density']['unit']}"
+                    ),
+                },
+                {
+                    "label": "Demand flow rate",
+                    "value": (
+                        f"{display['demand_flow_rate']['value']:.0f} "
+                        f"{display['demand_flow_rate']['unit']}"
+                    ),
+                },
+                {
+                    "label": "Capacity",
+                    "value": (
+                        f"{display['capacity']['value']:.0f} "
+                        f"{display['capacity']['unit']}"
+                    ),
+                },
+                {
+                    "label": "Capacity check",
+                    "value": outputs["capacity_check"].replace("_", " "),
+                },
+                {
+                    "label": "Adjusted free-flow speed",
+                    "value": (
+                        f"{display['adjusted_free_flow_speed']['value']:.1f} "
+                        f"{display['adjusted_free_flow_speed']['unit']}"
+                    ),
+                },
+                {
+                    "label": "Base free-flow speed",
+                    "value": (
+                        f"{display['base_free_flow_speed']['value']:.1f} "
+                        f"{display['base_free_flow_speed']['unit']}"
+                    ),
+                },
+                {
+                    "label": "Heavy vehicle adjustment factor",
+                    "value": f"{outputs['heavy_vehicle_adjustment_factor']:.3f}",
+                },
+            ],
         )
-        summary[1].metric("LOS", outputs["level_of_service"])
-        summary[2].metric(
-            "Speed used for density",
-            f"{display['speed_used_for_density']['value']:.1f} "
-            f"{display['speed_used_for_density']['unit']}",
-        )
-        metrics = st.columns(2)
-        metrics[0].metric(
-            "Demand flow rate",
-            f"{display['demand_flow_rate']['value']:.0f} "
-            f"{display['demand_flow_rate']['unit']}",
-        )
-        metrics[1].metric(
-            "Adjusted free-flow speed",
-            f"{display['adjusted_free_flow_speed']['value']:.1f} "
-            f"{display['adjusted_free_flow_speed']['unit']}",
-        )
-        metrics[0].metric(
-            "Base free-flow speed",
-            f"{display['base_free_flow_speed']['value']:.1f} "
-            f"{display['base_free_flow_speed']['unit']}",
-        )
-        metrics[1].metric(
-            "Heavy vehicle adjustment factor",
-            f"{outputs['heavy_vehicle_adjustment_factor']:.3f}",
-        )
-        metrics[0].metric(
-            "Capacity",
-            f"{display['capacity']['value']:.0f} {display['capacity']['unit']}",
-        )
-        metrics[1].metric("Capacity check", outputs["capacity_check"].replace("_", " "))
 
         with st.expander(CALCULATION_DETAILS_LABEL):
             render_list("Assumptions", result_data["assumptions"], "No assumptions reported.")
@@ -1023,42 +1045,60 @@ def render_manual_freeway_calculator() -> None:
             else unit_system
         )
         display = freeway_display_outputs(outputs, result_unit_system)
-        summary = st.columns(3)
-        summary[0].metric("LOS", outputs["level_of_service"])
-        summary[1].metric(
-            "Density",
-            f"{display['density']['value']:.1f} {display['density']['unit']}",
+        render_result_summary_panel(
+            primary_label="Level of service",
+            primary_value=str(outputs["level_of_service"]),
+            primary_kind="los",
+            hero_supporting_label="Density",
+            hero_supporting_value=(
+                f"{display['density']['value']:.1f} {display['density']['unit']}"
+            ),
+            secondary_metrics=[
+                {
+                    "label": "Speed used for density",
+                    "value": (
+                        f"{display['speed_used_for_density']['value']:.1f} "
+                        f"{display['speed_used_for_density']['unit']}"
+                    ),
+                },
+                {
+                    "label": "Demand flow rate",
+                    "value": (
+                        f"{display['demand_flow_rate']['value']:.0f} "
+                        f"{display['demand_flow_rate']['unit']}"
+                    ),
+                },
+                {
+                    "label": "Capacity",
+                    "value": (
+                        f"{display['capacity']['value']:.0f} "
+                        f"{display['capacity']['unit']}"
+                    ),
+                },
+                {
+                    "label": "Capacity check",
+                    "value": outputs["capacity_check"].replace("_", " "),
+                },
+                {
+                    "label": "Adjusted free-flow speed",
+                    "value": (
+                        f"{display['adjusted_free_flow_speed']['value']:.1f} "
+                        f"{display['adjusted_free_flow_speed']['unit']}"
+                    ),
+                },
+                {
+                    "label": "Base free-flow speed",
+                    "value": (
+                        f"{display['base_free_flow_speed']['value']:.1f} "
+                        f"{display['base_free_flow_speed']['unit']}"
+                    ),
+                },
+                {
+                    "label": "Heavy vehicle adjustment factor",
+                    "value": f"{outputs['heavy_vehicle_adjustment_factor']:.3f}",
+                },
+            ],
         )
-        summary[2].metric(
-            "Speed used for density",
-            f"{display['speed_used_for_density']['value']:.1f} "
-            f"{display['speed_used_for_density']['unit']}",
-        )
-        metrics = st.columns(2)
-        metrics[0].metric(
-            "Demand flow rate",
-            f"{display['demand_flow_rate']['value']:.0f} "
-            f"{display['demand_flow_rate']['unit']}",
-        )
-        metrics[1].metric(
-            "Adjusted free-flow speed",
-            f"{display['adjusted_free_flow_speed']['value']:.1f} "
-            f"{display['adjusted_free_flow_speed']['unit']}",
-        )
-        metrics[0].metric(
-            "Base free-flow speed",
-            f"{display['base_free_flow_speed']['value']:.1f} "
-            f"{display['base_free_flow_speed']['unit']}",
-        )
-        metrics[1].metric(
-            "Heavy vehicle adjustment factor",
-            f"{outputs['heavy_vehicle_adjustment_factor']:.3f}",
-        )
-        metrics[0].metric(
-            "Capacity",
-            f"{display['capacity']['value']:.0f} {display['capacity']['unit']}",
-        )
-        metrics[1].metric("Capacity check", outputs["capacity_check"].replace("_", " "))
 
         with st.expander(CALCULATION_DETAILS_LABEL):
             render_list("Assumptions", result_data["assumptions"], "No assumptions reported.")
@@ -1487,27 +1527,40 @@ def render_manual_facility_result_panel(
 
     outputs = result_data["outputs"]
     metric = unit_system == "metric"
-    st.subheader("Facility summary")
-    summary = st.columns(5)
-    summary[0].metric(
-        "Facility follower density",
+    facility_follower_density = (
         f"{outputs['facility_follower_density_followers_mi_ln'] / 1.609344:.2f} fol/km/ln"
         if metric
-        else f"{outputs['facility_follower_density_followers_mi_ln']:.1f} fol/mi/ln",
+        else f"{outputs['facility_follower_density_followers_mi_ln']:.1f} fol/mi/ln"
     )
-    summary[1].metric("Facility LOS", outputs["facility_level_of_service"])
-    summary[2].metric(
-        "Weighted average speed",
-        f"{outputs['facility_average_speed_mph'] * 1.609344:.1f} km/h"
-        if metric
-        else f"{outputs['facility_average_speed_mph']:.1f} mph",
-    )
-    summary[3].metric("Segments", len(outputs["segments"]))
-    summary[4].metric(
-        "Total length",
-        f"{outputs['facility_length_mi'] * 1.609344:.2f} km"
-        if metric
-        else f"{outputs['facility_length_mi']:.2f} mi",
+    st.subheader("Facility summary")
+    render_result_summary_panel(
+        primary_label="Facility level of service",
+        primary_value=str(outputs["facility_level_of_service"]),
+        primary_kind="los",
+        hero_supporting_label="Facility follower density",
+        hero_supporting_value=facility_follower_density,
+        secondary_metrics=[
+            {
+                "label": "Weighted average speed",
+                "value": (
+                    f"{outputs['facility_average_speed_mph'] * 1.609344:.1f} km/h"
+                    if metric
+                    else f"{outputs['facility_average_speed_mph']:.1f} mph"
+                ),
+            },
+            {
+                "label": "Total length",
+                "value": (
+                    f"{outputs['facility_length_mi'] * 1.609344:.2f} km"
+                    if metric
+                    else f"{outputs['facility_length_mi']:.2f} mi"
+                ),
+            },
+            {
+                "label": "Segments",
+                "value": str(len(outputs["segments"])),
+            },
+        ],
     )
 
     st.subheader("Segment-level results")
@@ -2230,31 +2283,24 @@ def render_manual_result(
     outputs = result_data["outputs"]
     metrics = display_outputs(outputs, unit_system)
     level_of_service = str(outputs["level_of_service"])
-    foreground, background = los_colors(level_of_service)
     density = format_display_metric(
         "follower_density", metrics["follower_density"], unit_system
     )
-    st.markdown(
-        f"""
-        <div class="los-hero" style="--los-color: {foreground};
-             --los-background: {background};">
-            <div class="los-hero-label">Level of service</div>
-            <div class="los-hero-grade">LOS {level_of_service}</div>
-            <div class="los-hero-density">
-                Follower density <strong>{density}</strong>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    render_result_summary_panel(
+        primary_label="Level of service",
+        primary_value=level_of_service,
+        primary_kind="los",
+        hero_supporting_label="Follower density",
+        hero_supporting_value=density,
+        secondary_metrics=[
+            {
+                "label": metric["label"],
+                "value": format_display_metric(name, metric, unit_system),
+            }
+            for name, metric in metrics.items()
+            if name != "follower_density"
+        ],
     )
-
-    supporting_metrics = list(metrics.items())
-    for index, (name, metric) in enumerate(supporting_metrics):
-        if index % 2 == 0:
-            metric_columns = st.columns(2)
-        metric_columns[index % 2].metric(
-            metric["label"], format_display_metric(name, metric, unit_system)
-        )
 
     with st.expander(CALCULATION_DETAILS_LABEL, expanded=False):
         st.markdown("**Assumptions**")
