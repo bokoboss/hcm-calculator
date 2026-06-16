@@ -63,6 +63,7 @@ def test_basic_freeway_free_flow_speed_adjustments_and_capacity() -> None:
     assert adjusted_capacity_pc_h_ln(2400.0, 0.95) == 2280.0
     assert breakpoint_flow_rate(75.0) == 1000.0
     assert breakpoint_flow_rate(55.0) == 1800.0
+    assert breakpoint_flow_rate(75.0, 0.9) == pytest.approx(810.0)
 
 
 def test_heavy_vehicle_flow_speed_density_and_los() -> None:
@@ -90,8 +91,10 @@ def test_basic_freeway_method_returns_auditable_result() -> None:
     assert result.method == "hcm7_basic_freeway_segment"
     assert result.facility_type == "basic_freeway"
     assert outputs["calculation_type"] == "basic_freeway_segment_v0_1"
-    assert outputs["support_status"] == "chapter_12_formula_backed_no_chapter_26_fixture"
+    assert outputs["support_status"] == "chapter_26_example_validated_v0_1"
     assert outputs["scope_status"] == "supported_basic_freeway_segment_v0_1"
+    assert outputs["input_summary"]["case_id"] == "BFW-FORMULA-001"
+    assert outputs["driver_population_factor"] == 1.0
     assert outputs["adjusted_free_flow_speed_mph"] == pytest.approx(72.18)
     assert outputs["capacity_pc_h_ln"] == 2400.0
     assert outputs["demand_flow_rate_pc_h_ln"] == pytest.approx(1563.8, abs=0.1)
@@ -141,6 +144,33 @@ def test_over_capacity_result_is_los_f_with_capacity_warning() -> None:
     assert any("exceeds adjusted capacity" in warning for warning in outputs["warnings"])
 
 
+def test_phf_one_zero_heavy_vehicles_and_minimum_positive_volume_are_valid() -> None:
+    inputs = _estimated_inputs()
+    inputs.update(
+        {
+            "demand_volume_veh_h": 1.0,
+            "peak_hour_factor": 1.0,
+            "heavy_vehicle_percent": 0.0,
+        }
+    )
+
+    outputs = BasicFreewaySegmentMethod().calculate(inputs).outputs
+
+    assert outputs["heavy_vehicle_adjustment_factor"] == 1.0
+    assert outputs["demand_flow_rate_pc_h_ln"] == pytest.approx(1.0 / 3.0)
+    assert outputs["level_of_service"] == "A"
+
+
+def test_capacity_boundary_is_within_capacity_at_capacity_and_exceeded_above() -> None:
+    speed = speed_from_flow_rate(2400.0, 75.0, 1000.0, 2400.0)
+    density = traffic_density(2400.0, speed)
+
+    assert speed == pytest.approx(2400.0 / 45.0)
+    assert density == pytest.approx(45.0)
+    assert level_of_service(density, demand_exceeds_capacity=False) == "E"
+    assert level_of_service(density, demand_exceeds_capacity=True) == "F"
+
+
 @pytest.mark.parametrize(
     ("density", "expected"),
     [
@@ -168,6 +198,21 @@ def test_formula_helpers_reject_non_finite_values(value: float) -> None:
         adjusted_free_flow_speed(value, 1.0)
     with pytest.raises(HCMCalcError, match="finite"):
         level_of_service(value)
+
+
+@pytest.mark.parametrize(
+    ("free_flow_speed", "expected_capacity", "expected_breakpoint"),
+    [
+        (55.0, 2250.0, 1800.0),
+        (75.0, 2400.0, 1000.0),
+    ],
+)
+def test_free_flow_speed_boundary_values(
+    free_flow_speed: float, expected_capacity: float, expected_breakpoint: float
+) -> None:
+    assert adjusted_free_flow_speed(free_flow_speed, 1.0) == free_flow_speed
+    assert basic_freeway_capacity(free_flow_speed) == expected_capacity
+    assert breakpoint_flow_rate(free_flow_speed) == expected_breakpoint
 
 
 def test_formula_helpers_reject_unimplemented_branches() -> None:

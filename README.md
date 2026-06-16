@@ -26,7 +26,8 @@ Implemented:
   `src/hcmcalc/freeway/`, limited to one-direction, one-segment,
   uninterrupted-flow Basic Freeway Segment calculations with measured or
   estimated FFS, general-terrain level/rolling heavy-vehicle PCEs, audit
-  outputs, and unsupported-scope guardrails
+  outputs, unsupported-scope guardrails, and Chapter 26 Example Problem 1
+  validation fixtures
 - Chapter 26 second-case inventory documenting that no additional compatible
   Multilane Highway motorized-vehicle validation case is available in the
   supplied example-problem reference
@@ -43,8 +44,7 @@ Not implemented yet:
 - General Multilane Highway LOS calculations beyond Chapter 26 Example Problem 4
 - Basic Freeway UI, Save/Load, export/reporting, ramps, weaving,
   merge/diverge, managed lanes, work zones, reliability, facility/corridor
-  workflows, specific-grade PCE tables, and Chapter 26 Basic Freeway
-  validation fixtures
+  workflows, and specific-grade PCE tables
 - Production validation dataset
 
 ## Local Setup
@@ -184,9 +184,9 @@ Limitations:
 - Basic Freeway UI, Save/Load, export/reporting, ramps, weaving,
   merge/diverge, managed lanes, work zones, reliability analysis,
   facility/corridor workflows, and specific-grade Basic Freeway PCE tables
-  remain unsupported. The Basic Freeway engine is Chapter 12 formula-backed,
-  but no complete Chapter 26 Basic Freeway validation fixture is available in
-  this repository yet.
+  remain unsupported. The Basic Freeway engine is Chapter 12 formula-backed and
+  validated against Chapter 26 Basic Freeway Example Problem 1 for the current
+  one-segment operational v0.1 path only.
 - User-supplied Multilane base/adjusted free-flow speed and driver-population
   adjustment inputs remain unsupported.
 - PDF and DOCX report export are not implemented.

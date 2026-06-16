@@ -61,6 +61,14 @@ def test_non_finite_input_is_rejected() -> None:
         BasicFreewaySegmentMethod().calculate(inputs)
 
 
+def test_non_finite_optional_input_is_rejected() -> None:
+    inputs = _inputs()
+    inputs["base_free_flow_speed_mph"] = float("inf")
+
+    with pytest.raises(HCMCalcError, match="finite"):
+        BasicFreewaySegmentMethod().calculate(inputs)
+
+
 def test_missing_required_input_is_rejected() -> None:
     inputs = _inputs()
     del inputs["terrain_type"]
@@ -107,4 +115,21 @@ def test_measured_ffs_rejects_estimation_fields() -> None:
     inputs["free_flow_speed_mph"] = 65.0
 
     with pytest.raises(HCMCalcError, match="Measured FFS"):
+        BasicFreewaySegmentMethod().calculate(inputs)
+
+
+def test_measured_ffs_requires_measured_speed() -> None:
+    inputs = _inputs()
+    inputs.update(
+        {
+            "ffs_source": "measured",
+            "free_flow_speed_mph": None,
+            "base_free_flow_speed_mph": None,
+            "lane_width_ft": None,
+            "right_side_lateral_clearance_ft": None,
+            "total_ramp_density_per_mi": None,
+        }
+    )
+
+    with pytest.raises(HCMCalcError, match="free_flow_speed_mph"):
         BasicFreewaySegmentMethod().calculate(inputs)

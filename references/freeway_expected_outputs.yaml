@@ -1,0 +1,35 @@
+metadata:
+  fixture_version: 0.1.0
+  purpose: HCM7 Chapter 26 Basic Freeway Segment Example Problem 1 published validation values
+  status: validation_fixture
+  local_reference: HCM7 CH26 Multilane HW EX Problems.pdf, Example Problem 1
+  source_references:
+    - HCM7 Chapter 26 Freeway and Multilane Highway Example Problem 1
+    - HCM7 Chapter 12 Basic Freeway and Multilane Highway Segments
+  rounding_note: Expected outputs follow the published example's displayed rounding.
+
+cases:
+  - id: BF-CH26-001
+    description: Chapter 26 Example Problem 1 published outputs
+    expected_outputs:
+      lane_width_adjustment_mph: 1.9
+      right_lateral_clearance_adjustment_mph: 2.4
+      adjusted_free_flow_speed_mph: 60.8
+      capacity_pc_h_ln: 2308.0
+      adjusted_capacity_pc_h_ln: 2308.0
+      passenger_car_equivalent: 2.0
+      heavy_vehicle_adjustment_factor: 0.952
+      driver_population_factor: 1.0
+      demand_flow_rate_pc_h_ln: 1142.0
+      breakpoint_flow_rate_pc_h_ln: 1568.0
+      speed_used_for_density_mph: 60.8
+      density_pc_mi_ln: 18.8
+      level_of_service: C
+      capacity_check: within_capacity
+      demand_exceeds_capacity: false
+    tolerances:
+      adjustment_factor_absolute: 0.001
+      flow_rate_pc_h_ln_absolute: 1.0
+      speed_mph_absolute: 0.1
+      density_pc_mi_ln_absolute: 0.1
+      capacity_pc_h_ln_absolute: 1.0
