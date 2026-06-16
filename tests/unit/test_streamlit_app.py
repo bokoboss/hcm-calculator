@@ -1,6 +1,12 @@
 from hcmcalc.ui.result_view import compact_rows, format_display_metric, los_colors
 from hcmcalc.ui.schematics import get_segment_schematic_path
 from hcmcalc.ui.manual_facility import clear_manual_facility_result_state
+from hcmcalc.ui.supported_workflows import (
+    APP_MODE_LABELS,
+    APP_MODE_TO_VIEW,
+    EXAMPLE_WORKFLOW_NOTE,
+    SUPPORTED_WORKFLOW_SECTIONS,
+)
 
 
 def test_supported_segment_types_map_to_existing_schematics() -> None:
@@ -70,3 +76,32 @@ def test_template_switching_clears_stale_facility_results() -> None:
     clear_manual_facility_result_state(state)
 
     assert state == {"unrelated": "preserved"}
+
+
+def test_app_mode_list_includes_supported_workflows() -> None:
+    assert "Supported Workflows" in APP_MODE_LABELS
+    assert APP_MODE_TO_VIEW["Supported Workflows"] == "supported_workflows"
+    assert APP_MODE_TO_VIEW["Basic Freeway"] == "manual_basic_freeway"
+
+
+def test_supported_workflows_content_names_current_scope() -> None:
+    sections = {section["title"]: section for section in SUPPORTED_WORKFLOW_SECTIONS}
+
+    assert set(sections) == {
+        "Two-Lane Highway",
+        "Multilane Highway",
+        "Basic Freeway",
+    }
+    assert "Manual Single Segment Calculator" in sections["Two-Lane Highway"]["supported"]
+    assert "Manual Facility Calculator" in sections["Two-Lane Highway"]["supported"]
+    assert (
+        "Chapter 26 Example 4 EB/WB-compatible validated path"
+        in sections["Multilane Highway"]["supported"]
+    )
+    assert (
+        "Chapter 26 Example 1-compatible validated path"
+        in sections["Basic Freeway"]["supported"]
+    )
+    assert "not a general freeway facility calculator" in sections["Basic Freeway"]["limitations"]
+    assert "not a Basic Freeway calculator" in sections["Multilane Highway"]["limitations"]
+    assert "not the main product model" in EXAMPLE_WORKFLOW_NOTE

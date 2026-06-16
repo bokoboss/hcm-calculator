@@ -20,8 +20,8 @@ from hcmcalc.ui.units import MILES_TO_KILOMETERS
 
 def test_multilane_template_options_expose_only_example_4_directions() -> None:
     assert multilane_template_options() == {
-        "MLH-CH26-004-EB": "Example 4 — Eastbound direction",
-        "MLH-CH26-004-WB": "Example 4 — Westbound direction",
+        "MLH-CH26-004-EB": "Chapter 26 Example 4 - Eastbound starting values",
+        "MLH-CH26-004-WB": "Chapter 26 Example 4 - Westbound starting values",
     }
 
 

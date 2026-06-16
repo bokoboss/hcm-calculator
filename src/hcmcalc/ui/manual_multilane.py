@@ -14,8 +14,8 @@ from hcmcalc.ui.units import FEET_TO_METERS, MILES_TO_KILOMETERS
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURE_PATH = ROOT / "references" / "multilane_example_inputs.yaml"
 TEMPLATE_LABELS = {
-    "MLH-CH26-004-EB": "Example 4 — Eastbound direction",
-    "MLH-CH26-004-WB": "Example 4 — Westbound direction",
+    "MLH-CH26-004-EB": "Chapter 26 Example 4 - Eastbound starting values",
+    "MLH-CH26-004-WB": "Chapter 26 Example 4 - Westbound starting values",
 }
 SUPPORTED_UNIT_SYSTEMS = {"metric", "imperial"}
 MANUAL_MULTILANE_CALCULATION_TYPE = "manual_multilane_v0"
