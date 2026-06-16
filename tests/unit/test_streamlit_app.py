@@ -4,8 +4,15 @@ from hcmcalc.ui.manual_facility import clear_manual_facility_result_state
 from hcmcalc.ui.supported_workflows import (
     APP_MODE_LABELS,
     APP_MODE_TO_VIEW,
+    AUDIT_EXPANDER_LABEL,
+    BASIC_FREEWAY_RAMP_DENSITY_HELP,
+    BASIC_FREEWAY_RAMP_DENSITY_LABEL,
+    CALCULATION_DETAILS_LABEL,
     EXAMPLE_WORKFLOW_NOTE,
+    PRERUN_RESULTS_PLACEHOLDER,
+    STARTING_VALUES_CAPTION,
     SUPPORTED_WORKFLOW_SECTIONS,
+    VALIDATION_EXPANDER_LABEL,
 )
 
 
@@ -79,9 +86,32 @@ def test_template_switching_clears_stale_facility_results() -> None:
 
 
 def test_app_mode_list_includes_supported_workflows() -> None:
-    assert "Supported Workflows" in APP_MODE_LABELS
+    assert APP_MODE_LABELS == (
+        "Supported Workflows",
+        "Two-Lane Segment",
+        "Two-Lane Facility",
+        "Multilane Segment",
+        "Basic Freeway Segment",
+        "Validation Examples",
+    )
     assert APP_MODE_TO_VIEW["Supported Workflows"] == "supported_workflows"
-    assert APP_MODE_TO_VIEW["Basic Freeway"] == "manual_basic_freeway"
+    assert APP_MODE_TO_VIEW["Two-Lane Segment"] == "manual_single_segment"
+    assert APP_MODE_TO_VIEW["Basic Freeway Segment"] == "manual_basic_freeway"
+
+
+def test_calculator_ui_shared_grammar_labels_are_standardized() -> None:
+    assert VALIDATION_EXPANDER_LABEL == "Validation basis and limitations"
+    assert CALCULATION_DETAILS_LABEL == "Calculation details"
+    assert AUDIT_EXPANDER_LABEL == "Audit / intermediate values"
+    assert PRERUN_RESULTS_PLACEHOLDER == "Results will appear after calculation."
+    assert STARTING_VALUES_CAPTION == (
+        "Starting values only prefill supported inputs. You may edit values before "
+        "running the calculation."
+    )
+    assert BASIC_FREEWAY_RAMP_DENSITY_LABEL == "Ramp density for FFS adjustment"
+    assert BASIC_FREEWAY_RAMP_DENSITY_HELP == (
+        "Used for Basic Freeway speed adjustment only; not a ramp analysis workflow."
+    )
 
 
 def test_supported_workflows_content_names_current_scope() -> None:

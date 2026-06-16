@@ -21,10 +21,10 @@ MANUAL_FACILITY_CALCULATION_TYPE = "manual_facility_v0"
 
 FACILITY_TEMPLATES = {
     "level_example_3": {
-        "label": "Level facility template (Example Problem 3)",
+        "label": "Chapter 26 Example 3 starting values",
         "basis": "Example Problem 3",
         "supported_context": (
-            "Validated example-based level facility workflow with the template's "
+            "Validated example-based level facility workflow with the selected "
             "segment sequence and passing-lane/downstream context."
         ),
         "safe_edit_summary": (
@@ -48,7 +48,7 @@ FACILITY_TEMPLATES = {
         },
     },
     "mountainous_example_4": {
-        "label": "Mountainous / passing-lane template (Example Problem 4)",
+        "label": "Chapter 26 Example 4 starting values",
         "basis": "Example Problem 4",
         "supported_context": (
             "Validated example-based mountainous facility workflow preserving "
@@ -74,7 +74,7 @@ FACILITY_TEMPLATES = {
 
 
 def facility_template_options() -> dict[str, str]:
-    """Return stable template identifiers and user-facing labels."""
+    """Return stable starting-value identifiers and user-facing labels."""
 
     return {
         template_id: str(template["label"])
