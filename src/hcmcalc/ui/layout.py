@@ -69,8 +69,8 @@ def render_validation_basis_and_limitations(
 def render_project_load_section(render_controls: Any) -> None:
     """Render a compact project load section around existing load controls."""
 
-    st.markdown(f"**{PROJECT_LOAD_LABEL}**")
-    render_controls()
+    with st.expander(PROJECT_LOAD_LABEL, expanded=False):
+        render_controls()
 
 
 def render_project_output_section(caption: str, render_controls: Any) -> None:

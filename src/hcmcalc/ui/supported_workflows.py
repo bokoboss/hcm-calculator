@@ -15,11 +15,11 @@ class WorkflowSection(TypedDict):
 
 
 APP_MODE_LABELS = (
-    "Supported Workflows",
     "Two-Lane Segment",
     "Two-Lane Facility",
     "Multilane Segment",
     "Basic Freeway Segment",
+    "Supported Workflows",
     "Validation Examples",
 )
 
@@ -35,12 +35,12 @@ APP_MODE_TO_VIEW = {
 VALIDATION_EXPANDER_LABEL = "Validation basis and limitations"
 CALCULATION_DETAILS_LABEL = "Calculation details"
 AUDIT_EXPANDER_LABEL = "Audit / intermediate values"
-STARTING_VALUES_LABEL = "Starting values"
-PROJECT_LOAD_LABEL = "Project file / Load"
+STARTING_VALUES_LABEL = "Optional defaults"
+PROJECT_LOAD_LABEL = "Load saved project"
 PROJECT_OUTPUT_LABEL = "Project output"
 EXPORT_REPORT_LABEL = "Export / Report"
 STARTING_VALUES_CAPTION = (
-    "Starting values only prefill supported inputs. You may edit values before "
+    "Optional defaults only prefill supported inputs. You may edit values before "
     "running the calculation."
 )
 PRERUN_RESULTS_PLACEHOLDER = "Results will appear after calculation."
