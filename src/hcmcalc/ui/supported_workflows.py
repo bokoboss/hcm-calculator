@@ -14,21 +14,21 @@ class WorkflowSection(TypedDict):
 
 
 APP_MODE_LABELS = (
-    "Two-Lane Highway",
-    "Two-Lane Facility",
-    "Multilane Highway",
-    "Basic Freeway",
     "Supported Workflows",
-    "Examples / Validation",
+    "Two-Lane Segment",
+    "Two-Lane Facility",
+    "Multilane Segment",
+    "Basic Freeway Segment",
+    "Validation Examples",
 )
 
 APP_MODE_TO_VIEW = {
-    "Two-Lane Highway": "manual_single_segment",
-    "Two-Lane Facility": "manual_facility",
-    "Multilane Highway": "manual_multilane",
-    "Basic Freeway": "manual_basic_freeway",
     "Supported Workflows": "supported_workflows",
-    "Examples / Validation": "validated_examples",
+    "Two-Lane Segment": "manual_single_segment",
+    "Two-Lane Facility": "manual_facility",
+    "Multilane Segment": "manual_multilane",
+    "Basic Freeway Segment": "manual_basic_freeway",
+    "Validation Examples": "validated_examples",
 }
 
 SUPPORTED_WORKFLOW_SECTIONS: tuple[WorkflowSection, ...] = (
