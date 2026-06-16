@@ -129,7 +129,7 @@ def test_unit_or_preset_switch_clears_freeway_form_and_result_state() -> None:
     }
 
 
-def test_freeway_audit_records_no_save_load_or_export_surface() -> None:
+def test_freeway_audit_records_guarded_save_load_and_export_scope() -> None:
     inputs = load_freeway_preset("BF-CH26-001")["inputs"]
     audit = build_manual_freeway_audit_record(
         "BF-CH26-001", inputs, result=run_manual_freeway(inputs)
@@ -138,8 +138,10 @@ def test_freeway_audit_records_no_save_load_or_export_surface() -> None:
     assert audit["calculation_succeeded"] is True
     assert audit["unit_system"] == "imperial"
     assert "project_type" not in audit
-    assert "export" not in audit
-    assert any("Save/Load" in note for note in audit["unsupported_behavior_notes"])
+    assert any(
+        "Save/Load and export/reporting preserve only this guarded" in note
+        for note in audit["unsupported_behavior_notes"]
+    )
 
 
 def test_freeway_engine_inputs_to_ui_preserves_measured_ffs_path_shape() -> None:

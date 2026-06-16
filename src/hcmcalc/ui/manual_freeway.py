@@ -24,7 +24,7 @@ MANUAL_FREEWAY_LIMITATIONS = [
     "One direction, one segment, uninterrupted flow, and general-purpose lanes only.",
     "Ramp, weaving, merge/diverge, managed-lane, work-zone, reliability, and facility/corridor workflows are unsupported.",
     "Calculations remain engine-native Imperial; Metric values are UI/reporting conversions.",
-    "Save/Load and export/reporting controls are intentionally not exposed for Basic Freeway v0.1.",
+    "Save/Load and export/reporting preserve only this guarded Basic Freeway Segment v0.1 workflow.",
 ]
 
 

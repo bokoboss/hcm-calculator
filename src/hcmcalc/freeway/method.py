@@ -112,7 +112,7 @@ class BasicFreewaySegmentMethod:
             "No Multilane Highway Segment calculations.",
             "No ramp, weaving, merge/diverge, managed-lane, work-zone, reliability, or facility/corridor analysis.",
             "No specific-grade or mountainous-terrain PCE tables in v0.1.",
-            "No UI, Save/Load, or export/reporting integration.",
+            "Save/Load and export/reporting integration does not broaden Basic Freeway Segment v0.1 scope.",
         ]
         source_references = [
             "HCM7 Chapter 12 Step 1 and Exhibit 12-18",

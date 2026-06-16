@@ -10,6 +10,10 @@ from typing import Any
 
 from openpyxl import Workbook
 
+from hcmcalc.ui.manual_freeway import (
+    MANUAL_FREEWAY_LIMITATIONS,
+    freeway_display_outputs,
+)
 from hcmcalc.ui.manual_multilane import (
     MANUAL_MULTILANE_LIMITATIONS,
     multilane_display_outputs,
@@ -22,6 +26,7 @@ SUPPORTED_CALCULATION_TYPES = {
     "manual_single_segment",
     "manual_facility_v0",
     "manual_multilane_v0",
+    "manual_basic_freeway_v0",
 }
 SUPPORTED_EXPORT_FORMATS = {"csv", "xlsx", "markdown", "json"}
 
@@ -79,8 +84,18 @@ def build_report(
             template_id,
             timestamp,
         )
-    else:
+    elif calculation_type == "manual_multilane_v0":
         report = _multilane_report(
+            result,
+            outputs,
+            unit_system,
+            inputs,
+            audit_record,
+            template_id,
+            timestamp,
+        )
+    else:
+        report = _freeway_report(
             result,
             outputs,
             unit_system,
@@ -126,6 +141,7 @@ def report_filename(report: dict[str, Any], extension: str) -> str:
         "manual_single_segment": "single_segment",
         "manual_facility_v0": "facility",
         "manual_multilane_v0": "multilane",
+        "manual_basic_freeway_v0": "basic_freeway",
     }[calculation_type]
     return f"hcm_ch15_{workflow}_report_{timestamp:%Y%m%d_%H%M%S}.{extension}"
 
@@ -368,6 +384,55 @@ def _multilane_report(
     return report
 
 
+def _freeway_report(
+    result: dict[str, Any],
+    outputs: dict[str, Any],
+    unit_system: str,
+    inputs: Any,
+    audit_record: dict[str, Any] | None,
+    preset_id: str | None,
+    timestamp: str,
+) -> dict[str, Any]:
+    display = freeway_display_outputs(outputs, unit_system)
+    summary = [
+        {"label": "Level of service", "value": outputs["level_of_service"], "unit": None},
+        *[
+            {"label": _label(name), "value": metric["value"], "unit": metric["unit"]}
+            for name, metric in display.items()
+        ],
+        {
+            "label": "Heavy vehicle adjustment factor",
+            "value": outputs["heavy_vehicle_adjustment_factor"],
+            "unit": None,
+        },
+        {"label": "Capacity check", "value": outputs["capacity_check"], "unit": None},
+    ]
+    input_records = _freeway_input_records(inputs or {}, unit_system)
+    if preset_id:
+        input_records.insert(
+            0, {"label": "Validated preset", "value": preset_id, "unit": None}
+        )
+    report = _base_report(
+        title="Manual Basic Freeway Segment Calculator Report",
+        report_type="HCM Manual Basic Freeway Segment validated-path calculation report",
+        calculation_type="manual_basic_freeway_v0",
+        unit_system=unit_system,
+        timestamp=timestamp,
+        inputs=input_records,
+        results=summary,
+        segment_results=[],
+        result=result,
+        audit_record=audit_record,
+        limitations=MANUAL_FREEWAY_LIMITATIONS,
+    )
+    report["selected_validated_preset"] = preset_id
+    report["support_scope"] = "Basic Freeway Segment only; BF-CH26-001-compatible validated path."
+    report["normalized_engine_inputs_summary"] = _input_records(
+        (audit_record or {}).get("submitted_inputs", {}), "imperial"
+    )
+    return report
+
+
 def _multilane_input_records(
     inputs: Any, unit_system: str
 ) -> list[dict[str, Any]]:
@@ -383,6 +448,26 @@ def _multilane_input_records(
         "demand_volume_veh_h": "veh/h",
         "heavy_vehicle_percent": "%",
         "grade_percent": "%",
+    }
+    return [
+        {"label": _label(key), "value": value, "unit": units.get(key)}
+        for key, value in inputs.items()
+    ]
+
+
+def _freeway_input_records(inputs: Any, unit_system: str) -> list[dict[str, Any]]:
+    if not isinstance(inputs, dict):
+        raise ReportingError("Manual Basic Freeway report inputs must be an object.")
+    metric = unit_system == "metric"
+    units = {
+        "segment_length": "km" if metric else "mi",
+        "free_flow_speed": "km/h" if metric else "mph",
+        "base_free_flow_speed": "km/h" if metric else "mph",
+        "lane_width": "m" if metric else "ft",
+        "right_side_lateral_clearance": "m" if metric else "ft",
+        "total_ramp_density": "ramps/km" if metric else "ramps/mi",
+        "demand_volume_veh_h": "veh/h",
+        "heavy_vehicle_percent": "%",
     }
     return [
         {"label": _label(key), "value": value, "unit": units.get(key)}
@@ -463,6 +548,11 @@ def _input_items(inputs: dict[str, Any], unit_system: str) -> list[tuple[str, An
         "lane_width_ft": "ft (engine-native Imperial)",
         "roadside_lateral_clearance_ft": "ft (engine-native Imperial)",
         "access_point_density_per_mi": "access points/mi (engine-native Imperial)",
+        "segment_length_mi": "mi (engine-native Imperial)",
+        "free_flow_speed_mph": "mph (engine-native Imperial)",
+        "base_free_flow_speed_mph": "mph (engine-native Imperial)",
+        "right_side_lateral_clearance_ft": "ft (engine-native Imperial)",
+        "total_ramp_density_per_mi": "ramps/mi (engine-native Imperial)",
         "demand_volume_veh_h": "veh/h",
     }
     return [(_label(key), value, units.get(key)) for key, value in inputs.items()]
@@ -593,7 +683,20 @@ def _validate_result(calculation_type: str, result: dict[str, Any] | None) -> No
                 "segments",
             }
             if calculation_type == "manual_facility_v0"
-            else {
+            else (
+                {
+                    "density_pc_mi_ln",
+                    "level_of_service",
+                    "speed_used_for_density_mph",
+                    "demand_flow_rate_pc_h_ln",
+                    "adjusted_free_flow_speed_mph",
+                    "base_free_flow_speed_mph",
+                    "heavy_vehicle_adjustment_factor",
+                    "capacity_pc_h_ln",
+                    "capacity_check",
+                }
+                if calculation_type == "manual_multilane_v0"
+                else {
                 "density_pc_mi_ln",
                 "level_of_service",
                 "speed_used_for_density_mph",
@@ -602,8 +705,10 @@ def _validate_result(calculation_type: str, result: dict[str, Any] | None) -> No
                 "base_free_flow_speed_mph",
                 "heavy_vehicle_adjustment_factor",
                 "capacity_pc_h_ln",
+                "adjusted_capacity_pc_h_ln",
                 "capacity_check",
             }
+            )
         )
     )
     if not required.issubset(result["outputs"]):

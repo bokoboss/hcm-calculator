@@ -15,11 +15,20 @@ from hcmcalc.ui.manual_multilane import (
     multilane_template_ui_inputs,
     run_manual_multilane,
 )
+from hcmcalc.ui.manual_freeway import (
+    build_manual_freeway_audit_record,
+    freeway_preset_ui_inputs,
+    load_freeway_preset,
+    run_manual_freeway,
+)
 from hcmcalc.ui.project_io import (
+    MANUAL_BASIC_FREEWAY_PROJECT_TYPE,
     MANUAL_FACILITY_PROJECT_TYPE,
     MANUAL_MULTILANE_PROJECT_TYPE,
     PROJECT_SCHEMA_VERSION,
     ProjectFileError,
+    create_manual_freeway_project_json,
+    create_manual_freeway_project_payload,
     create_manual_facility_project_json,
     create_manual_facility_project_payload,
     create_manual_multilane_project_json,
@@ -27,6 +36,7 @@ from hcmcalc.ui.project_io import (
     create_manual_project_json,
     create_manual_project_payload,
     load_manual_facility_project_json,
+    load_manual_freeway_project_json,
     load_manual_multilane_project_json,
     load_manual_project_json,
 )
@@ -417,3 +427,106 @@ def test_manual_multilane_load_rejects_invalid_projects(mutation, message: str) 
 
     with pytest.raises(ProjectFileError, match=message):
         load_manual_multilane_project_json(json.dumps(payload))
+
+
+@pytest.mark.parametrize("unit_system", ["imperial", "metric"])
+def test_manual_freeway_project_round_trip(unit_system: str) -> None:
+    preset = load_freeway_preset("BF-CH26-001")
+    displayed = freeway_preset_ui_inputs("BF-CH26-001", unit_system)
+    result = run_manual_freeway(preset["inputs"])
+    audit = build_manual_freeway_audit_record(
+        "BF-CH26-001",
+        preset["inputs"],
+        unit_system=unit_system,
+        displayed_inputs=displayed,
+        result=result,
+    )
+
+    loaded = load_manual_freeway_project_json(
+        create_manual_freeway_project_json(
+            "BF-CH26-001",
+            unit_system,
+            displayed,
+            result=result_to_dict(result),
+            audit_record=audit,
+        )
+    )
+
+    assert loaded["project_type"] == MANUAL_BASIC_FREEWAY_PROJECT_TYPE
+    assert loaded["unit_system"] == unit_system
+    assert loaded["preset_id"] == "BF-CH26-001"
+    assert loaded["displayed_ui_inputs"] == displayed
+    assert loaded["normalized_engine_inputs"] == preset["inputs"]
+    assert loaded["calculation_result"]["outputs"]["level_of_service"] == "C"
+    assert loaded["limitations"]
+    assert loaded["unsupported_behavior_notes"]
+
+
+def test_manual_freeway_project_payload_contains_display_and_engine_values() -> None:
+    displayed = freeway_preset_ui_inputs("BF-CH26-001", "metric")
+
+    payload = create_manual_freeway_project_payload(
+        "BF-CH26-001", "metric", displayed
+    )
+
+    assert payload["preset_name"] == "Chapter 26 Example 1 starting values"
+    assert payload["displayed_ui_inputs"] == displayed
+    assert payload["normalized_engine_inputs"]["segment_length_mi"] == 1.0
+    assert payload["display_result"] is None
+    assert payload["app_version"]
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    [
+        (lambda payload: payload.pop("project_type"), "Missing required field: project_type"),
+        (
+            lambda payload: payload.__setitem__("project_type", "manual_multilane_v0"),
+            "Expected manual_basic_freeway_v0",
+        ),
+        (lambda payload: payload.pop("unit_system"), "Missing required field: unit_system"),
+        (lambda payload: payload.__setitem__("preset_id", "unknown"), "Unknown preset_id"),
+        (
+            lambda payload: payload.__setitem__("displayed_ui_inputs", []),
+            "Malformed input payload",
+        ),
+        (
+            lambda payload: payload["displayed_ui_inputs"].pop("segment_length"),
+            "Malformed input payload",
+        ),
+        (
+            lambda payload: payload["displayed_ui_inputs"].__setitem__(
+                "terrain_type", "mountainous"
+            ),
+            "Malformed or unsupported input payload",
+        ),
+    ],
+)
+def test_manual_freeway_load_rejects_invalid_projects(mutation, message: str) -> None:
+    payload = create_manual_freeway_project_payload(
+        "BF-CH26-001",
+        "imperial",
+        freeway_preset_ui_inputs("BF-CH26-001", "imperial"),
+    )
+    mutation(payload)
+
+    with pytest.raises(ProjectFileError, match=message):
+        load_manual_freeway_project_json(json.dumps(payload))
+
+
+def test_manual_freeway_load_clears_stale_result_when_engine_inputs_change() -> None:
+    displayed = freeway_preset_ui_inputs("BF-CH26-001", "imperial")
+    result = result_to_dict(run_manual_freeway(load_freeway_preset("BF-CH26-001")["inputs"]))
+    payload = create_manual_freeway_project_payload(
+        "BF-CH26-001",
+        "imperial",
+        displayed,
+        result=result,
+    )
+    payload["normalized_engine_inputs"]["demand_volume_veh_h"] = 1.0
+
+    loaded = load_manual_freeway_project_json(json.dumps(payload))
+
+    assert loaded["calculation_result"] is None
+    assert loaded["display_result"] is None
+    assert loaded["audit"] is None

@@ -19,9 +19,10 @@ This document began as the planning artifact for PR #59. Basic Freeway Segment
 engine v0.1 is now implemented as an engine-only package under
 `src/hcmcalc/freeway/`. A Manual Basic Freeway Segment Calculator v0.1 now
 exposes that existing engine path in Streamlit for the BF-CH26-001-compatible
-validated workflow only. It does not implement Save/Load, export behavior,
-ramps, weaving, merge/diverge, managed lanes, work zones, reliability, or
-facility/corridor workflows.
+validated workflow only. Save/Load and export/reporting integration now exists
+for that same guarded worksheet through `project_type =
+manual_basic_freeway_v0`. This does not add ramps, weaving, merge/diverge,
+managed lanes, work zones, reliability, or facility/corridor workflows.
 
 BF-2 adds Chapter 26 Basic Freeway Segment validation fixtures for Example
 Problem 1. The local Chapter 12 methodology reference provides the formulas and
@@ -77,11 +78,16 @@ Implemented v0.1 page structure:
 - Roadway / Geometry
 - Traffic
 - Advanced / Optional
+- compact Save/Load controls
 - Results
 - Calculation details / Audit
+- Export / Report after successful results
 
-Save / Load / Export remains future work and is intentionally absent from the
-Basic Freeway v0.1 UI.
+Save / Load / Export remains calculator-scoped and does not convert the page
+into an example-template viewer. Loading restores unit system, preset, displayed
+inputs, engine-native inputs, and matching result context when present. Exports
+format the existing calculated result in CSV, Excel `.xlsx`, Markdown, and
+report JSON.
 
 Recommended wording for optional examples:
 
@@ -185,8 +191,9 @@ Implemented outputs:
 - formula source references.
 
 These outputs are displayed by the guarded Manual Basic Freeway Segment UI.
-They do not imply Save/Load, export, facility, ramp, weaving, or managed-lane
-support.
+They are also available in guarded project files and reports. They do not imply
+facility, ramp, weaving, merge/diverge, managed-lane, work-zone, reliability, or
+facility/corridor support.
 
 ## Guardrails
 
@@ -304,13 +311,22 @@ workflow, or freeway facility/corridor analysis.
 
 ### BF-4: Save/Load + Export Integration
 
-- Add a distinct Basic Freeway project type after UI and engine contracts are
-  stable.
-- Persist displayed inputs, normalized engine inputs, results, audit details,
-  assumptions, warnings, limitations, and unsupported-scope notes.
-- Add CSV, Excel, Markdown, and report JSON exports using the shared reporting
-  pattern.
-- Avoid changing existing Two-Lane and Multilane Save/Load or export behavior.
+- Added distinct Basic Freeway project type
+  `manual_basic_freeway_v0` under the existing project schema version `1.0`.
+- Persisted displayed inputs, normalized engine-native Imperial inputs, matching
+  results, audit details, assumptions, warnings, limitations, and
+  unsupported-scope notes.
+- Added CSV, Excel `.xlsx`, Markdown, and report JSON exports using the shared
+  reporting pattern.
+- Placed Load Project near the input preset controls, Save Project below the
+  worksheet inputs, and Export / Report after successful results so the
+  calculator remains the primary workflow.
+- Preserved Metric/Imperial UI-boundary conversion; calculations remain
+  engine-native Imperial.
+- Avoided changing existing Two-Lane and Multilane Save/Load or export behavior.
+- Added no Basic Freeway formulas, coefficients, tables, ramps, weaving,
+  merge/diverge, managed-lane, work-zone, reliability, or facility/corridor
+  support.
 
 ### BF-5: Broader Freeway Features Only After Validated References Exist
 
@@ -341,8 +357,6 @@ general Basic Freeway, freeway facility, or adjacent-methodology support.
 
 Basic Freeway Segment v0.1 does not implement:
 
-- Save/Load;
-- export/reporting;
 - ramps;
 - weaving;
 - merge/diverge;
@@ -352,3 +366,7 @@ Basic Freeway Segment v0.1 does not implement:
 - facility/corridor workflow;
 - additional expected-output fixtures beyond BF-CH26-001; or
 - changes to existing Two-Lane or Multilane behavior.
+
+Save/Load and export/reporting are implemented only for the guarded Manual Basic
+Freeway Segment v0.1 worksheet using `manual_basic_freeway_v0`; they do not add
+broader freeway calculation scope.

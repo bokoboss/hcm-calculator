@@ -88,8 +88,11 @@ def test_unrecognized_out_of_scope_input_is_rejected() -> None:
         BasicFreewaySegmentMethod().calculate(inputs)
 
 
-def test_basic_freeway_result_declares_no_ui_save_load_or_export_support() -> None:
+def test_basic_freeway_result_declares_guarded_save_load_and_export_scope() -> None:
     outputs = BasicFreewaySegmentMethod().calculate(_inputs()).outputs
 
-    assert any("No UI" in note for note in outputs["unsupported_scope_notes"])
+    assert any(
+        "Save/Load and export/reporting integration does not broaden" in note
+        for note in outputs["unsupported_scope_notes"]
+    )
     assert any("No Multilane" in note for note in outputs["unsupported_scope_notes"])

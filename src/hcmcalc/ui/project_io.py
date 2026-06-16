@@ -14,6 +14,14 @@ from hcmcalc.ui.manual_facility import (
     build_manual_facility_inputs,
     load_facility_template,
 )
+from hcmcalc.ui.manual_freeway import (
+    MANUAL_FREEWAY_LIMITATIONS,
+    PRESET_LABELS,
+    freeway_display_outputs,
+    freeway_ui_inputs_to_engine,
+    load_freeway_preset,
+    run_manual_freeway,
+)
 from hcmcalc.ui.manual_multilane import (
     MANUAL_MULTILANE_LIMITATIONS,
     TEMPLATE_LABELS,
@@ -29,6 +37,7 @@ PROJECT_SCHEMA_VERSION = "1.0"
 MANUAL_SINGLE_SEGMENT_PROJECT_TYPE = "manual_single_segment"
 MANUAL_FACILITY_PROJECT_TYPE = "manual_facility_v0"
 MANUAL_MULTILANE_PROJECT_TYPE = "manual_multilane_v0"
+MANUAL_BASIC_FREEWAY_PROJECT_TYPE = "manual_basic_freeway_v0"
 REQUIRED_MANUAL_INPUTS = {
     "segment_type",
     "terrain_type",
@@ -324,6 +333,107 @@ def load_manual_multilane_project_json(data: str | bytes) -> dict[str, Any]:
     return payload
 
 
+def create_manual_freeway_project_payload(
+    preset_id: str,
+    unit_system: str,
+    displayed_inputs: dict[str, Any],
+    *,
+    result: dict[str, Any] | None = None,
+    audit_record: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Create a JSON-ready guarded Manual Basic Freeway project payload."""
+
+    preset = load_freeway_preset(preset_id)
+    unit_system = _validate_unit_system(unit_system)
+    displayed_inputs = _json_ready(displayed_inputs)
+    normalized_inputs = _build_freeway_inputs(preset_id, unit_system, displayed_inputs)
+    try:
+        run_manual_freeway(normalized_inputs)
+    except HCMCalcError as exc:
+        raise ProjectFileError(f"Malformed or unsupported input payload: {exc}") from exc
+    result = _json_ready(result) if result is not None else None
+    audit_record = _json_ready(audit_record) if audit_record is not None else None
+    outputs = result.get("outputs", {}) if result else {}
+    return {
+        "schema_version": PROJECT_SCHEMA_VERSION,
+        "project_type": MANUAL_BASIC_FREEWAY_PROJECT_TYPE,
+        "generated_by": f"hcm-calculator {__version__}",
+        "app_version": __version__,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "unit_system": unit_system,
+        "preset_id": preset_id,
+        "preset_name": preset["preset_label"],
+        "displayed_ui_inputs": displayed_inputs,
+        "normalized_engine_inputs": normalized_inputs,
+        "calculation_result": result,
+        "display_result": (
+            freeway_display_outputs(outputs, unit_system) if outputs else None
+        ),
+        "audit": audit_record,
+        "warnings": _calculation_context("warnings", result, audit_record),
+        "assumptions": _calculation_context("assumptions", result, audit_record),
+        "limitations": list(MANUAL_FREEWAY_LIMITATIONS),
+        "unsupported_behavior_notes": list(MANUAL_FREEWAY_LIMITATIONS),
+    }
+
+
+def create_manual_freeway_project_json(
+    preset_id: str,
+    unit_system: str,
+    displayed_inputs: dict[str, Any],
+    *,
+    result: dict[str, Any] | None = None,
+    audit_record: dict[str, Any] | None = None,
+) -> str:
+    """Create formatted JSON for a guarded Manual Basic Freeway project."""
+
+    return json.dumps(
+        create_manual_freeway_project_payload(
+            preset_id,
+            unit_system,
+            displayed_inputs,
+            result=result,
+            audit_record=audit_record,
+        ),
+        indent=2,
+    )
+
+
+def load_manual_freeway_project_json(data: str | bytes) -> dict[str, Any]:
+    """Parse and validate a guarded Manual Basic Freeway project JSON document."""
+
+    payload = _load_project_document(data)
+    if payload.get("project_type") != MANUAL_BASIC_FREEWAY_PROJECT_TYPE:
+        raise ProjectFileError(
+            "Wrong project_type. Expected manual_basic_freeway_v0."
+        )
+    if "unit_system" not in payload:
+        raise ProjectFileError("Missing required field: unit_system.")
+    unit_system = _validate_unit_system(payload["unit_system"])
+    if "preset_id" not in payload:
+        raise ProjectFileError("Missing required field: preset_id.")
+    preset_id = payload["preset_id"]
+    if preset_id not in PRESET_LABELS:
+        raise ProjectFileError(f"Unknown preset_id: {preset_id}.")
+    displayed_inputs = payload.get("displayed_ui_inputs")
+    if not isinstance(displayed_inputs, dict):
+        raise ProjectFileError(
+            "Malformed input payload: displayed_ui_inputs must be an object."
+        )
+    saved_normalized_inputs = payload.get("normalized_engine_inputs")
+    normalized_inputs = _build_freeway_inputs(preset_id, unit_system, displayed_inputs)
+    try:
+        run_manual_freeway(normalized_inputs)
+    except HCMCalcError as exc:
+        raise ProjectFileError(f"Malformed or unsupported input payload: {exc}") from exc
+    payload["normalized_engine_inputs"] = normalized_inputs
+    if saved_normalized_inputs != normalized_inputs:
+        payload["calculation_result"] = None
+        payload["display_result"] = None
+        payload["audit"] = None
+    return payload
+
+
 def _load_project_document(data: str | bytes) -> dict[str, Any]:
     try:
         payload = json.loads(data)
@@ -341,6 +451,10 @@ def _load_project_document(data: str | bytes) -> dict[str, Any]:
 
 
 def _validate_multilane_unit_system(unit_system: Any) -> str:
+    return _validate_unit_system(unit_system)
+
+
+def _validate_unit_system(unit_system: Any) -> str:
     normalized = str(unit_system).strip().lower()
     if normalized not in {"metric", "imperial"}:
         raise ProjectFileError("unit_system must be metric or imperial.")
@@ -355,6 +469,16 @@ def _build_multilane_inputs(
         return multilane_ui_inputs_to_engine(
             displayed_inputs, template_inputs, unit_system
         )
+    except (HCMCalcError, KeyError, TypeError, ValueError) as exc:
+        raise ProjectFileError(f"Malformed input payload: {exc}") from exc
+
+
+def _build_freeway_inputs(
+    preset_id: str, unit_system: str, displayed_inputs: dict[str, Any]
+) -> dict[str, Any]:
+    try:
+        preset_inputs = load_freeway_preset(preset_id)["inputs"]
+        return freeway_ui_inputs_to_engine(displayed_inputs, preset_inputs, unit_system)
     except (HCMCalcError, KeyError, TypeError, ValueError) as exc:
         raise ProjectFileError(f"Malformed input payload: {exc}") from exc
 

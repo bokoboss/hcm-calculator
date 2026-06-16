@@ -20,6 +20,13 @@ from hcmcalc.ui.manual_multilane import (
     multilane_template_ui_inputs,
     run_manual_multilane,
 )
+from hcmcalc.ui.manual_freeway import (
+    MANUAL_FREEWAY_LIMITATIONS,
+    build_manual_freeway_audit_record,
+    freeway_preset_ui_inputs,
+    load_freeway_preset,
+    run_manual_freeway,
+)
 from hcmcalc.ui.reporting import (
     FACILITY_LIMITATIONS,
     SINGLE_SEGMENT_LIMITATIONS,
@@ -99,6 +106,27 @@ def _multilane_report(unit_system: str = "metric", template_id: str = "MLH-CH26-
     )
 
 
+def _freeway_report(unit_system: str = "metric", preset_id: str = "BF-CH26-001"):
+    preset = load_freeway_preset(preset_id)
+    displayed = freeway_preset_ui_inputs(preset_id, unit_system)
+    result = run_manual_freeway(preset["inputs"])
+    audit = build_manual_freeway_audit_record(
+        preset_id,
+        preset["inputs"],
+        unit_system=unit_system,
+        displayed_inputs=displayed,
+        result=result,
+    )
+    return build_report(
+        "manual_basic_freeway_v0",
+        result_to_dict(result),
+        unit_system,
+        inputs=displayed,
+        audit_record=audit,
+        template_id=preset_id,
+    )
+
+
 def test_single_segment_report_json_generation_includes_units_and_limitations() -> None:
     report = _single_report()
     exported = json.loads(export_report(report, "json"))
@@ -137,12 +165,33 @@ def test_multilane_report_json_includes_units_context_and_limitations() -> None:
     assert exported["intermediate_values"]
 
 
+def test_freeway_report_json_includes_units_context_results_and_limitations() -> None:
+    exported = json.loads(export_report(_freeway_report(), "json"))
+
+    assert exported["calculation_type"] == "manual_basic_freeway_v0"
+    assert exported["selected_validated_preset"] == "BF-CH26-001"
+    assert exported["support_scope"].startswith("Basic Freeway Segment only")
+    assert any(item["unit"] == "km/h" for item in exported["results_summary"])
+    assert any(
+        item["label"] == "Adjusted Capacity" for item in exported["results_summary"]
+    )
+    assert any(
+        item["unit"] == "mi (engine-native Imperial)"
+        for item in exported["normalized_engine_inputs_summary"]
+    )
+    assert exported["limitations"] == MANUAL_FREEWAY_LIMITATIONS
+    assert exported["assumptions"]
+    assert exported["warnings"]
+    assert exported["intermediate_values"]
+
+
 @pytest.mark.parametrize(
     ("report_factory", "expected"),
     [
         (_single_report, "Manual Single Segment"),
         (_facility_report, "Manual Facility Calculator v0.1"),
         (_multilane_report, "Manual Multilane Highway Segment v0.1"),
+        (_freeway_report, "Manual Basic Freeway Segment Calculator"),
     ],
 )
 def test_markdown_generation(report_factory, expected: str) -> None:
@@ -154,7 +203,10 @@ def test_markdown_generation(report_factory, expected: str) -> None:
     assert "## Assumptions" in markdown
 
 
-@pytest.mark.parametrize("report_factory", [_single_report, _facility_report, _multilane_report])
+@pytest.mark.parametrize(
+    "report_factory",
+    [_single_report, _facility_report, _multilane_report, _freeway_report],
+)
 def test_csv_generation_includes_units_limitations_and_warnings(report_factory) -> None:
     csv_text = export_report(report_factory(), "csv")
 
@@ -164,7 +216,10 @@ def test_csv_generation_includes_units_limitations_and_warnings(report_factory) 
     assert "Assumptions" in csv_text
 
 
-@pytest.mark.parametrize("report_factory", [_single_report, _facility_report, _multilane_report])
+@pytest.mark.parametrize(
+    "report_factory",
+    [_single_report, _facility_report, _multilane_report, _freeway_report],
+)
 def test_excel_generation_has_required_sheets_units_and_limitations(report_factory) -> None:
     workbook = load_workbook(BytesIO(export_report(report_factory(), "xlsx")))
 
@@ -217,6 +272,28 @@ def test_multilane_metric_and_imperial_exports_use_selected_display_units() -> N
     assert "## Normalized Engine Inputs" in export_report(
         _multilane_report("metric"), "markdown"
     )
+
+
+def test_freeway_metric_and_imperial_exports_use_selected_display_units() -> None:
+    metric_report = _freeway_report("metric")
+    imperial_report = _freeway_report("imperial")
+    metric_csv = export_report(metric_report, "csv")
+    imperial_csv = export_report(imperial_report, "csv")
+    markdown = export_report(metric_report, "markdown")
+
+    assert "pc/km/ln" in metric_csv
+    assert "km/h" in metric_csv
+    assert "pc/mi/ln" in imperial_csv
+    assert "mph" in imperial_csv
+    assert "Normalized Engine Inputs" in metric_csv
+    assert "engine-native Imperial" in metric_csv
+    assert "Basic Freeway Segment v0.1 is limited" in metric_csv
+    assert "no ramps" in markdown
+    assert "Adjusted Free Flow Speed" in markdown
+    assert next(
+        item for item in imperial_report["inputs_summary"]
+        if item["label"] == "Segment Length"
+    )["unit"] == "mi"
 
 
 def test_report_generation_rejects_missing_result() -> None:
