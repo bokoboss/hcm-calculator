@@ -1,4 +1,9 @@
-from hcmcalc.ui.result_view import compact_rows, format_display_metric, los_colors
+from hcmcalc.ui.result_view import (
+    compact_rows,
+    format_display_metric,
+    los_colors,
+    result_summary_items,
+)
 from hcmcalc.ui.schematics import get_segment_schematic_path
 from hcmcalc.ui.manual_facility import clear_manual_facility_result_state
 from hcmcalc.ui.supported_workflows import (
@@ -86,6 +91,25 @@ def test_primary_metric_formatting_is_consistent() -> None:
     assert format_display_metric(
         "demand_flow_rate", {"value": 800.0, "unit": "veh/h"}, "metric"
     ) == "800 veh/h"
+
+
+def test_result_summary_items_preserve_primary_first_ordering() -> None:
+    assert result_summary_items(
+        "Level of service",
+        "D",
+        [
+            {"label": "Density", "value": "18.0 pc/mi/ln"},
+            {"label": "Speed used for density", "value": "55.0 mph"},
+            {"label": "Demand flow rate", "value": "1,100 pc/h/ln"},
+            {"label": "Capacity", "value": "2,200 pc/h/ln"},
+        ],
+    ) == [
+        {"label": "Level of service", "value": "D"},
+        {"label": "Density", "value": "18.0 pc/mi/ln"},
+        {"label": "Speed used for density", "value": "55.0 mph"},
+        {"label": "Demand flow rate", "value": "1,100 pc/h/ln"},
+        {"label": "Capacity", "value": "2,200 pc/h/ln"},
+    ]
 
 
 def test_template_switching_clears_stale_facility_results() -> None:
