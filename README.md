@@ -22,6 +22,11 @@ Implemented:
 - HCM7 Multilane Basic Segment engine v0.1, limited to the eastbound and
   westbound Chapter 26 Multilane Highway Example Problem 4 validation path,
   with ML-2 validation, audit, boundary, and unsupported-scope hardening
+- HCM7 Chapter 12 Basic Freeway Segment engine v0.1 under
+  `src/hcmcalc/freeway/`, limited to one-direction, one-segment,
+  uninterrupted-flow Basic Freeway Segment calculations with measured or
+  estimated FFS, general-terrain level/rolling heavy-vehicle PCEs, audit
+  outputs, and unsupported-scope guardrails
 - Chapter 26 second-case inventory documenting that no additional compatible
   Multilane Highway motorized-vehicle validation case is available in the
   supplied example-problem reference
@@ -36,6 +41,10 @@ Not implemented yet:
 - Full HCM Chapter 15 calculation engine
 - General facility manual input
 - General Multilane Highway LOS calculations beyond Chapter 26 Example Problem 4
+- Basic Freeway UI, Save/Load, export/reporting, ramps, weaving,
+  merge/diverge, managed lanes, work zones, reliability, facility/corridor
+  workflows, specific-grade PCE tables, and Chapter 26 Basic Freeway
+  validation fixtures
 - Production validation dataset
 
 ## Local Setup
@@ -172,10 +181,14 @@ Limitations:
   Chapter 26 examples are Basic Freeway, mixed-flow freeway, adverse-weather
   Basic Freeway, or managed-lane cases and cannot safely serve as a second
   Multilane validation case.
-- Basic Freeway, ramps, weaving, merge/diverge, managed lanes, work zones,
-  reliability analysis, and facility/corridor workflows remain unsupported.
-- User-supplied base/adjusted free-flow speed and driver-population adjustment
-  inputs remain unsupported.
+- Basic Freeway UI, Save/Load, export/reporting, ramps, weaving,
+  merge/diverge, managed lanes, work zones, reliability analysis,
+  facility/corridor workflows, and specific-grade Basic Freeway PCE tables
+  remain unsupported. The Basic Freeway engine is Chapter 12 formula-backed,
+  but no complete Chapter 26 Basic Freeway validation fixture is available in
+  this repository yet.
+- User-supplied Multilane base/adjusted free-flow speed and driver-population
+  adjustment inputs remain unsupported.
 - PDF and DOCX report export are not implemented.
 - Export availability does not imply broader Chapter 15 methodology support.
 
@@ -210,5 +223,6 @@ validation-led implementation phases for a future Multilane Highway calculator.
 
 See the
 [Basic Freeway Segment Implementation Plan](docs/basic_freeway_implementation_plan.md)
-for the separately scoped architecture, product direction, and validation-led
-phases for future HCM7 Chapter 12 Basic Freeway Segment support.
+for the separately scoped architecture, implemented engine v0.1 scope, product
+direction, and validation-led future phases for HCM7 Chapter 12 Basic Freeway
+Segment support.

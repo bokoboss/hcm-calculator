@@ -7,17 +7,26 @@ separate calculator family. It must not be implemented as part of the
 Multilane Highway Segment family, and it must not be presented as a general
 freeway facility calculator.
 
-The v0.1 target is a reference-backed, auditable Basic Freeway Segment
-calculator for one uninterrupted-flow segment in one direction. It should reuse
+The v0.1 engine is a reference-backed, auditable Basic Freeway Segment
+calculator for one uninterrupted-flow segment in one direction. It reuses
 neutral project patterns where they fit, such as typed inputs, auditable
-intermediate values, guardrail errors, validation fixtures, and UI adapter
-separation. It must not share facility-specific formulas, coefficients, or
+intermediate values, guardrail errors, and UI adapter separation. It must not
+share facility-specific formulas, coefficients, or
 validation assumptions with Multilane Highway code merely because Chapter 12
 presents a common motorized vehicle core methodology.
 
-This planning PR defines scope, architecture, product direction, validation
-expectations, and non-goals only. It does not implement formulas, lookup tables,
-coefficients, expected outputs, UI, Save/Load, or export behavior.
+This document began as the planning artifact for PR #59. Basic Freeway Segment
+engine v0.1 is now implemented as an engine-only package under
+`src/hcmcalc/freeway/`. It does not implement UI, Save/Load, export behavior,
+ramps, weaving, merge/diverge, managed lanes, work zones, reliability, or
+facility/corridor workflows.
+
+No Chapter 26 Basic Freeway validation fixture files are added yet. The local
+Chapter 12 methodology reference provides the formulas and tables needed for
+formula-level implementation, but this repository does not currently contain a
+published Chapter 26 Basic Freeway example with complete mapped expected
+outputs suitable for `references/freeway_example_inputs.yaml` and
+`references/freeway_expected_outputs.yaml`.
 
 ## Scope Separation
 
@@ -82,10 +91,10 @@ Avoid wording or interaction patterns that make the page feel like:
 - Example viewer
 - Template-only workflow
 
-## Proposed Module Structure
+## Module Structure
 
-Basic Freeway should have its own package and validation assets when the
-engine work begins:
+Basic Freeway has its own package. Validation assets should be added when a
+published Basic Freeway example mapping is available:
 
 ```text
 src/hcmcalc/freeway/
@@ -109,21 +118,17 @@ tests/integration/
   test_freeway_example_fixtures.py
 ```
 
-Proposed responsibilities:
+Implemented responsibilities:
 
-- `models.py`: typed, serializable Basic Freeway inputs and auditable result
-  structures.
+- `models.py`: typed Basic Freeway input contract.
 - `method.py`: Basic Freeway calculation orchestration and intermediate-value
-  assembly, added only when validation fixtures are ready.
-- `validation.py`: physical input validation, unsupported-scope guardrails,
-  fixture loading, comparison tolerances, and provenance checks.
-- `coefficients.py`: reference-backed lookup and coefficient access, added only
-  after validated mappings are defined.
-- `references/`: reviewed input mappings and expected outputs for selected HCM
-  examples. These files should not be added until the validation basis is
-  defined and reviewed.
-- `tests/`: formula, boundary, invalid input, fixture, and regression coverage
-  that grows with the implementation phases.
+  assembly.
+- `validation.py`: physical input validation and unsupported-scope guardrails.
+- `coefficients.py`: reference-backed Chapter 12 constants used by Basic
+  Freeway v0.1.
+- `references/`: no Basic Freeway fixtures yet because no complete published
+  Chapter 26 Basic Freeway expected-output mapping is available in this repo.
+- `tests/`: formula, boundary, invalid input, guardrail, and audit coverage.
 
 The current Multilane code may inform neutral helper patterns, such as explicit
 facility type fields, dataclass-style input contracts, auditable outputs, and
@@ -131,9 +136,9 @@ clear unsupported-scope exceptions. Basic Freeway should not depend on
 Multilane method code or reuse Multilane-specific formulas, tables, or
 coefficients.
 
-## Initial Supported Scope Proposal
+## Supported Scope
 
-Basic Freeway v0.1 should start with:
+Basic Freeway v0.1 supports:
 
 - Basic Freeway Segment only
 - one direction
@@ -146,33 +151,36 @@ Basic Freeway v0.1 should start with:
 - no work zones
 - no reliability analysis
 - no facility workflow
+- Chapter 12 measured FFS or estimated FFS paths for Basic Freeway Segments
+- Chapter 12 general-terrain heavy-vehicle PCEs for level and rolling terrain
 
 The engine contract should be validation-led. Inputs, assumptions,
-intermediate values, and outputs should be added only when they are traceable
-to the selected Basic Freeway methodology path and validated HCM example
-fixtures.
+intermediate values, and outputs are traceable to the selected Basic Freeway
+methodology path. Published Chapter 26 fixture validation remains pending.
 
-Likely input groups to design after validation fixtures are selected:
+Implemented input groups:
 
 - analysis setup and facility type;
 - directional lane count and segment length;
-- free-flow speed basis or required geometry for estimating it;
-- freeway-specific roadway and ramp-density inputs;
-- demand volume, peak-hour factor, and heavy-vehicle conditions;
-- terrain or grade basis; and
-- optional adjustment factors only when supported by validated references.
+- measured FFS or estimated FFS basis;
+- lane width, right-side lateral clearance, and total ramp density for the
+  estimated FFS path;
+- demand volume, peak-hour factor, heavy-vehicle percentage, and default truck
+  mix; and
+- level/rolling general terrain plus speed and capacity adjustment factors.
 
-Likely outputs to expose after engine implementation:
+Implemented outputs:
 
 - support and scope status;
 - adjusted free-flow speed and capacity-related values;
 - demand flow rate under the implemented methodology basis;
 - speed, density, demand-capacity status, and level of service;
 - assumptions, warnings, unsupported-scope notes, source references, and
-  intermediate values.
+  intermediate values;
+- formula source references.
 
-These input and output groups are product architecture guidance only. This PR
-does not define equations, tables, coefficients, or expected numeric results.
+These outputs are engine-only. They do not imply UI, Save/Load, export,
+facility, ramp, weaving, or managed-lane support.
 
 ## Guardrails
 
@@ -201,14 +209,15 @@ facility/corridor analyses through the Basic Freeway Segment method.
 
 ### BF-1: Reference-Backed Basic Freeway Segment Engine
 
-- Select Basic Freeway Chapter 26 validation example fixtures before
-  implementation.
-- Define typed one-direction, one-segment input and result contracts.
-- Implement only the validated Basic Freeway Segment methodology path.
-- Expose auditable inputs, assumptions, intermediate values, outputs, warnings,
+- Implemented typed one-direction, one-segment input and result contracts.
+- Implemented Chapter 12 Basic Freeway Segment formula helpers and lookup
+  constants for Eq. 12-1, Eq. 12-2, Eq. 12-5, Eq. 12-6, Eq. 12-8,
+  Eq. 12-9, Eq. 12-10, Eq. 12-11, and Exhibits 12-4, 12-6, 12-15,
+  12-18, 12-20, 12-21, and 12-25.
+- Exposes auditable inputs, assumptions, intermediate values, outputs, warnings,
   source references, and unsupported-scope notes.
-- Add formulas and lookup data only with traceable reference mappings and
-  reviewed expected outputs.
+- Does not add Chapter 26 validation fixtures because no complete Basic
+  Freeway example expected-output mapping is available in this repo yet.
 
 ### BF-2: Validation, Boundary, and Guardrail Hardening
 
@@ -270,13 +279,11 @@ general Basic Freeway, freeway facility, or adjacent-methodology support.
 
 ## Non-Goals
 
-This PR does not implement:
+Basic Freeway Segment engine v0.1 does not implement:
 
-- formulas;
 - UI workflow;
 - Save/Load;
 - export/reporting;
-- Basic Freeway calculation engine;
 - ramps;
 - weaving;
 - merge/diverge;
@@ -284,5 +291,5 @@ This PR does not implement:
 - work zones;
 - reliability;
 - facility/corridor workflow;
-- coefficients, lookup tables, or expected outputs; or
+- expected-output fixtures; or
 - changes to existing Two-Lane or Multilane behavior.
