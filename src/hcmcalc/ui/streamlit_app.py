@@ -82,7 +82,6 @@ from hcmcalc.ui.supported_workflows import (
     BASIC_FREEWAY_RAMP_DENSITY_LABEL,
     CALCULATION_DETAILS_LABEL,
     EXPORT_REPORT_LABEL,
-    EXAMPLE_WORKFLOW_NOTE,
     PRERUN_RESULTS_PLACEHOLDER,
     STARTING_VALUES_LABEL,
     SUPPORTED_WORKFLOW_SECTIONS,
@@ -119,13 +118,12 @@ IMPLEMENTED_CASE_IDS = (
     "TLH-CH15-004",
 )
 SCOPE_NOTICE = (
-    "Current scope: calculator-first manual workflows for Two-Lane Highway, "
-    "Multilane Highway, and Basic Freeway Segment analyses, with validation "
-    "references used as starting values where applicable."
+    "Manual HCM worksheets with auditable inputs, calculation details, project "
+    "files, and report exports."
 )
 LIMITATIONS_FOOTER = (
-    "Unsupported combinations remain guarded. Save/Load and Export / Report "
-    "preserve only the supported manual workflows."
+    "Use each calculator's Validation basis and limitations section for method "
+    "coverage details."
 )
 def apply_ui_styles() -> None:
     """Apply restrained presentation styles without changing app behavior."""
@@ -306,7 +304,7 @@ def render_supported_workflows_page() -> None:
 
     render_page_header(
         "Supported Workflows",
-        "Current calculator modes, limitations, and project/export availability.",
+        "Calculator modes, project files, reporting, and reference checks.",
     )
     st.markdown(
         "Choose a calculator, optionally load a project, enter inputs, "
@@ -329,12 +327,6 @@ def render_supported_workflows_page() -> None:
             st.markdown("**Save/Load and Export availability**")
             st.caption(section["save_load_export"])
 
-    st.subheader("Examples / Validation")
-    st.markdown("**Validation examples**")
-    st.markdown("**Reference-backed checks**")
-    st.markdown("**Example-backed regression cases**")
-    st.caption(EXAMPLE_WORKFLOW_NOTE)
-
 
 def render_manual_multilane_calculator() -> None:
     """Render the Example Problem 4-backed Multilane segment worksheet."""
@@ -348,7 +340,7 @@ def render_manual_multilane_calculator() -> None:
 
     render_page_header(
         "Multilane Highway Calculator",
-        "Limited Multilane Highway Segment workflow with guarded Chapter 26 validation paths.",
+        "Multilane Highway Segment worksheet.",
     )
     input_column, result_column = render_calculator_shell()
     template_options = multilane_template_options()
@@ -407,16 +399,7 @@ def render_manual_multilane_calculator() -> None:
     width_unit = "m" if metric else "ft"
     access_unit = "points/km" if metric else "per mi"
     with input_column:
-        st.caption(
-            "Some fields are intentionally constrained to preserve the validated "
-            "Example 4 calculation path."
-        )
         with st.form(f"multilane_form_{template_id}"):
-            st.caption(
-                f"{template['description']}. Support status: "
-                f"{template['validation_status']}."
-            )
-
             render_section_label("Roadway / Geometry")
             roadway_columns = st.columns(2)
             number_of_lanes = roadway_columns[0].number_input(
@@ -485,8 +468,8 @@ def render_manual_multilane_calculator() -> None:
                 key=f"manual_multilane_input_grade_{template_id}_{unit_system}",
             )
             st.caption(
-                "Locked validation context: one direction, one segment, TWLTL median, "
-                "and default 30% SUT / 70% TT truck mix."
+                "One direction, one segment, TWLTL median, and default 30% SUT / "
+                "70% TT truck mix."
             )
             run_multilane = st.form_submit_button(
                 "Run calculation", type="primary", use_container_width=True
@@ -727,7 +710,7 @@ def render_manual_freeway_calculator() -> None:
 
     render_page_header(
         "Basic Freeway Segment Calculator",
-        "Limited Basic Freeway Segment workflow with a guarded Chapter 26 validation path.",
+        "Basic Freeway Segment worksheet.",
     )
 
     input_column, result_column = render_calculator_shell()
@@ -787,10 +770,6 @@ def render_manual_freeway_calculator() -> None:
     ramp_density_unit = "ramps/km" if metric else "ramps/mi"
     with input_column:
         with st.form(f"freeway_form_{preset_id}"):
-            st.caption(
-                "Support status: Chapter 26 Example Problem 1-compatible validated path."
-            )
-
             render_section_label("Roadway / Geometry")
             roadway_columns = st.columns(2)
             number_of_lanes = roadway_columns[0].number_input(
@@ -1289,7 +1268,7 @@ def render_manual_facility_calculator() -> None:
 
     render_page_header(
         "Two-Lane Facility Calculator",
-        "Limited HCM7 Chapter 15 facility workflow with guarded validation paths.",
+        "Two-Lane Highway Facility worksheet.",
     )
     input_column, result_column = render_calculator_shell()
     template_options = facility_template_options()
@@ -1336,12 +1315,12 @@ def render_manual_facility_calculator() -> None:
             if field not in editable_fields
         ]
         st.caption(
-            f"{template['template_label']}. Validation basis: "
-            f"{template['template_basis']}. {template['supported_context']}"
+            "Defaults: "
+            f"{FACILITY_DEFAULT_LABELS.get(template_id, template['template_label'])}."
         )
         template_details = st.columns(2)
         template_details[0].caption(f"Supported edits: {template['safe_edit_summary']}")
-        template_details[1].caption(f"Guarded context: {template['locked_summary']}")
+        template_details[1].caption(f"Read-only fields: {template['locked_summary']}")
         render_section_label("Roadway / Geometry")
         editor_version = st.session_state.get("manual_facility_editor_version", 0)
         editor_seed = st.session_state.pop(
@@ -1398,8 +1377,7 @@ def render_manual_facility_calculator() -> None:
             key="facility_calculate",
         )
         scope_column.caption(
-            "Calculation uses the existing guarded Example 3/4 engine path. "
-            "Save/Load does not broaden methodology support."
+            "Run the worksheet with the current segment table values."
         )
         render_project_load_section(_render_manual_facility_load_controls)
     if calculate:
@@ -1734,7 +1712,7 @@ def render_manual_single_segment_calculator() -> None:
 
     render_page_header(
         "Two-Lane Highway Manual Segment Calculator",
-        "Limited HCM7 Chapter 15 single-segment workflow with guarded validation paths.",
+        "Two-Lane Highway single-segment worksheet.",
     )
     worksheet_column, result_column = render_calculator_shell()
 
@@ -1769,8 +1747,7 @@ def render_manual_single_segment_calculator() -> None:
                 "Horizontal alignment",
                 ["Straight", "Horizontal curve"],
                 help=(
-                    "Horizontal curve adjustment uses the validated Example "
-                    "Problem 2 calculation path."
+                    "When selected, curve subsegments can be reviewed and edited below."
                 ),
                 key="manual_horizontal_alignment_label",
             )
