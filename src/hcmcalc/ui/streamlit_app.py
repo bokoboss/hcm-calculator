@@ -277,7 +277,10 @@ def render_validated_case_viewer() -> None:
 
     with st.sidebar:
         st.header("Validated case")
-        st.text_input("Fixture file", value=str(FIXTURE_PATH), disabled=True)
+        st.caption("Fixture file")
+        st.markdown(f"`{FIXTURE_PATH.name}`")
+        with st.expander("Show full fixture path", expanded=False):
+            st.code(str(FIXTURE_PATH), language=None)
         selected_case_id = st.selectbox("Case ID", available_case_ids)
         run_selected = st.button("Run selected case", type="primary")
 
@@ -311,9 +314,9 @@ def render_supported_workflows_page() -> None:
         "Calculator modes, project files, reporting, and reference checks.",
     )
     st.markdown(
-        "Choose a calculator, optionally load a project, enter inputs, "
-        "run the calculation, review results, inspect calculation details and audit "
-        "records, then save or export."
+        "Choose a calculator, optionally load a project, enter inputs, run the "
+        "calculation, review results, inspect details and audit records, then "
+        "save or export."
     )
 
     for section in SUPPORTED_WORKFLOW_SECTIONS:
@@ -324,7 +327,7 @@ def render_supported_workflows_page() -> None:
             for item in section["supported"]:
                 st.markdown(f"- {item}")
         with columns[1]:
-            st.markdown("**Current limitations**")
+            st.markdown("**Scope limits**")
             for item in section["limitations"]:
                 st.markdown(f"- {item}")
         with columns[2]:
@@ -1594,6 +1597,26 @@ def render_manual_facility_result_panel(
         )
     with st.expander(AUDIT_EXPANDER_LABEL):
         st.json(audit)
+    full_result = {
+        "calculation_type": "manual_facility_v0",
+        "template_id": template_id,
+        "unit_system": unit_system,
+        "engine_result": result_data,
+        "audit_record": audit,
+    }
+    with st.expander("Full JSON"):
+        st.caption(
+            "Project JSON restores the guarded worksheet. Result JSON exports the "
+            "current calculation details."
+        )
+        st.json(full_result)
+        st.download_button(
+            "Download facility result JSON",
+            data=json.dumps(full_result, indent=2),
+            file_name=f"{template_id}-facility-result.json",
+            mime="application/json",
+            use_container_width=True,
+        )
     _render_manual_facility_project_file_controls(
         template_id,
         unit_system,
@@ -1624,26 +1647,6 @@ def render_manual_facility_result_panel(
             "arbitrary nonlevel combinations, and arbitrary segment sequences."
         ),
     )
-    full_result = {
-        "calculation_type": "manual_facility_v0",
-        "template_id": template_id,
-        "unit_system": unit_system,
-        "engine_result": result_data,
-        "audit_record": audit,
-    }
-    with st.expander("Full JSON"):
-        st.caption(
-            "Project JSON restores the guarded worksheet. Result JSON exports the "
-            "current calculation details."
-        )
-        st.json(full_result)
-        st.download_button(
-            "Download facility result JSON",
-            data=json.dumps(full_result, indent=2),
-            file_name=f"{template_id}-facility-result.json",
-            mime="application/json",
-            use_container_width=True,
-        )
 
 
 def _render_manual_facility_project_file_controls(
