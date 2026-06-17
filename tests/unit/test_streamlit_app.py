@@ -216,7 +216,11 @@ def test_supported_workflows_content_names_current_scope() -> None:
     assert "Manual Facility Calculator" in sections["Two-Lane Facility"]["supported"]
     assert "Save/Load" in sections["Two-Lane Highway"]["save_load_export"]
     assert (
-        "Chapter 26 Example 4 EB/WB-compatible validated path"
+        "bounded HCM Multilane Highway Segment one-direction analysis"
+        in sections["Multilane Highway"]["supported"]
+    )
+    assert (
+        "Chapter 26 Example 4 optional defaults and regression evidence"
         in sections["Multilane Highway"]["supported"]
     )
     assert (

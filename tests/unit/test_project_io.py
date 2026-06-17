@@ -397,6 +397,59 @@ def test_manual_multilane_project_payload_contains_display_and_engine_values() -
     assert payload["app_version"]
 
 
+def test_manual_multilane_non_example_project_round_trip_recalculates() -> None:
+    displayed = multilane_template_ui_inputs("MLH-CH26-004-EB", "imperial")
+    displayed.update(
+        {
+            "number_of_lanes": 3,
+            "segment_length": 5280.0,
+            "demand_volume_veh_h": 2400.0,
+            "peak_hour_factor": 0.92,
+            "heavy_vehicle_percent": 12.0,
+            "grade_percent": 0.0,
+            "ffs_source": "measured",
+            "free_flow_speed": 55.0,
+            "passenger_car_equivalent": 2.0,
+        }
+    )
+    normalized = load_multilane_template("MLH-CH26-004-EB")["inputs"] | {
+        "number_of_lanes": 3,
+        "segment_length_ft": 5280.0,
+        "demand_volume_veh_h": 2400.0,
+        "peak_hour_factor": 0.92,
+        "heavy_vehicle_percent": 12.0,
+        "grade_percent": 0.0,
+        "ffs_source": "measured",
+        "free_flow_speed_mph": 55.0,
+        "passenger_car_equivalent": 2.0,
+    }
+    result = run_manual_multilane(normalized)
+    audit = build_manual_multilane_audit_record(
+        "MLH-CH26-004-EB",
+        normalized,
+        unit_system="imperial",
+        displayed_inputs=displayed,
+        result=result,
+    )
+
+    loaded = load_manual_multilane_project_json(
+        create_manual_multilane_project_json(
+            "MLH-CH26-004-EB",
+            "imperial",
+            displayed,
+            result=result_to_dict(result),
+            audit_record=audit,
+        )
+    )
+    rerun = run_manual_multilane(loaded["normalized_engine_inputs"])
+
+    assert loaded["displayed_ui_inputs"]["number_of_lanes"] == 3
+    assert loaded["normalized_engine_inputs"]["ffs_source"] == "measured"
+    assert loaded["calculation_result"]["outputs"]["level_of_service"]
+    assert rerun.outputs["support_status"] == "bounded_multilane_segment_v0_1"
+    assert rerun.outputs["density_pc_mi_ln"] >= 0
+
+
 @pytest.mark.parametrize(
     ("mutation", "message"),
     [

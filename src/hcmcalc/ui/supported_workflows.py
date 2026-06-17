@@ -98,13 +98,15 @@ SUPPORTED_WORKFLOW_SECTIONS: tuple[WorkflowSection, ...] = (
         "title": "Multilane Highway",
         "supported": [
             "Manual Multilane Segment Calculator",
-            "Chapter 26 Example 4 EB/WB-compatible validated path",
+            "bounded HCM Multilane Highway Segment one-direction analysis",
+            "Chapter 26 Example 4 optional defaults and regression evidence",
             "Metric/Imperial UI-boundary conversion",
             "Project Save/Load and reporting exports",
         ],
         "limitations": [
             "not a Basic Freeway calculator",
             "ramp, weaving, merge/diverge, and facility workflows are outside this page",
+            "specific-grade PCE table expansion remains guarded unless an auditable PCE is supplied",
             "unsupported combinations are guarded in the calculator",
         ],
         "save_load_export": (

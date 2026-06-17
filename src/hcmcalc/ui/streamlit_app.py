@@ -338,7 +338,7 @@ def render_supported_workflows_page() -> None:
 
 
 def render_manual_multilane_calculator() -> None:
-    """Render the Example Problem 4-backed Multilane segment worksheet."""
+    """Render the bounded Multilane segment worksheet."""
 
     pending_project = st.session_state.pop("manual_multilane_pending_project", None)
     if pending_project is not None:
@@ -348,8 +348,8 @@ def render_manual_multilane_calculator() -> None:
         st.success(load_message)
 
     render_page_header(
-        "Multilane Highway Calculator",
-        "Multilane Highway Segment worksheet.",
+        "Multilane Highway Segment Calculator",
+        "Bounded one-direction Multilane Highway Segment analysis within the implemented HCM scope.",
     )
     input_column, result_column = render_calculator_shell()
     template_options = multilane_template_options()
@@ -378,8 +378,8 @@ def render_manual_multilane_calculator() -> None:
                 label_visibility="collapsed",
             )
             st.caption(
-                "HCM Chapter 26 Example 4 eastbound/westbound references back "
-                "these defaults."
+                "HCM Chapter 26 Example 4 eastbound/westbound remains optional "
+                "defaults and regression evidence."
             )
     unit_system = unit_label.lower()
     template_context = (template_id, unit_system)
@@ -410,10 +410,16 @@ def render_manual_multilane_calculator() -> None:
     with input_column:
         with st.form(f"multilane_form_{template_id}"):
             render_section_label("Roadway / Geometry")
+            ffs_source = st.radio(
+                "Free-flow speed source",
+                ["Estimated", "Measured"],
+                horizontal=True,
+                key=f"manual_multilane_input_ffs_source_{template_id}_{unit_system}",
+            ).lower()
             roadway_columns = st.columns(2)
             number_of_lanes = roadway_columns[0].number_input(
                 "Lanes in analysis direction",
-                min_value=1,
+                min_value=2,
                 step=1,
                 value=int(ui_inputs["number_of_lanes"]),
                 key=f"manual_multilane_input_lanes_{template_id}_{unit_system}",
@@ -424,28 +430,40 @@ def render_manual_multilane_calculator() -> None:
                 value=float(ui_inputs["segment_length"]),
                 key=f"manual_multilane_input_length_{template_id}_{unit_system}",
             )
+            free_flow_speed = None
+            if ffs_source == "measured":
+                free_flow_speed = roadway_columns[0].number_input(
+                    f"Free-flow speed ({speed_unit})",
+                    min_value=1.0,
+                    value=float(ui_inputs.get("free_flow_speed") or ui_inputs["posted_speed_limit"]),
+                    key=f"manual_multilane_input_measured_ffs_{template_id}_{unit_system}",
+                )
             posted_speed_limit = roadway_columns[0].number_input(
                 f"Posted speed limit ({speed_unit})",
                 min_value=1.0,
                 value=float(ui_inputs["posted_speed_limit"]),
+                disabled=ffs_source == "measured",
                 key=f"manual_multilane_input_speed_{template_id}_{unit_system}",
             )
             lane_width = roadway_columns[1].number_input(
                 f"Lane width ({width_unit})",
                 min_value=0.1,
                 value=float(ui_inputs["lane_width"]),
+                disabled=ffs_source == "measured",
                 key=f"manual_multilane_input_lane_width_{template_id}_{unit_system}",
             )
             roadside_lateral_clearance = roadway_columns[0].number_input(
                 f"Roadside lateral clearance ({width_unit})",
                 min_value=0.0,
                 value=float(ui_inputs["roadside_lateral_clearance"]),
+                disabled=ffs_source == "measured",
                 key=f"manual_multilane_input_clearance_{template_id}_{unit_system}",
             )
             access_point_density = roadway_columns[1].number_input(
                 f"Access point density ({access_unit})",
                 min_value=0.0,
                 value=float(ui_inputs["access_point_density"]),
+                disabled=ffs_source == "measured",
                 key=f"manual_multilane_input_access_{template_id}_{unit_system}",
             )
 
@@ -476,9 +494,22 @@ def render_manual_multilane_calculator() -> None:
                 value=float(ui_inputs["grade_percent"]),
                 key=f"manual_multilane_input_grade_{template_id}_{unit_system}",
             )
+            supply_pce = st.checkbox(
+                "Supply passenger-car equivalent",
+                value="passenger_car_equivalent" in ui_inputs,
+                key=f"manual_multilane_input_supply_pce_{template_id}_{unit_system}",
+            )
+            passenger_car_equivalent = None
+            if supply_pce:
+                passenger_car_equivalent = traffic_columns[1].number_input(
+                    "Passenger-car equivalent",
+                    min_value=0.01,
+                    value=float(ui_inputs.get("passenger_car_equivalent") or 2.24),
+                    key=f"manual_multilane_input_pce_{template_id}_{unit_system}",
+                )
             st.caption(
-                "One direction, one segment, TWLTL median, and default 30% SUT / "
-                "70% TT truck mix."
+                "One direction, one segment, and default 30% SUT / 70% TT truck mix. "
+                "Example 4 PCE is used only when no supplied PCE is submitted."
             )
             run_multilane = st.form_submit_button(
                 "Run calculation", type="primary", use_container_width=True
@@ -495,7 +526,12 @@ def render_manual_multilane_calculator() -> None:
             "peak_hour_factor": peak_hour_factor,
             "heavy_vehicle_percent": heavy_vehicle_percent,
             "grade_percent": grade_percent,
+            "ffs_source": ffs_source,
         }
+        if ffs_source == "measured":
+            displayed_inputs["free_flow_speed"] = free_flow_speed
+        if passenger_car_equivalent is not None:
+            displayed_inputs["passenger_car_equivalent"] = passenger_car_equivalent
         submitted_inputs = multilane_ui_inputs_to_engine(
             displayed_inputs, inputs, unit_system
         )
@@ -568,16 +604,16 @@ def render_manual_multilane_calculator() -> None:
             render_validation_basis_and_limitations(
                 validation_basis=(
                     "HCM7 Chapter 26 Example Problem 4 eastbound and westbound "
-                    "compatible paths."
+                    "optional defaults and regression evidence."
                 ),
                 supported_scope=(
-                    "Multilane Highway Segment only. Metric values are converted "
-                    "at the UI boundary; calculations remain engine-native Imperial."
+                    "Bounded Multilane Highway Segment calculator for one-direction "
+                    "segment analysis within the implemented HCM scope."
                 ),
                 not_supported=(
                     "Basic Freeway, ramps, weaving, merge/diverge, managed lanes, "
                     "work zones, reliability, and facility/corridor workflows. "
-                    "Edits outside the validated path are rejected by engine validation."
+                    "Unsupported methodology branches are rejected by engine validation."
                 ),
             )
             return
@@ -591,16 +627,16 @@ def render_manual_multilane_calculator() -> None:
             render_validation_basis_and_limitations(
                 validation_basis=(
                     "HCM7 Chapter 26 Example Problem 4 eastbound and westbound "
-                    "compatible paths."
+                    "optional defaults and regression evidence."
                 ),
                 supported_scope=(
-                    "Multilane Highway Segment only. Metric values are converted "
-                    "at the UI boundary; calculations remain engine-native Imperial."
+                    "Bounded Multilane Highway Segment calculator for one-direction "
+                    "segment analysis within the implemented HCM scope."
                 ),
                 not_supported=(
                     "Basic Freeway, ramps, weaving, merge/diverge, managed lanes, "
                     "work zones, reliability, and facility/corridor workflows. "
-                    "Edits outside the validated path are rejected by engine validation."
+                    "Unsupported methodology branches are rejected by engine validation."
                 ),
             )
             return
@@ -711,16 +747,17 @@ def render_manual_multilane_calculator() -> None:
         render_validation_basis_and_limitations(
             validation_basis=(
                 "HCM7 Chapter 26 Example Problem 4 eastbound and westbound "
-                "compatible paths."
+                "optional defaults and regression evidence."
             ),
             supported_scope=(
-                "Multilane Highway Segment only. Metric values are converted at "
-                "the UI boundary; calculations remain engine-native Imperial."
+                "Bounded Multilane Highway Segment calculator for one-direction "
+                "segment analysis within the implemented HCM scope. Metric values "
+                "are converted at the UI boundary."
             ),
             not_supported=(
                 "Basic Freeway, ramps, weaving, merge/diverge, managed lanes, "
-                "work zones, reliability, and facility/corridor workflows. Edits "
-                "outside the validated path are rejected by engine validation."
+                "work zones, reliability, and facility/corridor workflows. "
+                "Unsupported methodology branches are rejected by engine validation."
             ),
         )
 

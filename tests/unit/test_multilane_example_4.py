@@ -51,8 +51,8 @@ def test_chapter_26_multilane_example_4(case_id: str) -> None:
     assert actual["level_of_service"] == expected["level_of_service"]
     assert actual["demand_exceeds_capacity"] is False
     assert actual["calculation_type"] == "multilane_basic_segment_v0_1"
-    assert actual["support_status"] == "implemented_example_only"
-    assert actual["scope_status"] == "supported_exact_example_problem_4"
+    assert actual["support_status"] == "bounded_multilane_segment_v0_1"
+    assert actual["scope_status"] == "bounded_multilane_segment_v0_1"
     assert actual["capacity_check"] == "within_capacity"
     assert actual["speed_used_for_density_mph"] == actual["mean_speed_mph"]
     assert actual["assumptions"] == result.assumptions

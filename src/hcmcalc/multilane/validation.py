@@ -9,19 +9,6 @@ from hcmcalc.core import HCMCalcError, UnsupportedScopeError
 from .models import MultilaneBasicSegmentInputs
 
 
-SUPPORTED_CASES = {
-    "MLH-CH26-004-EB": {
-        "direction": "eastbound",
-        "grade_percent": -3.5,
-        "access_point_density_per_mi": 10.0,
-    },
-    "MLH-CH26-004-WB": {
-        "direction": "westbound",
-        "grade_percent": 3.5,
-        "access_point_density_per_mi": 0.0,
-    },
-}
-
 UNSUPPORTED_SCOPE_KEYS = {
     "basic_freeway": "Basic Freeway Segment",
     "ramp": "ramp/merge/diverge",
@@ -41,10 +28,13 @@ UNSUPPORTED_SCOPE_KEYS = {
 
 UNSUPPORTED_INPUT_KEYS = {
     "driver_population_factor": "driver population adjustment",
-    "base_free_flow_speed_mph": "user-supplied base free-flow speed",
-    "free_flow_speed_mph": "user-supplied free-flow speed",
     "adjusted_free_flow_speed_mph": "user-supplied adjusted free-flow speed",
 }
+
+ALLOWED_INPUT_KEYS = set(MultilaneBasicSegmentInputs.__dataclass_fields__)
+SUPPORTED_ANALYSIS_TYPES = {"basic_segment", "multilane_basic_segment"}
+SUPPORTED_FFS_SOURCES = {"estimated", "measured"}
+SUPPORTED_TRUCK_MIX = "default_30_sut_70_tt"
 
 
 def reject_unsupported_scope_keys(values: dict[str, Any]) -> None:
@@ -62,10 +52,17 @@ def reject_unsupported_scope_keys(values: dict[str, Any]) -> None:
                 f"Multilane Basic Segment v0.1 does not accept {label}.",
                 unsupported_reason=label,
             )
+    extra_keys = sorted(set(values) - ALLOWED_INPUT_KEYS - set(UNSUPPORTED_SCOPE_KEYS))
+    if extra_keys:
+        raise UnsupportedScopeError(
+            "Multilane Basic Segment v0.1 does not accept unrecognized or "
+            "out-of-scope inputs: " + ", ".join(extra_keys) + ".",
+            unsupported_reason="unrecognized or out-of-scope inputs",
+        )
 
 
 def validate_inputs(inputs: MultilaneBasicSegmentInputs) -> None:
-    """Validate physical values, then enforce the Example Problem 4 boundary."""
+    """Validate physical values and v0.1 support boundaries."""
 
     text_fields = {
         "case_id": inputs.case_id,
@@ -74,6 +71,7 @@ def validate_inputs(inputs: MultilaneBasicSegmentInputs) -> None:
         "direction": inputs.direction,
         "truck_mix": inputs.truck_mix,
         "median_type": inputs.median_type,
+        "ffs_source": inputs.ffs_source,
     }
     for name, value in text_fields.items():
         if not isinstance(value, str) or not value.strip():
@@ -98,11 +96,17 @@ def validate_inputs(inputs: MultilaneBasicSegmentInputs) -> None:
             or not isfinite(float(value))
         ):
             raise HCMCalcError(f"{name} must be a finite numeric value.")
+    for name, value in {
+        "free_flow_speed_mph": inputs.free_flow_speed_mph,
+        "passenger_car_equivalent": inputs.passenger_car_equivalent,
+    }.items():
+        if value is not None:
+            _require_finite_number(name, value)
 
     if not isinstance(inputs.number_of_lanes, int):
         raise HCMCalcError("number_of_lanes must be an integer.")
-    if inputs.number_of_lanes <= 0:
-        raise HCMCalcError("number_of_lanes must be greater than zero.")
+    if inputs.number_of_lanes < 2:
+        raise HCMCalcError("number_of_lanes must be at least 2.")
     if inputs.segment_length_ft <= 0:
         raise HCMCalcError("segment_length_ft must be greater than zero.")
     if inputs.demand_volume_veh_h <= 0:
@@ -130,43 +134,50 @@ def validate_inputs(inputs: MultilaneBasicSegmentInputs) -> None:
             "Multilane Basic Segment v0.1 supports only facility_type "
             "'multilane_highway'; Basic Freeway Segment inputs are unsupported."
         )
-    if inputs.analysis_type != "basic_segment":
+    if inputs.analysis_type not in SUPPORTED_ANALYSIS_TYPES:
         raise UnsupportedScopeError(
             "Multilane Basic Segment v0.1 supports only analysis_type "
             "'basic_segment'; Basic Freeway, ramp, weaving, merge/diverge, and "
             "facility/corridor analyses are unsupported."
         )
-
-    expected = SUPPORTED_CASES.get(inputs.case_id)
-    if expected is None:
+    if inputs.truck_mix != SUPPORTED_TRUCK_MIX:
         raise UnsupportedScopeError(
-            "Multilane Basic Segment v0.1 is limited to Chapter 26 Example "
-            "Problem 4 eastbound and westbound cases."
+            "Multilane Basic Segment v0.1 supports only the default 30% SUT / "
+            "70% TT truck mix."
         )
-
-    exact_scope = {
-        "direction": expected["direction"],
-        "number_of_lanes": 2,
-        "segment_length_ft": 6600.0,
-        "demand_volume_veh_h": 1500.0,
-        "peak_hour_factor": 0.90,
-        "heavy_vehicle_percent": 6.0,
-        "truck_mix": "default_30_sut_70_tt",
-        "grade_percent": expected["grade_percent"],
-        "posted_speed_limit_mph": 45.0,
-        "lane_width_ft": 12.0,
-        "roadside_lateral_clearance_ft": 12.0,
-        "median_type": "twltl",
-        "access_point_density_per_mi": expected["access_point_density_per_mi"],
-    }
-    mismatches = [
-        name
-        for name, expected_value in exact_scope.items()
-        if getattr(inputs, name) != expected_value
-    ]
-    if mismatches:
+    if inputs.ffs_source not in SUPPORTED_FFS_SOURCES:
         raise UnsupportedScopeError(
-            "Multilane Basic Segment v0.1 is validated only for the exact "
-            f"Chapter 26 Example Problem 4 inputs; unsupported fields: {', '.join(mismatches)}.",
-            context={"unsupported_fields": mismatches},
+            "ffs_source must be 'estimated' or 'measured' for Multilane Basic "
+            "Segment v0.1."
         )
+    if inputs.ffs_source == "measured":
+        if inputs.free_flow_speed_mph is None:
+            raise HCMCalcError(
+                "free_flow_speed_mph is required when ffs_source is 'measured'."
+            )
+        if inputs.free_flow_speed_mph <= 0:
+            raise HCMCalcError("free_flow_speed_mph must be greater than zero.")
+    else:
+        if inputs.free_flow_speed_mph is not None:
+            raise HCMCalcError(
+                "free_flow_speed_mph must be omitted when ffs_source is 'estimated'."
+            )
+        if inputs.number_of_lanes != 2:
+            raise UnsupportedScopeError(
+                "number_of_lanes other than 2 requires measured FFS because estimated "
+                "Multilane FFS v0.1 uses the implemented four-lane lateral-clearance table."
+            )
+    if (
+        inputs.passenger_car_equivalent is not None
+        and inputs.passenger_car_equivalent <= 0
+    ):
+        raise HCMCalcError("passenger_car_equivalent must be greater than zero.")
+
+
+def _require_finite_number(name: str, value: Any) -> None:
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, Real)
+        or not isfinite(float(value))
+    ):
+        raise HCMCalcError(f"{name} must be a finite numeric value.")

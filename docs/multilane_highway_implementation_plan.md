@@ -10,22 +10,16 @@ continuing to use neutral shared contracts where appropriate.
 
 This plan defines the scope and validation sequence for Multilane Highway
 development. Phase ML-1 and the first Example Problem 4 validation path are
-implemented as Multilane Basic Segment engine v0.1. Phase ML-2 hardens that
-implemented-example-only path with validation, audit, table/equation boundary,
-guardrail, fixture, and documentation coverage. It does not broaden the
-calculation methodology. Phase ML-3 adds Manual Multilane Highway Segment UI
-v0.1 for the same exact EB/WB validated paths without changing formulas,
-outputs, or engine scope. The Manual Multilane UI now accepts and displays
-Metric or Imperial values while preserving the engine-native Imperial
-calculation path.
-Phase ML-4 adds guarded Save/Load and export/reporting integration for those
-same exact paths using `project_type = manual_multilane_v0`; it does not
-broaden methodology support.
+implemented as Multilane Basic Segment engine v0.1. Phase ML-2 hardened that
+path with validation, audit, table/equation boundary, guardrail, fixture, and
+documentation coverage. Phase ML-3 added Manual Multilane Highway Segment UI
+v0.1, and Phase ML-4 added guarded Save/Load and export/reporting integration
+using `project_type = manual_multilane_v0`.
 
 A second-case review of the available Chapter 26 examples found no additional
 Multilane Highway motorized-vehicle example or unused Example Problem 4 subcase
-that can safely broaden the current validation evidence. The engine therefore
-remains limited to Example Problem 4 EB/WB.
+that can safely broaden validation evidence. Example 4 EB/WB remains optional
+defaults and regression evidence for the bounded one-direction segment scope.
 
 ## Scope Separation
 
@@ -303,16 +297,15 @@ inputs or workflows.
 
 Multilane Basic Segment v0.1 does not:
 
-- implement a general Multilane Highway calculator beyond Example Problem 4;
-- accept user-supplied base/adjusted free-flow speed or driver-population
-  adjustment inputs;
+- implement Multilane Highway facility, ramp, weaving, merge/diverge,
+  managed-lane, work-zone, or reliability workflows;
+- accept user-supplied adjusted free-flow speed or driver-population adjustment
+  inputs;
 - implement Basic Freeway, ramp, merge/diverge, weaving, managed-lane,
   reliability, or facility/corridor analysis; or
 - change existing Chapter 15 Two-Lane Highway calculation or UI behavior.
 
-Manual Multilane Highway Segment UI v0.1 is implemented only as a guided
-interface to the exact Example Problem 4 EB/WB engine paths. Its presence does
-not broaden any engine methodology or authorize arbitrary Multilane inputs.
-Metric/Imperial conversion occurs only at the UI boundary; calculations remain
-engine-native Imperial. Save/Load and export/reporting remain limited to
-`manual_multilane_v0` and the exact Example Problem 4 EB/WB validated paths.
+Manual Multilane Highway Segment UI v0.1 is a guided interface for bounded
+one-direction segment analysis within the implemented HCM scope. Metric/Imperial
+conversion occurs only at the UI boundary; calculations remain engine-native
+Imperial. Save/Load and export/reporting use `manual_multilane_v0`.

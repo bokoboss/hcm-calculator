@@ -366,7 +366,7 @@ def _multilane_report(
         )
     report = _base_report(
         title="HCM7 Manual Multilane Highway Segment v0.1 Report",
-        report_type="HCM Manual Multilane validated-path calculation report",
+        report_type="HCM Manual Multilane bounded-scope calculation report",
         calculation_type="manual_multilane_v0",
         unit_system=unit_system,
         timestamp=timestamp,
@@ -378,6 +378,11 @@ def _multilane_report(
         limitations=MANUAL_MULTILANE_LIMITATIONS,
     )
     report["selected_validated_template"] = template_id
+    report["support_scope"] = (
+        "Multilane Highway Segment only; bounded to the implemented Chapter 12 "
+        "one-direction segment scope. Chapter 26 Example 4 remains optional "
+        "defaults and regression evidence."
+    )
     report["normalized_engine_inputs_summary"] = _input_records(
         (audit_record or {}).get("submitted_inputs", {}), "imperial"
     )
