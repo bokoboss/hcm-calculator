@@ -476,6 +476,68 @@ def test_manual_freeway_project_payload_contains_display_and_engine_values() -> 
     assert payload["app_version"]
 
 
+def test_manual_freeway_non_example_project_round_trip_recalculates() -> None:
+    displayed = freeway_preset_ui_inputs("BF-CH26-001", "imperial")
+    displayed.update(
+        {
+            "number_of_lanes": 4,
+            "segment_length": 2.2,
+            "ffs_source": "measured",
+            "free_flow_speed": 68.0,
+            "base_free_flow_speed": None,
+            "lane_width": None,
+            "right_side_lateral_clearance": None,
+            "total_ramp_density": None,
+            "demand_volume_veh_h": 5600.0,
+            "peak_hour_factor": 0.9,
+            "heavy_vehicle_percent": 8.0,
+            "terrain_type": "level",
+        }
+    )
+    normalized = load_freeway_preset("BF-CH26-001")["inputs"] | {
+        "number_of_lanes": 4,
+        "segment_length_mi": 2.2,
+        "demand_volume_veh_h": 5600.0,
+        "peak_hour_factor": 0.9,
+        "heavy_vehicle_percent": 8.0,
+        "terrain_type": "level",
+        "ffs_source": "measured",
+        "free_flow_speed_mph": 68.0,
+        "base_free_flow_speed_mph": None,
+        "lane_width_ft": None,
+        "right_side_lateral_clearance_ft": None,
+        "total_ramp_density_per_mi": None,
+    }
+    result = run_manual_freeway(normalized)
+    audit = build_manual_freeway_audit_record(
+        "BF-CH26-001",
+        normalized,
+        unit_system="imperial",
+        displayed_inputs=displayed,
+        result=result,
+    )
+
+    loaded = load_manual_freeway_project_json(
+        create_manual_freeway_project_json(
+            "BF-CH26-001",
+            "imperial",
+            displayed,
+            result=result_to_dict(result),
+            audit_record=audit,
+        )
+    )
+    rerun = run_manual_freeway(loaded["normalized_engine_inputs"])
+
+    assert loaded["displayed_ui_inputs"]["number_of_lanes"] == 4
+    assert loaded["displayed_ui_inputs"]["free_flow_speed"] == 68.0
+    assert loaded["normalized_engine_inputs"]["segment_length_mi"] == 2.2
+    assert loaded["normalized_engine_inputs"]["demand_volume_veh_h"] == 5600.0
+    assert loaded["normalized_engine_inputs"]["ffs_source"] == "measured"
+    assert rerun.outputs["support_status"] == "supported_basic_freeway_segment_v0_1"
+    assert rerun.outputs["level_of_service"]
+    assert rerun.outputs["density_pc_mi_ln"] >= 0
+
+
 @pytest.mark.parametrize(
     ("mutation", "message"),
     [

@@ -80,6 +80,14 @@ def test_adjacent_methodology_inputs_are_rejected_even_when_zero(
         BasicFreewaySegmentMethod().calculate(inputs)
 
 
+def test_mountainous_terrain_is_rejected() -> None:
+    inputs = _inputs()
+    inputs["terrain_type"] = "mountainous"
+
+    with pytest.raises(UnsupportedScopeError, match="level and rolling"):
+        BasicFreewaySegmentMethod().calculate(inputs)
+
+
 def test_unrecognized_out_of_scope_input_is_rejected() -> None:
     inputs = _inputs()
     inputs["queue_discharge_rate_pc_h_ln"] = 1800.0

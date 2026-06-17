@@ -130,6 +130,40 @@ def test_basic_freeway_method_returns_auditable_result() -> None:
             },
         ),
         (
+            "BFW-NONEXAMPLE-MEASURED-ROLLING",
+            {
+                "ffs_source": "measured",
+                "free_flow_speed_mph": 64.0,
+                "base_free_flow_speed_mph": None,
+                "lane_width_ft": None,
+                "right_side_lateral_clearance_ft": None,
+                "total_ramp_density_per_mi": None,
+                "terrain_type": "rolling",
+                "number_of_lanes": 2,
+                "segment_length_mi": 1.8,
+                "demand_volume_veh_h": 2600.0,
+                "peak_hour_factor": 0.92,
+                "heavy_vehicle_percent": 7.0,
+            },
+        ),
+        (
+            "BFW-NONEXAMPLE-ESTIMATED-LEVEL",
+            {
+                "ffs_source": "estimated",
+                "free_flow_speed_mph": None,
+                "base_free_flow_speed_mph": 74.0,
+                "lane_width_ft": 11.0,
+                "right_side_lateral_clearance_ft": 3.0,
+                "total_ramp_density_per_mi": 2.5,
+                "terrain_type": "level",
+                "number_of_lanes": 4,
+                "segment_length_mi": 2.6,
+                "demand_volume_veh_h": 5100.0,
+                "peak_hour_factor": 0.95,
+                "heavy_vehicle_percent": 4.0,
+            },
+        ),
+        (
             "BFW-NONEXAMPLE-ESTIMATED-ROLLING",
             {
                 "ffs_source": "estimated",
@@ -161,6 +195,8 @@ def test_non_example_basic_freeway_cases_inside_supported_envelope(
     assert outputs["level_of_service"]
     assert isfinite(outputs["density_pc_mi_ln"])
     assert outputs["density_pc_mi_ln"] >= 0
+    assert isfinite(outputs["mean_speed_mph"])
+    assert outputs["mean_speed_mph"] > 0
     assert isfinite(outputs["demand_flow_rate_pc_h_ln"])
     assert outputs["demand_flow_rate_pc_h_ln"] > 0
     assert isfinite(outputs["capacity_pc_h_ln"])
