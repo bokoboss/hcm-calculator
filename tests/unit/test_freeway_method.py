@@ -1,4 +1,4 @@
-from math import inf, nan
+from math import inf, isfinite, nan
 
 import pytest
 
@@ -91,7 +91,7 @@ def test_basic_freeway_method_returns_auditable_result() -> None:
     assert result.method == "hcm7_basic_freeway_segment"
     assert result.facility_type == "basic_freeway"
     assert outputs["calculation_type"] == "basic_freeway_segment_v0_1"
-    assert outputs["support_status"] == "chapter_26_example_validated_v0_1"
+    assert outputs["support_status"] == "supported_basic_freeway_segment_v0_1"
     assert outputs["scope_status"] == "supported_basic_freeway_segment_v0_1"
     assert outputs["input_summary"]["case_id"] == "BFW-FORMULA-001"
     assert outputs["driver_population_factor"] == 1.0
@@ -107,6 +107,66 @@ def test_basic_freeway_method_returns_auditable_result() -> None:
     assert outputs["unsupported_scope_notes"]
     assert len(result.intermediate_values) >= 20
     assert all(item.source for item in result.intermediate_values)
+
+
+@pytest.mark.parametrize(
+    ("case_id", "updates"),
+    [
+        (
+            "BFW-NONEXAMPLE-MEASURED-LEVEL",
+            {
+                "ffs_source": "measured",
+                "free_flow_speed_mph": 68.0,
+                "base_free_flow_speed_mph": None,
+                "lane_width_ft": None,
+                "right_side_lateral_clearance_ft": None,
+                "total_ramp_density_per_mi": None,
+                "terrain_type": "level",
+                "number_of_lanes": 4,
+                "segment_length_mi": 2.2,
+                "demand_volume_veh_h": 5600.0,
+                "peak_hour_factor": 0.9,
+                "heavy_vehicle_percent": 8.0,
+            },
+        ),
+        (
+            "BFW-NONEXAMPLE-ESTIMATED-ROLLING",
+            {
+                "ffs_source": "estimated",
+                "free_flow_speed_mph": None,
+                "base_free_flow_speed_mph": 75.0,
+                "lane_width_ft": 12.0,
+                "right_side_lateral_clearance_ft": 4.0,
+                "total_ramp_density_per_mi": 2.0,
+                "terrain_type": "rolling",
+                "number_of_lanes": 3,
+                "segment_length_mi": 3.5,
+                "demand_volume_veh_h": 3900.0,
+                "peak_hour_factor": 0.93,
+                "heavy_vehicle_percent": 6.0,
+            },
+        ),
+    ],
+)
+def test_non_example_basic_freeway_cases_inside_supported_envelope(
+    case_id: str, updates: dict
+) -> None:
+    inputs = _estimated_inputs()
+    inputs.update({"case_id": case_id, **updates})
+
+    outputs = BasicFreewaySegmentMethod().calculate(inputs).outputs
+
+    assert outputs["input_summary"]["case_id"] == case_id
+    assert outputs["support_status"] == "supported_basic_freeway_segment_v0_1"
+    assert outputs["level_of_service"]
+    assert isfinite(outputs["density_pc_mi_ln"])
+    assert outputs["density_pc_mi_ln"] >= 0
+    assert isfinite(outputs["demand_flow_rate_pc_h_ln"])
+    assert outputs["demand_flow_rate_pc_h_ln"] > 0
+    assert isfinite(outputs["capacity_pc_h_ln"])
+    assert outputs["capacity_pc_h_ln"] > 0
+    assert isfinite(outputs["adjusted_capacity_pc_h_ln"])
+    assert outputs["adjusted_capacity_pc_h_ln"] > 0
 
 
 def test_measured_ffs_path_omits_estimation_adjustments() -> None:

@@ -414,7 +414,7 @@ def _freeway_report(
         )
     report = _base_report(
         title="Manual Basic Freeway Segment Calculator Report",
-        report_type="HCM Manual Basic Freeway Segment validated-path calculation report",
+        report_type="HCM Manual Basic Freeway Segment bounded-scope calculation report",
         calculation_type="manual_basic_freeway_v0",
         unit_system=unit_system,
         timestamp=timestamp,
@@ -426,7 +426,11 @@ def _freeway_report(
         limitations=MANUAL_FREEWAY_LIMITATIONS,
     )
     report["selected_validated_preset"] = preset_id
-    report["support_scope"] = "Basic Freeway Segment only; BF-CH26-001-compatible validated path."
+    report["support_scope"] = (
+        "Basic Freeway Segment only; bounded to the implemented Chapter 12 "
+        "one-direction, one-segment uninterrupted-flow scope. BF-CH26-001 is "
+        "optional example defaults and regression evidence."
+    )
     report["normalized_engine_inputs_summary"] = _input_records(
         (audit_record or {}).get("submitted_inputs", {}), "imperial"
     )

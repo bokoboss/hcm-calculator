@@ -220,7 +220,11 @@ def test_supported_workflows_content_names_current_scope() -> None:
         in sections["Multilane Highway"]["supported"]
     )
     assert (
-        "Chapter 26 Example 1-compatible validated path"
+        "bounded Chapter 12 one-direction, one-segment uninterrupted-flow analysis"
+        in sections["Basic Freeway"]["supported"]
+    )
+    assert (
+        "Chapter 26 Example 1 optional defaults and regression evidence"
         in sections["Basic Freeway"]["supported"]
     )
     assert "not a general freeway facility calculator" in sections["Basic Freeway"]["limitations"]

@@ -137,9 +137,10 @@ def test_freeway_audit_records_guarded_save_load_and_export_scope() -> None:
 
     assert audit["calculation_succeeded"] is True
     assert audit["unit_system"] == "imperial"
+    assert audit["support_status"] == "supported_basic_freeway_segment_v0_1"
     assert "project_type" not in audit
     assert any(
-        "Save/Load and export/reporting preserve only this guarded" in note
+        "Save/Load and export/reporting preserve only this bounded" in note
         for note in audit["unsupported_behavior_notes"]
     )
 
