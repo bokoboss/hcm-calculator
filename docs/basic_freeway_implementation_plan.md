@@ -18,9 +18,11 @@ presents a common motorized vehicle core methodology.
 This document began as the planning artifact for PR #59. Basic Freeway Segment
 engine v0.1 is now implemented as an engine-only package under
 `src/hcmcalc/freeway/`. A Manual Basic Freeway Segment Calculator v0.1 now
-exposes that existing engine path in Streamlit for the BF-CH26-001-compatible
-validated workflow only. Save/Load and export/reporting integration now exists
-for that same guarded worksheet through `project_type =
+exposes that existing engine path in Streamlit for bounded one-direction,
+one-segment uninterrupted-flow Basic Freeway Segment analysis within the
+implemented Chapter 12 scope. BF-CH26-001 remains optional defaults and
+regression evidence. Save/Load and export/reporting integration now exists
+for that same bounded worksheet through `project_type =
 manual_basic_freeway_v0`. This does not add ramps, weaving, merge/diverge,
 managed lanes, work zones, reliability, or facility/corridor workflows.
 
@@ -190,8 +192,8 @@ Implemented outputs:
   intermediate values;
 - formula source references.
 
-These outputs are displayed by the guarded Manual Basic Freeway Segment UI.
-They are also available in guarded project files and reports. They do not imply
+These outputs are displayed by the bounded Manual Basic Freeway Segment UI.
+They are also available in bounded project files and reports. They do not imply
 facility, ramp, weaving, merge/diverge, managed-lane, work-zone, reliability, or
 facility/corridor support.
 
@@ -367,6 +369,6 @@ Basic Freeway Segment v0.1 does not implement:
 - additional expected-output fixtures beyond BF-CH26-001; or
 - changes to existing Two-Lane or Multilane behavior.
 
-Save/Load and export/reporting are implemented only for the guarded Manual Basic
+Save/Load and export/reporting are implemented only for the bounded Manual Basic
 Freeway Segment v0.1 worksheet using `manual_basic_freeway_v0`; they do not add
-broader freeway calculation scope.
+broader freeway facility or adjacent-methodology scope.

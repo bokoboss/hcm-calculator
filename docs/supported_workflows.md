@@ -48,7 +48,8 @@ Limitations:
 Supported:
 
 - Manual Basic Freeway Segment Calculator
-- Chapter 26 Example 1-compatible validated path
+- bounded Chapter 12 one-direction, one-segment uninterrupted-flow analysis
+- Chapter 26 Example 1 optional defaults and regression evidence
 - Metric/Imperial UI-boundary conversion
 - Save/Load
 - Export/reporting
@@ -63,6 +64,7 @@ Limitations:
 - no work zones
 - no reliability
 - no facility/corridor workflow
+- no specific-grade or mountainous-terrain PCE tables
 
 ## Validation Evidence
 

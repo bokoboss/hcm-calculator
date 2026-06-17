@@ -89,8 +89,9 @@ class BasicFreewaySegmentMethod:
         los = level_of_service(density, demand_exceeds_capacity=demand_exceeds_capacity)
 
         warnings = [
-            "Basic Freeway Segment v0.1 is validated only against Chapter 26 "
-            "Example Problem 1 for the supported one-segment operational path."
+            "Basic Freeway Segment v0.1 is bounded to the implemented Chapter 12 "
+            "one-direction, one-segment uninterrupted-flow scope; Chapter 26 "
+            "Example Problem 1 remains regression evidence."
         ]
         if demand_exceeds_capacity:
             warnings.append(
@@ -125,7 +126,7 @@ class BasicFreewaySegmentMethod:
         ]
         outputs = {
             "calculation_type": "basic_freeway_segment_v0_1",
-            "support_status": "chapter_26_example_validated_v0_1",
+            "support_status": "supported_basic_freeway_segment_v0_1",
             "scope_status": "supported_basic_freeway_segment_v0_1",
             "input_summary": asdict(parsed),
             "ffs_source": parsed.ffs_source,

@@ -68,7 +68,7 @@ def test_chapter_26_basic_freeway_example_1() -> None:
     assert actual["capacity_check"] == expected["capacity_check"]
     assert actual["demand_exceeds_capacity"] is expected["demand_exceeds_capacity"]
     assert actual["calculation_type"] == "basic_freeway_segment_v0_1"
-    assert actual["support_status"] == "chapter_26_example_validated_v0_1"
+    assert actual["support_status"] == "supported_basic_freeway_segment_v0_1"
     assert actual["scope_status"] == "supported_basic_freeway_segment_v0_1"
     assert actual["input_summary"]["case_id"] == "BF-CH26-001"
     assert actual["assumptions"] == result.assumptions

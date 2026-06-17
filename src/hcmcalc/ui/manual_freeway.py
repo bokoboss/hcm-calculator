@@ -1,4 +1,4 @@
-"""Streamlit-independent adapter for the guarded Basic Freeway v0.1 worksheet."""
+"""Streamlit-independent adapter for the bounded Basic Freeway v0.1 worksheet."""
 
 from __future__ import annotations
 
@@ -19,12 +19,13 @@ PRESET_LABELS = {
 SUPPORTED_UNIT_SYSTEMS = {"metric", "imperial"}
 MANUAL_FREEWAY_CALCULATION_TYPE = "manual_basic_freeway_segment_v0_1"
 MANUAL_FREEWAY_LIMITATIONS = [
-    "Manual Basic Freeway Segment v0.1 is limited to the BF-CH26-001-compatible validated path.",
+    "Manual Basic Freeway Segment v0.1 supports bounded one-direction, one-segment uninterrupted-flow Chapter 12 basic segment calculations.",
+    "BF-CH26-001 remains available as optional example defaults and regression evidence.",
     "It is not a general freeway facility calculator.",
     "One direction, one segment, uninterrupted flow, and general-purpose lanes only.",
     "Ramp, weaving, merge/diverge, managed-lane, work-zone, reliability, and facility/corridor workflows are unsupported.",
     "Calculations remain engine-native Imperial; Metric values are UI/reporting conversions.",
-    "Save/Load and export/reporting preserve only this guarded Basic Freeway Segment v0.1 workflow.",
+    "Save/Load and export/reporting preserve only this bounded Basic Freeway Segment v0.1 workflow.",
 ]
 
 
@@ -47,7 +48,7 @@ def clear_manual_freeway_state(state: dict[str, Any]) -> None:
 
 
 def load_freeway_preset(case_id: str) -> dict[str, Any]:
-    """Load a copy of the validated Basic Freeway starting values."""
+    """Load a copy of the Basic Freeway example starting values."""
 
     if case_id not in PRESET_LABELS:
         raise ValueError(f"Unsupported Basic Freeway preset: {case_id}.")
@@ -220,7 +221,7 @@ def build_manual_freeway_audit_record(
         "calculation_type": MANUAL_FREEWAY_CALCULATION_TYPE,
         "preset_id": preset_id,
         "unit_system": _normalize_unit_system(unit_system),
-        "support_status": "chapter_26_example_validated_v0_1",
+        "support_status": "supported_basic_freeway_segment_v0_1",
         "displayed_inputs": deepcopy(displayed_inputs),
         "submitted_inputs": deepcopy(inputs),
         "calculation_succeeded": result is not None,

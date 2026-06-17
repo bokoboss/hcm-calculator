@@ -287,7 +287,7 @@ def test_freeway_metric_and_imperial_exports_use_selected_display_units() -> Non
     assert "mph" in imperial_csv
     assert "Normalized Engine Inputs" in metric_csv
     assert "engine-native Imperial" in metric_csv
-    assert "Basic Freeway Segment v0.1 is limited" in metric_csv
+    assert "Manual Basic Freeway Segment v0.1 supports bounded" in metric_csv
     assert "no ramps" in markdown
     assert "Adjusted Free Flow Speed" in markdown
     assert next(

@@ -341,7 +341,7 @@ def create_manual_freeway_project_payload(
     result: dict[str, Any] | None = None,
     audit_record: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Create a JSON-ready guarded Manual Basic Freeway project payload."""
+    """Create a JSON-ready bounded Manual Basic Freeway project payload."""
 
     preset = load_freeway_preset(preset_id)
     unit_system = _validate_unit_system(unit_system)
@@ -385,7 +385,7 @@ def create_manual_freeway_project_json(
     result: dict[str, Any] | None = None,
     audit_record: dict[str, Any] | None = None,
 ) -> str:
-    """Create formatted JSON for a guarded Manual Basic Freeway project."""
+    """Create formatted JSON for a bounded Manual Basic Freeway project."""
 
     return json.dumps(
         create_manual_freeway_project_payload(
@@ -400,7 +400,7 @@ def create_manual_freeway_project_json(
 
 
 def load_manual_freeway_project_json(data: str | bytes) -> dict[str, Any]:
-    """Parse and validate a guarded Manual Basic Freeway project JSON document."""
+    """Parse and validate a bounded Manual Basic Freeway project JSON document."""
 
     payload = _load_project_document(data)
     if payload.get("project_type") != MANUAL_BASIC_FREEWAY_PROJECT_TYPE:

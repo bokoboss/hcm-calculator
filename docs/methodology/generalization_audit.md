@@ -447,7 +447,7 @@ cleaned up before broader generalization is claimed.
 - Mentions validation against HCM Chapter 26 example problems before expanding
   UI or production workflows.
 - Lists Two-Lane Example Problems 1 through 4, Multilane Example Problem 4, and
-  Basic Freeway Example Problem 1 as current anchors.
+  Basic Freeway Example Problem 1 as current validation evidence.
 - Says general Multilane Highway LOS beyond Chapter 26 Example Problem 4 is not
   in scope.
 - Says the CLI currently supports validated example fixtures only.
@@ -455,7 +455,9 @@ cleaned up before broader generalization is claimed.
 - Describes Manual Facility as anchored to validated Example Problems 3 and 4.
 - Describes Manual Multilane as a limited validated-path worksheet anchored only
   to Example Problem 4 EB/WB.
-- Describes Manual Basic Freeway as anchored only to BF-CH26-001 / Example 1.
+- Describes Manual Basic Freeway as bounded to the implemented Chapter 12 Basic
+  Freeway Segment envelope; BF-CH26-001 remains optional defaults and
+  regression evidence.
 - Uses phrases such as "validated path", "validated template",
   "example-backed", "guarded Example 3/4", "implemented-example-only", and
   "exact validated templates".
@@ -465,7 +467,8 @@ cleaned up before broader generalization is claimed.
 - Two-Lane Highway lists "validated Chapter 26 example-backed paths where
   available".
 - Multilane lists "Chapter 26 Example 4 EB/WB-compatible validated path".
-- Basic Freeway lists "Chapter 26 Example 1-compatible validated path".
+- Basic Freeway lists bounded Chapter 12 one-direction, one-segment
+  uninterrupted-flow analysis and Chapter 26 Example 1 optional defaults.
 - Validation evidence is correctly positioned as regression/reference evidence,
   but this still needs to remain separate from user-facing workflow claims.
 
@@ -473,7 +476,8 @@ cleaned up before broader generalization is claimed.
 
 - Supported Workflow sections include "validated Chapter 26 example-backed
   paths", "Example 3 and 4 facility-backed starting values", "Example 4
-  EB/WB-compatible validated path", and "Example 1-compatible validated path".
+  EB/WB-compatible validated path"; Basic Freeway now lists bounded Chapter 12
+  segment analysis and Example 1 optional defaults.
 
 ### src/hcmcalc/ui/manual_facility.py
 
@@ -494,10 +498,9 @@ cleaned up before broader generalization is claimed.
 ### src/hcmcalc/ui/manual_freeway.py
 
 - Preset label is "Chapter 26 Example 1 starting values".
-- Limitations say the workflow is limited to the BF-CH26-001-compatible
-  validated path and preserves only the guarded Basic Freeway Segment v0.1
-  workflow.
-- Audit support status is `chapter_26_example_validated_v0_1`.
+- Limitations say the workflow is bounded to the implemented Basic Freeway
+  Segment v0.1 envelope and preserves only that bounded workflow.
+- Audit support status is `supported_basic_freeway_segment_v0_1`.
 
 ### src/hcmcalc/ui/streamlit_app.py
 
@@ -515,8 +518,9 @@ cleaned up before broader generalization is claimed.
 - `src/hcmcalc/multilane/method.py` warnings, support status, scope status, and
   unsupported notes say Example Problem 4 only.
 - `src/hcmcalc/multilane/validation.py` rejects all non-exact Example 4 inputs.
-- `src/hcmcalc/freeway/method.py` warning says validated only against Chapter 26
-  Example Problem 1, even though the engine accepts a broader v0.1 envelope.
+- `src/hcmcalc/freeway/method.py` warning describes the bounded Chapter 12
+  Basic Freeway Segment scope and treats Example Problem 1 as regression
+  evidence.
 - `src/hcmcalc/methods/two_lane_highway_ch15.py` assumptions and warnings
   reference Example Problems 1 through 4 and validated vertical paths.
 
@@ -580,6 +584,11 @@ Acceptance criteria:
 
 Goal: publicly align Basic Freeway wording and tests with the broader v0.1
 engine envelope that already exists.
+
+Status: Phase 3 wording and positive non-example smoke coverage began in
+`basic-freeway-generalization-phase-1`. The branch keeps formulas, input
+contracts, fixtures, project JSON type, and unsupported-scope guardrails
+unchanged.
 
 Work:
 

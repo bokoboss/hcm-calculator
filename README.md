@@ -68,11 +68,14 @@ Currently supported:
   conversion, Save/Load, and Export/reporting. It is not a Basic Freeway
   calculator and does not support ramp, weaving, merge/diverge, or facility
   workflows.
-- **Basic Freeway:** Manual Basic Freeway Segment Calculator, Chapter 26
-  Example 1-compatible validated path, Metric/Imperial UI-boundary conversion,
-  Save/Load, and Export/reporting. It is not a general freeway facility
-  calculator and does not support ramps, weaving, merge/diverge, managed lanes,
-  work zones, reliability, or facility/corridor workflows.
+- **Basic Freeway:** Manual Basic Freeway Segment Calculator for bounded
+  Chapter 12 one-direction, one-segment uninterrupted-flow analysis,
+  Chapter 26 Example 1 optional defaults and regression evidence,
+  Metric/Imperial UI-boundary conversion, Save/Load, and Export/reporting. It
+  is not a general freeway facility calculator and does not support ramps,
+  weaving, merge/diverge, managed lanes, work zones, reliability,
+  facility/corridor workflows, specific-grade PCE tables, or mountainous-terrain
+  PCE tables.
 
 See [Supported Workflows](docs/supported_workflows.md) for the concise app-wide
 scope summary.
@@ -162,24 +165,24 @@ The single-page app provides six modes:
   Reports display the selected unit system and label engine-native Imperial
   values explicitly where included.
 - **Manual Basic Freeway Segment Calculator** is a calculator-first v0.1
-  worksheet anchored only to BF-CH26-001, the HCM7 Chapter 26 Example Problem
-  1-compatible Basic Freeway Segment path. It exposes Setup, Roadway /
-  Geometry, Traffic, Advanced / Optional, Results, Details, Audit, and Full
-  JSON sections for one direction, one segment, uninterrupted flow, and
-  general-purpose lanes only. The Chapter 26 Example 1 input preset supplies
-  starting values from `references/freeway_example_inputs.yaml`; it is not a
-  separate example viewer. Metric inputs are converted to engine-native Imperial
-  values at the UI boundary and speed/density outputs are converted back for
-  display. The page calls only the existing `src/hcmcalc/freeway` engine and
-  does not add or change formulas. Save/Load controls are compactly placed
-  around the calculator inputs: load sits near the input preset controls and
-  save sits below the worksheet inputs. After a successful calculation, an
-  **Export / Report** section provides CSV, Excel `.xlsx`, Markdown, and
-  report-friendly JSON downloads. Project JSON uses
+  worksheet for one-direction, one-segment uninterrupted-flow Basic Freeway
+  Segment analysis within the implemented HCM7 Chapter 12 scope. It exposes
+  Setup, Roadway / Geometry, Traffic, Advanced / Optional, Results, Details,
+  Audit, and Full JSON sections for general-purpose lanes only. The Chapter 26
+  Example 1 input preset supplies optional starting values from
+  `references/freeway_example_inputs.yaml`; it remains regression evidence, not
+  the supported methodology boundary. Metric inputs are converted to
+  engine-native Imperial values at the UI boundary and speed/density outputs are
+  converted back for display. The page calls only the existing
+  `src/hcmcalc/freeway` engine and does not add or change formulas. Save/Load
+  controls are compactly placed around the calculator inputs: load sits near
+  the optional defaults controls and save sits below the worksheet inputs.
+  After a successful calculation, an **Export / Report** section provides CSV,
+  Excel `.xlsx`, Markdown, and report-friendly JSON downloads. Project JSON uses
   `project_type = manual_basic_freeway_v0`, preserves displayed UI values,
   engine-native Imperial inputs, limitations, warnings, assumptions, and any
-  matching current result. Export/reporting preserves the same BF-CH26-001-
-  compatible Basic Freeway Segment v0.1 scope only.
+  matching current result. Export/reporting preserves the same bounded Basic
+  Freeway Segment v0.1 scope only.
 - **Supported Workflows** summarizes current Two-Lane Highway, Multilane
   Highway, Basic Freeway, Save/Load, Export / Report, and validation-reference
   scope in the app. Limitations are visible but kept secondary to the calculator
@@ -212,7 +215,7 @@ Limitations:
 - Existing Manual Single Segment Save/Load using
   `project_type = manual_single_segment` remains supported.
 - Export/reporting v0.1 supports Manual Single Segment, guarded Manual Facility
-  v0.1, guarded Manual Multilane v0.1, and guarded Manual Basic Freeway
+  v0.1, guarded Manual Multilane v0.1, and bounded Manual Basic Freeway
   Segment v0.1 results. Exports use the selected UI display unit system, label
   units explicitly, include workflow limitations, and format the existing
   calculated result without changing calculation behavior.
@@ -235,14 +238,13 @@ Limitations:
   Basic Freeway, or managed-lane cases and cannot safely serve as a second
   Multilane validation case.
 - Manual Basic Freeway Segment Save/Load and reporting are supported only for
-  `project_type = manual_basic_freeway_v0` and the BF-CH26-001-compatible
-  validated path. Basic Freeway ramps, weaving, merge/diverge, managed lanes,
-  work zones, reliability analysis, facility/corridor workflows, and
-  specific-grade Basic Freeway PCE tables remain unsupported. The Manual Basic
-  Freeway Segment Calculator v0.1 is not a general freeway facility
-  calculator; it is Chapter 12 formula-backed through the existing engine and
-  validated against Chapter 26 Basic Freeway Example Problem 1 for the current
-  one-segment operational v0.1 path only.
+  `project_type = manual_basic_freeway_v0` and the bounded implemented Chapter
+  12 Basic Freeway Segment envelope. Basic Freeway ramps, weaving,
+  merge/diverge, managed lanes, work zones, reliability analysis,
+  facility/corridor workflows, specific-grade Basic Freeway PCE tables, and
+  mountainous-terrain PCE tables remain unsupported. The Manual Basic Freeway
+  Segment Calculator v0.1 is not a general freeway facility calculator;
+  BF-CH26-001 remains optional defaults and Chapter 26 regression evidence.
 - User-supplied Multilane base/adjusted free-flow speed and driver-population
   adjustment inputs remain unsupported.
 - PDF and DOCX report export are not implemented.

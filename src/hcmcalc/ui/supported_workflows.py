@@ -115,13 +115,15 @@ SUPPORTED_WORKFLOW_SECTIONS: tuple[WorkflowSection, ...] = (
         "title": "Basic Freeway",
         "supported": [
             "Manual Basic Freeway Segment Calculator",
-            "Chapter 26 Example 1-compatible validated path",
+            "bounded Chapter 12 one-direction, one-segment uninterrupted-flow analysis",
+            "Chapter 26 Example 1 optional defaults and regression evidence",
             "Metric/Imperial UI-boundary conversion",
             "Project Save/Load and reporting exports",
         ],
         "limitations": [
             "not a general freeway facility calculator",
-            "ramps, weaving, merge/diverge, managed lanes, work zones, reliability, and corridor workflows are outside this page",
+            "ramps, weaving, merge/diverge, managed lanes, work zones, reliability, and facility/corridor workflows are outside this page",
+            "specific-grade and mountainous-terrain PCE tables are unsupported",
         ],
         "save_load_export": (
             "Project JSON Save/Load and CSV, Excel, Markdown, and report JSON exports."

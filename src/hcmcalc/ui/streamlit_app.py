@@ -726,7 +726,7 @@ def render_manual_multilane_calculator() -> None:
 
 
 def render_manual_freeway_calculator() -> None:
-    """Render the Basic Freeway Segment validated-path worksheet."""
+    """Render the bounded Basic Freeway Segment worksheet."""
 
     pending_project = st.session_state.pop("manual_freeway_pending_project", None)
     if pending_project is not None:
@@ -737,7 +737,7 @@ def render_manual_freeway_calculator() -> None:
 
     render_page_header(
         "Basic Freeway Segment Calculator",
-        "Basic Freeway Segment worksheet.",
+        "Basic Freeway Segment calculator for one-direction, one-segment uninterrupted-flow analysis within the implemented Chapter 12 scope.",
     )
 
     input_column, result_column = render_calculator_shell()
@@ -767,7 +767,7 @@ def render_manual_freeway_calculator() -> None:
                 label_visibility="collapsed",
             )
             st.caption(
-                "HCM Chapter 26 Example 1 reference backs these defaults."
+                "Example 1 remains available as optional defaults and regression evidence."
             )
     unit_system = unit_label.lower()
     preset_context = (preset_id, unit_system)
@@ -996,14 +996,14 @@ def render_manual_freeway_calculator() -> None:
         if error is not None:
             st.error(f"Unsupported Basic Freeway case: {error}")
             render_project_output_section(
-                "Project JSON restores displayed inputs and engine-native values for this guarded Basic Freeway Segment workflow.",
+                "Project JSON restores displayed inputs and engine-native values for this bounded Basic Freeway Segment workflow.",
                 render_freeway_project_download,
             )
             with st.expander(AUDIT_EXPANDER_LABEL):
                 st.json(audit)
             render_validation_basis_and_limitations(
                 validation_basis=(
-                    "BF-CH26-001, HCM7 Chapter 26 Basic Freeway Example Problem 1."
+                    "Implemented Chapter 12 Basic Freeway Segment scope; BF-CH26-001 optional defaults and regression evidence."
                 ),
                 supported_scope=(
                     "One direction, one uninterrupted-flow Basic Freeway Segment, "
@@ -1022,12 +1022,12 @@ def render_manual_freeway_calculator() -> None:
         if result_data is None:
             st.caption(PRERUN_RESULTS_PLACEHOLDER)
             render_project_output_section(
-                "Project JSON restores displayed inputs and engine-native values for this guarded Basic Freeway Segment workflow.",
+                "Project JSON restores displayed inputs and engine-native values for this bounded Basic Freeway Segment workflow.",
                 render_freeway_project_download,
             )
             render_validation_basis_and_limitations(
                 validation_basis=(
-                    "BF-CH26-001, HCM7 Chapter 26 Basic Freeway Example Problem 1."
+                    "Implemented Chapter 12 Basic Freeway Segment scope; BF-CH26-001 optional defaults and regression evidence."
                 ),
                 supported_scope=(
                     "One direction, one uninterrupted-flow Basic Freeway Segment, "
@@ -1131,7 +1131,7 @@ def render_manual_freeway_calculator() -> None:
                 }
             )
         render_project_output_section(
-            "Project JSON restores displayed inputs and engine-native values for this guarded Basic Freeway Segment workflow.",
+            "Project JSON restores displayed inputs and engine-native values for this bounded Basic Freeway Segment workflow.",
             render_freeway_project_download,
         )
         render_export_report_section(
@@ -1148,7 +1148,7 @@ def render_manual_freeway_calculator() -> None:
         )
         render_validation_basis_and_limitations(
             validation_basis=(
-                "BF-CH26-001, HCM7 Chapter 26 Basic Freeway Example Problem 1."
+                "Implemented Chapter 12 Basic Freeway Segment scope; BF-CH26-001 optional defaults and regression evidence."
             ),
             supported_scope=(
                 "One direction, one uninterrupted-flow Basic Freeway Segment, "
@@ -1165,7 +1165,7 @@ def render_manual_freeway_calculator() -> None:
 
 
 def _render_manual_freeway_load_controls() -> None:
-    """Render guarded Manual Basic Freeway project loading controls."""
+    """Render bounded Manual Basic Freeway project loading controls."""
 
     uploaded_project = st.file_uploader(
         "Project JSON file",
