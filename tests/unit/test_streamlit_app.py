@@ -22,6 +22,7 @@ from hcmcalc.ui.supported_workflows import (
     STARTING_VALUES_LABEL,
     SUPPORTED_WORKFLOW_SECTIONS,
     VALIDATION_EXPANDER_LABEL,
+    resolve_app_view,
 )
 from hcmcalc.ui.units import display_outputs
 
@@ -166,11 +167,20 @@ def test_app_mode_list_includes_supported_workflows() -> None:
         "Multilane Segment",
         "Basic Freeway Segment",
         "Supported Workflows",
-        "Validation Examples",
     )
+    assert APP_MODE_LABELS[0] == "Two-Lane Segment"
     assert APP_MODE_TO_VIEW["Supported Workflows"] == "supported_workflows"
     assert APP_MODE_TO_VIEW["Two-Lane Segment"] == "manual_single_segment"
     assert APP_MODE_TO_VIEW["Basic Freeway Segment"] == "manual_basic_freeway"
+    assert "Validation Examples" not in APP_MODE_LABELS
+
+
+def test_internal_validation_examples_route_is_not_public_navigation() -> None:
+    assert resolve_app_view("Two-Lane Segment", {}) == "manual_single_segment"
+    assert (
+        resolve_app_view("Two-Lane Segment", {"qa_view": "validated_examples"})
+        == "validated_examples"
+    )
 
 
 def test_calculator_ui_shared_grammar_labels_are_standardized() -> None:
@@ -200,7 +210,7 @@ def test_supported_workflows_content_names_current_scope() -> None:
         "Two-Lane Facility",
         "Multilane Highway",
         "Basic Freeway",
-        "Examples / Validation",
+        "Validation Evidence",
     }
     assert "Manual Single Segment Calculator" in sections["Two-Lane Highway"]["supported"]
     assert "Manual Facility Calculator" in sections["Two-Lane Facility"]["supported"]
@@ -215,5 +225,8 @@ def test_supported_workflows_content_names_current_scope() -> None:
     )
     assert "not a general freeway facility calculator" in sections["Basic Freeway"]["limitations"]
     assert "not a Basic Freeway calculator" in sections["Multilane Highway"]["limitations"]
-    assert "Reference-backed checks" in sections["Examples / Validation"]["supported"]
-    assert "not the main product model" in EXAMPLE_WORKFLOW_NOTE
+    assert (
+        "Regression/reference evidence for implemented fixture cases"
+        in sections["Validation Evidence"]["supported"]
+    )
+    assert "not user-facing workflows" in EXAMPLE_WORKFLOW_NOTE
