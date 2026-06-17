@@ -56,12 +56,11 @@ SUPPORTED_WORKFLOW_SECTIONS: tuple[WorkflowSection, ...] = (
             "Manual Single Segment Calculator",
             "Manual Facility Calculator",
             "validated Chapter 26 example-backed paths where available",
-            "Save/Load",
-            "Export/reporting",
+            "Project Save/Load and reporting exports",
         ],
         "limitations": [
-            "only implemented HCM7 Chapter 15 paths",
-            "unsupported combinations remain guarded",
+            "implemented HCM7 Chapter 15 paths only",
+            "unsupported combinations are guarded in the calculators",
         ],
         "save_load_export": (
             "Project JSON Save/Load and CSV, Excel, Markdown, and report JSON exports."
@@ -76,7 +75,7 @@ SUPPORTED_WORKFLOW_SECTIONS: tuple[WorkflowSection, ...] = (
         ],
         "limitations": [
             "not full general Chapter 15 facility support",
-            "arbitrary segment sequences and unsupported passing-lane contexts remain guarded",
+            "arbitrary segment sequences and passing-lane contexts remain guarded",
         ],
         "save_load_export": (
             "Project JSON Save/Load with table-oriented segment results and report exports."
@@ -88,13 +87,12 @@ SUPPORTED_WORKFLOW_SECTIONS: tuple[WorkflowSection, ...] = (
             "Manual Multilane Segment Calculator",
             "Chapter 26 Example 4 EB/WB-compatible validated path",
             "Metric/Imperial UI-boundary conversion",
-            "Save/Load",
-            "Export/reporting",
+            "Project Save/Load and reporting exports",
         ],
         "limitations": [
             "not a Basic Freeway calculator",
-            "not ramp/weaving/merge/diverge/facility workflow",
-            "unsupported combinations remain guarded",
+            "ramp, weaving, merge/diverge, and facility workflows are outside this page",
+            "unsupported combinations are guarded in the calculator",
         ],
         "save_load_export": (
             "Project JSON Save/Load and CSV, Excel, Markdown, and report JSON exports."
@@ -106,18 +104,11 @@ SUPPORTED_WORKFLOW_SECTIONS: tuple[WorkflowSection, ...] = (
             "Manual Basic Freeway Segment Calculator",
             "Chapter 26 Example 1-compatible validated path",
             "Metric/Imperial UI-boundary conversion",
-            "Save/Load",
-            "Export/reporting",
+            "Project Save/Load and reporting exports",
         ],
         "limitations": [
             "not a general freeway facility calculator",
-            "no ramps",
-            "no weaving",
-            "no merge/diverge",
-            "no managed lanes",
-            "no work zones",
-            "no reliability",
-            "no facility/corridor workflow",
+            "ramps, weaving, merge/diverge, managed lanes, work zones, reliability, and corridor workflows are outside this page",
         ],
         "save_load_export": (
             "Project JSON Save/Load and CSV, Excel, Markdown, and report JSON exports."
