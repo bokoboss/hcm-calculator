@@ -80,7 +80,6 @@ from hcmcalc.ui.reporting import (
 from hcmcalc.ui.schematics import get_segment_schematic_path
 from hcmcalc.ui.supported_workflows import (
     APP_MODE_LABELS,
-    APP_MODE_TO_VIEW,
     AUDIT_EXPANDER_LABEL,
     BASIC_FREEWAY_RAMP_DENSITY_HELP,
     BASIC_FREEWAY_RAMP_DENSITY_LABEL,
@@ -89,6 +88,7 @@ from hcmcalc.ui.supported_workflows import (
     PRERUN_RESULTS_PLACEHOLDER,
     STARTING_VALUES_LABEL,
     SUPPORTED_WORKFLOW_SECTIONS,
+    resolve_app_view,
 )
 from hcmcalc.ui.units import (
     DEFAULT_UNIT_SYSTEM,
@@ -129,6 +129,8 @@ LIMITATIONS_FOOTER = (
     "Use each calculator's Validation basis and limitations section for method "
     "coverage details."
 )
+
+
 def apply_ui_styles() -> None:
     """Apply restrained presentation styles without changing app behavior."""
 
@@ -2450,7 +2452,7 @@ def main() -> None:
             key="calculator_mode",
         )
     st.caption(SCOPE_NOTICE)
-    mode = APP_MODE_TO_VIEW[mode_label]
+    mode = resolve_app_view(mode_label, st.query_params)
     if mode == "manual_single_segment":
         render_manual_single_segment_calculator()
     elif mode == "manual_facility":

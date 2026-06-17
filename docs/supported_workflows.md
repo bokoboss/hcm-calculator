@@ -64,9 +64,9 @@ Limitations:
 - no reliability
 - no facility/corridor workflow
 
-## Example / Validation Workflows
+## Validation Evidence
 
-Example and validation workflows are validation references and starting values.
-They are not the main product model and do not broaden supported methodology
-scope.
+Validation examples are regression and reference evidence for implemented
+fixture cases. They are not user-facing workflows or product modes, and they do
+not broaden supported methodology scope.
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TypedDict
+from typing import Any, TypedDict
 
 
 class WorkflowSection(TypedDict):
@@ -20,7 +20,6 @@ APP_MODE_LABELS = (
     "Multilane Segment",
     "Basic Freeway Segment",
     "Supported Workflows",
-    "Validation Examples",
 )
 
 APP_MODE_TO_VIEW = {
@@ -29,8 +28,22 @@ APP_MODE_TO_VIEW = {
     "Two-Lane Facility": "manual_facility",
     "Multilane Segment": "manual_multilane",
     "Basic Freeway Segment": "manual_basic_freeway",
-    "Validation Examples": "validated_examples",
 }
+
+INTERNAL_VALIDATION_QUERY_PARAM = "qa_view"
+INTERNAL_VALIDATION_QUERY_VALUE = "validated_examples"
+
+
+def resolve_app_view(mode_label: str, query_params: Any | None = None) -> str:
+    """Resolve the active view, including internal QA-only routes."""
+
+    if query_params is not None:
+        requested_view = query_params.get(INTERNAL_VALIDATION_QUERY_PARAM)
+        if isinstance(requested_view, list):
+            requested_view = requested_view[0] if requested_view else None
+        if requested_view == INTERNAL_VALIDATION_QUERY_VALUE:
+            return INTERNAL_VALIDATION_QUERY_VALUE
+    return APP_MODE_TO_VIEW[mode_label]
 
 VALIDATION_EXPANDER_LABEL = "Validation basis and limitations"
 CALCULATION_DETAILS_LABEL = "Calculation details"
@@ -115,26 +128,26 @@ SUPPORTED_WORKFLOW_SECTIONS: tuple[WorkflowSection, ...] = (
         ),
     },
     {
-        "title": "Examples / Validation",
+        "title": "Validation Evidence",
         "supported": [
-            "Validation examples",
-            "Reference-backed checks",
-            "Example-backed regression cases",
+            "Regression/reference evidence for implemented fixture cases",
+            "Chapter 26 example-backed checks where available",
+            "Internal QA review of validated case outputs",
         ],
         "limitations": [
-            "not the primary calculator data-entry workflow",
+            "not a user-facing workflow or product mode",
             "limited to implemented fixture cases",
         ],
         "save_load_export": (
-            "Selected-case result JSON remains available where current result rendering supports it."
+            "Fixture-backed results remain available through internal QA access."
         ),
     },
 )
 
 EXAMPLE_WORKFLOW_NOTE = (
-    "Example and validation workflows provide validation references and starting "
-    "values. They are not the main product model: the calculator workflow is "
-    "choose calculator, enter inputs, run calculation, review results, inspect "
-    "audit, then save or export."
+    "Validation examples provide regression and reference evidence for "
+    "implemented fixture cases. They are not user-facing workflows: the product "
+    "workflow is choose calculator, enter inputs, run calculation, review "
+    "results, inspect audit, then save or export."
 )
 
