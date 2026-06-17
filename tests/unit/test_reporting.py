@@ -296,6 +296,60 @@ def test_freeway_metric_and_imperial_exports_use_selected_display_units() -> Non
     )["unit"] == "mi"
 
 
+def test_freeway_non_example_markdown_export_includes_key_outputs_and_scope() -> None:
+    displayed = freeway_preset_ui_inputs("BF-CH26-001", "imperial")
+    displayed.update(
+        {
+            "number_of_lanes": 4,
+            "segment_length": 2.6,
+            "base_free_flow_speed": 74.0,
+            "lane_width": 11.0,
+            "right_side_lateral_clearance": 3.0,
+            "total_ramp_density": 2.5,
+            "demand_volume_veh_h": 5100.0,
+            "peak_hour_factor": 0.95,
+            "heavy_vehicle_percent": 4.0,
+        }
+    )
+    inputs = load_freeway_preset("BF-CH26-001")["inputs"] | {
+        "number_of_lanes": 4,
+        "segment_length_mi": 2.6,
+        "base_free_flow_speed_mph": 74.0,
+        "lane_width_ft": 11.0,
+        "right_side_lateral_clearance_ft": 3.0,
+        "total_ramp_density_per_mi": 2.5,
+        "demand_volume_veh_h": 5100.0,
+        "peak_hour_factor": 0.95,
+        "heavy_vehicle_percent": 4.0,
+    }
+    result = run_manual_freeway(inputs)
+    audit = build_manual_freeway_audit_record(
+        "BF-CH26-001",
+        inputs,
+        unit_system="imperial",
+        displayed_inputs=displayed,
+        result=result,
+    )
+
+    markdown = export_report(
+        build_report(
+            "manual_basic_freeway_v0",
+            result_to_dict(result),
+            "imperial",
+            inputs=displayed,
+            audit_record=audit,
+            template_id="BF-CH26-001",
+        ),
+        "markdown",
+    )
+
+    assert "Basic Freeway Segment" in markdown
+    assert "Level of service" in markdown
+    assert "Density" in markdown
+    assert "Demand Flow Rate" in markdown
+    assert "supported_basic_freeway_segment_v0_1" in markdown
+
+
 def test_report_generation_rejects_missing_result() -> None:
     with pytest.raises(ReportingError, match="calculated result is required"):
         build_report("manual_single_segment", None, "metric")
