@@ -1,4 +1,4 @@
-"""Streamlit-independent adapter for the guarded Multilane v0.1 worksheet."""
+"""Streamlit-independent adapter for the bounded Multilane v0.1 worksheet."""
 
 from __future__ import annotations
 
@@ -20,9 +20,13 @@ TEMPLATE_LABELS = {
 SUPPORTED_UNIT_SYSTEMS = {"metric", "imperial"}
 MANUAL_MULTILANE_CALCULATION_TYPE = "manual_multilane_v0"
 MANUAL_MULTILANE_LIMITATIONS = [
-    "Manual Multilane v0.1 is limited to Chapter 26 Example Problem 4 EB/WB-compatible validated paths.",
-    "It is not a general Multilane Highway calculator.",
-    "Basic Freeway, ramps, weaving, merge/diverge, managed lanes, work zones, reliability, and facility/corridor workflows are unsupported.",
+    "Manual Multilane v0.1 is a bounded one-direction Multilane Highway "
+    "Segment calculator within the implemented HCM scope.",
+    "Chapter 26 Example 4 EB/WB remains available as optional defaults and "
+    "regression evidence.",
+    "Basic Freeway, ramps, weaving, merge/diverge, managed lanes, work zones, "
+    "reliability, and facility/corridor workflows are unsupported.",
+    "Specific-grade PCE table expansion remains unsupported unless an auditable PCE is supplied.",
     "Calculations remain engine-native Imperial; Metric values are UI/reporting conversions.",
 ]
 
@@ -76,7 +80,7 @@ def multilane_engine_inputs_to_ui(
     """Convert engine-native Imperial inputs to user-facing worksheet values."""
 
     metric = _normalize_unit_system(unit_system) == "metric"
-    return {
+    displayed = {
         "number_of_lanes": int(inputs["number_of_lanes"]),
         "segment_length": (
             float(inputs["segment_length_ft"]) * FEET_TO_METERS / 1000.0
@@ -108,6 +112,17 @@ def multilane_engine_inputs_to_ui(
         "heavy_vehicle_percent": float(inputs["heavy_vehicle_percent"]),
         "grade_percent": float(inputs["grade_percent"]),
     }
+    if "ffs_source" in inputs:
+        displayed["ffs_source"] = inputs["ffs_source"]
+    if inputs.get("free_flow_speed_mph") is not None:
+        displayed["free_flow_speed"] = (
+            float(inputs["free_flow_speed_mph"]) * MILES_TO_KILOMETERS
+            if metric
+            else float(inputs["free_flow_speed_mph"])
+        )
+    if inputs.get("passenger_car_equivalent") is not None:
+        displayed["passenger_car_equivalent"] = inputs["passenger_car_equivalent"]
+    return displayed
 
 
 def multilane_ui_inputs_to_engine(
@@ -116,7 +131,7 @@ def multilane_ui_inputs_to_engine(
     """Convert user-facing worksheet values to engine-native Imperial inputs."""
 
     metric = _normalize_unit_system(unit_system) == "metric"
-    return {
+    engine_inputs = {
         **template_inputs,
         "number_of_lanes": int(values["number_of_lanes"]),
         "segment_length_ft": (
@@ -149,6 +164,29 @@ def multilane_ui_inputs_to_engine(
         "heavy_vehicle_percent": float(values["heavy_vehicle_percent"]),
         "grade_percent": float(values["grade_percent"]),
     }
+    if "ffs_source" in values or "ffs_source" in template_inputs:
+        engine_inputs["ffs_source"] = values.get(
+            "ffs_source", template_inputs.get("ffs_source", "estimated")
+        )
+    if "free_flow_speed" in values or "free_flow_speed_mph" in template_inputs:
+        engine_inputs["free_flow_speed_mph"] = (
+            None
+            if values.get("free_flow_speed") is None
+            else (
+                _rounded(float(values["free_flow_speed"]) / MILES_TO_KILOMETERS)
+                if metric
+                else float(values["free_flow_speed"])
+            )
+        )
+    if (
+        "passenger_car_equivalent" in values
+        or "passenger_car_equivalent" in template_inputs
+    ):
+        engine_inputs["passenger_car_equivalent"] = values.get(
+            "passenger_car_equivalent",
+            template_inputs.get("passenger_car_equivalent"),
+        )
+    return engine_inputs
 
 
 def multilane_display_outputs(
@@ -209,7 +247,7 @@ def build_manual_multilane_audit_record(
         "calculation_type": MANUAL_MULTILANE_CALCULATION_TYPE,
         "template_id": template_id,
         "unit_system": _normalize_unit_system(unit_system),
-        "support_status": "implemented_example_only",
+        "support_status": "bounded_multilane_segment_v0_1",
         "displayed_inputs": deepcopy(displayed_inputs),
         "submitted_inputs": deepcopy(inputs),
         "calculation_succeeded": result is not None,

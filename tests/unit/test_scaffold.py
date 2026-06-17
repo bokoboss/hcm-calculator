@@ -12,5 +12,5 @@ def test_method_registry_includes_implemented_example_targets() -> None:
     assert methods["hcm7_ch15_two_lane_motorized"].status == "implemented_example_only"
     assert (
         methods["hcm7_multilane_los"].status
-        == "implemented_example_only"
+        == "bounded_multilane_segment_v0_1"
     )
