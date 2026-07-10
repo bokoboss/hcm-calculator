@@ -370,6 +370,7 @@ def render_manual_multilane_calculator() -> None:
     input_column, result_column = render_calculator_shell()
     template_options = multilane_template_options()
     with input_column:
+        render_project_load_section(_render_manual_multilane_load_controls)
         render_section_label("Setup")
         st.caption("Analysis type: Multilane Highway Segment.")
         unit_label = st.radio(
@@ -510,6 +511,7 @@ def render_manual_multilane_calculator() -> None:
                 value=float(ui_inputs["grade_percent"]),
                 key=f"manual_multilane_input_grade_{template_id}_{unit_system}",
             )
+            render_section_label("Advanced / Optional")
             supply_pce = st.checkbox(
                 "Supply passenger-car equivalent",
                 value="passenger_car_equivalent" in ui_inputs,
@@ -560,7 +562,6 @@ def render_manual_multilane_calculator() -> None:
         multilane_is_current = render_calculation_status(
             "manual_multilane", multilane_workflow_inputs, status_placeholder
         )
-        render_project_load_section(_render_manual_multilane_load_controls)
         def render_multilane_project_download() -> None:
             stored_audit = st.session_state.get("manual_multilane_audit")
             calculation_matches_inputs = (
@@ -623,31 +624,32 @@ def render_manual_multilane_calculator() -> None:
             )
 
     with result_column:
+        render_validation_basis_and_limitations(
+            validation_basis=(
+                "HCM7 Chapter 26 Example Problem 4 eastbound and westbound "
+                "optional defaults and regression evidence."
+            ),
+            supported_scope=(
+                "Bounded Multilane Highway Segment calculator for one-direction "
+                "segment analysis within the implemented HCM scope. Metric values "
+                "are converted at the UI boundary."
+            ),
+            not_supported=(
+                "Basic Freeway, ramps, weaving, merge/diverge, managed lanes, "
+                "work zones, reliability, and facility/corridor workflows. "
+                "Unsupported methodology branches are rejected by engine validation."
+            ),
+        )
         st.markdown("**Results**")
         error = st.session_state.get("manual_multilane_error")
         audit = st.session_state.get("manual_multilane_audit")
         if error is not None:
             st.error(f"Unsupported Multilane case: {error}")
+            with st.expander(AUDIT_EXPANDER_LABEL, expanded=False):
+                st.json(audit)
             render_project_output_section(
                 "Save the current guarded Multilane Segment worksheet and result.",
                 render_multilane_project_download,
-            )
-            with st.expander(AUDIT_EXPANDER_LABEL):
-                st.json(audit)
-            render_validation_basis_and_limitations(
-                validation_basis=(
-                    "HCM7 Chapter 26 Example Problem 4 eastbound and westbound "
-                    "optional defaults and regression evidence."
-                ),
-                supported_scope=(
-                    "Bounded Multilane Highway Segment calculator for one-direction "
-                    "segment analysis within the implemented HCM scope."
-                ),
-                not_supported=(
-                    "Basic Freeway, ramps, weaving, merge/diverge, managed lanes, "
-                    "work zones, reliability, and facility/corridor workflows. "
-                    "Unsupported methodology branches are rejected by engine validation."
-                ),
             )
             return
         result_data = st.session_state.get("manual_multilane_result")
@@ -656,21 +658,6 @@ def render_manual_multilane_calculator() -> None:
             render_project_output_section(
                 "Save the current guarded Multilane Segment worksheet and result.",
                 render_multilane_project_download,
-            )
-            render_validation_basis_and_limitations(
-                validation_basis=(
-                    "HCM7 Chapter 26 Example Problem 4 eastbound and westbound "
-                    "optional defaults and regression evidence."
-                ),
-                supported_scope=(
-                    "Bounded Multilane Highway Segment calculator for one-direction "
-                    "segment analysis within the implemented HCM scope."
-                ),
-                not_supported=(
-                    "Basic Freeway, ramps, weaving, merge/diverge, managed lanes, "
-                    "work zones, reliability, and facility/corridor workflows. "
-                    "Unsupported methodology branches are rejected by engine validation."
-                ),
             )
             return
 
@@ -736,7 +723,7 @@ def render_manual_multilane_calculator() -> None:
             ],
         )
 
-        with st.expander(CALCULATION_DETAILS_LABEL):
+        with st.expander(CALCULATION_DETAILS_LABEL, expanded=False):
             render_list("Assumptions", result_data["assumptions"], "No assumptions reported.")
             render_list("Warnings", result_data["warnings"], "No warnings reported.")
             render_list(
@@ -744,7 +731,7 @@ def render_manual_multilane_calculator() -> None:
                 outputs["unsupported_scope_notes"],
                 "No unsupported scope notes reported.",
             )
-        with st.expander(AUDIT_EXPANDER_LABEL):
+        with st.expander(AUDIT_EXPANDER_LABEL, expanded=False):
             st.json(audit)
             st.dataframe(
                 result_data["intermediate_values"],
@@ -773,22 +760,6 @@ def render_manual_multilane_calculator() -> None:
             )
         else:
             st.caption("Export unavailable until recalculation completes.")
-        render_validation_basis_and_limitations(
-            validation_basis=(
-                "HCM7 Chapter 26 Example Problem 4 eastbound and westbound "
-                "optional defaults and regression evidence."
-            ),
-            supported_scope=(
-                "Bounded Multilane Highway Segment calculator for one-direction "
-                "segment analysis within the implemented HCM scope. Metric values "
-                "are converted at the UI boundary."
-            ),
-            not_supported=(
-                "Basic Freeway, ramps, weaving, merge/diverge, managed lanes, "
-                "work zones, reliability, and facility/corridor workflows. "
-                "Unsupported methodology branches are rejected by engine validation."
-            ),
-        )
 
 
 def render_manual_freeway_calculator() -> None:
@@ -810,6 +781,7 @@ def render_manual_freeway_calculator() -> None:
     input_column, result_column = render_calculator_shell()
     preset_options = freeway_preset_options()
     with input_column:
+        render_project_load_section(_render_manual_freeway_load_controls)
         render_section_label("Setup")
         st.caption("Analysis type: Basic Freeway Segment.")
         unit_label = st.radio(
@@ -1011,7 +983,6 @@ def render_manual_freeway_calculator() -> None:
         freeway_is_current = render_calculation_status(
             "manual_freeway", freeway_workflow_inputs, status_placeholder
         )
-        render_project_load_section(_render_manual_freeway_load_controls)
         def render_freeway_project_download() -> None:
             stored_audit = st.session_state.get("manual_freeway_audit")
             calculation_matches_inputs = (
@@ -1074,32 +1045,32 @@ def render_manual_freeway_calculator() -> None:
             )
 
     with result_column:
+        render_validation_basis_and_limitations(
+            validation_basis=(
+                "Implemented Chapter 12 Basic Freeway Segment scope; BF-CH26-001 optional defaults and regression evidence."
+            ),
+            supported_scope=(
+                "One direction, one uninterrupted-flow Basic Freeway Segment, "
+                "general-purpose lanes only. Metric values are converted at the "
+                "UI boundary; calculations remain engine-native Imperial."
+            ),
+            not_supported=(
+                "General freeway facility support, ramp analysis, merge/diverge, "
+                "weaving, managed lanes, work zones, reliability, and "
+                "facility/corridor workflows. Unsupported combinations remain "
+                "guarded by engine validation."
+            ),
+        )
         st.markdown("**Results**")
         error = st.session_state.get("manual_freeway_error")
         audit = st.session_state.get("manual_freeway_audit")
         if error is not None:
             st.error(f"Unsupported Basic Freeway case: {error}")
+            with st.expander(AUDIT_EXPANDER_LABEL, expanded=False):
+                st.json(audit)
             render_project_output_section(
                 "Project JSON restores displayed inputs and engine-native values for this bounded Basic Freeway Segment workflow.",
                 render_freeway_project_download,
-            )
-            with st.expander(AUDIT_EXPANDER_LABEL):
-                st.json(audit)
-            render_validation_basis_and_limitations(
-                validation_basis=(
-                    "Implemented Chapter 12 Basic Freeway Segment scope; BF-CH26-001 optional defaults and regression evidence."
-                ),
-                supported_scope=(
-                    "One direction, one uninterrupted-flow Basic Freeway Segment, "
-                    "general-purpose lanes only. Metric values are converted at the "
-                    "UI boundary; calculations remain engine-native Imperial."
-                ),
-                not_supported=(
-                    "General freeway facility support, ramp analysis, merge/diverge, "
-                    "weaving, managed lanes, work zones, reliability, and "
-                    "facility/corridor workflows. Unsupported combinations remain "
-                    "guarded by engine validation."
-                ),
             )
             return
         result_data = st.session_state.get("manual_freeway_result")
@@ -1108,22 +1079,6 @@ def render_manual_freeway_calculator() -> None:
             render_project_output_section(
                 "Project JSON restores displayed inputs and engine-native values for this bounded Basic Freeway Segment workflow.",
                 render_freeway_project_download,
-            )
-            render_validation_basis_and_limitations(
-                validation_basis=(
-                    "Implemented Chapter 12 Basic Freeway Segment scope; BF-CH26-001 optional defaults and regression evidence."
-                ),
-                supported_scope=(
-                    "One direction, one uninterrupted-flow Basic Freeway Segment, "
-                    "general-purpose lanes only. Metric values are converted at the "
-                    "UI boundary; calculations remain engine-native Imperial."
-                ),
-                not_supported=(
-                    "General freeway facility support, ramp analysis, merge/diverge, "
-                    "weaving, managed lanes, work zones, reliability, and "
-                    "facility/corridor workflows. Unsupported combinations remain "
-                    "guarded by engine validation."
-                ),
             )
             return
 
@@ -1189,7 +1144,7 @@ def render_manual_freeway_calculator() -> None:
             ],
         )
 
-        with st.expander(CALCULATION_DETAILS_LABEL):
+        with st.expander(CALCULATION_DETAILS_LABEL, expanded=False):
             render_list("Assumptions", result_data["assumptions"], "No assumptions reported.")
             render_list("Warnings", result_data["warnings"], "No warnings reported.")
             render_list(
@@ -1197,7 +1152,7 @@ def render_manual_freeway_calculator() -> None:
                 outputs["unsupported_scope_notes"],
                 "No unsupported scope notes reported.",
             )
-        with st.expander(AUDIT_EXPANDER_LABEL):
+        with st.expander(AUDIT_EXPANDER_LABEL, expanded=False):
             st.json(audit)
             st.dataframe(
                 result_data["intermediate_values"],
@@ -1226,22 +1181,6 @@ def render_manual_freeway_calculator() -> None:
             )
         else:
             st.caption("Export unavailable until recalculation completes.")
-        render_validation_basis_and_limitations(
-            validation_basis=(
-                "Implemented Chapter 12 Basic Freeway Segment scope; BF-CH26-001 optional defaults and regression evidence."
-            ),
-            supported_scope=(
-                "One direction, one uninterrupted-flow Basic Freeway Segment, "
-                "general-purpose lanes only. Metric values are converted at the "
-                "UI boundary; calculations remain engine-native Imperial."
-            ),
-            not_supported=(
-                "General freeway facility support, ramp analysis, merge/diverge, "
-                "weaving, managed lanes, work zones, reliability, and "
-                "facility/corridor workflows. Unsupported combinations remain "
-                "guarded by engine validation."
-            ),
-        )
 
 
 def _render_manual_freeway_load_controls() -> None:
@@ -1421,6 +1360,7 @@ def render_manual_facility_calculator() -> None:
     input_column, result_column = render_calculator_shell()
     template_options = facility_template_options()
     with input_column:
+        render_project_load_section(_render_manual_facility_load_controls)
         render_section_label("Setup")
         st.caption("Analysis type: Two-Lane Highway Facility.")
         unit_label = st.radio(
@@ -1517,6 +1457,8 @@ def render_manual_facility_calculator() -> None:
         )
         render_section_label("Traffic")
         st.caption("Traffic values are edited in the facility segment table.")
+        render_section_label("Advanced / Optional")
+        st.caption("No additional optional inputs are available for this guarded worksheet.")
         calculate_column, scope_column = st.columns([1, 2])
         calculate = calculate_column.button(
             "Run calculation",
@@ -1535,7 +1477,6 @@ def render_manual_facility_calculator() -> None:
         facility_is_current = render_calculation_status(
             "manual_facility", facility_workflow_inputs, status_placeholder
         )
-        render_project_load_section(_render_manual_facility_load_controls)
     if calculate:
         clear_manual_facility_result_state(st.session_state)
         try:
@@ -1568,6 +1509,20 @@ def render_manual_facility_calculator() -> None:
             )
 
     with result_column:
+        render_validation_basis_and_limitations(
+            validation_basis=(
+                f"HCM Chapter 26 Two-Lane Highway {template['template_basis']}."
+            ),
+            supported_scope=(
+                "Guarded Example 3/4 facility paths with supported segment table "
+                "edits only."
+            ),
+            not_supported=(
+                "Full general Chapter 15 facility support, manual downstream "
+                "adjustment, arbitrary passing-lane placement, arbitrary curves, "
+                "arbitrary nonlevel combinations, and arbitrary segment sequences."
+            ),
+        )
         st.markdown("**Results**")
         render_manual_facility_result_panel(
             template_id, unit_system, edited_rows, template, facility_is_current
@@ -1587,27 +1542,13 @@ def render_manual_facility_result_panel(
     audit = st.session_state.get("manual_facility_audit")
     if error is not None:
         st.error(f"Unsupported combination: {error}")
+        with st.expander(AUDIT_EXPANDER_LABEL, expanded=False):
+            st.json(audit)
         _render_manual_facility_project_file_controls(
             template_id,
             unit_system,
             edited_rows,
             FACILITY_DEFAULT_LABELS.get(template_id, template["template_label"]),
-        )
-        with st.expander(AUDIT_EXPANDER_LABEL):
-            st.json(audit)
-        render_validation_basis_and_limitations(
-            validation_basis=(
-                f"HCM Chapter 26 Two-Lane Highway {template['template_basis']}."
-            ),
-            supported_scope=(
-                "Guarded Example 3/4 facility paths with supported segment table "
-                "edits only."
-            ),
-            not_supported=(
-                "Full general Chapter 15 facility support, manual downstream "
-                "adjustment, arbitrary passing-lane placement, arbitrary curves, "
-                "arbitrary nonlevel combinations, and arbitrary segment sequences."
-            ),
         )
         return
 
@@ -1619,20 +1560,6 @@ def render_manual_facility_result_panel(
             unit_system,
             edited_rows,
             FACILITY_DEFAULT_LABELS.get(template_id, template["template_label"]),
-        )
-        render_validation_basis_and_limitations(
-            validation_basis=(
-                f"HCM Chapter 26 Two-Lane Highway {template['template_basis']}."
-            ),
-            supported_scope=(
-                "Guarded Example 3/4 facility paths with supported segment table "
-                "edits only."
-            ),
-            not_supported=(
-                "Full general Chapter 15 facility support, manual downstream "
-                "adjustment, arbitrary passing-lane placement, arbitrary curves, "
-                "arbitrary nonlevel combinations, and arbitrary segment sequences."
-            ),
         )
         return
     outputs = result_data["outputs"]
@@ -1694,7 +1621,7 @@ def render_manual_facility_result_panel(
             "key_warnings": "Key warnings",
         },
     )
-    with st.expander(CALCULATION_DETAILS_LABEL):
+    with st.expander(CALCULATION_DETAILS_LABEL, expanded=False):
         render_list("Warnings", result_data["warnings"], "No warnings reported.")
         render_list("Assumptions", result_data["assumptions"], "No assumptions reported.")
         render_list(
@@ -1702,7 +1629,7 @@ def render_manual_facility_result_panel(
             template["unsupported_behavior_notes"],
             "No unsupported behavior notes reported.",
         )
-    with st.expander(AUDIT_EXPANDER_LABEL):
+    with st.expander(AUDIT_EXPANDER_LABEL, expanded=False):
         st.json(audit)
     full_result = {
         "calculation_type": "manual_facility_v0",
@@ -1742,20 +1669,6 @@ def render_manual_facility_result_panel(
         else [],
         audit_record=audit,
         template_id=template_id,
-    )
-    render_validation_basis_and_limitations(
-        validation_basis=(
-            f"HCM Chapter 26 Two-Lane Highway {template['template_basis']}."
-        ),
-        supported_scope=(
-            "Guarded Example 3/4 facility paths with supported segment table "
-            "edits only."
-        ),
-        not_supported=(
-            "Full general Chapter 15 facility support, manual downstream "
-            "adjustment, arbitrary passing-lane placement, arbitrary curves, "
-            "arbitrary nonlevel combinations, and arbitrary segment sequences."
-        ),
     )
 
 
@@ -1893,6 +1806,7 @@ def render_manual_single_segment_calculator() -> None:
     worksheet_column, result_column = render_calculator_shell()
 
     with worksheet_column:
+        render_project_load_section(_render_manual_project_load_controls)
         setup_column, schematic_column = st.columns([1.25, 1.0], gap="medium")
         with setup_column:
             render_section_label("Setup")
@@ -2028,8 +1942,8 @@ def render_manual_single_segment_calculator() -> None:
                 horizontal_subsegments: list[dict[str, Any]] = []
                 curve_setup: dict[str, Any] | None = None
                 generate_curve = False
+                render_section_label("Advanced / Optional")
                 if horizontal_alignment == "horizontal_curves":
-                    render_section_label("Advanced / Optional")
                     setup_defaults = curve_setup_defaults(unit_system, segment_length)
                     for name, default in setup_defaults.items():
                         st.session_state.setdefault(
@@ -2135,6 +2049,10 @@ def render_manual_single_segment_calculator() -> None:
                                 ),
                             },
                         )
+                else:
+                    st.caption(
+                        "Horizontal curve setup is available when Horizontal alignment is selected."
+                    )
 
             run_manual = st.form_submit_button(
                 "Run calculation", type="primary", use_container_width=True
@@ -2181,7 +2099,6 @@ def render_manual_single_segment_calculator() -> None:
                     f"Generated {len(generated_subsegments)} editable curve subsegments."
                 )
                 st.rerun()
-        render_project_load_section(_render_manual_project_load_controls)
 
     if run_manual:
         st.session_state.pop("manual_segment_result", None)
@@ -2203,6 +2120,21 @@ def render_manual_single_segment_calculator() -> None:
             )
 
     with result_column:
+        render_validation_basis_and_limitations(
+            validation_basis=(
+                "HCM7 Chapter 26 Two-Lane Highway example-backed checks for "
+                "implemented Chapter 15 paths."
+            ),
+            supported_scope=(
+                "Manual single-segment Two-Lane Highway calculations for the "
+                "implemented guarded paths."
+            ),
+            not_supported=(
+                "Full arbitrary Chapter 15 coverage, upstream passing-lane "
+                "context, downstream facility effects in this single-segment "
+                "worksheet, and unsupported horizontal-curve combinations."
+            ),
+        )
         st.markdown("**Results**")
         stored_result = st.session_state.get("manual_segment_result")
         audit_record = st.session_state.get("manual_segment_audit")
@@ -2211,40 +2143,10 @@ def render_manual_single_segment_calculator() -> None:
             st.error(stored_error)
             render_audit_record(audit_record)
             render_manual_project_file_controls(values)
-            render_validation_basis_and_limitations(
-                validation_basis=(
-                    "HCM7 Chapter 26 Two-Lane Highway example-backed checks for "
-                    "implemented Chapter 15 paths."
-                ),
-                supported_scope=(
-                    "Manual single-segment Two-Lane Highway calculations for the "
-                    "implemented guarded paths."
-                ),
-                not_supported=(
-                    "Full arbitrary Chapter 15 coverage, upstream passing-lane "
-                    "context, downstream facility effects in this single-segment "
-                    "worksheet, and unsupported horizontal-curve combinations."
-                ),
-            )
             return
         if stored_result is None:
             st.caption(PRERUN_RESULTS_PLACEHOLDER)
             render_manual_project_file_controls(values)
-            render_validation_basis_and_limitations(
-                validation_basis=(
-                    "HCM7 Chapter 26 Two-Lane Highway example-backed checks for "
-                    "implemented Chapter 15 paths."
-                ),
-                supported_scope=(
-                    "Manual single-segment Two-Lane Highway calculations for the "
-                    "implemented guarded paths."
-                ),
-                not_supported=(
-                    "Full arbitrary Chapter 15 coverage, upstream passing-lane "
-                    "context, downstream facility effects in this single-segment "
-                    "worksheet, and unsupported horizontal-curve combinations."
-                ),
-            )
             return
         render_manual_result(
             stored_result,
@@ -2268,21 +2170,6 @@ def render_manual_single_segment_calculator() -> None:
             )
         else:
             st.caption("Export unavailable until recalculation completes.")
-        render_validation_basis_and_limitations(
-            validation_basis=(
-                "HCM7 Chapter 26 Two-Lane Highway example-backed checks for "
-                "implemented Chapter 15 paths."
-            ),
-            supported_scope=(
-                "Manual single-segment Two-Lane Highway calculations for the "
-                "implemented guarded paths."
-            ),
-            not_supported=(
-                "Full arbitrary Chapter 15 coverage, upstream passing-lane "
-                "context, downstream facility effects in this single-segment "
-                "worksheet, and unsupported horizontal-curve combinations."
-            ),
-        )
 
 
 def render_manual_project_file_controls(manual_inputs: dict[str, Any]) -> None:
