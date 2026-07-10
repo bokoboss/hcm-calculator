@@ -3,24 +3,33 @@ setlocal
 
 rem Run from this script's directory, even when launched by double-clicking.
 cd /d "%~dp0"
+set "PYTHON=.venv\Scripts\python.exe"
 
-if not exist ".venv\Scripts\python.exe" (
-  echo Creating local Python environment...
-  py -3.12 -m venv .venv
-  if errorlevel 1 goto :error
+py -3.12 --version >nul 2>&1
+if errorlevel 1 (
+  echo Python 3.12 is required. Install it from https://www.python.org/downloads/
+  echo, then run setup_app.bat.
+  goto :error
 )
 
-call ".venv\Scripts\activate.bat"
-if errorlevel 1 goto :error
+if not exist "%PYTHON%" (
+  echo The local .venv environment is missing.
+  echo Run setup_app.bat from this folder, then launch the app again.
+  goto :error
+)
 
-python -m pip install --upgrade pip
-if errorlevel 1 goto :error
+"%PYTHON%" -c "import sys; raise SystemExit(sys.version_info[:2] != (3, 12))"
+if errorlevel 1 (
+  echo The local .venv is not using Python 3.12.
+  echo Run setup_app.bat to refresh it. If this continues, delete .venv and run setup_app.bat.
+  goto :error
+)
 
-python -m pip install -e ".[ui]"
-if errorlevel 1 goto :error
-
-python -m streamlit run "src\hcmcalc\ui\streamlit_app.py"
-if errorlevel 1 goto :error
+"%PYTHON%" -m streamlit run "src\hcmcalc\ui\streamlit_app.py"
+if errorlevel 1 (
+  echo Streamlit could not start. Run setup_app.bat to refresh dependencies.
+  goto :error
+)
 
 endlocal
 exit /b 0

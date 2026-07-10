@@ -90,11 +90,17 @@ scope summary.
 
 ## Run Locally
 
-For a simple Windows launch, double-click `run_app.bat` in the repository root.
-It creates a local Python environment if needed, installs the optional Streamlit
-UI dependency, and opens the calculator in your browser. See the
-[local quick-start guide](docs/user_quick_start.md) for requirements,
-PowerShell launch instructions, and troubleshooting.
+Use this exact two-step Windows workflow from the repository root:
+
+1. Run `setup_app.bat` once for first-time setup, and again whenever you need
+   to refresh dependencies.
+2. Run `run_app.bat` for every normal launch.
+
+`run_app.bat` never installs or upgrades packages. It opens the calculator in
+your browser using `src\hcmcalc\ui\streamlit_app.py` and tells you to run
+setup if Python 3.12 or `.venv` is unavailable. See the [local quick-start
+guide](docs/user_quick_start.md) for the matching PowerShell commands and
+troubleshooting.
 
 ## Local Setup
 
