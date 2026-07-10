@@ -88,6 +88,20 @@ Currently supported:
 See [Supported Workflows](docs/supported_workflows.md) for the concise app-wide
 scope summary.
 
+## Run Locally
+
+Use this exact two-step Windows workflow from the repository root:
+
+1. Run `setup_app.bat` once for first-time setup, and again whenever you need
+   to refresh dependencies.
+2. Run `run_app.bat` for every normal launch.
+
+`run_app.bat` never installs or upgrades packages. It opens the calculator in
+your browser using `src\\hcmcalc\\ui\\streamlit_app.py` and tells you to run
+setup if Python 3.12 or `.venv` is unavailable. See the [local quick-start
+guide](docs/user_quick_start.md) for the matching PowerShell commands and
+troubleshooting.
+
 ## Local Setup
 
 Requires Python 3.12.
