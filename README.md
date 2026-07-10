@@ -1,8 +1,12 @@
 # HCM Calculator
 
-Auditable Python scaffold for Highway Capacity Manual (HCM) calculations.
+Auditable Python calculator for bounded Highway Capacity Manual (HCM) workflows.
 
-This project is intentionally in an early, example-scoped state. It does **not** yet implement a general HCM Chapter 15 calculation engine. The first supported analysis target is HCM 7th Edition Chapter 15 Two-Lane Highway motorized vehicle analysis. The architecture is prepared to support additional HCM facility types later, including Multilane Highway LOS.
+The current v0.1 calculator-first MVP provides single-page, auditable
+worksheets for supported Two-Lane Highway, Basic Freeway Segment, and
+Multilane Segment workflows. It does **not** implement general HCM facility
+analysis. Validation examples remain regression and reference evidence, and
+are intentionally hidden from product navigation.
 
 ## Goals
 
@@ -18,7 +22,8 @@ Implemented:
 - Project package scaffold
 - Documentation scaffold
 - Methodology and validation references
-- HCM Chapter 26 Two-Lane Highway Example Problems 1 through 4 (`TLH-CH15-001` through `TLH-CH15-004`)
+- HCM Chapter 26 Two-Lane Highway Example Problems 1 through 4
+  (`TLH-CH15-001` through `TLH-CH15-004`) as validation evidence
 - HCM7 Multilane Basic Segment engine v0.1 for bounded one-direction
   Multilane Highway Segment analysis within the implemented HCM scope. Chapter
   26 Multilane Highway Example Problem 4 remains regression evidence and
@@ -33,8 +38,8 @@ Implemented:
   Multilane Highway motorized-vehicle validation case is available in the
   supplied example-problem reference
 - Streamlit Manual Single Segment Calculator, Manual Facility Calculator v0.1,
-  Manual Multilane Highway Segment v0.1, Manual Basic Freeway Segment
-  Calculator v0.1, and Validated examples / QA viewer
+  Manual Multilane Highway Segment v0.1, and Manual Basic Freeway Segment
+  Calculator v0.1 with a shared result summary panel
 - Manual Multilane Save/Load and CSV, Excel, Markdown, and Report JSON export
   integration using `project_type = manual_multilane_v0`
 - Manual Basic Freeway Segment Save/Load and CSV, Excel, Markdown, and Report
@@ -94,7 +99,7 @@ python -m pip install -e .[dev]
 ```
 
 Streamlit is listed as an optional UI dependency only. Install it with the development
-dependencies to run the validated-case viewer:
+dependencies to run the calculator:
 
 ```powershell
 python -m pip install -e .[dev,ui]
@@ -123,7 +128,7 @@ The CLI currently supports validated example fixtures only.
 
 ## Streamlit Calculator
 
-Run the single-page validated-case viewer from the repository root:
+Run the single-page calculator from the repository root:
 
 ```powershell
 streamlit run src/hcmcalc/ui/streamlit_app.py
@@ -143,8 +148,8 @@ The single-page app provides six modes:
   engine result in the downloadable JSON. After a successful calculation, an
   **Export / Report** section provides CSV, Excel `.xlsx`, Markdown, and
   report-friendly JSON downloads.
-- **Validated examples / QA** loads `references/example_inputs.yaml` and preserves
-  Example Problems 1 through 4 validation behavior.
+- **Validation Examples** remain fixture-backed regression and QA evidence;
+  they are intentionally not a product-navigation workflow.
 - **Manual Facility Calculator v0.1** is a limited template-backed facility
   workflow anchored to validated Example Problems 3 and 4. It provides a
   guarded segment table, facility and segment results, warnings, assumptions,
