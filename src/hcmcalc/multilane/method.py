@@ -90,7 +90,6 @@ class MultilaneHighwayLOSMethod:
 
         assumptions = [
             "One-direction, one-segment uninterrupted-flow Multilane Highway analysis.",
-            "TWLTL supplies 6 ft left-side clearance; roadside clearance is capped at 6 ft.",
             "Default truck mix is 30% SUTs and 70% TTs.",
             "Demand is below the 1,400 pc/h/ln Multilane Highway breakpoint, so speed equals FFS.",
         ]
@@ -98,6 +97,10 @@ class MultilaneHighwayLOSMethod:
             assumptions.append(
                 "Base FFS is posted speed limit plus 7 mi/h because the posted "
                 "speed is below 50 mi/h."
+            )
+            assumptions.append(
+                "TWLTL supplies 6 ft left-side clearance; roadside clearance is "
+                "capped at 6 ft."
             )
         else:
             assumptions.append("Free-flow speed is measured or user supplied.")
@@ -343,7 +346,7 @@ def demand_flow_rate(volume: float, phf: float, lanes: int, hv_factor: float) ->
 
 
 def mean_speed_below_breakpoint(flow_rate: float, adjusted_ffs_mph: float) -> float:
-    """HCM7 Eq. 12-1 constant-speed branch used by Example Problem 4."""
+    """HCM7 Eq. 12-1 constant-speed branch implemented by v0.1."""
 
     _finite(flow_rate, "demand flow rate")
     _finite(adjusted_ffs_mph, "adjusted FFS")
@@ -353,7 +356,7 @@ def mean_speed_below_breakpoint(flow_rate: float, adjusted_ffs_mph: float) -> fl
         raise HCMCalcError("Adjusted FFS must be greater than zero.")
     if flow_rate > MULTILANE_BREAKPOINT_PC_H_LN:
         raise UnsupportedScopeError(
-            "v0.1 implements only the Example Problem 4 flow-below-breakpoint branch."
+            "v0.1 implements only the flow-below-breakpoint constant-speed branch."
         )
     return adjusted_ffs_mph
 
@@ -417,4 +420,5 @@ def _intermediate_values(outputs: dict[str, Any]) -> list[IntermediateValue]:
     return [
         IntermediateValue(name, outputs[name], source=source)
         for name, source in sources.items()
+        if outputs[name] is not None
     ]

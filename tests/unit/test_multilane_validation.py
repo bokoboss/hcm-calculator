@@ -199,6 +199,35 @@ def test_non_example_multilane_segment_cases_succeed(inputs: dict) -> None:
     _assert_bounded_success(inputs)
 
 
+def test_measured_ffs_omits_estimated_adjustment_audit_values() -> None:
+    inputs = {
+        **_eastbound_inputs(),
+        "case_id": "MLH-NONEXAMPLE-MEASURED-AUDIT",
+        "number_of_lanes": 3,
+        "demand_volume_veh_h": 2400.0,
+        "peak_hour_factor": 0.92,
+        "heavy_vehicle_percent": 12.0,
+        "grade_percent": 0.0,
+        "ffs_source": "measured",
+        "free_flow_speed_mph": 55.0,
+        "passenger_car_equivalent": 2.0,
+    }
+
+    result = MultilaneHighwayLOSMethod().calculate(inputs)
+    intermediate_names = {value.name for value in result.intermediate_values}
+
+    assert "TWLTL supplies" not in " ".join(result.assumptions)
+    assert "roadside clearance is capped" not in " ".join(result.assumptions)
+    assert "Free-flow speed is measured or user supplied." in result.assumptions
+    assert not {
+        "lane_width_adjustment_mph",
+        "total_lateral_clearance_ft",
+        "total_lateral_clearance_adjustment_mph",
+        "median_type_adjustment_mph",
+        "access_point_adjustment_mph",
+    } & intermediate_names
+
+
 @pytest.mark.parametrize(
     "analysis_type",
     [
