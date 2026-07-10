@@ -41,11 +41,7 @@ def clear_manual_multilane_state(state: dict[str, Any]) -> None:
     """Clear result and worksheet widget state after template or unit changes."""
 
     for key in tuple(state):
-        if key.startswith("manual_multilane_input_") or key in {
-            "manual_multilane_result",
-            "manual_multilane_error",
-            "manual_multilane_audit",
-        }:
+        if key.startswith("manual_multilane_input_") or key == "manual_multilane_error":
             state.pop(key, None)
 
 

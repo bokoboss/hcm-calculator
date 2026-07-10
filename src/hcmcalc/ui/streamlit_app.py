@@ -95,6 +95,11 @@ from hcmcalc.ui.units import (
     display_outputs,
     manual_defaults,
 )
+from hcmcalc.ui.workflow_state import (
+    CALCULATED,
+    mark_calculated,
+    workflow_status,
+)
 
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -196,6 +201,16 @@ def render_list(title: str, values: list[str], empty_message: str) -> None:
             st.markdown(f"- {value}")
     else:
         st.caption(empty_message)
+
+
+def render_calculation_status(
+    workflow: str, inputs: dict[str, Any], target: Any | None = None
+) -> bool:
+    """Render the shared compact freshness state and return export eligibility."""
+
+    status = workflow_status(st.session_state, workflow, inputs)
+    (target or st).caption(f"Calculation status: {status}")
+    return status == CALCULATED
 
 
 def render_result(result_id: str, result_data: dict[str, Any]) -> None:
@@ -351,6 +366,7 @@ def render_manual_multilane_calculator() -> None:
         "Multilane Highway Segment Calculator",
         "Bounded one-direction Multilane Highway Segment analysis within the implemented HCM scope.",
     )
+    status_placeholder = st.empty()
     input_column, result_column = render_calculator_shell()
     template_options = multilane_template_options()
     with input_column:
@@ -535,10 +551,21 @@ def render_manual_multilane_calculator() -> None:
         submitted_inputs = multilane_ui_inputs_to_engine(
             displayed_inputs, inputs, unit_system
         )
+        multilane_workflow_inputs = {
+            "template_id": template_id,
+            "unit_system": unit_system,
+            "displayed_inputs": displayed_inputs,
+            "submitted_inputs": submitted_inputs,
+        }
+        multilane_is_current = render_calculation_status(
+            "manual_multilane", multilane_workflow_inputs, status_placeholder
+        )
         render_project_load_section(_render_manual_multilane_load_controls)
         def render_multilane_project_download() -> None:
             stored_audit = st.session_state.get("manual_multilane_audit")
             calculation_matches_inputs = (
+                multilane_is_current
+                and
                 isinstance(stored_audit, dict)
                 and stored_audit.get("displayed_inputs") == displayed_inputs
                 and stored_audit.get("submitted_inputs") == submitted_inputs
@@ -576,6 +603,12 @@ def render_manual_multilane_calculator() -> None:
                     displayed_inputs=displayed_inputs,
                     result=result,
                 )
+            )
+            mark_calculated(
+                st.session_state, "manual_multilane", multilane_workflow_inputs
+            )
+            multilane_is_current = render_calculation_status(
+                "manual_multilane", multilane_workflow_inputs, status_placeholder
             )
         except HCMCalcError as exc:
             st.session_state["manual_multilane_error"] = str(exc)
@@ -732,18 +765,14 @@ def render_manual_multilane_calculator() -> None:
             "Save the current guarded Multilane Segment worksheet and result.",
             render_multilane_project_download,
         )
-        render_export_report_section(
-            "manual_multilane_v0",
-            result_data,
-            result_unit_system,
-            inputs=(
-                audit.get("displayed_inputs", displayed_inputs)
-                if isinstance(audit, dict)
-                else displayed_inputs
-            ),
-            audit_record=audit,
-            template_id=template_id,
-        )
+        if multilane_is_current:
+            render_export_report_section(
+                "manual_multilane_v0", result_data, result_unit_system,
+                inputs=(audit.get("displayed_inputs", displayed_inputs) if isinstance(audit, dict) else displayed_inputs),
+                audit_record=audit, template_id=template_id,
+            )
+        else:
+            st.caption("Export unavailable until recalculation completes.")
         render_validation_basis_and_limitations(
             validation_basis=(
                 "HCM7 Chapter 26 Example Problem 4 eastbound and westbound "
@@ -776,6 +805,7 @@ def render_manual_freeway_calculator() -> None:
         "Basic Freeway Segment Calculator",
         "Basic Freeway Segment calculator for one-direction, one-segment uninterrupted-flow analysis within the implemented Chapter 12 scope.",
     )
+    status_placeholder = st.empty()
 
     input_column, result_column = render_calculator_shell()
     preset_options = freeway_preset_options()
@@ -972,10 +1002,21 @@ def render_manual_freeway_calculator() -> None:
         submitted_inputs = freeway_ui_inputs_to_engine(
             displayed_inputs, inputs, unit_system
         )
+        freeway_workflow_inputs = {
+            "preset_id": preset_id,
+            "unit_system": unit_system,
+            "displayed_inputs": displayed_inputs,
+            "submitted_inputs": submitted_inputs,
+        }
+        freeway_is_current = render_calculation_status(
+            "manual_freeway", freeway_workflow_inputs, status_placeholder
+        )
         render_project_load_section(_render_manual_freeway_load_controls)
         def render_freeway_project_download() -> None:
             stored_audit = st.session_state.get("manual_freeway_audit")
             calculation_matches_inputs = (
+                freeway_is_current
+                and
                 isinstance(stored_audit, dict)
                 and stored_audit.get("displayed_inputs") == displayed_inputs
                 and stored_audit.get("submitted_inputs") == submitted_inputs
@@ -1013,6 +1054,12 @@ def render_manual_freeway_calculator() -> None:
                     displayed_inputs=displayed_inputs,
                     result=result,
                 )
+            )
+            mark_calculated(
+                st.session_state, "manual_freeway", freeway_workflow_inputs
+            )
+            freeway_is_current = render_calculation_status(
+                "manual_freeway", freeway_workflow_inputs, status_placeholder
             )
         except HCMCalcError as exc:
             st.session_state["manual_freeway_error"] = str(exc)
@@ -1171,18 +1218,14 @@ def render_manual_freeway_calculator() -> None:
             "Project JSON restores displayed inputs and engine-native values for this bounded Basic Freeway Segment workflow.",
             render_freeway_project_download,
         )
-        render_export_report_section(
-            "manual_basic_freeway_v0",
-            result_data,
-            result_unit_system,
-            inputs=(
-                audit.get("displayed_inputs", displayed_inputs)
-                if isinstance(audit, dict)
-                else displayed_inputs
-            ),
-            audit_record=audit,
-            template_id=preset_id,
-        )
+        if freeway_is_current:
+            render_export_report_section(
+                "manual_basic_freeway_v0", result_data, result_unit_system,
+                inputs=(audit.get("displayed_inputs", displayed_inputs) if isinstance(audit, dict) else displayed_inputs),
+                audit_record=audit, template_id=preset_id,
+            )
+        else:
+            st.caption("Export unavailable until recalculation completes.")
         render_validation_basis_and_limitations(
             validation_basis=(
                 "Implemented Chapter 12 Basic Freeway Segment scope; BF-CH26-001 optional defaults and regression evidence."
@@ -1270,6 +1313,17 @@ def _restore_manual_freeway_project(project: dict[str, Any]) -> None:
             st.session_state.pop(state_key, None)
         else:
             st.session_state[state_key] = project[project_key]
+    if project.get("calculation_result") is not None:
+        mark_calculated(
+            st.session_state,
+            "manual_freeway",
+            {
+                "preset_id": preset_id,
+                "unit_system": unit_system,
+                "displayed_inputs": displayed,
+                "submitted_inputs": project["normalized_engine_inputs"],
+            },
+        )
     st.session_state.pop("manual_freeway_error", None)
     st.session_state["manual_freeway_project_load_message"] = (
         "Manual Basic Freeway project loaded. Review the restored inputs and "
@@ -1332,6 +1386,17 @@ def _restore_manual_multilane_project(project: dict[str, Any]) -> None:
             st.session_state.pop(state_key, None)
         else:
             st.session_state[state_key] = project[project_key]
+    if project.get("calculation_result") is not None:
+        mark_calculated(
+            st.session_state,
+            "manual_multilane",
+            {
+                "template_id": template_id,
+                "unit_system": unit_system,
+                "displayed_inputs": displayed,
+                "submitted_inputs": project["normalized_engine_inputs"],
+            },
+        )
     st.session_state.pop("manual_multilane_error", None)
     st.session_state["manual_multilane_project_load_message"] = (
         "Manual Multilane project loaded. Review the restored validated-path inputs."
@@ -1352,6 +1417,7 @@ def render_manual_facility_calculator() -> None:
         "Two-Lane Facility Calculator",
         "Two-Lane Highway Facility worksheet.",
     )
+    status_placeholder = st.empty()
     input_column, result_column = render_calculator_shell()
     template_options = facility_template_options()
     with input_column:
@@ -1461,6 +1527,14 @@ def render_manual_facility_calculator() -> None:
         scope_column.caption(
             "Run the worksheet with the current segment table values."
         )
+        facility_workflow_inputs = {
+            "template_id": template_id,
+            "unit_system": unit_system,
+            "segment_rows": edited_rows,
+        }
+        facility_is_current = render_calculation_status(
+            "manual_facility", facility_workflow_inputs, status_placeholder
+        )
         render_project_load_section(_render_manual_facility_load_controls)
     if calculate:
         clear_manual_facility_result_state(st.session_state)
@@ -1479,6 +1553,12 @@ def render_manual_facility_calculator() -> None:
                     template_id, edited_rows, unit_system, result=result
                 )
             )
+            mark_calculated(
+                st.session_state, "manual_facility", facility_workflow_inputs
+            )
+            facility_is_current = render_calculation_status(
+                "manual_facility", facility_workflow_inputs, status_placeholder
+            )
         except HCMCalcError as exc:
             st.session_state["manual_facility_error"] = str(exc)
             st.session_state["manual_facility_audit"] = (
@@ -1490,7 +1570,7 @@ def render_manual_facility_calculator() -> None:
     with result_column:
         st.markdown("**Results**")
         render_manual_facility_result_panel(
-            template_id, unit_system, edited_rows, template
+            template_id, unit_system, edited_rows, template, facility_is_current
         )
 
 
@@ -1499,6 +1579,7 @@ def render_manual_facility_result_panel(
     unit_system: str,
     edited_rows: list[dict[str, Any]],
     template: dict[str, Any],
+    is_current: bool,
 ) -> None:
     """Render facility results, project output, audit, and exports."""
 
@@ -1554,19 +1635,6 @@ def render_manual_facility_result_panel(
             ),
         )
         return
-    if st.session_state.get("manual_facility_result_context") != (
-        template_id,
-        unit_system,
-    ):
-        st.info("Run calculation for the selected starting values to replace the displayed facility result.")
-        _render_manual_facility_project_file_controls(
-            template_id,
-            unit_system,
-            edited_rows,
-            FACILITY_DEFAULT_LABELS.get(template_id, template["template_label"]),
-        )
-        return
-
     outputs = result_data["outputs"]
     metric = unit_system == "metric"
     facility_follower_density = (
@@ -1656,6 +1724,9 @@ def render_manual_facility_result_panel(
             mime="application/json",
             use_container_width=True,
         )
+    if not is_current:
+        st.caption("Export unavailable until recalculation completes.")
+        return
     _render_manual_facility_project_file_controls(
         template_id,
         unit_system,
@@ -1777,6 +1848,15 @@ def _restore_manual_facility_project(project: dict[str, Any]) -> None:
         st.session_state["manual_facility_result_rows"] = facility_segment_result_rows(
             _calculation_result_from_dict(result), project["segment_rows"]
         )
+        mark_calculated(
+            st.session_state,
+            "manual_facility",
+            {
+                "template_id": template_id,
+                "unit_system": unit_system,
+                "segment_rows": project["segment_rows"],
+            },
+        )
     st.session_state.pop("manual_facility_error", None)
     st.session_state["manual_facility_project_load_message"] = (
         "Facility project loaded. Review the restored inputs and "
@@ -1809,6 +1889,7 @@ def render_manual_single_segment_calculator() -> None:
         "Two-Lane Highway Manual Segment Calculator",
         "Two-Lane Highway single-segment worksheet.",
     )
+    status_placeholder = st.empty()
     worksheet_column, result_column = render_calculator_shell()
 
     with worksheet_column:
@@ -2078,6 +2159,9 @@ def render_manual_single_segment_calculator() -> None:
         }
         if curve_setup is not None:
             values["curve_setup"] = curve_setup
+        segment_is_current = render_calculation_status(
+            "manual_segment", values, status_placeholder
+        )
         if generate_curve and curve_setup is not None:
             try:
                 generated_subsegments = generate_curve_subsegments(curve_setup)
@@ -2107,6 +2191,10 @@ def render_manual_single_segment_calculator() -> None:
             st.session_state["manual_segment_result"] = result_to_dict(result)
             st.session_state["manual_segment_audit"] = (
                 build_manual_calculation_audit_record(values, result=result)
+            )
+            mark_calculated(st.session_state, "manual_segment", values)
+            segment_is_current = render_calculation_status(
+                "manual_segment", values, status_placeholder
             )
         except HCMCalcError as exc:
             st.session_state["manual_segment_error"] = str(exc)
@@ -2164,22 +2252,22 @@ def render_manual_single_segment_calculator() -> None:
             if isinstance(audit_record, dict)
             else unit_system,
             audit_record,
+            is_current=segment_is_current,
         )
         result_unit_system = (
             str(audit_record.get("unit_system", unit_system))
             if isinstance(audit_record, dict)
             else unit_system
         )
-        render_manual_project_file_controls(values)
-        render_export_report_section(
-            "manual_single_segment",
-            stored_result,
-            result_unit_system,
-            inputs=audit_record.get("user_inputs", {})
-            if isinstance(audit_record, dict)
-            else {},
-            audit_record=audit_record,
-        )
+        if segment_is_current:
+            render_manual_project_file_controls(values)
+            render_export_report_section(
+                "manual_single_segment", stored_result, result_unit_system,
+                inputs=audit_record.get("user_inputs", {}) if isinstance(audit_record, dict) else {},
+                audit_record=audit_record,
+            )
+        else:
+            st.caption("Export unavailable until recalculation completes.")
         render_validation_basis_and_limitations(
             validation_basis=(
                 "HCM7 Chapter 26 Two-Lane Highway example-backed checks for "
@@ -2295,6 +2383,8 @@ def _restore_manual_project(project: dict[str, Any]) -> None:
             st.session_state.pop(state_key, None)
         else:
             st.session_state[state_key] = project[project_key]
+    if project.get("result") is not None:
+        mark_calculated(st.session_state, "manual_segment", manual_inputs)
     st.session_state.pop("manual_segment_error", None)
     st.session_state["manual_project_load_message"] = (
         "Project loaded. Review the restored inputs and click Run calculation "
@@ -2319,6 +2409,8 @@ def render_manual_result(
     result_data: dict[str, Any],
     unit_system: str,
     audit_record: dict[str, Any] | None = None,
+    *,
+    is_current: bool = True,
 ) -> None:
     """Render the manual result hierarchy with display-unit conversions."""
 
@@ -2378,13 +2470,14 @@ def render_manual_result(
             "imperial; the submitted-input record is in Audit record."
         )
         st.json(full_result)
-        st.download_button(
-            "Download JSON",
-            data=full_result_json,
-            file_name="manual-single-segment-result.json",
-            mime="application/json",
-            use_container_width=True,
-        )
+        if is_current:
+            st.download_button(
+                "Download JSON",
+                data=full_result_json,
+                file_name="manual-single-segment-result.json",
+                mime="application/json",
+                use_container_width=True,
+            )
 
 
 def render_export_report_section(
