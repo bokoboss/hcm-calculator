@@ -97,7 +97,7 @@ Use this exact two-step Windows workflow from the repository root:
 2. Run `run_app.bat` for every normal launch.
 
 `run_app.bat` never installs or upgrades packages. It opens the calculator in
-your browser using `src\\hcmcalc\\ui\\streamlit_app.py` and tells you to run
+your browser using `src\hcmcalc\ui\streamlit_app.py` and tells you to run
 setup if Python 3.12 or `.venv` is unavailable. See the [local quick-start
 guide](docs/user_quick_start.md) for the matching PowerShell commands and
 troubleshooting.
