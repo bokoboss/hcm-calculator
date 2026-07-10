@@ -145,7 +145,7 @@ def test_two_lane_summary_grid_omits_hero_supporting_metric() -> None:
     ]
 
 
-def test_template_switching_clears_stale_facility_results() -> None:
+def test_template_switching_preserves_facility_results_for_audit() -> None:
     state = {
         "manual_facility_result": {"outputs": {}},
         "manual_facility_result_context": ("level_example_3", "imperial"),
@@ -157,7 +157,13 @@ def test_template_switching_clears_stale_facility_results() -> None:
 
     clear_manual_facility_result_state(state)
 
-    assert state == {"unrelated": "preserved"}
+    assert state == {
+        "manual_facility_result": {"outputs": {}},
+        "manual_facility_result_context": ("level_example_3", "imperial"),
+        "manual_facility_result_rows": [{"segment_id": 1}],
+        "manual_facility_audit": {"template_id": "level_example_3"},
+        "unrelated": "preserved",
+    }
 
 
 def test_app_mode_list_includes_supported_workflows() -> None:

@@ -111,7 +111,7 @@ def test_freeway_metric_and_imperial_modes_produce_equivalent_engine_results() -
     assert imperial_result == metric_result
 
 
-def test_unit_or_preset_switch_clears_freeway_form_and_result_state() -> None:
+def test_unit_or_preset_switch_preserves_freeway_result_for_audit() -> None:
     state = {
         "manual_freeway_input_length_BF-CH26-001_metric": 1.6,
         "manual_freeway_result": {"outputs": {}},
@@ -124,6 +124,8 @@ def test_unit_or_preset_switch_clears_freeway_form_and_result_state() -> None:
     clear_manual_freeway_state(state)
 
     assert state == {
+        "manual_freeway_result": {"outputs": {}},
+        "manual_freeway_audit": {"unit_system": "metric"},
         "manual_freeway_preset_context": ("BF-CH26-001", "metric"),
         "unrelated": "preserved",
     }
