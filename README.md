@@ -88,6 +88,14 @@ Currently supported:
 See [Supported Workflows](docs/supported_workflows.md) for the concise app-wide
 scope summary.
 
+## Run Locally
+
+For a simple Windows launch, double-click `run_app.bat` in the repository root.
+It creates a local Python environment if needed, installs the optional Streamlit
+UI dependency, and opens the calculator in your browser. See the
+[local quick-start guide](docs/user_quick_start.md) for requirements,
+PowerShell launch instructions, and troubleshooting.
+
 ## Local Setup
 
 Requires Python 3.12.
