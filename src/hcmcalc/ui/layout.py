@@ -36,16 +36,12 @@ def render_calculator_shell() -> tuple[Any, Any]:
 def render_section_label(label: str) -> None:
     """Render a consistent compact section label."""
 
-    st.markdown(
-        f'<div class="compact-section-label">{label}</div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown(f"**{label}**")
 
 
 def render_starting_values_section(label: str | None = None) -> None:
-    """Render the common starting-values heading and caption."""
+    """Render the common optional-defaults caption."""
 
-    st.markdown(f"**{label or STARTING_VALUES_LABEL}**")
     st.caption(STARTING_VALUES_CAPTION)
 
 
