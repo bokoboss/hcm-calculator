@@ -445,9 +445,76 @@ def test_manual_multilane_non_example_project_round_trip_recalculates() -> None:
 
     assert loaded["displayed_ui_inputs"]["number_of_lanes"] == 3
     assert loaded["normalized_engine_inputs"]["ffs_source"] == "measured"
+    assert loaded["normalized_engine_inputs"]["free_flow_speed_mph"] == 55.0
+    assert loaded["normalized_engine_inputs"]["number_of_lanes"] == 3
+    assert loaded["normalized_engine_inputs"]["lane_width_ft"] == 12.0
+    assert loaded["normalized_engine_inputs"]["roadside_lateral_clearance_ft"] == 12.0
+    assert loaded["normalized_engine_inputs"]["access_point_density_per_mi"] == 10.0
+    assert loaded["normalized_engine_inputs"]["peak_hour_factor"] == 0.92
+    assert loaded["normalized_engine_inputs"]["heavy_vehicle_percent"] == 12.0
+    assert loaded["normalized_engine_inputs"]["passenger_car_equivalent"] == 2.0
     assert loaded["calculation_result"]["outputs"]["level_of_service"]
     assert rerun.outputs["support_status"] == "bounded_multilane_segment_v0_1"
     assert rerun.outputs["density_pc_mi_ln"] >= 0
+
+
+def test_manual_multilane_estimated_non_example_project_round_trip_recalculates() -> None:
+    displayed = multilane_template_ui_inputs("MLH-CH26-004-EB", "imperial")
+    displayed.update(
+        {
+            "segment_length": 5280.0,
+            "demand_volume_veh_h": 1200.0,
+            "peak_hour_factor": 0.95,
+            "heavy_vehicle_percent": 15.0,
+            "grade_percent": 0.0,
+            "lane_width": 11.0,
+            "roadside_lateral_clearance": 4.0,
+            "access_point_density": 5.0,
+            "ffs_source": "estimated",
+            "passenger_car_equivalent": 2.5,
+        }
+    )
+    normalized = load_multilane_template("MLH-CH26-004-EB")["inputs"] | {
+        "segment_length_ft": 5280.0,
+        "demand_volume_veh_h": 1200.0,
+        "peak_hour_factor": 0.95,
+        "heavy_vehicle_percent": 15.0,
+        "grade_percent": 0.0,
+        "lane_width_ft": 11.0,
+        "roadside_lateral_clearance_ft": 4.0,
+        "access_point_density_per_mi": 5.0,
+        "ffs_source": "estimated",
+        "passenger_car_equivalent": 2.5,
+    }
+    result = run_manual_multilane(normalized)
+    audit = build_manual_multilane_audit_record(
+        "MLH-CH26-004-EB",
+        normalized,
+        unit_system="imperial",
+        displayed_inputs=displayed,
+        result=result,
+    )
+
+    loaded = load_manual_multilane_project_json(
+        create_manual_multilane_project_json(
+            "MLH-CH26-004-EB",
+            "imperial",
+            displayed,
+            result=result_to_dict(result),
+            audit_record=audit,
+        )
+    )
+    rerun = run_manual_multilane(loaded["normalized_engine_inputs"])
+
+    assert loaded["normalized_engine_inputs"]["ffs_source"] == "estimated"
+    assert loaded["normalized_engine_inputs"]["lane_width_ft"] == 11.0
+    assert loaded["normalized_engine_inputs"]["roadside_lateral_clearance_ft"] == 4.0
+    assert loaded["normalized_engine_inputs"]["access_point_density_per_mi"] == 5.0
+    assert loaded["normalized_engine_inputs"]["peak_hour_factor"] == 0.95
+    assert loaded["normalized_engine_inputs"]["heavy_vehicle_percent"] == 15.0
+    assert loaded["normalized_engine_inputs"]["passenger_car_equivalent"] == 2.5
+    assert rerun.outputs["base_free_flow_speed_mph"] == 52.0
+    assert rerun.outputs["level_of_service"]
 
 
 @pytest.mark.parametrize(

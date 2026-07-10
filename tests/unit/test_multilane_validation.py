@@ -147,56 +147,93 @@ def test_unimplemented_multilane_formula_branches_are_rejected(
     [
         {
             **_eastbound_inputs(),
-            "case_id": "MLH-NONEXAMPLE-MEASURED-001",
+            "case_id": "MLH-NONEXAMPLE-MEASURED-LEVEL-001",
             "direction": "northbound",
-            "number_of_lanes": 3,
+            "number_of_lanes": 2,
             "segment_length_ft": 5280.0,
-            "demand_volume_veh_h": 2400.0,
-            "peak_hour_factor": 0.92,
-            "heavy_vehicle_percent": 12.0,
+            "demand_volume_veh_h": 1800.0,
+            "peak_hour_factor": 0.94,
+            "heavy_vehicle_percent": 8.0,
             "grade_percent": 0.0,
             "ffs_source": "measured",
-            "free_flow_speed_mph": 55.0,
+            "free_flow_speed_mph": 54.0,
             "passenger_car_equivalent": 2.0,
         },
         {
             **_eastbound_inputs(),
-            "case_id": "MLH-NONEXAMPLE-ESTIMATED-001",
-            "demand_volume_veh_h": 1200.0,
-            "peak_hour_factor": 0.95,
-            "lane_width_ft": 11.0,
-            "roadside_lateral_clearance_ft": 8.0,
-            "access_point_density_per_mi": 5.0,
+            "case_id": "MLH-NONEXAMPLE-MEASURED-ROLLING-001",
+            "direction": "westbound",
+            "segment_length_ft": 5280.0,
+            "demand_volume_veh_h": 1900.0,
+            "peak_hour_factor": 0.88,
+            "heavy_vehicle_percent": 14.0,
+            "grade_percent": 1.5,
+            "ffs_source": "measured",
+            "free_flow_speed_mph": 52.0,
+            "passenger_car_equivalent": 2.4,
         },
         {
             **_eastbound_inputs(),
-            "case_id": "MLH-NONEXAMPLE-SUPPLIED-PCE-001",
+            "case_id": "MLH-NONEXAMPLE-ESTIMATED-ADJUSTMENTS-001",
+            "demand_volume_veh_h": 1200.0,
+            "peak_hour_factor": 0.95,
+            "lane_width_ft": 11.0,
+            "roadside_lateral_clearance_ft": 4.0,
+            "access_point_density_per_mi": 5.0,
+            "grade_percent": 0.0,
+            "passenger_car_equivalent": 2.2,
+        },
+        {
+            **_eastbound_inputs(),
+            "case_id": "MLH-NONEXAMPLE-ESTIMATED-SUPPLIED-PCE-001",
             "segment_length_ft": 5280.0,
             "demand_volume_veh_h": 1100.0,
             "peak_hour_factor": 0.88,
             "heavy_vehicle_percent": 15.0,
             "grade_percent": 0.0,
-            "lane_width_ft": 11.0,
-            "access_point_density_per_mi": 5.0,
+            "lane_width_ft": 12.0,
+            "roadside_lateral_clearance_ft": 3.0,
+            "access_point_density_per_mi": 3.0,
             "passenger_car_equivalent": 2.5,
         },
         {
             **_eastbound_inputs(),
-            "case_id": "MLH-NONEXAMPLE-MEASURED-002",
+            "case_id": "MLH-NONEXAMPLE-NEAR-BREAKPOINT-001",
             "direction": "southbound",
-            "number_of_lanes": 4,
-            "demand_volume_veh_h": 3000.0,
-            "peak_hour_factor": 0.95,
-            "heavy_vehicle_percent": 0.0,
+            "number_of_lanes": 2,
+            "segment_length_ft": 5280.0,
+            "demand_volume_veh_h": 2340.0,
+            "peak_hour_factor": 0.92,
+            "heavy_vehicle_percent": 10.0,
             "grade_percent": 0.0,
             "ffs_source": "measured",
-            "free_flow_speed_mph": 60.0,
-            "passenger_car_equivalent": 1.0,
+            "free_flow_speed_mph": 55.0,
+            "passenger_car_equivalent": 2.0,
         },
     ],
 )
 def test_non_example_multilane_segment_cases_succeed(inputs: dict) -> None:
     _assert_bounded_success(inputs)
+
+
+def test_non_example_near_breakpoint_case_stays_on_supported_branch() -> None:
+    inputs = {
+        **_eastbound_inputs(),
+        "case_id": "MLH-NONEXAMPLE-NEAR-BREAKPOINT-001",
+        "direction": "southbound",
+        "segment_length_ft": 5280.0,
+        "demand_volume_veh_h": 2340.0,
+        "peak_hour_factor": 0.92,
+        "heavy_vehicle_percent": 10.0,
+        "grade_percent": 0.0,
+        "ffs_source": "measured",
+        "free_flow_speed_mph": 55.0,
+        "passenger_car_equivalent": 2.0,
+    }
+
+    outputs = MultilaneHighwayLOSMethod().calculate(inputs).outputs
+
+    assert outputs["demand_flow_rate_pc_h_ln"] < 1400.0
 
 
 def test_measured_ffs_omits_estimated_adjustment_audit_values() -> None:
@@ -226,6 +263,34 @@ def test_measured_ffs_omits_estimated_adjustment_audit_values() -> None:
         "median_type_adjustment_mph",
         "access_point_adjustment_mph",
     } & intermediate_names
+
+
+def test_estimated_ffs_audit_includes_used_adjustments_and_supplied_pce() -> None:
+    inputs = {
+        **_eastbound_inputs(),
+        "case_id": "MLH-NONEXAMPLE-ESTIMATED-AUDIT",
+        "demand_volume_veh_h": 1200.0,
+        "peak_hour_factor": 0.95,
+        "heavy_vehicle_percent": 15.0,
+        "grade_percent": 0.0,
+        "lane_width_ft": 11.0,
+        "roadside_lateral_clearance_ft": 4.0,
+        "access_point_density_per_mi": 5.0,
+        "passenger_car_equivalent": 2.5,
+    }
+
+    result = MultilaneHighwayLOSMethod().calculate(inputs)
+    intermediate_names = {value.name for value in result.intermediate_values}
+
+    assert {
+        "base_free_flow_speed_mph",
+        "lane_width_adjustment_mph",
+        "total_lateral_clearance_ft",
+        "total_lateral_clearance_adjustment_mph",
+        "median_type_adjustment_mph",
+        "access_point_adjustment_mph",
+    } <= intermediate_names
+    assert any("Passenger-car equivalent is user supplied" in item for item in result.assumptions)
 
 
 @pytest.mark.parametrize(
