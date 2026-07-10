@@ -328,6 +328,62 @@ def test_multilane_non_example_markdown_export_includes_key_outputs_and_scope() 
     assert "bounded_multilane_segment_v0_1" in markdown
 
 
+def test_multilane_estimated_non_example_markdown_export_includes_key_outputs_and_scope() -> None:
+    displayed = multilane_template_ui_inputs("MLH-CH26-004-EB", "imperial")
+    displayed.update(
+        {
+            "segment_length": 5280.0,
+            "demand_volume_veh_h": 1200.0,
+            "peak_hour_factor": 0.95,
+            "heavy_vehicle_percent": 15.0,
+            "grade_percent": 0.0,
+            "lane_width": 11.0,
+            "roadside_lateral_clearance": 4.0,
+            "access_point_density": 5.0,
+            "ffs_source": "estimated",
+            "passenger_car_equivalent": 2.5,
+        }
+    )
+    inputs = load_multilane_template("MLH-CH26-004-EB")["inputs"] | {
+        "segment_length_ft": 5280.0,
+        "demand_volume_veh_h": 1200.0,
+        "peak_hour_factor": 0.95,
+        "heavy_vehicle_percent": 15.0,
+        "grade_percent": 0.0,
+        "lane_width_ft": 11.0,
+        "roadside_lateral_clearance_ft": 4.0,
+        "access_point_density_per_mi": 5.0,
+        "ffs_source": "estimated",
+        "passenger_car_equivalent": 2.5,
+    }
+    result = run_manual_multilane(inputs)
+    audit = build_manual_multilane_audit_record(
+        "MLH-CH26-004-EB",
+        inputs,
+        unit_system="imperial",
+        displayed_inputs=displayed,
+        result=result,
+    )
+
+    markdown = export_report(
+        build_report(
+            "manual_multilane_v0",
+            result_to_dict(result),
+            "imperial",
+            inputs=displayed,
+            audit_record=audit,
+            template_id="MLH-CH26-004-EB",
+        ),
+        "markdown",
+    )
+
+    assert "Multilane Highway Segment" in markdown
+    assert "Level of service" in markdown
+    assert "Density" in markdown
+    assert "Demand Flow Rate" in markdown
+    assert "bounded_multilane_segment_v0_1" in markdown
+
+
 def test_freeway_metric_and_imperial_exports_use_selected_display_units() -> None:
     metric_report = _freeway_report("metric")
     imperial_report = _freeway_report("imperial")
