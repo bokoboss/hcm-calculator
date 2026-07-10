@@ -1,4 +1,5 @@
 from copy import deepcopy
+from math import isfinite
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,23 @@ ROOT = Path(__file__).resolve().parents[2]
 def _eastbound_inputs() -> dict:
     fixture = load_yaml_fixture(ROOT / "references" / "multilane_example_inputs.yaml")
     return deepcopy(fixture["cases"][0]["inputs"])
+
+
+def _assert_bounded_success(inputs: dict) -> None:
+    outputs = MultilaneHighwayLOSMethod().calculate(inputs).outputs
+
+    assert outputs["level_of_service"]
+    assert isfinite(outputs["density_pc_mi_ln"])
+    assert outputs["density_pc_mi_ln"] >= 0
+    assert isfinite(outputs["speed_used_for_density_mph"])
+    assert outputs["speed_used_for_density_mph"] > 0
+    assert isfinite(outputs["demand_flow_rate_pc_h_ln"])
+    assert outputs["demand_flow_rate_pc_h_ln"] > 0
+    assert isfinite(outputs["capacity_pc_h_ln"])
+    assert outputs["capacity_pc_h_ln"] > 0
+    assert outputs["capacity_check"] in {"within_capacity", "demand_exceeds_capacity"}
+    assert outputs["support_status"] == "bounded_multilane_segment_v0_1"
+    assert outputs["scope_status"] == "bounded_multilane_segment_v0_1"
 
 
 @pytest.mark.parametrize(
@@ -35,7 +53,6 @@ def _eastbound_inputs() -> dict:
         "corridor_workflow",
         "driver_population_factor",
         "base_free_flow_speed_mph",
-        "free_flow_speed_mph",
         "adjusted_free_flow_speed_mph",
     ],
 )
@@ -112,23 +129,103 @@ def test_access_density_above_implemented_table_range_is_rejected() -> None:
 @pytest.mark.parametrize(
     ("field", "value"),
     [
-        ("number_of_lanes", 3),
-        ("peak_hour_factor", 1.0),
-        ("heavy_vehicle_percent", 0.0),
-        ("demand_volume_veh_h", 1.0),
         ("posted_speed_limit_mph", 50.0),
-        ("lane_width_ft", 11.0),
-        ("roadside_lateral_clearance_ft", 6.0),
     ],
 )
-def test_valid_but_unvalidated_multilane_inputs_are_rejected_as_unsupported(
+def test_unimplemented_multilane_formula_branches_are_rejected(
     field: str, value: float
 ) -> None:
     inputs = _eastbound_inputs()
     inputs[field] = value
 
-    with pytest.raises(UnsupportedScopeError, match=field):
+    with pytest.raises(UnsupportedScopeError):
         MultilaneHighwayLOSMethod().calculate(inputs)
+
+
+@pytest.mark.parametrize(
+    "inputs",
+    [
+        {
+            **_eastbound_inputs(),
+            "case_id": "MLH-NONEXAMPLE-MEASURED-001",
+            "direction": "northbound",
+            "number_of_lanes": 3,
+            "segment_length_ft": 5280.0,
+            "demand_volume_veh_h": 2400.0,
+            "peak_hour_factor": 0.92,
+            "heavy_vehicle_percent": 12.0,
+            "grade_percent": 0.0,
+            "ffs_source": "measured",
+            "free_flow_speed_mph": 55.0,
+            "passenger_car_equivalent": 2.0,
+        },
+        {
+            **_eastbound_inputs(),
+            "case_id": "MLH-NONEXAMPLE-ESTIMATED-001",
+            "demand_volume_veh_h": 1200.0,
+            "peak_hour_factor": 0.95,
+            "lane_width_ft": 11.0,
+            "roadside_lateral_clearance_ft": 8.0,
+            "access_point_density_per_mi": 5.0,
+        },
+        {
+            **_eastbound_inputs(),
+            "case_id": "MLH-NONEXAMPLE-SUPPLIED-PCE-001",
+            "segment_length_ft": 5280.0,
+            "demand_volume_veh_h": 1100.0,
+            "peak_hour_factor": 0.88,
+            "heavy_vehicle_percent": 15.0,
+            "grade_percent": 0.0,
+            "lane_width_ft": 11.0,
+            "access_point_density_per_mi": 5.0,
+            "passenger_car_equivalent": 2.5,
+        },
+        {
+            **_eastbound_inputs(),
+            "case_id": "MLH-NONEXAMPLE-MEASURED-002",
+            "direction": "southbound",
+            "number_of_lanes": 4,
+            "demand_volume_veh_h": 3000.0,
+            "peak_hour_factor": 0.95,
+            "heavy_vehicle_percent": 0.0,
+            "grade_percent": 0.0,
+            "ffs_source": "measured",
+            "free_flow_speed_mph": 60.0,
+            "passenger_car_equivalent": 1.0,
+        },
+    ],
+)
+def test_non_example_multilane_segment_cases_succeed(inputs: dict) -> None:
+    _assert_bounded_success(inputs)
+
+
+def test_measured_ffs_omits_estimated_adjustment_audit_values() -> None:
+    inputs = {
+        **_eastbound_inputs(),
+        "case_id": "MLH-NONEXAMPLE-MEASURED-AUDIT",
+        "number_of_lanes": 3,
+        "demand_volume_veh_h": 2400.0,
+        "peak_hour_factor": 0.92,
+        "heavy_vehicle_percent": 12.0,
+        "grade_percent": 0.0,
+        "ffs_source": "measured",
+        "free_flow_speed_mph": 55.0,
+        "passenger_car_equivalent": 2.0,
+    }
+
+    result = MultilaneHighwayLOSMethod().calculate(inputs)
+    intermediate_names = {value.name for value in result.intermediate_values}
+
+    assert "TWLTL supplies" not in " ".join(result.assumptions)
+    assert "roadside clearance is capped" not in " ".join(result.assumptions)
+    assert "Free-flow speed is measured or user supplied." in result.assumptions
+    assert not {
+        "lane_width_adjustment_mph",
+        "total_lateral_clearance_ft",
+        "total_lateral_clearance_adjustment_mph",
+        "median_type_adjustment_mph",
+        "access_point_adjustment_mph",
+    } & intermediate_names
 
 
 @pytest.mark.parametrize(
@@ -162,11 +259,12 @@ def test_basic_freeway_facility_type_is_rejected() -> None:
         MultilaneHighwayLOSMethod().calculate(inputs)
 
 
-def test_arbitrary_case_id_is_rejected() -> None:
+def test_non_example_grade_without_supplied_pce_is_rejected() -> None:
     inputs = _eastbound_inputs()
     inputs["case_id"] = "MLH-ARBITRARY-001"
+    inputs["grade_percent"] = 0.0
 
-    with pytest.raises(UnsupportedScopeError, match="eastbound and westbound"):
+    with pytest.raises(UnsupportedScopeError, match="PCE lookup"):
         MultilaneHighwayLOSMethod().calculate(inputs)
 
 

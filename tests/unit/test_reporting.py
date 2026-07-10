@@ -265,13 +265,67 @@ def test_multilane_metric_and_imperial_exports_use_selected_display_units() -> N
         item for item in imperial_report["inputs_summary"]
         if item["label"] == "Segment Length"
     )["unit"] == "ft"
-    assert "Manual Multilane v0.1 is limited" in metric_csv
+    assert "Manual Multilane v0.1 is a bounded" in metric_csv
     assert "## Intermediate Values" in export_report(
         _multilane_report("metric"), "markdown"
     )
     assert "## Normalized Engine Inputs" in export_report(
         _multilane_report("metric"), "markdown"
     )
+
+
+def test_multilane_non_example_markdown_export_includes_key_outputs_and_scope() -> None:
+    displayed = multilane_template_ui_inputs("MLH-CH26-004-EB", "imperial")
+    displayed.update(
+        {
+            "number_of_lanes": 3,
+            "segment_length": 5280.0,
+            "demand_volume_veh_h": 2400.0,
+            "peak_hour_factor": 0.92,
+            "heavy_vehicle_percent": 12.0,
+            "grade_percent": 0.0,
+            "ffs_source": "measured",
+            "free_flow_speed": 55.0,
+            "passenger_car_equivalent": 2.0,
+        }
+    )
+    inputs = load_multilane_template("MLH-CH26-004-EB")["inputs"] | {
+        "number_of_lanes": 3,
+        "segment_length_ft": 5280.0,
+        "demand_volume_veh_h": 2400.0,
+        "peak_hour_factor": 0.92,
+        "heavy_vehicle_percent": 12.0,
+        "grade_percent": 0.0,
+        "ffs_source": "measured",
+        "free_flow_speed_mph": 55.0,
+        "passenger_car_equivalent": 2.0,
+    }
+    result = run_manual_multilane(inputs)
+    audit = build_manual_multilane_audit_record(
+        "MLH-CH26-004-EB",
+        inputs,
+        unit_system="imperial",
+        displayed_inputs=displayed,
+        result=result,
+    )
+
+    markdown = export_report(
+        build_report(
+            "manual_multilane_v0",
+            result_to_dict(result),
+            "imperial",
+            inputs=displayed,
+            audit_record=audit,
+            template_id="MLH-CH26-004-EB",
+        ),
+        "markdown",
+    )
+
+    assert "Multilane Highway Segment" in markdown
+    assert "Level of service" in markdown
+    assert "Density" in markdown
+    assert "Demand Flow Rate" in markdown
+    assert "bounded_multilane_segment_v0_1" in markdown
 
 
 def test_freeway_metric_and_imperial_exports_use_selected_display_units() -> None:

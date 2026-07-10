@@ -30,8 +30,8 @@ def available_methods() -> list[MethodMetadata]:
         MethodMetadata(
             key="hcm7_multilane_los",
             facility_type="multilane_highway",
-            hcm_reference="HCM 7th Edition Chapter 12 and Chapter 26 Example Problem 4",
-            status="implemented_example_only",
+            hcm_reference="HCM 7th Edition Chapter 12; Chapter 26 Example Problem 4 regression evidence",
+            status="bounded_multilane_segment_v0_1",
         ),
     ]
 

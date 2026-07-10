@@ -1,12 +1,12 @@
-"""Typed contracts for the Chapter 26 Multilane Highway Example Problem 4 path."""
+"""Typed contracts for bounded Multilane Highway Segment v0.1."""
 
-from dataclasses import dataclass
+from dataclasses import MISSING, dataclass
 from typing import Any
 
 
 @dataclass(frozen=True)
 class MultilaneBasicSegmentInputs:
-    """One-direction inputs validated only for Chapter 26 Example Problem 4."""
+    """One-direction Multilane Highway Segment inputs."""
 
     case_id: str
     facility_type: str
@@ -24,15 +24,28 @@ class MultilaneBasicSegmentInputs:
     roadside_lateral_clearance_ft: float
     median_type: str
     access_point_density_per_mi: float
+    ffs_source: str = "estimated"
+    free_flow_speed_mph: float | None = None
+    passenger_car_equivalent: float | None = None
 
     @classmethod
     def from_mapping(cls, values: dict[str, Any]) -> "MultilaneBasicSegmentInputs":
-        """Parse required fields without silently supplying engineering defaults."""
+        """Parse required fields while preserving legacy Example 4 payloads."""
 
-        required = tuple(cls.__dataclass_fields__)
+        required = tuple(
+            name
+            for name, field in cls.__dataclass_fields__.items()
+            if field.default is MISSING and field.default_factory is MISSING
+        )
         missing = [field for field in required if field not in values]
         if missing:
             raise ValueError(
                 "Multilane Basic Segment v0.1 requires: " + ", ".join(missing) + "."
             )
-        return cls(**{field: values[field] for field in required})
+        return cls(
+            **{
+                field: values[field]
+                for field in cls.__dataclass_fields__
+                if field in values
+            }
+        )

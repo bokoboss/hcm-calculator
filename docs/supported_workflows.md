@@ -32,7 +32,8 @@ Limitations:
 Supported:
 
 - Manual Multilane Segment Calculator
-- Chapter 26 Example 4 EB/WB-compatible validated path
+- bounded HCM Multilane Highway Segment one-direction analysis
+- Chapter 26 Example 4 optional defaults and regression evidence
 - Metric/Imperial UI-boundary conversion
 - Save/Load
 - Export/reporting
@@ -41,6 +42,7 @@ Limitations:
 
 - not a Basic Freeway calculator
 - not ramp/weaving/merge/diverge/facility workflow
+- no specific-grade PCE table expansion unless an auditable PCE is supplied
 - unsupported combinations remain guarded
 
 ## Basic Freeway

@@ -145,6 +145,7 @@ def test_multilane_audit_records_success_without_export_or_project_data() -> Non
 
     assert audit["calculation_succeeded"] is True
     assert audit["unit_system"] == "imperial"
+    assert audit["support_status"] == "bounded_multilane_segment_v0_1"
     assert "project_type" not in audit
     assert "export" not in audit
 

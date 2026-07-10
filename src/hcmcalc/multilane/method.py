@@ -1,4 +1,4 @@
-"""HCM7 Multilane Highway basic segment engine limited to Example Problem 4."""
+"""HCM7 Multilane Highway Segment engine v0.1."""
 
 from math import isfinite
 from typing import Any
@@ -23,13 +23,13 @@ from .validation import reject_unsupported_scope_keys, validate_inputs
 
 
 class MultilaneHighwayLOSMethod:
-    """Run the two directional Chapter 26 Example Problem 4 calculations."""
+    """Run bounded one-direction Multilane Highway Segment calculations."""
 
     facility_type = "multilane_highway"
     method_name = "hcm7_multilane_los"
 
     def calculate(self, inputs: dict[str, Any]) -> CalculationResult:
-        """Calculate one validated Multilane Highway Example Problem 4 direction."""
+        """Calculate one bounded Multilane Highway Segment."""
 
         if not isinstance(inputs, dict):
             raise HCMCalcError("Multilane Basic Segment inputs must be a mapping.")
@@ -40,27 +40,42 @@ class MultilaneHighwayLOSMethod:
             raise HCMCalcError(str(exc)) from exc
         validate_inputs(parsed)
 
-        base_ffs = estimate_base_free_flow_speed(parsed.posted_speed_limit_mph)
-        lane_adjustment = lane_width_adjustment(parsed.lane_width_ft)
-        total_clearance = total_lateral_clearance(
-            parsed.roadside_lateral_clearance_ft, parsed.median_type
-        )
-        clearance_adjustment = total_lateral_clearance_adjustment(total_clearance)
-        median_adjustment = median_type_adjustment(parsed.median_type)
-        access_adjustment = access_point_adjustment(parsed.access_point_density_per_mi)
-        ffs = adjusted_free_flow_speed(
-            base_ffs,
-            lane_adjustment,
-            clearance_adjustment,
-            median_adjustment,
-            access_adjustment,
-        )
+        lane_adjustment = None
+        total_clearance = None
+        clearance_adjustment = None
+        median_adjustment = None
+        access_adjustment = None
+        base_ffs = parsed.free_flow_speed_mph
+        if parsed.ffs_source == "estimated":
+            base_ffs = estimate_base_free_flow_speed(parsed.posted_speed_limit_mph)
+            lane_adjustment = lane_width_adjustment(parsed.lane_width_ft)
+            total_clearance = total_lateral_clearance(
+                parsed.roadside_lateral_clearance_ft, parsed.median_type
+            )
+            clearance_adjustment = total_lateral_clearance_adjustment(total_clearance)
+            median_adjustment = median_type_adjustment(parsed.median_type)
+            access_adjustment = access_point_adjustment(
+                parsed.access_point_density_per_mi
+            )
+            ffs = adjusted_free_flow_speed(
+                base_ffs,
+                lane_adjustment,
+                clearance_adjustment,
+                median_adjustment,
+                access_adjustment,
+            )
+        else:
+            ffs = parsed.free_flow_speed_mph
         capacity = multilane_capacity(ffs)
-        pce = example_4_passenger_car_equivalent(
-            parsed.grade_percent,
-            parsed.segment_length_ft / 5280.0,
-            parsed.heavy_vehicle_percent,
-            parsed.truck_mix,
+        pce = (
+            parsed.passenger_car_equivalent
+            if parsed.passenger_car_equivalent is not None
+            else example_4_passenger_car_equivalent(
+                parsed.grade_percent,
+                parsed.segment_length_ft / 5280.0,
+                parsed.heavy_vehicle_percent,
+                parsed.truck_mix,
+            )
         )
         hv_factor = heavy_vehicle_adjustment_factor(parsed.heavy_vehicle_percent, pce)
         flow_rate = demand_flow_rate(
@@ -75,19 +90,37 @@ class MultilaneHighwayLOSMethod:
 
         assumptions = [
             "One-direction, one-segment uninterrupted-flow Multilane Highway analysis.",
-            "Base FFS is posted speed limit plus 7 mi/h because the posted speed is below 50 mi/h.",
-            "TWLTL supplies 6 ft left-side clearance; roadside clearance is capped at 6 ft.",
             "Default truck mix is 30% SUTs and 70% TTs.",
-            "Downgrades steeper than 2% use the Exhibit 12-26 2% downgrade PCE.",
             "Demand is below the 1,400 pc/h/ln Multilane Highway breakpoint, so speed equals FFS.",
         ]
+        if parsed.ffs_source == "estimated":
+            assumptions.append(
+                "Base FFS is posted speed limit plus 7 mi/h because the posted "
+                "speed is below 50 mi/h."
+            )
+            assumptions.append(
+                "TWLTL supplies 6 ft left-side clearance; roadside clearance is "
+                "capped at 6 ft."
+            )
+        else:
+            assumptions.append("Free-flow speed is measured or user supplied.")
+        if parsed.passenger_car_equivalent is None:
+            assumptions.append(
+                "Downgrades steeper than 2% use the Exhibit 12-26 2% downgrade PCE."
+            )
+        else:
+            assumptions.append(
+                "Passenger-car equivalent is user supplied for this bounded "
+                "v0.1 calculation."
+            )
         warnings = [
-            "Multilane Basic Segment v0.1 is validated only for Chapter 26 Example Problem 4."
+            "Multilane Segment v0.1 is bounded to the implemented Chapter 12 "
+            "one-direction segment scope; Example 4 remains regression evidence."
         ]
         unsupported_scope_notes = [
-            "No general Multilane Highway cases outside Example Problem 4 EB/WB.",
             "No Basic Freeway, ramp, weaving, merge/diverge, managed-lane, work-zone, reliability, or facility/corridor analysis.",
-            "No Multilane UI, Save/Load, or export/reporting integration.",
+            "No specific-grade PCE table expansion beyond supplied PCE or the Example 4 lookup.",
+            "Estimated FFS remains limited to the implemented four-lane lateral-clearance table.",
         ]
         source_references = [
             "HCM7 Eq. 12-3; Exhibits 12-20, 12-22, 12-23, 12-24",
@@ -98,8 +131,10 @@ class MultilaneHighwayLOSMethod:
         ]
         outputs = {
             "calculation_type": "multilane_basic_segment_v0_1",
-            "support_status": "implemented_example_only",
-            "scope_status": "supported_exact_example_problem_4",
+            "support_status": "bounded_multilane_segment_v0_1",
+            "scope_status": "bounded_multilane_segment_v0_1",
+            "input_summary": parsed.__dict__,
+            "ffs_source": parsed.ffs_source,
             "base_free_flow_speed_mph": base_ffs,
             "lane_width_adjustment_mph": lane_adjustment,
             "total_lateral_clearance_ft": total_clearance,
@@ -311,7 +346,7 @@ def demand_flow_rate(volume: float, phf: float, lanes: int, hv_factor: float) ->
 
 
 def mean_speed_below_breakpoint(flow_rate: float, adjusted_ffs_mph: float) -> float:
-    """HCM7 Eq. 12-1 constant-speed branch used by Example Problem 4."""
+    """HCM7 Eq. 12-1 constant-speed branch implemented by v0.1."""
 
     _finite(flow_rate, "demand flow rate")
     _finite(adjusted_ffs_mph, "adjusted FFS")
@@ -321,7 +356,7 @@ def mean_speed_below_breakpoint(flow_rate: float, adjusted_ffs_mph: float) -> fl
         raise HCMCalcError("Adjusted FFS must be greater than zero.")
     if flow_rate > MULTILANE_BREAKPOINT_PC_H_LN:
         raise UnsupportedScopeError(
-            "v0.1 implements only the Example Problem 4 flow-below-breakpoint branch."
+            "v0.1 implements only the flow-below-breakpoint constant-speed branch."
         )
     return adjusted_ffs_mph
 
@@ -385,4 +420,5 @@ def _intermediate_values(outputs: dict[str, Any]) -> list[IntermediateValue]:
     return [
         IntermediateValue(name, outputs[name], source=source)
         for name, source in sources.items()
+        if outputs[name] is not None
     ]

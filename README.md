@@ -19,9 +19,10 @@ Implemented:
 - Documentation scaffold
 - Methodology and validation references
 - HCM Chapter 26 Two-Lane Highway Example Problems 1 through 4 (`TLH-CH15-001` through `TLH-CH15-004`)
-- HCM7 Multilane Basic Segment engine v0.1, limited to the eastbound and
-  westbound Chapter 26 Multilane Highway Example Problem 4 validation path,
-  with ML-2 validation, audit, boundary, and unsupported-scope hardening
+- HCM7 Multilane Basic Segment engine v0.1 for bounded one-direction
+  Multilane Highway Segment analysis within the implemented HCM scope. Chapter
+  26 Multilane Highway Example Problem 4 remains regression evidence and
+  optional defaults.
 - HCM7 Chapter 12 Basic Freeway Segment engine v0.1 under
   `src/hcmcalc/freeway/`, limited to one-direction, one-segment,
   uninterrupted-flow Basic Freeway Segment calculations with measured or
@@ -44,7 +45,8 @@ Not implemented yet:
 
 - Full HCM Chapter 15 calculation engine
 - General facility manual input
-- General Multilane Highway LOS calculations beyond Chapter 26 Example Problem 4
+- Multilane Highway facility, ramp, weaving, merge/diverge, managed lane, work
+  zone, reliability, and unsupported PCE table expansion workflows
 - Basic Freeway ramps, weaving, merge/diverge, managed lanes, work zones,
   reliability, facility/corridor workflows, and specific-grade PCE tables
 - Production validation dataset
@@ -63,11 +65,12 @@ Currently supported:
   Calculator, validated Chapter 26 example-backed paths where available,
   Save/Load, and Export/reporting. Only implemented HCM7 Chapter 15 paths are
   supported; unsupported combinations remain guarded.
-- **Multilane Highway:** Manual Multilane Segment Calculator, Chapter 26
-  Example 4 EB/WB-compatible validated path, Metric/Imperial UI-boundary
+- **Multilane Highway:** Manual Multilane Segment Calculator for bounded
+  one-direction Multilane Highway Segment analysis, Chapter 26 Example 4
+  optional defaults and regression evidence, Metric/Imperial UI-boundary
   conversion, Save/Load, and Export/reporting. It is not a Basic Freeway
-  calculator and does not support ramp, weaving, merge/diverge, or facility
-  workflows.
+  calculator and does not support ramp, weaving, merge/diverge, facility,
+  managed lane, work zone, or reliability workflows.
 - **Basic Freeway:** Manual Basic Freeway Segment Calculator for bounded
   Chapter 12 one-direction, one-segment uninterrupted-flow analysis,
   Chapter 26 Example 1 optional defaults and regression evidence,
@@ -150,14 +153,14 @@ The single-page app provides six modes:
   Save/Load JSON using `project_type = manual_facility_v0`. Segment sequence, type,
   terrain/curve context, passing-lane placement, and downstream adjustment
   context remain controlled by the selected template.
-- **Manual Multilane Highway Segment v0.1** is a limited validated-path
-  worksheet anchored only to Chapter 26 Example Problem 4 EB and WB. It
-  prefills the supported fixture inputs in Metric or Imperial units, converts
-  Metric inputs to engine-native Imperial values at the UI boundary, and
-  converts speed and density back to Metric for display. Changing unit system
-  or template resets the worksheet to the selected validated template. Engine
-  formulas and engine-native outputs remain unchanged. Any edit outside the
-  exact validated EB/WB path is rejected by the existing engine guardrails.
+- **Manual Multilane Highway Segment v0.1** is a bounded worksheet for
+  one-direction Multilane Highway Segment analysis within the implemented HCM
+  scope. Chapter 26 Example Problem 4 EB and WB remain optional defaults and
+  regression evidence. It converts Metric inputs to engine-native Imperial
+  values at the UI boundary, and converts speed and density back to Metric for
+  display. Engine formulas and engine-native outputs remain unchanged.
+  Unsupported methodology branches are rejected by the existing engine
+  guardrails.
   After a successful calculation, this mode supports guarded Project JSON
   Save/Load using `project_type = manual_multilane_v0` and CSV, Excel `.xlsx`,
   Markdown, and Report JSON exports. Saved projects preserve displayed values
@@ -225,18 +228,17 @@ Limitations:
 - Horizontal curves remain limited to the validated Example Problem 2 path; other
   segment types, terrain combinations, and subsegment structures are rejected.
   Curve setup generation does not expand this single-segment validated scope
-- Manual Multilane Highway Segment v0.1 provides only the Chapter 26 Example
-  Problem 4 EB/WB validated-path UI. It is not a general Multilane Highway
-  calculator. Save/Load and reporting are supported only for
-  `project_type = manual_multilane_v0` and the exact validated templates.
-  Metric/Imperial selection changes only UI inputs and displayed/report values;
-  calculations remain engine-native Imperial.
-- Multilane Highway v0.1 remains implemented-example-only. Example Problem 4
-  eastbound and westbound are the only validated paths; boundary-tested helper
-  behavior does not imply general Multilane Highway support. The remaining
-  Chapter 26 examples are Basic Freeway, mixed-flow freeway, adverse-weather
-  Basic Freeway, or managed-lane cases and cannot safely serve as a second
-  Multilane validation case.
+- Manual Multilane Highway Segment v0.1 is bounded to one-direction segment
+  analysis within the implemented HCM scope. Save/Load and reporting use
+  `project_type = manual_multilane_v0`; Metric/Imperial selection changes only
+  UI inputs and displayed/report values; calculations remain engine-native
+  Imperial.
+- Multilane Highway v0.1 is not facility, ramp, weaving, merge/diverge,
+  managed-lane, work-zone, or reliability support. Chapter 26 Example Problem
+  4 eastbound and westbound remain regression evidence; the remaining Chapter
+  26 examples are Basic Freeway, mixed-flow freeway, adverse-weather Basic
+  Freeway, or managed-lane cases and cannot safely serve as a second Multilane
+  validation case.
 - Manual Basic Freeway Segment Save/Load and reporting are supported only for
   `project_type = manual_basic_freeway_v0` and the bounded implemented Chapter
   12 Basic Freeway Segment envelope. Basic Freeway ramps, weaving,
@@ -245,7 +247,7 @@ Limitations:
   mountainous-terrain PCE tables remain unsupported. The Manual Basic Freeway
   Segment Calculator v0.1 is not a general freeway facility calculator;
   BF-CH26-001 remains optional defaults and Chapter 26 regression evidence.
-- User-supplied Multilane base/adjusted free-flow speed and driver-population
+- User-supplied Multilane adjusted free-flow speed and driver-population
   adjustment inputs remain unsupported.
 - PDF and DOCX report export are not implemented.
 - Export availability does not imply broader Chapter 15 methodology support.
