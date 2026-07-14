@@ -1,5 +1,7 @@
 # Chapter 15 Calculator Coverage Status
 
+> **Phase 5 final status (Issue #82):** The historical phased inventory below is superseded by the supported envelope and trace matrix in [Two-Lane Phase 5 release qualification](methodology/two_lane_phase_5_release_qualification.md). The production facility workflow is `manual_two_lane_facility_v1`; Examples 3/4 are presets/reference evidence, not a template-backed scope boundary.
+
 ## Purpose
 
 This document is a calculator-facing inventory of the current HCM 7th Edition

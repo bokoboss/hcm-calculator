@@ -1505,13 +1505,13 @@ def render_manual_facility_calculator() -> None:
                 f"HCM Chapter 26 Two-Lane Highway {template['template_basis']}."
             ),
             supported_scope=(
-                "Guarded Example 3/4 facility paths with supported segment table "
-                "edits only."
+                "Ordered Passing Constrained, Passing Zone, and Passing Lane "
+                "segments within the documented Chapter 15 input domains."
             ),
             not_supported=(
-                "Full general Chapter 15 facility support, manual downstream "
-                "adjustment, arbitrary passing-lane placement, arbitrary curves, "
-                "arbitrary nonlevel combinations, and arbitrary segment sequences."
+                "Reliability, automatic segmentation, Passing Lane warrant/design, "
+                "pedestrian/bicycle LOS, overlapping Passing Lane interactions, and "
+                "unsupported geometry or physical domains."
             ),
         )
         st.markdown("**Results**")

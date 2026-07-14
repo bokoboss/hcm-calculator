@@ -1,5 +1,7 @@
 # Two-Lane Highway Phase 2 implementation specification
 
+> **Final annotation:** Phase 5 release qualification supersedes this phase specification's provisional scope statements; see `two_lane_phase_5_release_qualification.md`.
+
 ## Authority and scope
 
 This specification implements the HCM 7 Chapter 15 single homogeneous segment

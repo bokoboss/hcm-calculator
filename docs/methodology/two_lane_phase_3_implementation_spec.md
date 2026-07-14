@@ -1,5 +1,7 @@
 # Two-Lane Highway Phase 3 implementation specification
 
+> **Final annotation:** Phase 5 release qualification supersedes this phase specification's provisional scope statements; see `two_lane_phase_5_release_qualification.md`.
+
 ## Authority and boundary
 
 Phase 3 implements HCM7 Chapter 15 Passing Lane Steps 2, 4--10 within the

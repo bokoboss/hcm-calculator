@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import hashlib
 from datetime import datetime, timezone
 from typing import Any
 
@@ -32,6 +31,7 @@ from hcmcalc.ui.manual_multilane import (
     run_manual_multilane,
 )
 from hcmcalc.ui.manual_segment import build_manual_segment_inputs
+from hcmcalc.ui.workflow_state import normalized_input_fingerprint
 
 
 PROJECT_SCHEMA_VERSION = "1.0"
@@ -90,6 +90,11 @@ def create_manual_project_payload(
         "unit_system": manual_inputs.get("unit_system"),
         "manual_inputs": manual_inputs,
         "normalized_engine_inputs": normalized_engine_inputs,
+        "calculation_fingerprint": (
+            normalized_input_fingerprint(normalized_engine_inputs)
+            if normalized_engine_inputs is not None
+            else None
+        ),
         "result": result,
         "audit_record": audit_record,
         "warnings": warnings,
@@ -139,6 +144,8 @@ def load_manual_project_json(data: str | bytes) -> dict[str, Any]:
     if manual_inputs.get("unit_system", payload["unit_system"]) != payload["unit_system"]:
         raise ProjectFileError("manual_inputs unit_system must match unit_system.")
     _validate_manual_inputs(manual_inputs)
+    normalized_inputs = build_manual_segment_inputs(manual_inputs)
+    _discard_stale_single_segment_result(payload, normalized_inputs)
     return payload
 
 
@@ -160,9 +167,7 @@ def create_manual_facility_project_payload(
     result = _json_ready(result) if result is not None else None
     audit_record = _json_ready(audit_record) if audit_record is not None else None
     outputs = result.get("outputs", {}) if result else {}
-    fingerprint = hashlib.sha256(
-        json.dumps(normalized_inputs, sort_keys=True, default=str).encode("utf-8")
-    ).hexdigest()
+    fingerprint = normalized_input_fingerprint(normalized_inputs)
     return {
         "schema_version": PROJECT_SCHEMA_VERSION,
         "project_type": MANUAL_FACILITY_PROJECT_TYPE,
@@ -227,11 +232,12 @@ def load_manual_facility_project_json(data: str | bytes) -> dict[str, Any]:
     if not isinstance(payload["segment_rows"], list):
         raise ProjectFileError("Malformed segment rows: expected a list.")
     try:
-        build_manual_facility_inputs(
+        normalized_inputs = build_manual_facility_inputs(
             payload["template_id"], payload["segment_rows"], payload["unit_system"]
         )
     except HCMCalcError as exc:
         raise ProjectFileError(f"Malformed or unsupported segment rows: {exc}") from exc
+    _discard_stale_facility_result(payload, normalized_inputs)
     return payload
 
 
@@ -582,6 +588,41 @@ def _calculation_context(
     if audit_record is not None:
         return list(audit_record.get(name, []))
     return []
+
+
+def _discard_stale_single_segment_result(
+    payload: dict[str, Any], normalized_inputs: dict[str, Any]
+) -> None:
+    """Never restore a result unless its normalized-input fingerprint matches."""
+
+    saved_fingerprint = payload.get("calculation_fingerprint")
+    current_fingerprint = normalized_input_fingerprint(normalized_inputs)
+    payload["normalized_engine_inputs"] = normalized_inputs
+    if saved_fingerprint == current_fingerprint:
+        return
+    payload["result"] = None
+    payload["audit_record"] = None
+    payload["warnings"] = []
+    payload["assumptions"] = []
+
+
+def _discard_stale_facility_result(
+    payload: dict[str, Any], normalized_inputs: dict[str, Any]
+) -> None:
+    """Discard stale or legacy stored facility results while retaining inputs."""
+
+    saved_fingerprint = payload.get("calculation_fingerprint")
+    current_fingerprint = normalized_input_fingerprint(normalized_inputs)
+    payload["normalized_facility_inputs"] = normalized_inputs
+    payload["calculation_fingerprint"] = current_fingerprint
+    if saved_fingerprint == current_fingerprint:
+        return
+    payload["calculation_result"] = None
+    payload["facility_outputs"] = {}
+    payload["segment_outputs"] = []
+    payload["audit"] = None
+    payload["warnings"] = []
+    payload["assumptions"] = []
 
 
 def _json_ready(value: Any) -> Any:

@@ -2,6 +2,8 @@
 
 Related issue: #82
 
+> **Final annotation:** Phase 5 release qualification supersedes this phase specification's provisional scope statements; see `two_lane_phase_5_release_qualification.md`.
+
 ## Authority and supported envelope
 
 The facility calculation uses HCM7 Chapter 15 Steps 1–10 as implemented in

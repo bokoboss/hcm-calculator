@@ -1,5 +1,7 @@
 # Methodology Generalization Audit
 
+> **Phase 5 annotation:** Two-Lane Chapter 15 claims in this historical audit are superseded by [the Phase 5 release qualification](two_lane_phase_5_release_qualification.md). Its Multilane and Basic Freeway findings remain independently scoped.
+
 This audit identifies where the current HCM calculator is still tied to
 validated example paths and proposes a safe staged path toward broader manual
 inputs. It is documentation-only: no calculation behavior is broadened here.

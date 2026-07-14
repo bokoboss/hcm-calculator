@@ -108,6 +108,19 @@ def test_create_project_payload_including_result_and_audit_record() -> None:
     assert payload["normalized_engine_inputs"] == {"segment_length_mi": 0.75}
     assert payload["warnings"] == ["warning"]
     assert payload["assumptions"] == ["assumption"]
+    assert payload["calculation_fingerprint"]
+
+
+def test_single_segment_loader_discards_stale_stored_result() -> None:
+    payload = create_manual_project_payload(
+        _manual_inputs(), result={"outputs": {"level_of_service": "A"}}
+    )
+    payload["manual_inputs"]["analysis_direction_volume"] = 900.0
+
+    loaded = load_manual_project_json(json.dumps(payload))
+
+    assert loaded["result"] is None
+    assert loaded["audit_record"] is None
 
 
 def test_load_valid_project_json_returns_restored_manual_inputs() -> None:
@@ -278,6 +291,22 @@ def test_manual_facility_project_payload_contains_auditable_context() -> None:
     assert payload["normalized_facility_inputs"]["segments"]
     assert payload["unsupported_behavior_notes"]
     assert payload["app_version"]
+
+
+def test_facility_loader_discards_stale_stored_result() -> None:
+    template = load_facility_template("level_example_3", "imperial")
+    result = result_to_dict(
+        run_manual_facility(template["template_id"], template["segments"], "imperial")
+    )
+    payload = create_manual_facility_project_payload(
+        template["template_id"], "imperial", template["segments"], result=result
+    )
+    payload["segment_rows"][0]["analysis_direction_volume_veh_h"] += 10.0
+
+    loaded = load_manual_facility_project_json(json.dumps(payload))
+
+    assert loaded["calculation_result"] is None
+    assert loaded["segment_outputs"] == []
 
 
 def test_facility_loader_rejects_single_segment_project() -> None:

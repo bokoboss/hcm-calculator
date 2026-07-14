@@ -1,5 +1,7 @@
 # Chapter 15 Single-Segment Gap Analysis
 
+> **Phase 5 annotation:** This historical gap analysis predates general facility qualification. Current scope, limitations, and verification are authoritative in [the Phase 5 release qualification](methodology/two_lane_phase_5_release_qualification.md).
+
 ## Purpose
 
 This document identifies the work needed to make the HCM 7th Edition Chapter

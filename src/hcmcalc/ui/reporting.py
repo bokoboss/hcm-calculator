@@ -323,9 +323,9 @@ def _facility_report(
     if template_id:
         input_records.insert(0, {"label": "Template ID", "value": template_id, "unit": None})
     return _base_report(
-        title="HCM7 Chapter 15 Manual Facility Calculator v0.1 Report",
-        report_type="HCM Chapter 15 limited template-backed facility report",
-        calculation_type="manual_facility_v0",
+        title="HCM7 Chapter 15 Manual Facility Report",
+        report_type="HCM Chapter 15 Two-Lane Highway facility calculation report",
+        calculation_type="manual_two_lane_facility_v1",
         unit_system=unit_system,
         timestamp=timestamp,
         inputs=input_records,
