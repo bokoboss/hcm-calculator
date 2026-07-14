@@ -1,5 +1,7 @@
 # Basic Freeway Segment Implementation Plan
 
+> Phase 7.1 corrected above-capacity behavior and supporting source audit are recorded in [the Phase 7.1 reference audit](methodology/phase_7_1_reference_audit.md).
+
 ## Purpose
 
 HCM 7th Edition Chapter 12 Basic Freeway Segment support should be added as a

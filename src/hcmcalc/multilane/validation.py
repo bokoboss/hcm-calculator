@@ -34,7 +34,12 @@ UNSUPPORTED_INPUT_KEYS = {
 ALLOWED_INPUT_KEYS = set(MultilaneBasicSegmentInputs.__dataclass_fields__)
 SUPPORTED_ANALYSIS_TYPES = {"basic_segment", "multilane_basic_segment"}
 SUPPORTED_FFS_SOURCES = {"estimated", "measured"}
-SUPPORTED_TRUCK_MIX = "default_30_sut_70_tt"
+SUPPORTED_TRUCK_MIXES = {
+    "default_30_sut_70_tt": 30,
+    "equal_50_sut_50_tt": 50,
+    "majority_70_sut_30_tt": 70,
+}
+SUPPORTED_TERRAIN_TYPES = {"level", "rolling", "specific_grade"}
 
 
 def reject_unsupported_scope_keys(values: dict[str, Any]) -> None:
@@ -99,6 +104,7 @@ def validate_inputs(inputs: MultilaneBasicSegmentInputs) -> None:
     for name, value in {
         "free_flow_speed_mph": inputs.free_flow_speed_mph,
         "passenger_car_equivalent": inputs.passenger_car_equivalent,
+        "left_side_lateral_clearance_ft": inputs.left_side_lateral_clearance_ft,
     }.items():
         if value is not None:
             _require_finite_number(name, value)
@@ -140,10 +146,13 @@ def validate_inputs(inputs: MultilaneBasicSegmentInputs) -> None:
             "'basic_segment'; Basic Freeway, ramp, weaving, merge/diverge, and "
             "facility/corridor analyses are unsupported."
         )
-    if inputs.truck_mix != SUPPORTED_TRUCK_MIX:
+    if inputs.truck_mix not in SUPPORTED_TRUCK_MIXES:
         raise UnsupportedScopeError(
-            "Multilane Basic Segment v0.1 supports only the default 30% SUT / "
-            "70% TT truck mix."
+            "truck_mix must be one of: " + ", ".join(SUPPORTED_TRUCK_MIXES) + "."
+        )
+    if inputs.terrain_type not in SUPPORTED_TERRAIN_TYPES:
+        raise UnsupportedScopeError(
+            "terrain_type must be 'level', 'rolling', or 'specific_grade'."
         )
     if inputs.ffs_source not in SUPPORTED_FFS_SOURCES:
         raise UnsupportedScopeError(
@@ -167,17 +176,20 @@ def validate_inputs(inputs: MultilaneBasicSegmentInputs) -> None:
                 "Estimated FFS supports two or three lanes in the analysis direction "
                 "because Exhibit 12-22 supplies four- and six-lane tables only."
             )
-        if inputs.median_type == "divided":
-            raise UnsupportedScopeError(
-                "Estimated FFS for divided medians requires an explicit left-side "
-                "clearance input, which is not in the canonical v0.1 payload; use measured FFS."
+        if inputs.median_type == "divided" and inputs.left_side_lateral_clearance_ft is None:
+            raise HCMCalcError(
+                "left_side_lateral_clearance_ft is required for estimated divided-median FFS."
             )
-    if inputs.passenger_car_equivalent is None:
-        raise UnsupportedScopeError(
-            "Internal specific-grade PCE lookup is not implemented; provide a positive "
-            "externally selected passenger_car_equivalent with its engineering provenance."
-        )
-    if inputs.passenger_car_equivalent <= 0:
+        if inputs.median_type != "divided" and inputs.left_side_lateral_clearance_ft is not None:
+            raise HCMCalcError(
+                "left_side_lateral_clearance_ft is only applicable to estimated divided-median FFS."
+            )
+    if inputs.left_side_lateral_clearance_ft is not None and inputs.left_side_lateral_clearance_ft < 0:
+        raise HCMCalcError("left_side_lateral_clearance_ft must be nonnegative.")
+    if (
+        inputs.passenger_car_equivalent is not None
+        and inputs.passenger_car_equivalent <= 0
+    ):
         raise HCMCalcError("passenger_car_equivalent must be greater than zero.")
 
 

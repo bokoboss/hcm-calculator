@@ -27,6 +27,8 @@ class MultilaneBasicSegmentInputs:
     ffs_source: str = "estimated"
     free_flow_speed_mph: float | None = None
     passenger_car_equivalent: float | None = None
+    left_side_lateral_clearance_ft: float | None = None
+    terrain_type: str = "specific_grade"
 
     @classmethod
     def from_mapping(cls, values: dict[str, Any]) -> "MultilaneBasicSegmentInputs":

@@ -1,5 +1,7 @@
 # Multilane Highway Implementation Plan
 
+> Phase 7.1 source decisions, corrections, and retained boundaries are recorded in [the Phase 7.1 reference audit](methodology/phase_7_1_reference_audit.md).
+
 ## Purpose
 
 HCM 7th Edition Multilane Highway analysis will be added as a separate

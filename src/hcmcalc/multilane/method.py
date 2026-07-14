@@ -14,6 +14,9 @@ from .coefficients import (
     MULTILANE_MAX_CAPACITY_PC_H_LN,
     MULTILANE_SPEED_FLOW_EXPONENT,
     SIX_LANE_TLC_REDUCTIONS_MPH,
+    PCE_GRADE_LENGTHS_MI,
+    PCE_TRUCK_PERCENT_COLUMNS,
+    SPECIFIC_GRADE_PCE,
 )
 from .models import MultilaneBasicSegmentInputs
 from .validation import reject_unsupported_scope_keys, validate_inputs
@@ -46,7 +49,11 @@ class MultilaneHighwayLOSMethod:
         if parsed.ffs_source == "estimated":
             base_ffs = estimate_base_free_flow_speed(parsed.posted_speed_limit_mph)
             adjustments["lane_width_adjustment_mph"] = lane_width_adjustment(parsed.lane_width_ft)
-            adjustments["total_lateral_clearance_ft"] = total_lateral_clearance(parsed.roadside_lateral_clearance_ft, parsed.median_type)
+            adjustments["total_lateral_clearance_ft"] = total_lateral_clearance(
+                parsed.roadside_lateral_clearance_ft,
+                parsed.median_type,
+                parsed.left_side_lateral_clearance_ft,
+            )
             adjustments["total_lateral_clearance_adjustment_mph"] = total_lateral_clearance_adjustment(adjustments["total_lateral_clearance_ft"], parsed.number_of_lanes)
             adjustments["median_type_adjustment_mph"] = median_type_adjustment(parsed.median_type)
             adjustments["access_point_adjustment_mph"] = access_point_adjustment(parsed.access_point_density_per_mi)
@@ -55,7 +62,9 @@ class MultilaneHighwayLOSMethod:
             ffs = parsed.free_flow_speed_mph
 
         capacity = multilane_capacity(ffs)
-        pce = parsed.passenger_car_equivalent
+        pce, pce_source, pce_lookup_path, effective_grade, effective_length = (
+            select_passenger_car_equivalent(parsed)
+        )
         hv_factor = heavy_vehicle_adjustment_factor(parsed.heavy_vehicle_percent, pce)
         flow_rate = demand_flow_rate(parsed.demand_volume_veh_h, parsed.peak_hour_factor, parsed.number_of_lanes, hv_factor)
         exceeds_capacity = flow_rate > capacity
@@ -66,29 +75,40 @@ class MultilaneHighwayLOSMethod:
 
         assumptions = [
             "One-direction, one-segment uninterrupted-flow Multilane Highway analysis.",
-            "Driver population factor is fixed at 1.0; HCM7 provides no Multilane speed-flow adjustment for this factor.",
-            "Passenger-car equivalent is externally supplied; truck mix is non-operative in this controlled PCE workflow.",
+            "Driver population adjustments are fixed at 1.0 in this bounded Multilane workflow; Chapter 12/Chapter 26 applicability is documented as an unresolved reference ambiguity.",
+            "Heavy-vehicle percentage is the total SUT and TT share of the traffic stream; passenger cars are excluded.",
         ]
+        if pce_source == "external_user_supplied_override":
+            assumptions.append(
+                "Passenger-car equivalent is externally supplied; the internal lookup is explicitly bypassed."
+            )
+        else:
+            assumptions.append(
+                "Passenger-car equivalent is selected from the reported HCM terrain or specific-grade workflow."
+            )
         assumptions.append("Free-flow speed is measured or user supplied." if parsed.ffs_source == "measured" else "Estimated base FFS is speed limit +7 mi/h below 50 mi/h and +5 mi/h from 50 through 65 mi/h.")
         warnings = ["Chapter 26 Example Problem 4 is regression evidence, not a calculation branch."]
         if exceeds_capacity:
             warnings.append("Demand exceeds HCM base capacity; no oversaturated speed or density is predicted.")
         notes = [
             "No Basic Freeway, ramp, weaving, merge/diverge, managed-lane, work-zone, reliability, or facility/corridor analysis.",
-            "Internal Exhibit 12-26 through 12-28 PCE lookup is unsupported; an externally selected PCE is required.",
-            "Estimated divided-median FFS is unsupported because the canonical input has no left-side clearance field.",
+            "Specific-grade PCE lookup is bounded by HCM7 Exhibits 12-26 through 12-28; no values are extrapolated.",
         ]
         references = [
             "HCM7 Eq. 12-1; Exhibit 12-6 and Exhibit 12-8",
             "HCM7 Eq. 12-3 and Eq. 12-4; Exhibits 12-20, 12-22, 12-23, and 12-24",
+            "HCM7 Eq. 12-10; Exhibits 12-25, 12-26, 12-27, and 12-28",
             "HCM7 Eq. 12-7, Eq. 12-9, Eq. 12-10, Eq. 12-11; Exhibit 12-15",
         ]
         outputs = {
             "calculation_type": "multilane_basic_segment_v0_1", "support_status": "bounded_multilane_segment_v0_1", "scope_status": "bounded_multilane_segment_v0_1",
             "input_summary": parsed.__dict__, "ffs_source": parsed.ffs_source, "base_free_flow_speed_mph": base_ffs,
             **adjustments, "adjusted_free_flow_speed_mph": ffs, "capacity_pc_h_ln": capacity,
-            "passenger_car_equivalent": pce, "pce_source": "external_user_supplied", "pce_lookup_path": "external_pce_required_no_internal_lookup",
-            "effective_grade_for_pce_percent": parsed.grade_percent, "heavy_vehicle_adjustment_factor": hv_factor,
+            "passenger_car_equivalent": pce, "pce_source": pce_source, "pce_lookup_path": pce_lookup_path,
+            "effective_grade_for_pce_percent": effective_grade,
+            "effective_grade_length_mi_for_pce": effective_length,
+            "truck_composition": truck_composition(parsed.truck_mix),
+            "heavy_vehicle_adjustment_factor": hv_factor,
             "driver_population_factor": 1.0, "demand_flow_rate_pc_h_ln": flow_rate, "demand_capacity_ratio": flow_rate / capacity,
             "demand_exceeds_capacity": exceeds_capacity, "capacity_check": capacity_status, "capacity_status": capacity_status,
             "breakpoint_pc_h_ln": MULTILANE_BREAKPOINT_PC_H_LN, "speed_flow_branch": "above_capacity_no_prediction" if exceeds_capacity else ("constant_ffs" if flow_rate <= MULTILANE_BREAKPOINT_PC_H_LN else "decreasing_speed"),
@@ -114,11 +134,150 @@ def lane_width_adjustment(lane_width_ft: float) -> float:
     raise UnsupportedScopeError("Exhibit 12-20 does not support lane widths below 10 ft.")
 
 
-def total_lateral_clearance(roadside_clearance_ft: float, median_type: str) -> float:
+def total_lateral_clearance(
+    roadside_clearance_ft: float,
+    median_type: str,
+    left_side_clearance_ft: float | None = None,
+) -> float:
+    """HCM7 Eq. 12-4; use 6 ft on the left for undivided and TWLTL roads."""
+
     _finite(roadside_clearance_ft, "roadside lateral clearance")
-    if roadside_clearance_ft < 0: raise HCMCalcError("Roadside lateral clearance must be nonnegative.")
-    if median_type == "divided": raise UnsupportedScopeError("Divided median clearance must be supplied separately.")
-    return min(roadside_clearance_ft, 6.0) + 6.0
+    if roadside_clearance_ft < 0:
+        raise HCMCalcError("Roadside lateral clearance must be nonnegative.")
+    if median_type == "divided":
+        if left_side_clearance_ft is None:
+            raise HCMCalcError("Divided median clearance requires left_side_lateral_clearance_ft.")
+        _finite(left_side_clearance_ft, "left-side lateral clearance")
+        if left_side_clearance_ft < 0:
+            raise HCMCalcError("Left-side lateral clearance must be nonnegative.")
+        return min(roadside_clearance_ft, 6.0) + min(left_side_clearance_ft, 6.0)
+    if median_type in {"undivided", "twltl"}:
+        if left_side_clearance_ft is not None:
+            raise HCMCalcError(
+                "left_side_lateral_clearance_ft is not applicable to undivided or TWLTL medians."
+            )
+        return min(roadside_clearance_ft, 6.0) + 6.0
+    raise UnsupportedScopeError(f"Unsupported median type: {median_type!r}.")
+
+
+def truck_composition(truck_mix: str) -> dict[str, float]:
+    """The fixed exhibit mix used to select HCM7 specific-grade PCEs."""
+
+    mixes = {
+        "default_30_sut_70_tt": (30.0, 70.0),
+        "equal_50_sut_50_tt": (50.0, 50.0),
+        "majority_70_sut_30_tt": (70.0, 30.0),
+    }
+    try:
+        sut, tt = mixes[truck_mix]
+    except KeyError as exc:
+        raise UnsupportedScopeError(f"Unsupported HCM7 Exhibit 12-26 through 12-28 truck mix: {truck_mix!r}.") from exc
+    return {"sut_percent_of_heavy_vehicles": sut, "tt_percent_of_heavy_vehicles": tt}
+
+
+def select_passenger_car_equivalent(
+    inputs: MultilaneBasicSegmentInputs,
+) -> tuple[float, str, str, float, float]:
+    """Select the HCM7 Eq. 12-10 PCE without example-specific behavior."""
+
+    length_mi = inputs.segment_length_ft / 5280.0
+    if inputs.passenger_car_equivalent is not None:
+        return (
+            inputs.passenger_car_equivalent,
+            "external_user_supplied_override",
+            "external_override_internal_lookup_bypassed",
+            inputs.grade_percent,
+            length_mi,
+        )
+    if inputs.heavy_vehicle_percent == 0:
+        return (1.0, "not_applicable_zero_heavy_vehicles", "no_heavy_vehicles", inputs.grade_percent, length_mi)
+    if inputs.terrain_type == "level":
+        return (2.0, "internal_hcm7_exhibit_12_25", "general_terrain_level", inputs.grade_percent, length_mi)
+    if inputs.terrain_type == "rolling":
+        return (3.0, "internal_hcm7_exhibit_12_25", "general_terrain_rolling", inputs.grade_percent, length_mi)
+    mix = truck_composition(inputs.truck_mix)["sut_percent_of_heavy_vehicles"]
+    effective_grade = max(-2.0, inputs.grade_percent) if inputs.grade_percent < 0 else inputs.grade_percent
+    pce = specific_grade_passenger_car_equivalent(
+        sut_percent=mix,
+        grade_percent=effective_grade,
+        grade_length_mi=length_mi,
+        heavy_vehicle_percent=inputs.heavy_vehicle_percent,
+    )
+    downgrade_note = "downgrade_capped_at_minus_2_percent_" if inputs.grade_percent < -2 else ""
+    return (
+        pce,
+        "internal_hcm7_exhibit_12_26_12_28",
+        f"{downgrade_note}exhibit_12_{26 if mix == 30 else 27 if mix == 50 else 28}_sut_{int(mix)}_tt_{int(100-mix)}",
+        effective_grade,
+        length_mi,
+    )
+
+
+def specific_grade_passenger_car_equivalent(
+    *, sut_percent: float, grade_percent: float, grade_length_mi: float, heavy_vehicle_percent: float
+) -> float:
+    """Bilinear HCM7 Exhibit 12-26--12-28 interpolation; no extrapolation."""
+
+    for value, label in ((sut_percent, "SUT percentage"), (grade_percent, "grade"), (grade_length_mi, "grade length"), (heavy_vehicle_percent, "heavy vehicle percentage")):
+        _finite(value, label)
+    if sut_percent not in SPECIFIC_GRADE_PCE:
+        raise UnsupportedScopeError("Specific-grade PCE lookup supports 30%, 50%, or 70% SUT truck mixes only.")
+    if not -2.0 <= grade_percent <= 6.0:
+        raise UnsupportedScopeError("Specific-grade PCE lookup supports grades from -2% through 6%; downgrades steeper than 2% must be normalized before lookup.")
+    if not 0 < grade_length_mi:
+        raise HCMCalcError("Grade length must be greater than zero.")
+    if not 0 <= heavy_vehicle_percent <= 100:
+        raise HCMCalcError("Heavy vehicle percentage must be between 0 and 100.")
+    grid = SPECIFIC_GRADE_PCE[int(sut_percent)]
+    lower_grade, upper_grade = _bounds(tuple(grid), grade_percent)
+    lower_value = _pce_at_grade(grid[lower_grade], grade_length_mi, heavy_vehicle_percent)
+    if lower_grade == upper_grade:
+        return lower_value
+    upper_value = _pce_at_grade(grid[upper_grade], grade_length_mi, heavy_vehicle_percent)
+    return _interpolate(lower_grade, lower_value, upper_grade, upper_value, grade_percent)
+
+
+def _pce_at_grade(
+    rows: dict[float, tuple[float, ...]], grade_length_mi: float, heavy_vehicle_percent: float
+) -> float:
+    lower_length, upper_length = _bounds(tuple(rows), grade_length_mi)
+    lower = _pce_at_length(rows[lower_length], heavy_vehicle_percent)
+    if lower_length == upper_length:
+        return lower
+    upper = _pce_at_length(rows[upper_length], heavy_vehicle_percent)
+    return _interpolate(lower_length, lower, upper_length, upper, grade_length_mi)
+
+
+def _pce_at_length(row: tuple[float, ...], heavy_vehicle_percent: float) -> float:
+    # The printed final heading is ">25%", not a numeric control point.  It
+    # cannot support a numeric interpolation or an exact 25% lookup without
+    # an undocumented assumption, so callers must provide an external PCE.
+    if heavy_vehicle_percent > 20.0:
+        raise UnsupportedScopeError(
+            "The Exhibit 12-26 through 12-28 terminal >25% PCE category is not "
+            "a numeric interpolation endpoint; use an external PCE above 20%."
+        )
+    lower_percent, upper_percent = _bounds(PCE_TRUCK_PERCENT_COLUMNS, heavy_vehicle_percent)
+    lower = row[PCE_TRUCK_PERCENT_COLUMNS.index(lower_percent)]
+    if lower_percent == upper_percent:
+        return lower
+    upper = row[PCE_TRUCK_PERCENT_COLUMNS.index(upper_percent)]
+    return _interpolate(lower_percent, lower, upper_percent, upper, heavy_vehicle_percent)
+
+
+def _bounds(values: tuple[float, ...], value: float) -> tuple[float, float]:
+    values = tuple(sorted(values))
+    if value < values[0] or value > values[-1]:
+        raise UnsupportedScopeError(
+            f"HCM7 exhibit lookup does not support extrapolation outside {values[0]} through {values[-1]}."
+        )
+    lower = max(candidate for candidate in values if candidate <= value)
+    upper = min(candidate for candidate in values if candidate >= value)
+    return lower, upper
+
+
+def _interpolate(x0: float, y0: float, x1: float, y1: float, x: float) -> float:
+    return y0 if x0 == x1 else y0 + (y1 - y0) * (x - x0) / (x1 - x0)
 
 
 def total_lateral_clearance_adjustment(total_clearance_ft: float, number_of_lanes: int = 2) -> float:
@@ -204,5 +363,5 @@ def _finite(value: float, label: str) -> None:
 
 
 def _intermediate_values(outputs: dict[str, Any]) -> list[IntermediateValue]:
-    sources = {"base_free_flow_speed_mph":"HCM7 Exhibit 12-18","lane_width_adjustment_mph":"HCM7 Exhibit 12-20","total_lateral_clearance_ft":"HCM7 Eq. 12-4","total_lateral_clearance_adjustment_mph":"HCM7 Exhibit 12-22","median_type_adjustment_mph":"HCM7 Exhibit 12-23","access_point_adjustment_mph":"HCM7 Exhibit 12-24","adjusted_free_flow_speed_mph":"HCM7 Eq. 12-3","capacity_pc_h_ln":"HCM7 Eq. 12-7","passenger_car_equivalent":"externally supplied","pce_source":"PCE provenance","pce_lookup_path":"PCE selection path","heavy_vehicle_adjustment_factor":"HCM7 Eq. 12-10","driver_population_factor":"fixed scope assumption","demand_flow_rate_pc_h_ln":"HCM7 Eq. 12-9","demand_capacity_ratio":"capacity check","capacity_status":"capacity check","breakpoint_pc_h_ln":"HCM7 Exhibit 12-6","speed_flow_branch":"HCM7 Eq. 12-1","mean_speed_mph":"HCM7 Eq. 12-1","density_pc_mi_ln":"HCM7 Eq. 12-11","level_of_service":"HCM7 Exhibit 12-15"}
+    sources = {"base_free_flow_speed_mph":"HCM7 Exhibit 12-18","lane_width_adjustment_mph":"HCM7 Exhibit 12-20","total_lateral_clearance_ft":"HCM7 Eq. 12-4","total_lateral_clearance_adjustment_mph":"HCM7 Exhibit 12-22","median_type_adjustment_mph":"HCM7 Exhibit 12-23","access_point_adjustment_mph":"HCM7 Exhibit 12-24","adjusted_free_flow_speed_mph":"HCM7 Eq. 12-3","capacity_pc_h_ln":"HCM7 Eq. 12-7","passenger_car_equivalent":"HCM7 Exhibit 12-25 or Exhibit 12-26 through 12-28","pce_source":"PCE provenance","pce_lookup_path":"PCE selection path","effective_grade_for_pce_percent":"HCM7 Chapter 26 Example Problem 4 downgrade rule","effective_grade_length_mi_for_pce":"HCM7 Exhibit 12-26 through 12-28","truck_composition":"HCM7 Exhibit 12-26 through 12-28","heavy_vehicle_adjustment_factor":"HCM7 Eq. 12-10","driver_population_factor":"HCM7 Chapter 12/26 scope boundary","demand_flow_rate_pc_h_ln":"HCM7 Eq. 12-9","demand_capacity_ratio":"capacity check","capacity_status":"capacity check","breakpoint_pc_h_ln":"HCM7 Exhibit 12-6","speed_flow_branch":"HCM7 Eq. 12-1","mean_speed_mph":"HCM7 Eq. 12-1","density_pc_mi_ln":"HCM7 Eq. 12-11","level_of_service":"HCM7 Exhibit 12-15"}
     return [IntermediateValue(name,outputs[name],source=source) for name,source in sources.items() if outputs[name] is not None]

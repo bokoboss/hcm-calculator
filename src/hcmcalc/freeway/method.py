@@ -82,10 +82,15 @@ class BasicFreewaySegmentMethod:
             hv_factor,
         )
         demand_exceeds_capacity = flow_rate > adjusted_capacity
-        speed = speed_from_flow_rate(flow_rate, adjusted_ffs, breakpoint, adjusted_capacity)
-        density = traffic_density(flow_rate, speed)
-        _validate_computed_output(speed, "computed speed")
-        _validate_computed_output(density, "computed density", allow_zero=True)
+        speed = None
+        density = None
+        if not demand_exceeds_capacity:
+            speed = speed_from_flow_rate(
+                flow_rate, adjusted_ffs, breakpoint, adjusted_capacity
+            )
+            density = traffic_density(flow_rate, speed)
+            _validate_computed_output(speed, "computed speed")
+            _validate_computed_output(density, "computed density", allow_zero=True)
         los = level_of_service(density, demand_exceeds_capacity=demand_exceeds_capacity)
 
         warnings = [
@@ -95,8 +100,8 @@ class BasicFreewaySegmentMethod:
         ]
         if demand_exceeds_capacity:
             warnings.append(
-                "Demand flow rate exceeds adjusted capacity; LOS is F and speed is capped "
-                "at the Chapter 12 density-at-capacity point for audit continuity."
+                "Demand flow rate exceeds adjusted capacity; Chapter 12 identifies LOS F "
+                "and does not permit a segment speed or density prediction."
             )
         assumptions = [
             "One-direction, one-segment uninterrupted-flow Basic Freeway Segment analysis.",
@@ -364,7 +369,9 @@ def speed_from_flow_rate(
     if flow_rate <= breakpoint_pc_h_ln:
         return adjusted_ffs_mph
     if flow_rate > adjusted_capacity_pc_h_ln_value:
-        return adjusted_capacity_pc_h_ln_value / FREEWAY_DENSITY_AT_CAPACITY_PC_MI_LN
+        raise HCMCalcError(
+            "Speed-flow prediction requires demand within adjusted capacity."
+        )
     speed_at_capacity = (
         adjusted_capacity_pc_h_ln_value / FREEWAY_DENSITY_AT_CAPACITY_PC_MI_LN
     )
@@ -392,11 +399,11 @@ def traffic_density(flow_rate: float, mean_speed_mph: float) -> float:
 def level_of_service(density: float, *, demand_exceeds_capacity: bool = False) -> str:
     """HCM7 Exhibit 12-15."""
 
+    if demand_exceeds_capacity:
+        return "F"
     _finite(density, "density")
     if density < 0:
         raise HCMCalcError("Density must be nonnegative.")
-    if demand_exceeds_capacity:
-        return "F"
     for level, upper_bound in LOS_DENSITY_UPPER_BOUNDS:
         if density <= upper_bound:
             return level
@@ -404,6 +411,8 @@ def level_of_service(density: float, *, demand_exceeds_capacity: bool = False) -
 
 
 def _finite(value: float, label: str) -> None:
+    if isinstance(value, bool):
+        raise HCMCalcError(f"{label} must be finite.")
     try:
         finite = isfinite(float(value))
     except (TypeError, ValueError) as exc:
