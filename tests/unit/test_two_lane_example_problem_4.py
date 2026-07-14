@@ -16,7 +16,6 @@ from hcmcalc.methods.two_lane_highway_ch15 import (
     percent_followers_slope_coefficient,
     vertical_alignment_class,
 )
-from hcmcalc.core import MethodNotImplementedError
 from hcmcalc.validation import load_yaml_fixture
 
 
@@ -37,9 +36,8 @@ def test_example_4_vertical_classes(length, grade, expected_class) -> None:
     assert vertical_alignment_class(length, grade) == expected_class
 
 
-def test_unvalidated_grade_combination_is_rejected() -> None:
-    with pytest.raises(MethodNotImplementedError):
-        vertical_alignment_class(1.0, -3.0)
+def test_vertical_classifier_is_not_coupled_to_example_metadata() -> None:
+    assert vertical_alignment_class(1.0, -3.0) == 2
 
 
 def test_example_4_upgrade_and_downgrade_ffs() -> None:
@@ -85,6 +83,12 @@ def test_example_4_segment_and_facility_results() -> None:
             density, abs=0.1
         )
         assert segment["level_of_service"] == los
+        assert segment["vertical_direction"] in {"upgrade", "downgrade"}
+        assert segment["vertical_lookup_row_range"]
+        assert segment["vertical_lookup_column_range"]
+        assert "Exhibit 15-11" in segment["vertical_class_source_reference"]
+        assert segment["segment_length_applicability_status"] == "within_exhibit_15_10"
+        assert segment["segment_length_source_reference"] == "HCM7 Exhibit 15-10"
 
     assert length_weighted_average(
         list(zip(expected_densities, [1.3, 1.0, 0.5, 1.3, 0.5, 0.5]))

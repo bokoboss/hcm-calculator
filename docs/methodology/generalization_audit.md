@@ -4,6 +4,21 @@ This audit identifies where the current HCM calculator is still tied to
 validated example paths and proposes a safe staged path toward broader manual
 inputs. It is documentation-only: no calculation behavior is broadened here.
 
+## Phase 1 update: Step 1-3 method data is not validation metadata
+
+Phase 1 separates HCM applicability from Chapter 26 regression evidence.
+Exhibit 15-10 is now table-driven for every vertical class and segment type,
+and Exhibit 15-11 is the sole production source of vertical class. Both retain
+source, lookup, and boundary provenance. Chapter 26 records remain validation
+evidence only; an absent record cannot make an otherwise defined Exhibit 15-11
+class unavailable.
+
+`grade_length_mi` is retained only as a legacy saved-project/import field. It
+is validated when present but ignored for classification: Exhibit 15-11 uses
+the analysis `segment_length_mi`. No grade-transition methodology has been
+implemented. Phase 1 classification/applicability does not unlock the still
+guarded Steps 4-10 calculation combinations.
+
 ## Executive Summary
 
 The product presents four calculator workflows, but their generality differs by
