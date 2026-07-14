@@ -227,7 +227,7 @@ def test_measured_ffs_path_omits_estimation_adjustments() -> None:
     assert outputs["adjusted_free_flow_speed_mph"] == 65.0
 
 
-def test_over_capacity_result_is_los_f_with_capacity_warning() -> None:
+def test_over_capacity_result_is_los_f_without_unsupported_speed_or_density() -> None:
     inputs = _estimated_inputs()
     inputs["demand_volume_veh_h"] = 9000.0
 
@@ -236,7 +236,8 @@ def test_over_capacity_result_is_los_f_with_capacity_warning() -> None:
     assert outputs["demand_exceeds_capacity"] is True
     assert outputs["capacity_check"] == "demand_exceeds_capacity"
     assert outputs["level_of_service"] == "F"
-    assert outputs["mean_speed_mph"] == pytest.approx(2400.0 / 45.0)
+    assert outputs["mean_speed_mph"] is None
+    assert outputs["density_pc_mi_ln"] is None
     assert any("exceeds adjusted capacity" in warning for warning in outputs["warnings"])
 
 
@@ -294,6 +295,11 @@ def test_formula_helpers_reject_non_finite_values(value: float) -> None:
         adjusted_free_flow_speed(value, 1.0)
     with pytest.raises(HCMCalcError, match="finite"):
         level_of_service(value)
+
+
+def test_formula_helpers_reject_booleans_as_numeric_inputs() -> None:
+    with pytest.raises(HCMCalcError, match="finite"):
+        adjusted_free_flow_speed(True, 1.0)
 
 
 @pytest.mark.parametrize(

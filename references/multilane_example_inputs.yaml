@@ -30,7 +30,6 @@ cases:
       roadside_lateral_clearance_ft: 12.0
       median_type: twltl
       access_point_density_per_mi: 10.0
-      passenger_car_equivalent: 2.24
     validation_status: implemented_example_only
 
   - id: MLH-CH26-004-WB
@@ -43,5 +42,4 @@ cases:
       direction: westbound
       grade_percent: 3.5
       access_point_density_per_mi: 0.0
-      passenger_car_equivalent: 3.97
     validation_status: implemented_example_only

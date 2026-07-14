@@ -79,6 +79,36 @@ def test_three_lane_estimated_ffs_uses_six_lane_clearance_table() -> None:
     assert MultilaneHighwayLOSMethod().calculate(inputs).outputs["total_lateral_clearance_adjustment_mph"] == 0.0
 
 
+def test_divided_median_estimated_ffs_uses_explicit_left_clearance() -> None:
+    inputs = _eastbound_inputs()
+    inputs.update(
+        {
+            "median_type": "divided",
+            "roadside_lateral_clearance_ft": 4.0,
+            "left_side_lateral_clearance_ft": 2.0,
+            "passenger_car_equivalent": None,
+        }
+    )
+
+    outputs = MultilaneHighwayLOSMethod().calculate(inputs).outputs
+
+    assert outputs["total_lateral_clearance_ft"] == 6.0
+    assert outputs["total_lateral_clearance_adjustment_mph"] == 1.3
+    assert outputs["input_summary"]["left_side_lateral_clearance_ft"] == 2.0
+
+
+def test_divided_median_clearance_required_and_irrelevant_clearance_rejected() -> None:
+    inputs = _eastbound_inputs()
+    inputs["median_type"] = "divided"
+    with pytest.raises(HCMCalcError, match="left_side_lateral_clearance_ft"):
+        MultilaneHighwayLOSMethod().calculate(inputs)
+
+    inputs = _eastbound_inputs()
+    inputs["left_side_lateral_clearance_ft"] = 2.0
+    with pytest.raises(HCMCalcError, match="only applicable"):
+        MultilaneHighwayLOSMethod().calculate(inputs)
+
+
 def test_non_finite_and_physically_invalid_inputs_are_rejected() -> None:
     inputs = _eastbound_inputs()
     inputs["demand_volume_veh_h"] = float("nan")
@@ -322,14 +352,14 @@ def test_basic_freeway_facility_type_is_rejected() -> None:
         MultilaneHighwayLOSMethod().calculate(inputs)
 
 
-def test_non_example_grade_without_supplied_pce_is_rejected() -> None:
+def test_non_example_grade_without_supplied_pce_uses_internal_lookup() -> None:
     inputs = _eastbound_inputs()
     inputs["case_id"] = "MLH-ARBITRARY-001"
     inputs["grade_percent"] = 0.0
-    del inputs["passenger_car_equivalent"]
+    outputs = MultilaneHighwayLOSMethod().calculate(inputs).outputs
 
-    with pytest.raises(UnsupportedScopeError, match="PCE lookup"):
-        MultilaneHighwayLOSMethod().calculate(inputs)
+    assert outputs["pce_source"] == "internal_hcm7_exhibit_12_26_12_28"
+    assert outputs["passenger_car_equivalent"] == pytest.approx(2.24)
 
 
 def test_missing_required_input_is_rejected() -> None:
