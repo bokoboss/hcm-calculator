@@ -1343,7 +1343,7 @@ def _restore_manual_multilane_project(project: dict[str, Any]) -> None:
 
 
 def render_manual_facility_calculator() -> None:
-    """Render the limited Example 3/4-backed facility worksheet."""
+    """Render the general ordered two-lane facility worksheet."""
 
     pending_project = st.session_state.pop("manual_facility_pending_project", None)
     if pending_project is not None:
@@ -1396,19 +1396,11 @@ def render_manual_facility_calculator() -> None:
             st.error(str(exc))
             return
 
-        editable_fields = set(template["editable_fields"])
-        disabled_fields = [
-            field
-            for field in template["segments"][0]
-            if field not in editable_fields
-        ]
         st.caption(
             "Defaults: "
             f"{FACILITY_DEFAULT_LABELS.get(template_id, template['template_label'])}."
         )
-        template_details = st.columns(2)
-        template_details[0].caption(f"Supported edits: {template['safe_edit_summary']}")
-        template_details[1].caption(f"Read-only fields: {template['locked_summary']}")
+        st.caption("Examples are starting values only. Every calculation-relevant field below is editable and stored in the facility input.")
         render_section_label("Roadway / Geometry")
         editor_version = st.session_state.get("manual_facility_editor_version", 0)
         editor_seed = st.session_state.pop(
@@ -1418,8 +1410,7 @@ def render_manual_facility_calculator() -> None:
             editor_seed,
             key=f"facility_segment_editor_{template_id}_{unit_system}_{editor_version}",
             hide_index=True,
-            num_rows="fixed",
-            disabled=disabled_fields,
+            num_rows="dynamic",
             use_container_width=True,
             column_config={
                 "segment_length": st.column_config.NumberColumn(
@@ -1444,21 +1435,21 @@ def render_manual_facility_calculator() -> None:
                 "heavy_vehicle_percent": st.column_config.NumberColumn(
                     "Heavy vehicles (%)", min_value=0.0, max_value=100.0, required=True
                 ),
-                "passing_lane": st.column_config.CheckboxColumn("Passing lane"),
-                "downstream_affected": st.column_config.CheckboxColumn(
-                    "Downstream context"
-                ),
+                "passing_lane_role": st.column_config.SelectboxColumn("Passing Lane role", options=["none", "passing_lane", "downstream_affected"], required=True),
                 "segment_name": st.column_config.TextColumn("Segment name"),
-                "segment_type": st.column_config.TextColumn("Segment type"),
+                "segment_type": st.column_config.SelectboxColumn("Segment type", options=["passing_constrained", "passing_zone", "passing_lane"], required=True),
                 "terrain_type": st.column_config.TextColumn("Terrain"),
                 "grade_percent": st.column_config.NumberColumn("Grade (%)"),
-                "horizontal_alignment": st.column_config.TextColumn("Alignment"),
+                "horizontal_alignment": st.column_config.SelectboxColumn("Alignment", options=["straight", "horizontal_curves"], required=True),
+                "lane_width": st.column_config.NumberColumn("Lane width", min_value=9.0, max_value=12.0, required=True),
+                "shoulder_width": st.column_config.NumberColumn("Shoulder width", min_value=0.0, max_value=6.0, required=True),
+                "access_point_density": st.column_config.NumberColumn("Access density", min_value=0.0, required=True),
             },
         )
         render_section_label("Traffic")
         st.caption("Traffic values are edited in the facility segment table.")
         render_section_label("Advanced / Optional")
-        st.caption("No additional optional inputs are available for this guarded worksheet.")
+        st.caption("Use the row controls to add or remove segments. Row order is the engineered facility order; Passing Lane context is explicit.")
         calculate_column, scope_column = st.columns([1, 2])
         calculate = calculate_column.button(
             "Run calculation",
@@ -1632,7 +1623,7 @@ def render_manual_facility_result_panel(
     with st.expander(AUDIT_EXPANDER_LABEL, expanded=False):
         st.json(audit)
     full_result = {
-        "calculation_type": "manual_facility_v0",
+        "calculation_type": "manual_two_lane_facility_v1",
         "template_id": template_id,
         "unit_system": unit_system,
         "engine_result": result_data,
@@ -1661,7 +1652,7 @@ def render_manual_facility_result_panel(
         FACILITY_DEFAULT_LABELS.get(template_id, template["template_label"]),
     )
     render_export_report_section(
-        "manual_facility_v0",
+        "manual_two_lane_facility_v1",
         result_data,
         unit_system,
         inputs=audit.get("facility_inputs", {}).get("segments", [])

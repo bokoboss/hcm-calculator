@@ -281,7 +281,7 @@ def test_manual_facility_project_payload_contains_auditable_context() -> None:
 
 
 def test_facility_loader_rejects_single_segment_project() -> None:
-    with pytest.raises(ProjectFileError, match="Expected manual_facility_v0"):
+    with pytest.raises(ProjectFileError, match="Expected manual_two_lane_facility_v1"):
         load_manual_facility_project_json(create_manual_project_json(_manual_inputs()))
 
 
@@ -316,12 +316,6 @@ def test_facility_load_rejects_unknown_template_id() -> None:
         (lambda payload: payload.pop("segment_rows"), "Missing required field: segment_rows"),
         (
             lambda payload: payload.__setitem__("segment_rows", [{"segment_id": 1}]),
-            "Malformed or unsupported segment rows",
-        ),
-        (
-            lambda payload: payload["segment_rows"][0].__setitem__(
-                "terrain_type", "mountainous"
-            ),
             "Malformed or unsupported segment rows",
         ),
     ],

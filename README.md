@@ -1,5 +1,16 @@
 # HCM Calculator
 
+## Two-Lane facility status
+
+The Manual Two-Lane Facility worksheet now uses an ordered general facility
+schema for the implemented Chapter 15 motorized-vehicle envelope.  Passing
+Constrained, Passing Zone, Passing Lane and explicit downstream context are
+calculated per segment, then Step 11 length weighting produces facility speed,
+percent followers, follower density and LOS. Chapter 26 Examples 3 and 4 are
+optional starting values and published regression evidence, not engine modes.
+Reliability, automatic segmentation and overlapping Passing Lane interactions
+remain unsupported pending Phase 5.
+
 Auditable Python calculator for bounded Highway Capacity Manual (HCM) workflows.
 
 The current v0.1 calculator-first MVP provides single-page, auditable

@@ -12,12 +12,13 @@ from hcmcalc import __version__
 from hcmcalc.cli import find_case, load_input_file
 from hcmcalc.core import CalculationResult, HCMCalcError, MethodNotImplementedError
 from hcmcalc.methods.two_lane_highway_ch15 import TwoLaneHighwayChapter15Method
+from hcmcalc.methods.two_lane_highway_models import PASSING_LANE_ROLE_SEGMENT
 from hcmcalc.ui.units import MILES_TO_KILOMETERS
 
 
 ROOT = Path(__file__).resolve().parents[3]
 FIXTURE_PATH = ROOT / "references" / "example_inputs.yaml"
-MANUAL_FACILITY_CALCULATION_TYPE = "manual_facility_v0"
+MANUAL_FACILITY_CALCULATION_TYPE = "manual_two_lane_facility_v1"
 
 FACILITY_TEMPLATES = {
     "level_example_3": {
@@ -118,10 +119,10 @@ def run_manual_facility(
     rows: list[dict[str, Any]],
     unit_system: str = "imperial",
 ) -> CalculationResult:
-    """Validate a guarded template edit and delegate to the existing engine."""
+    """Validate an editable facility worksheet and delegate to the general engine."""
 
     engine_inputs = build_manual_facility_inputs(template_id, rows, unit_system)
-    return TwoLaneHighwayChapter15Method().calculate(engine_inputs)
+    return TwoLaneHighwayChapter15Method().calculate_facility(engine_inputs)
 
 
 def build_manual_facility_inputs(
@@ -129,40 +130,52 @@ def build_manual_facility_inputs(
     rows: list[dict[str, Any]],
     unit_system: str = "imperial",
 ) -> dict[str, Any]:
-    """Merge safe editable values into an existing validated facility template."""
+    """Normalize visible worksheet values into the general facility schema.
+
+    ``template_id`` selects starting values only; it never supplies hidden
+    calculation context after the rows have been loaded.
+    """
 
     template = _template_definition(template_id)
     unit_system = _normalize_unit_system(unit_system)
     rows = _records(rows)
-    case = find_case(load_input_file(FIXTURE_PATH), str(template["case_id"]))
-    engine_inputs = deepcopy(case["inputs"])
-    source_segments = engine_inputs["segments"]
-    source_rows = _engine_segments_to_user_rows(source_segments, unit_system)
-
-    if not isinstance(rows, list) or len(rows) != len(source_segments):
-        raise MethodNotImplementedError(
-            "Unsupported combination: the selected facility template requires "
-            f"exactly {len(source_segments)} segments."
-        )
-
-    editable_fields = set(template["editable_fields"])
-    normalized_segments = []
-    for index, (row, source, source_row) in enumerate(
-        zip(rows, source_segments, source_rows), start=1
-    ):
+    if not rows:
+        raise HCMCalcError("Facility requires at least one segment row.")
+    normalized_segments: list[dict[str, Any]] = []
+    for index, row in enumerate(rows, start=1):
         if not isinstance(row, dict):
             raise HCMCalcError(f"Facility segment row {index} must be an object.")
-        _validate_locked_context(row, source_row, editable_fields, index)
-        normalized = deepcopy(source)
-        _apply_editable_values(normalized, row, editable_fields, unit_system, index)
+        required = {"segment_id", "segment_type", "segment_length", "posted_speed", "analysis_direction_volume_veh_h", "peak_hour_factor", "heavy_vehicle_percent", "grade_percent", "horizontal_alignment", "lane_width", "shoulder_width", "access_point_density"}
+        missing = sorted(field for field in required if row.get(field) is None)
+        if missing:
+            raise HCMCalcError(f"Facility segment {row.get('segment_id', index)} requires {', '.join(missing)}.")
+        try:
+            normalized = {
+                "segment_id": int(row["segment_id"]), "segment_type": str(row["segment_type"]),
+                "segment_length_mi": float(row["segment_length"]) / (MILES_TO_KILOMETERS if unit_system == "metric" else 1.0),
+                "posted_speed_mph": float(row["posted_speed"]) / (MILES_TO_KILOMETERS if unit_system == "metric" else 1.0),
+                "analysis_direction_volume_veh_h": float(row["analysis_direction_volume_veh_h"]),
+                "peak_hour_factor": float(row["peak_hour_factor"]), "heavy_vehicle_percent": float(row["heavy_vehicle_percent"]),
+                "grade_percent": float(row["grade_percent"]), "horizontal_alignment": str(row["horizontal_alignment"]),
+                "lane_width_ft": float(row["lane_width"]) / (3.280839895 if unit_system == "metric" else 1.0),
+                "shoulder_width_ft": float(row["shoulder_width"]) / (3.280839895 if unit_system == "metric" else 1.0),
+                "access_point_density_per_mi": float(row["access_point_density"]) * (MILES_TO_KILOMETERS if unit_system == "metric" else 1.0),
+                "passing_lane_role": str(row.get("passing_lane_role", PASSING_LANE_ROLE_SEGMENT if row["segment_type"] == "passing_lane" else "none")),
+                "horizontal_alignment_subsegments": row.get("horizontal_alignment_subsegments", []),
+            }
+        except (TypeError, ValueError) as exc:
+            raise HCMCalcError(f"Facility segment {row.get('segment_id', index)} has invalid numeric input.") from exc
+        if row.get("opposing_direction_volume_veh_h") not in (None, ""):
+            normalized["opposing_direction_volume_veh_h"] = float(row["opposing_direction_volume_veh_h"])
         normalized_segments.append(normalized)
-
-    engine_inputs["segments"] = normalized_segments
-    engine_inputs["facility_length_mi"] = sum(
-        float(segment["segment_length_mi"]) for segment in normalized_segments
-    )
-    engine_inputs["upstream_passing_lane"] = False
-    return engine_inputs
+    return {
+        "facility_id": template_id,
+        "facility_length_mi": sum(float(segment["segment_length_mi"]) for segment in normalized_segments),
+        "segments": normalized_segments,
+        # Published presets intentionally retain their documented displayed
+        # one-decimal aggregation convention; generic facilities omit this.
+        "published_display_density_rounding_decimals": 1 if template_id in FACILITY_TEMPLATES else None,
+    }
 
 
 def facility_segment_result_rows(
@@ -172,7 +185,7 @@ def facility_segment_result_rows(
 
     rows = []
     names = {
-        int(row["segment_id"]): row.get("segment_name")
+        row["segment_id"]: row.get("segment_name")
         for row in user_rows or []
         if row.get("segment_id") is not None
     }
@@ -180,7 +193,7 @@ def facility_segment_result_rows(
         rows.append(
             {
                 "segment_id": segment["segment_id"],
-                "segment_name": names.get(int(segment["segment_id"])),
+                "segment_name": names.get(segment["segment_id"]),
                 "segment_type": segment["segment_type"],
                 "segment_length_mi": segment["segment_length_mi"],
                 "average_speed_mph": segment["average_speed_mph"],
@@ -277,6 +290,11 @@ def _engine_segments_to_user_rows(
                 else "mountainous",
                 "grade_percent": segment["grade_percent"],
                 "horizontal_alignment": segment["horizontal_alignment"],
+                "lane_width": float(segment["lane_width_ft"]) * (3.280839895 if metric else 1.0),
+                "shoulder_width": float(segment["shoulder_width_ft"]) * (3.280839895 if metric else 1.0),
+                "access_point_density": float(segment["access_point_density_per_mi"]) / (MILES_TO_KILOMETERS if metric else 1.0),
+                "horizontal_alignment_subsegments": segment.get("horizontal_alignment_subsegments", []),
+                "passing_lane_role": "passing_lane" if is_passing_lane else ("downstream_affected" if passing_lane_seen else "none"),
                 "passing_lane": is_passing_lane,
                 "downstream_affected": passing_lane_seen and not is_passing_lane,
             }
