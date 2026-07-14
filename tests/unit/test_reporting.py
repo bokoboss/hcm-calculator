@@ -76,7 +76,7 @@ def _single_report(unit_system: str = "metric"):
 def _facility_report(unit_system: str = "metric"):
     template, result, audit = _facility_context(unit_system)
     return build_report(
-        "manual_facility_v0",
+        "manual_two_lane_facility_v1",
         result,
         unit_system,
         inputs=template["segments"],
@@ -142,7 +142,7 @@ def test_facility_report_json_generation_includes_segment_rows_and_limitations()
     report = _facility_report()
     exported = json.loads(export_report(report, "json"))
 
-    assert exported["calculation_type"] == "manual_facility_v0"
+    assert exported["calculation_type"] == "manual_two_lane_facility_v1"
     assert len(exported["segment_results"]) == 6
     assert "Average speed (km/h)" in exported["segment_results"][0]
     assert exported["limitations"] == FACILITY_LIMITATIONS
@@ -189,7 +189,7 @@ def test_freeway_report_json_includes_units_context_results_and_limitations() ->
     ("report_factory", "expected"),
     [
         (_single_report, "Manual Single Segment"),
-        (_facility_report, "Manual Facility Calculator v0.1"),
+        (_facility_report, "Manual Facility Report"),
         (_multilane_report, "Manual Multilane Highway Segment v0.1"),
         (_freeway_report, "Manual Basic Freeway Segment Calculator"),
     ],

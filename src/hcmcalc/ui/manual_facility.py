@@ -1,4 +1,4 @@
-"""Template-backed manual facility adapter for the Streamlit worksheet."""
+"""General ordered Two-Lane facility adapter for the Streamlit worksheet."""
 
 from __future__ import annotations
 

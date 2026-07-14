@@ -224,6 +224,12 @@ The single-page app provides six modes:
 The engine and CLI validation behavior remains based on the existing validated
 fixtures. CLI inputs, outputs, and JSON schema are unchanged.
 
+## Two-Lane Highway Phase 5 supported envelope
+
+Phase 5 qualifies the Chapter 15 motorized-vehicle implementation for the documented single-segment and ordered-facility envelope: Passing Constrained, Passing Zone, Passing Lane midpoint, Classes 1–5, valid level/nonlevel and supported curve domains, explicit Passing Lane roles/downstream effects, and Step 11 aggregation. Chapter 26 examples are optional defaults and validation evidence, not scope gates. Current facility projects use `manual_two_lane_facility_v1`; legacy `manual_facility_v0` inputs remain load-compatible, while stored results require a matching normalized-input fingerprint. See [Phase 5 release qualification](docs/methodology/two_lane_phase_5_release_qualification.md).
+
+The historical v0.1 scope text below is superseded by this Phase 5 statement.
+
 Manual v0.1 scope:
 
 - HCM 7th Edition Chapter 15 Two-Lane Highway

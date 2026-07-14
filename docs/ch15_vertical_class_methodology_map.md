@@ -1,5 +1,7 @@
 # Chapter 15 Vertical Class and Grade-Length Methodology Map
 
+> **Phase 5 annotation:** This map remains source/lookup documentation. Its historical exact-example scope statements are superseded by the final supported-envelope statement in [Two-Lane Phase 5 release qualification](methodology/two_lane_phase_5_release_qualification.md).
+
 ## A. Purpose
 
 This document prepares the Chapter 15 Two-Lane Highway method for broader

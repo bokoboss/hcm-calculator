@@ -2,6 +2,8 @@
 
 Related issue: #82
 
+> **Final annotation:** Phase 5 release qualification supersedes this phase specification's provisional scope statements; see `two_lane_phase_5_release_qualification.md`.
+
 ## Purpose
 
 Phase 1 establishes the HCM 7th Edition Chapter 15 Step 1–3 foundation required before the calculator can safely accept broader non-example Two-Lane Highway inputs.
