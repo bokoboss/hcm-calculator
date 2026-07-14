@@ -162,15 +162,22 @@ def validate_inputs(inputs: MultilaneBasicSegmentInputs) -> None:
             raise HCMCalcError(
                 "free_flow_speed_mph must be omitted when ffs_source is 'estimated'."
             )
-        if inputs.number_of_lanes != 2:
+        if inputs.number_of_lanes not in {2, 3}:
             raise UnsupportedScopeError(
-                "number_of_lanes other than 2 requires measured FFS because estimated "
-                "Multilane FFS v0.1 uses the implemented four-lane lateral-clearance table."
+                "Estimated FFS supports two or three lanes in the analysis direction "
+                "because Exhibit 12-22 supplies four- and six-lane tables only."
             )
-    if (
-        inputs.passenger_car_equivalent is not None
-        and inputs.passenger_car_equivalent <= 0
-    ):
+        if inputs.median_type == "divided":
+            raise UnsupportedScopeError(
+                "Estimated FFS for divided medians requires an explicit left-side "
+                "clearance input, which is not in the canonical v0.1 payload; use measured FFS."
+            )
+    if inputs.passenger_car_equivalent is None:
+        raise UnsupportedScopeError(
+            "Internal specific-grade PCE lookup is not implemented; provide a positive "
+            "externally selected passenger_car_equivalent with its engineering provenance."
+        )
+    if inputs.passenger_car_equivalent <= 0:
         raise HCMCalcError("passenger_car_equivalent must be greater than zero.")
 
 

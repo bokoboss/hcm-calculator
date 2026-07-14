@@ -47,9 +47,9 @@ def test_multilane_template_runs_existing_validated_engine_path(
 
 def test_unsupported_multilane_template_edit_rejects_clearly() -> None:
     inputs = deepcopy(load_multilane_template("MLH-CH26-004-EB")["inputs"])
-    inputs["number_of_lanes"] = 3
+    inputs["number_of_lanes"] = 4
 
-    with pytest.raises(UnsupportedScopeError, match="number_of_lanes"):
+    with pytest.raises(UnsupportedScopeError, match="two or three lanes"):
         run_manual_multilane(inputs)
 
 

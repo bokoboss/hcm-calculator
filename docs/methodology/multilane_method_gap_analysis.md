@@ -4,6 +4,31 @@ Status: Phase 6 scope lock
 Target: HCM7 one-direction, one-segment Multilane Highway analysis  
 Current implementation: `multilane_basic_segment_v0_1`
 
+## Phase 7 implemented engine scope
+
+The engine supports one-direction, one-segment, uninterrupted-flow Multilane
+Highway analysis with measured FFS from 45 through 70 mi/h, or estimated FFS
+for two- and three-lane analysis directions. Estimated FFS uses Exhibit 12-18
+posted-speed defaults (+7 mi/h below 50 mi/h; +5 mi/h from 50 through 65
+mi/h), Exhibits 12-20, 12-22, 12-23, and 12-24. The four-lane and six-lane
+lateral-clearance tables are selected by analysis-direction lane count and
+interpolated to the nearest 0.1 mi/h. Divided-median estimated FFS is rejected
+because the canonical payload has no separate left-clearance input; measured
+FFS remains available for that geometry.
+
+The method uses HCM7 Eq. 12-1 and Exhibit 12-6 through capacity: breakpoint
+1,400 pc/h/ln, capacity density 45 pc/mi/ln, and Multilane exponent 1.31.
+Above capacity it returns LOS F and an explicit capacity-failure status; it
+does not return an oversaturated speed or density prediction.
+
+Specific-grade PCE table transcription is intentionally not claimed. The
+engine requires a positive finite externally selected PCE, reports its source
+and selection path, and treats truck mix as non-operative under that controlled
+workflow. Driver population is fixed to 1.0 because Chapter 12 states that no
+equivalent Multilane speed-flow adjustment is available. Chapter 26 Example 4
+fixtures now provide their published PCE values explicitly and remain regression
+evidence only.
+
 ## 1. Completion definition
 
 The method is complete when supported inputs drive the full declared segment calculation without example-specific lookup constraints, unsupported combinations fail explicitly, intermediate results are auditable, and UI/save/export/report paths consume the same calculation result.

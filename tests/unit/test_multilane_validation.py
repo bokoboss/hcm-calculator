@@ -72,12 +72,11 @@ def test_present_but_zero_unsupported_input_is_rejected() -> None:
         MultilaneHighwayLOSMethod().calculate(inputs)
 
 
-def test_unsupported_lane_count_is_rejected() -> None:
+def test_three_lane_estimated_ffs_uses_six_lane_clearance_table() -> None:
     inputs = _eastbound_inputs()
     inputs["number_of_lanes"] = 3
 
-    with pytest.raises(UnsupportedScopeError, match="number_of_lanes"):
-        MultilaneHighwayLOSMethod().calculate(inputs)
+    assert MultilaneHighwayLOSMethod().calculate(inputs).outputs["total_lateral_clearance_adjustment_mph"] == 0.0
 
 
 def test_non_finite_and_physically_invalid_inputs_are_rejected() -> None:
@@ -132,14 +131,13 @@ def test_access_density_above_implemented_table_range_is_rejected() -> None:
         ("posted_speed_limit_mph", 50.0),
     ],
 )
-def test_unimplemented_multilane_formula_branches_are_rejected(
+def test_posted_speed_50_uses_documented_base_ffs_branch(
     field: str, value: float
 ) -> None:
     inputs = _eastbound_inputs()
     inputs[field] = value
 
-    with pytest.raises(UnsupportedScopeError):
-        MultilaneHighwayLOSMethod().calculate(inputs)
+    assert MultilaneHighwayLOSMethod().calculate(inputs).outputs["base_free_flow_speed_mph"] == 55.0
 
 
 @pytest.mark.parametrize(
@@ -290,7 +288,7 @@ def test_estimated_ffs_audit_includes_used_adjustments_and_supplied_pce() -> Non
         "median_type_adjustment_mph",
         "access_point_adjustment_mph",
     } <= intermediate_names
-    assert any("Passenger-car equivalent is user supplied" in item for item in result.assumptions)
+    assert any("Passenger-car equivalent is externally supplied" in item for item in result.assumptions)
 
 
 @pytest.mark.parametrize(
@@ -328,6 +326,7 @@ def test_non_example_grade_without_supplied_pce_is_rejected() -> None:
     inputs = _eastbound_inputs()
     inputs["case_id"] = "MLH-ARBITRARY-001"
     inputs["grade_percent"] = 0.0
+    del inputs["passenger_car_equivalent"]
 
     with pytest.raises(UnsupportedScopeError, match="PCE lookup"):
         MultilaneHighwayLOSMethod().calculate(inputs)
