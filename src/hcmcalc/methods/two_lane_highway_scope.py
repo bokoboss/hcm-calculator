@@ -1,11 +1,16 @@
-"""Explicit supported-scope decisions for Chapter 15 vertical behavior."""
+"""Applicability and deliberately guarded calculation scope for Chapter 15."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import isfinite
 from typing import Literal
 
 from hcmcalc.core import UnsupportedScopeError
+from hcmcalc.methods.two_lane_highway_applicability import (
+    SegmentLengthApplicability,
+    validate_exhibit_15_10_segment_length,
+)
 from hcmcalc.methods.two_lane_highway_models import (
     HORIZONTAL_CURVES_ALIGNMENT,
     PASSING_CONSTRAINED,
@@ -14,223 +19,136 @@ from hcmcalc.methods.two_lane_highway_models import (
     STRAIGHT_ALIGNMENT,
 )
 from hcmcalc.methods.vertical_lookup import (
-    LookupStatus,
-    VerticalClassLookupRecord,
+    VerticalAlignmentClassification,
+    VerticalDirection,
     find_vertical_class_record,
+    classify_vertical_alignment,
 )
 
 
 ScopeStatus = Literal[
     "supported",
+    "invalid_input",
+    "outside_exhibit_15_10_applicability",
     "unsupported",
-    "unsupported_needs_hcm_table_data",
-    "unsupported_needs_validation_fixture",
+    "unsupported_downstream_methodology",
+    "insufficient_validation_evidence",
 ]
+CalculationScope = Literal["steps_1_3", "steps_4_10"]
+
 
 @dataclass(frozen=True)
 class VerticalScopeDecision:
-    """Auditable Chapter 15 vertical-scope classification."""
+    """Auditable Chapter 15 vertical classification and applicability decision."""
 
     status: ScopeStatus
     reason: str
-    vertical_class: int | None = None
+    classification: VerticalAlignmentClassification | None = None
+    segment_length_applicability: SegmentLengthApplicability | None = None
     validation_basis: str | None = None
+    normalized_legacy_grade_length_mi: float | None = None
 
     @property
     def supported(self) -> bool:
         return self.status == "supported"
+
+    @property
+    def vertical_class(self) -> int | None:
+        return self.classification.vertical_class if self.classification else None
 
 
 def classify_vertical_scope(
     *,
     segment_type: str,
     grade_percent: float,
-    grade_length_mi: float | None,
-    heavy_vehicle_percent: float,
+    grade_length_mi: float | None = None,
+    heavy_vehicle_percent: float = 0.0,
     segment_length_mi: float | None = None,
     horizontal_alignment: str = STRAIGHT_ALIGNMENT,
     terrain_type: str | None = None,
     vertical_class: int | None = None,
+    direction_context: VerticalDirection | None = None,
+    calculation_scope: CalculationScope = "steps_1_3",
     validated_facility_example: bool = False,
 ) -> VerticalScopeDecision:
-    """Classify inputs without running Chapter 15 calculation formulas."""
+    """Classify Steps 1-3 independently of Chapter 26 validation metadata.
 
-    if grade_length_mi is None:
-        return VerticalScopeDecision(
-            "unsupported_needs_hcm_table_data",
-            "Non-level Chapter 15 analysis requires grade length. The current "
-            "engine uses the full segment length as grade length.",
-        )
+    ``grade_length_mi`` is a legacy import field. Exhibit 15-11 specifies the
+    analysis segment length, so the field is accepted only for compatibility and
+    never changes the derived class or Exhibit 15-10 applicability.
+    """
 
-    if segment_length_mi is not None and grade_length_mi != segment_length_mi:
-        return VerticalScopeDecision(
-            "unsupported_needs_hcm_table_data",
-            "Grade length must equal the full segment length in the currently "
-            "supported Chapter 15 scope. Grade transitions require additional HCM "
-            "methodology data and validation fixtures.",
-        )
-
+    if calculation_scope not in {"steps_1_3", "steps_4_10"}:
+        raise ValueError("Calculation scope must be 'steps_1_3' or 'steps_4_10'.")
+    if segment_length_mi is None:
+        raise ValueError("Segment length is required for Chapter 15 applicability.")
     if terrain_type not in {None, "level", "mountainous"}:
-        return VerticalScopeDecision(
-            "unsupported",
-            f"Terrain type {terrain_type!r} is not mapped to validated Chapter 15 behavior.",
-        )
-
+        return VerticalScopeDecision("unsupported", f"Unsupported terrain type: {terrain_type!r}.")
     if terrain_type == "level" and grade_percent != 0.0:
-        return VerticalScopeDecision(
-            "unsupported",
-            "Level terrain cannot be combined with a non-zero grade. This would "
-            "otherwise fall back to level assumptions.",
-        )
+        return VerticalScopeDecision("unsupported", "Level terrain cannot be combined with a non-zero grade.")
     if terrain_type == "mountainous" and grade_percent == 0.0:
-        return VerticalScopeDecision(
-            "unsupported",
-            "Mountainous terrain cannot be combined with a zero grade in the "
-            "currently validated Chapter 15 scope.",
-        )
-
-    if grade_percent == 0.0:
-        derived_class = _derived_level_class(grade_length_mi)
-        lookup_record = None
-    else:
-        lookup = find_vertical_class_record(
-            terrain_type=terrain_type or "mountainous",
-            segment_type=segment_type,
-            grade_percent=grade_percent,
-            grade_length_mi=grade_length_mi,
-            heavy_vehicle_percent=heavy_vehicle_percent,
-        )
-        lookup_record = lookup.record
-        class_lookup = (
-            lookup
-            if lookup_record is not None
-            else find_vertical_class_record(
-                terrain_type=terrain_type or "mountainous",
-                segment_type=PASSING_CONSTRAINED,
-                grade_percent=grade_percent,
-                grade_length_mi=grade_length_mi,
-                heavy_vehicle_percent=8.0,
-            )
-        )
-        derived_class = (
-            class_lookup.record.vertical_class
-            if class_lookup.record is not None
-            else None
-        )
-
-    if derived_class is None:
-        return VerticalScopeDecision(
-            "unsupported_needs_hcm_table_data",
-            "Unsupported mountainous grade/length combination. This "
-            "grade/length/vertical-class combination is outside the currently "
-            "validated Chapter 15 scope. Broader vertical class support requires "
-            "HCM grade-length lookup data and validation fixtures before calculation.",
-        )
-
-    if vertical_class is not None and vertical_class != derived_class:
-        return VerticalScopeDecision(
-            "unsupported",
-            f"Submitted vertical class {vertical_class} does not match the currently "
-            f"validated grade/length mapping to Class {derived_class}.",
-            derived_class,
-        )
-
-    if grade_percent != 0.0 and heavy_vehicle_percent != 8.0:
-        return VerticalScopeDecision(
-            "unsupported_needs_validation_fixture",
-            "Non-level Chapter 15 behavior is currently validated only at 8% heavy "
-            "vehicles. A validation fixture is required before other percentages "
-            "can be calculated.",
-            derived_class,
-        )
-
-    if (
-        grade_percent != 0.0
-        and not validated_facility_example
-        and not _is_manual_single_segment_validated(lookup_record)
-    ):
-        return VerticalScopeDecision(
-            "unsupported_needs_validation_fixture",
-            "This non-level combination is represented only in the validated "
-            "Example Problem 4 facility context. Manual single-segment support is "
-            "limited to the straight Passing Constrained 6% / 0.5 mi / Class 4 / "
-            "8% heavy-vehicle path.",
-            derived_class,
-            _validation_basis(lookup_record),
-        )
-
-    if (
-        horizontal_alignment == HORIZONTAL_CURVES_ALIGNMENT
-        and grade_percent != 0.0
-        and not validated_facility_example
-    ):
-        return VerticalScopeDecision(
-            "unsupported_needs_validation_fixture",
-            "General non-level horizontal-curve behavior is outside the validated "
-            "manual Chapter 15 scope.",
-            derived_class,
-        )
+        return VerticalScopeDecision("unsupported", "Mountainous terrain cannot be combined with a zero grade.")
     if horizontal_alignment not in {STRAIGHT_ALIGNMENT, HORIZONTAL_CURVES_ALIGNMENT}:
+        return VerticalScopeDecision("unsupported", f"Unsupported horizontal alignment: {horizontal_alignment!r}.")
+    _validate_heavy_vehicle_percent(heavy_vehicle_percent)
+    legacy_length = _normalize_legacy_grade_length(grade_length_mi)
+
+    try:
+        classification = classify_vertical_alignment(
+            segment_length_mi, grade_percent, direction_context
+        )
+        applicability = validate_exhibit_15_10_segment_length(
+            segment_type=segment_type,
+            vertical_class=classification.vertical_class,
+            segment_length_mi=segment_length_mi,
+        )
+    except ValueError as exc:
+        return VerticalScopeDecision("invalid_input", str(exc), normalized_legacy_grade_length_mi=legacy_length)
+
+    if vertical_class is not None and vertical_class != classification.vertical_class:
         return VerticalScopeDecision(
             "unsupported",
-            f"Horizontal alignment {horizontal_alignment!r} is not mapped to validated "
-            "Chapter 15 behavior.",
-            derived_class,
+            f"Submitted vertical class {vertical_class} does not match Exhibit 15-11 Class {classification.vertical_class}.",
+            classification,
+            applicability,
+            normalized_legacy_grade_length_mi=legacy_length,
         )
-
-    if segment_type == PASSING_LANE:
-        if heavy_vehicle_percent != 8.0:
-            return VerticalScopeDecision(
-                "unsupported_needs_validation_fixture",
-                "Passing Lane is currently supported only at 8% heavy vehicles. It is "
-                "limited to the validated Class 1 / 8% heavy-vehicle path and does not "
-                "include downstream or facility effects.",
-                derived_class,
-            )
-        if derived_class != 1:
-            return VerticalScopeDecision(
-                "unsupported_needs_hcm_table_data",
-                "Passing Lane is currently supported only for vertical Class 1 at 8% "
-                "heavy vehicles. Broader vertical class support requires HCM table "
-                "data and validation fixtures.",
-                derived_class,
-            )
-
-    if (
-        grade_percent != 0.0
-        and segment_type == PASSING_ZONE
-        and not validated_facility_example
-    ):
+    if not applicability.compliant:
         return VerticalScopeDecision(
-            "unsupported_needs_validation_fixture",
-            "Non-level Passing Zone behavior does not have an independent validation "
-            "fixture and is outside the currently supported Chapter 15 scope.",
-            derived_class,
+            "outside_exhibit_15_10_applicability",
+            "Segment length is outside the applicable Exhibit 15-10 range; no length was clamped.",
+            classification,
+            applicability,
+            normalized_legacy_grade_length_mi=legacy_length,
         )
-
-    if segment_type not in {PASSING_CONSTRAINED, PASSING_ZONE, PASSING_LANE}:
+    if calculation_scope == "steps_1_3":
         return VerticalScopeDecision(
-            "unsupported",
-            f"Segment type {segment_type!r} is not mapped to validated Chapter 15 behavior.",
-            derived_class,
+            "supported",
+            "Step 1-3 classification and applicability are supported by HCM Exhibits 15-10 and 15-11.",
+            classification,
+            applicability,
+            normalized_legacy_grade_length_mi=legacy_length,
         )
-
-    return VerticalScopeDecision(
-        "supported",
-        "Combination is within the currently supported Chapter 15 scope.",
-        derived_class,
-        _validation_basis(lookup_record),
+    return _classify_downstream_scope(
+        segment_type=segment_type,
+        grade_percent=grade_percent,
+        heavy_vehicle_percent=heavy_vehicle_percent,
+        horizontal_alignment=horizontal_alignment,
+        classification=classification,
+        applicability=applicability,
+        validated_facility_example=validated_facility_example,
+        normalized_legacy_grade_length_mi=legacy_length,
     )
 
 
 def require_supported_vertical_scope(**inputs: object) -> VerticalScopeDecision:
-    """Raise a structured unsupported-scope error unless classification succeeds."""
+    """Raise a structured error unless the requested scope is supported."""
 
     decision = classify_vertical_scope(**inputs)  # type: ignore[arg-type]
     if decision.supported:
         return decision
     context = dict(inputs)
-    context["vertical_class"] = decision.vertical_class or context.get("vertical_class")
+    context.update(_decision_context(decision))
     raise UnsupportedScopeError(
         decision.reason,
         scope_status=decision.status,
@@ -239,23 +157,90 @@ def require_supported_vertical_scope(**inputs: object) -> VerticalScopeDecision:
     )
 
 
-def _derived_level_class(grade_length_mi: float) -> int | None:
-    if 0.25 <= grade_length_mi <= 3.0:
-        return 1
-    return None
+def _classify_downstream_scope(**kwargs: object) -> VerticalScopeDecision:
+    """Keep Steps 4-10 explicitly limited to separately validated paths."""
+
+    classification = kwargs["classification"]
+    applicability = kwargs["applicability"]
+    assert isinstance(classification, VerticalAlignmentClassification)
+    assert isinstance(applicability, SegmentLengthApplicability)
+    grade_percent = float(kwargs["grade_percent"])
+    heavy_vehicle_percent = float(kwargs["heavy_vehicle_percent"])
+    segment_type = str(kwargs["segment_type"])
+    horizontal_alignment = str(kwargs["horizontal_alignment"])
+    validated_facility_example = bool(kwargs["validated_facility_example"])
+    legacy = kwargs["normalized_legacy_grade_length_mi"]
+    lookup = find_vertical_class_record(
+        terrain_type="mountainous",
+        segment_type=segment_type,
+        grade_percent=grade_percent,
+        grade_length_mi=applicability.submitted_segment_length_mi,
+        heavy_vehicle_percent=heavy_vehicle_percent,
+    ) if grade_percent != 0.0 else None
+    basis = _validation_basis(lookup.record) if lookup and lookup.record else None
+
+    if segment_type == PASSING_LANE and heavy_vehicle_percent != 8.0:
+        return VerticalScopeDecision("unsupported_downstream_methodology", "Passing Lane downstream calculation is supported only at 8% heavy vehicles.", classification, applicability, basis, legacy)  # type: ignore[arg-type]
+    if grade_percent != 0.0 and heavy_vehicle_percent != 8.0:
+        return VerticalScopeDecision("insufficient_validation_evidence", "Non-level downstream calculations are outside the currently validated Chapter 15 scope and remain validated only at 8% heavy vehicles.", classification, applicability, basis, legacy)  # type: ignore[arg-type]
+    if grade_percent != 0.0 and not validated_facility_example and not (lookup and lookup.record and lookup.record.manual_single_segment_validated):
+        reason = (
+            "Unsupported mountainous grade/length combination for downstream calculation: "
+            "Exhibit 15-11 classification is available, but it is outside the currently validated Chapter 15 scope."
+            if not (lookup and lookup.record)
+            else "Manual single-segment support is outside the currently validated facility-only path."
+        )
+        if segment_type == PASSING_LANE:
+            reason = "Manual single-segment support is outside the currently validated Passing Lane path."
+        return VerticalScopeDecision("insufficient_validation_evidence", reason, classification, applicability, basis, legacy)  # type: ignore[arg-type]
+    if horizontal_alignment == HORIZONTAL_CURVES_ALIGNMENT and grade_percent != 0.0 and not validated_facility_example:
+        return VerticalScopeDecision("insufficient_validation_evidence", "General non-level horizontal-curve calculations remain outside the validated downstream scope.", classification, applicability, basis, legacy)  # type: ignore[arg-type]
+    if segment_type == PASSING_LANE and classification.vertical_class != 1:
+        return VerticalScopeDecision("unsupported_downstream_methodology", "Passing Lane downstream calculations remain guarded outside the validated Class 1 path.", classification, applicability, basis, legacy)  # type: ignore[arg-type]
+    return VerticalScopeDecision("supported", "Combination is within the deliberately limited downstream calculation scope.", classification, applicability, basis, legacy)  # type: ignore[arg-type]
 
 
-def _is_manual_single_segment_validated(
-    record: VerticalClassLookupRecord | None,
-) -> bool:
-    return (
-        record is not None
-        and record.status == LookupStatus.VALIDATED_EXAMPLE_PATH
-        and record.manual_single_segment_validated
-    )
+def _validate_heavy_vehicle_percent(value: float) -> None:
+    try:
+        normalized = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Heavy vehicle percent must be a finite number from 0 through 100.") from exc
+    if not isfinite(normalized) or not 0.0 <= normalized <= 100.0:
+        raise ValueError("Heavy vehicle percent must be a finite number from 0 through 100.")
 
 
-def _validation_basis(record: VerticalClassLookupRecord | None) -> str | None:
+def _normalize_legacy_grade_length(value: float | None) -> float | None:
+    if value is None:
+        return None
+    try:
+        normalized = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Legacy grade length must be a finite positive number.") from exc
+    if not isfinite(normalized) or normalized <= 0.0:
+        raise ValueError("Legacy grade length must be a finite positive number.")
+    return normalized
+
+
+def _validation_basis(record: object) -> str | None:
     if record is None:
         return None
-    return f"{record.source}; {record.validation_basis}"
+    return f"{record.source}; {record.validation_basis}"  # type: ignore[attr-defined]
+
+
+def _decision_context(decision: VerticalScopeDecision) -> dict[str, object]:
+    result: dict[str, object] = {"vertical_class": decision.vertical_class}
+    if decision.classification:
+        result.update({
+            "vertical_direction": decision.classification.direction,
+            "vertical_lookup_row_range": decision.classification.lookup_row_range,
+            "vertical_lookup_column_range": decision.classification.lookup_column_range,
+            "vertical_class_source_reference": decision.classification.source_reference,
+        })
+    if decision.segment_length_applicability:
+        result.update({
+            "segment_length_min_mi": decision.segment_length_applicability.minimum_mi,
+            "segment_length_max_mi": decision.segment_length_applicability.maximum_mi,
+            "segment_length_applicability_status": decision.segment_length_applicability.status,
+            "segment_length_source_reference": decision.segment_length_applicability.source_reference,
+        })
+    return result

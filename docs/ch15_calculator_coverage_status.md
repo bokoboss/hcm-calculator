@@ -37,8 +37,12 @@ The current calculator is best described as:
   and narrowly scoped Passing Lane segments.
 - **Partial horizontal curve support**, strongest for the validated Example
   Problem 2 single-segment path and available internally in Example Problem 4.
-- **Guarded nonlevel support**, with one exact mountainous manual path and
-  additional nonlevel paths retained only in validated facility examples.
+- **Phase 1 Step 1-3 coverage** for all Exhibit 15-10 segment types and all
+  Exhibit 15-11 vertical classes. This classifies and validates applicability;
+  it does not authorize the downstream Step 4-10 calculation paths.
+- **Guarded nonlevel downstream calculation support**, with one exact
+  mountainous manual path and additional nonlevel paths retained only in
+  validated facility examples.
 - **Manual Facility Calculator v0.1 is limited and template-backed**. It exposes
   the existing Example 3/4 facility paths while keeping segment sequence,
   terrain/curve context, Passing Lane placement, and downstream context
@@ -55,7 +59,8 @@ limited by the scope guardrails and validation fixtures.
 | HCM Step | Methodology item | Equations / Exhibits | Engine status | UI status | Test status | Known limitation | Recommended next action |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Step 2 | Demand flow, capacity, and demand-to-capacity context | Eq. 15-1; Chapter 15 Step 2 capacity rules | Supported for current segment paths; demand flow and capacity are audited. | Supported in Manual Single Segment and Validated Examples / QA; d/c is not presented as a primary manual result. | Unit, fixture, CLI, and level-straight regression coverage. | Capacity rules remain segment-type and validated-path scoped; no general facility input contract. | Expose consistent demand, capacity, and d/c context in a future facility worksheet without changing rules. |
-| Step 3 | Vertical alignment classification | Exhibit 15-11 | Classification lookup is implemented and auditable; downstream calculation use is guarded. | Limited terrain/grade entry; unsupported combinations fail clearly. | Dedicated lookup, fixture infrastructure, and scope-guardrail tests. | Classification coverage is broader than validated calculation coverage; most nonlevel paths are not safe as standalone manual segments. | Keep guardrails; expose additional paths only through validated facility templates or new independent fixtures. |
+| Step 1 | Segment length applicability | Exhibit 15-10 | Table-driven, auditable validation for Passing Constrained, Passing Zone, Passing Lane, and Classes 1-5. | Not separately exposed as a public calculator workflow. | Every table row, inclusive boundaries, invalid input, and outside-range tests. | Out-of-range actual lengths are rejected in Phase 1; no HCM restructuring/clamping has been implemented. | Add explicit HCM restructuring only when its scope is mapped and validated. |
+| Step 3 | Vertical alignment classification | Exhibit 15-11 | Classification lookup is implemented and auditable for all table rows; downstream calculation use is separately guarded. | Limited terrain/grade entry; unsupported downstream calculations fail clearly. | Dedicated lookup, boundary, fixture infrastructure, and scope-guardrail tests. | Classification coverage is broader than validated calculation coverage; most nonlevel paths are not safe as standalone manual segments. | Keep downstream guards; expose additional calculation paths only through new independent fixtures. |
 | Step 4 | Free-flow speed (FFS) | Eq. 15-2 through Eq. 15-6; Exhibit 15-12 | Centralized, auditable helper with class-indexed coefficients. | Supported where the selected manual or validated-example path is allowed. | Focused Step 4 tests plus Examples 1-4 and regression coverage. | Complete helper data does not authorize general nonlevel or curve combinations. | Reuse existing outputs in broader UI views; do not broaden methodology scope. |
 | Step 5A | Tangent average speed | Eq. 15-7 through Eq. 15-11; Exhibits 15-13 through 15-20 | Centralized and auditable for supported segment types/classes. | Supported for allowed straight manual paths and validated examples. | Focused Step 5 tests plus Examples 1, 3, and 4. | Public execution remains constrained by validation and segment-type guardrails. | Surface existing intermediate values more clearly in facility and calculation-sheet views. |
 | Step 5B | Horizontal curve speed adjustment | Eq. 15-12 through Eq. 15-16; Exhibit 15-22 | Implemented with auditable classification and subsegment calculations. | Limited to the guarded Example Problem 2-style level Passing Constrained manual workflow; validated examples also exercise curves internally. | Horizontal-class, curve-helper, manual adapter, and Examples 2/4 tests. | No general manual curves for Passing Zone, Passing Lane, or nonlevel segments. | Broaden UI exposure only after each additional curve interaction has validation evidence. |

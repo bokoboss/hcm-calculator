@@ -282,7 +282,7 @@ tests/                      Unit and validation fixture tests
 
 ## Validation Requirement
 
-HCM 7th Edition Chapter 26 Two-Lane Highway Example Problems 1 through 4 (`TLH-CH15-001` through `TLH-CH15-004`) are implemented and validated as the current baseline. Manual single-segment mode reuses those formula paths and coefficient tables, but only the listed v0.1 combinations are supported and unsupported scope is rejected.
+HCM 7th Edition Chapter 26 Two-Lane Highway Example Problems 1 through 4 (`TLH-CH15-001` through `TLH-CH15-004`) are implemented and validated as the current baseline. Phase 1 also classifies Step 1-3 segment applicability for all HCM Exhibit 15-10/15-11 table combinations, but this does not expand the guarded Step 4-10 manual calculation scope.
 
 Before UI expansion or any production use, calculation correctness must continue to be validated against relevant HCM Chapter 26 example problems. Validation artifacts should document source examples, input mappings, expected outputs, tolerances, and reviewer sign-off.
 

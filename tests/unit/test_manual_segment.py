@@ -429,14 +429,14 @@ def test_unsupported_manual_audit_record_preserves_submitted_context() -> None:
         values, error=exc_info.value
     )
 
-    assert audit_record["supported_scope_status"] == "unsupported"
+    assert audit_record["supported_scope_status"] == "insufficient_validation_evidence"
     assert audit_record["unit_system"] == "imperial"
     assert audit_record["user_inputs"] == values
     assert audit_record["normalized_engine_inputs"]["segment_length_mi"] == 1.0
     assert "Unsupported mountainous" in (
         audit_record["calculation_metadata"]["error_message"]
     )
-    assert audit_record["validation_context"]["status"] == "unsupported"
+    assert audit_record["validation_context"]["status"] == "insufficient_validation_evidence"
     assert "Unsupported mountainous" in audit_record["validation_context"]["message"]
 
 

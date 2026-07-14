@@ -52,7 +52,13 @@ from hcmcalc.methods.two_lane_highway_models import (
     TwoLaneFacilitySegmentInputs,
 )
 from hcmcalc.methods.two_lane_highway_scope import require_supported_vertical_scope
-from hcmcalc.methods.vertical_lookup import find_vertical_class_record
+from hcmcalc.methods.two_lane_highway_applicability import (
+    validate_exhibit_15_10_segment_length,
+)
+from hcmcalc.methods.vertical_lookup import (
+    classify_vertical_alignment,
+    find_vertical_class_record,
+)
 
 
 @dataclass(frozen=True)
@@ -358,9 +364,15 @@ def _calculate_passing_constrained_base_values(
     )
     capacity = passing_constrained_capacity()
     demand_capacity_ratio = demand / capacity
-    vertical_class = vertical_alignment_class(
+    vertical_alignment = classify_vertical_alignment(
         parsed_inputs.segment_length_mi,
         parsed_inputs.grade_percent,
+    )
+    vertical_class = vertical_alignment.vertical_class
+    segment_length_applicability = validate_exhibit_15_10_segment_length(
+        segment_type=parsed_inputs.segment_type,
+        vertical_class=vertical_class,
+        segment_length_mi=parsed_inputs.segment_length_mi,
     )
     step4 = estimate_free_flow_speed(
         posted_speed_mph=parsed_inputs.posted_speed_mph,
@@ -418,6 +430,9 @@ def _calculate_passing_constrained_base_values(
         "capacity_veh_h": capacity,
         "demand_capacity_ratio": demand_capacity_ratio,
         "vertical_class": vertical_class,
+        **_vertical_alignment_output_fields(
+            vertical_alignment, segment_length_applicability
+        ),
         "base_free_flow_speed_mph": bffs,
         "lane_shoulder_adjustment_mph": f_ls,
         "access_point_adjustment_mph": f_a,
@@ -924,7 +939,15 @@ def _calculate_facility_segment(
         segment.segment_type,
         segment.heavy_vehicle_percent,
     )
-    vertical_class = vertical_alignment_class(segment.segment_length_mi, segment.grade_percent)
+    vertical_alignment = classify_vertical_alignment(
+        segment.segment_length_mi, segment.grade_percent
+    )
+    vertical_class = vertical_alignment.vertical_class
+    segment_length_applicability = validate_exhibit_15_10_segment_length(
+        segment_type=segment.segment_type,
+        vertical_class=vertical_class,
+        segment_length_mi=segment.segment_length_mi,
+    )
     step4 = estimate_free_flow_speed(
         posted_speed_mph=segment.posted_speed_mph,
         vertical_class=vertical_class,
@@ -995,6 +1018,9 @@ def _calculate_facility_segment(
         "capacity_veh_h": capacity,
         "demand_capacity_ratio": demand / capacity,
         "vertical_class": vertical_class,
+        **_vertical_alignment_output_fields(
+            vertical_alignment, segment_length_applicability
+        ),
         "base_free_flow_speed_mph": bffs,
         "lane_shoulder_adjustment_mph": f_ls,
         "access_point_adjustment_mph": f_a,
@@ -1670,6 +1696,14 @@ def _validate_example_problem_1_scope(inputs: TwoLaneExampleProblem1Inputs) -> N
         )
     if inputs.peak_hour_factor <= 0:
         raise HCMCalcError("peak_hour_factor must be greater than zero.")
+    require_supported_vertical_scope(
+        segment_type=inputs.segment_type,
+        grade_percent=inputs.grade_percent,
+        segment_length_mi=inputs.segment_length_mi,
+        heavy_vehicle_percent=inputs.heavy_vehicle_percent,
+        calculation_scope="steps_4_10",
+        validated_facility_example=True,
+    )
 
 
 def _validate_example_problem_2_scope(inputs: TwoLaneExampleProblem2Inputs) -> None:
@@ -1709,6 +1743,15 @@ def _validate_example_problem_2_scope(inputs: TwoLaneExampleProblem2Inputs) -> N
         raise HCMCalcError(
             "Horizontal subsegment lengths must match the segment length."
         )
+    require_supported_vertical_scope(
+        segment_type=inputs.segment_type,
+        grade_percent=inputs.grade_percent,
+        segment_length_mi=inputs.segment_length_mi,
+        heavy_vehicle_percent=inputs.heavy_vehicle_percent,
+        horizontal_alignment=inputs.horizontal_alignment,
+        calculation_scope="steps_4_10",
+        validated_facility_example=True,
+    )
 
 
 def _validate_facility_example_scope(inputs: TwoLaneExampleProblem3Inputs) -> None:
@@ -1769,6 +1812,7 @@ def _validate_facility_example_scope(inputs: TwoLaneExampleProblem3Inputs) -> No
             horizontal_alignment=segment.horizontal_alignment,
             terrain_type=segment.terrain_type,
             vertical_class=segment.vertical_class,
+            calculation_scope="steps_4_10",
             validated_facility_example=True,
         )
         if segment.segment_type == PASSING_ZONE:
@@ -1874,6 +1918,7 @@ def _validate_single_segment_scope(segment: TwoLaneFacilitySegmentInputs) -> Non
         horizontal_alignment=segment.horizontal_alignment,
         terrain_type=segment.terrain_type,
         vertical_class=segment.vertical_class,
+        calculation_scope="steps_4_10",
     )
     if segment.horizontal_alignment == HORIZONTAL_CURVES_ALIGNMENT:
         _validate_manual_horizontal_curve_scope(segment)
@@ -2002,18 +2047,26 @@ def facility_segment_capacity(segment_type: str, heavy_vehicle_percent: float) -
 
 
 def vertical_alignment_class(segment_length_mi: float, grade_percent: float) -> int:
-    """HCM Exhibit 15-11 mapping for validated Examples 1 through 4."""
+    """Return the Exhibit 15-11 class without validation-fixture coupling."""
 
-    decision = require_supported_vertical_scope(
-        segment_type=PASSING_CONSTRAINED,
-        grade_percent=grade_percent,
-        grade_length_mi=segment_length_mi,
-        segment_length_mi=segment_length_mi,
-        heavy_vehicle_percent=8.0,
-        validated_facility_example=True,
-    )
-    assert decision.vertical_class is not None
-    return decision.vertical_class
+    return classify_vertical_alignment(segment_length_mi, grade_percent).vertical_class
+
+
+def _vertical_alignment_output_fields(
+    classification: Any, applicability: Any
+) -> dict[str, Any]:
+    """Expose Step 1-3 lookup provenance in calculation audit outputs."""
+
+    return {
+        "vertical_direction": classification.direction,
+        "vertical_lookup_row_range": classification.lookup_row_range,
+        "vertical_lookup_column_range": classification.lookup_column_range,
+        "vertical_class_source_reference": classification.source_reference,
+        "segment_length_min_mi": applicability.minimum_mi,
+        "segment_length_max_mi": applicability.maximum_mi,
+        "segment_length_applicability_status": applicability.status,
+        "segment_length_source_reference": applicability.source_reference,
+    }
 
 
 def base_free_flow_speed(posted_speed_mph: float | None) -> float:
