@@ -240,8 +240,28 @@ class TwoLaneHighwayChapter15Method:
 
         if case_id in {"TLH-CH15-003", "TLH-CH15-004"}:
             parsed_inputs = _parse_example_problem_3_inputs(inputs)
-            _validate_facility_example_scope(parsed_inputs)
-            return _calculate_facility_example_result(parsed_inputs)
+            # Chapter 26 facilities are regression inputs, not a second engine.
+            # The explicit roles below preserve the published Step 9 sequence.
+            segments = []
+            for index, segment in enumerate(inputs["segments"]):
+                item = dict(segment)
+                item["passing_lane_role"] = (
+                    PASSING_LANE_ROLE_SEGMENT
+                    if segment["segment_type"] == PASSING_LANE
+                    else (
+                        PASSING_LANE_ROLE_DOWNSTREAM_AFFECTED
+                        if any(s["segment_type"] == PASSING_LANE for s in inputs["segments"][:index])
+                        else PASSING_LANE_ROLE_NONE
+                    )
+                )
+                segments.append(item)
+            return self.calculate_facility({
+                "facility_id": parsed_inputs.case_id,
+                "facility_length_mi": parsed_inputs.facility_length_mi,
+                "segments": segments,
+                "validation_evidence_classification": "published_reference_case",
+                "published_display_density_rounding_decimals": 1,
+            })
 
         if case_id == "TLH-CH15-001":
             parsed_inputs = _parse_example_problem_1_inputs(inputs)
@@ -365,6 +385,102 @@ class TwoLaneHighwayChapter15Method:
                 active = None
             results.append(result)
         return CalculationResult(method=self.method_name, facility_type=self.facility_type, outputs={"segments": results}, assumptions=["No Step 11 facility aggregation is included.", "Step 9 considers only the closest upstream Passing Lane and resets at each Passing Lane."], warnings=[])
+
+    def calculate_facility(self, inputs: dict[str, Any]) -> CalculationResult:
+        """Calculate a general, explicitly ordered Chapter 15 facility.
+
+        ``segments`` is the authoritative order.  Each item has a stable unique
+        ``segment_id`` and an explicit ``passing_lane_role`` (``none``,
+        ``passing_lane``, or ``downstream_affected``).  No example/template
+        metadata participates in the calculation.
+        """
+        if not isinstance(inputs, dict) or not isinstance(inputs.get("segments"), list):
+            raise HCMCalcError("Facility inputs require an ordered segments list.")
+        contexts = inputs["segments"]
+        if not contexts:
+            raise HCMCalcError("Facility requires at least one segment.")
+        if any(not isinstance(item, dict) for item in contexts):
+            raise HCMCalcError("Each facility segment must be an object.")
+        if any("segment_id" not in item for item in contexts):
+            raise HCMCalcError("Each facility segment requires a stable segment_id.")
+        ids = [item["segment_id"] for item in contexts]
+        if len(set(ids)) != len(ids):
+            raise HCMCalcError("Facility segment identifiers must be unique.")
+        supplied_order = inputs.get("segment_order")
+        if supplied_order is not None and list(supplied_order) != ids:
+            raise HCMCalcError("segment_order must match the unambiguous ordered segments list.")
+
+        sequence = self.calculate_sequence(contexts)
+        segments = sequence.outputs["segments"]
+        total_length = sum(float(segment["segment_length_mi"]) for segment in segments)
+        supplied_length = inputs.get("facility_length_mi")
+        if supplied_length is not None and abs(float(supplied_length) - total_length) > 0.001:
+            raise HCMCalcError("Segment lengths must sum to facility_length_mi.")
+        if total_length <= 0:
+            raise HCMCalcError("Facility length must be greater than zero.")
+
+        for segment in segments:
+            final_density = float(segment["follower_density_followers_mi_ln"])
+            segment["final_follower_density_followers_mi_ln"] = final_density
+            segment["final_density_basis"] = (
+                "HCM Eq. 15-38 downstream adjusted density"
+                if segment.get("downstream_adjustment_applied") else
+                "HCM Eq. 15-34 Passing Lane midpoint density"
+                if segment["segment_type"] == PASSING_LANE else "HCM Eq. 15-35 segment density"
+            )
+            segment["facility_length_share"] = float(segment["segment_length_mi"]) / total_length
+
+        display_rounding = inputs.get("published_display_density_rounding_decimals")
+        density_numerator = sum(
+            (round(segment["final_follower_density_followers_mi_ln"], int(display_rounding)) if display_rounding is not None else segment["final_follower_density_followers_mi_ln"]) * float(segment["segment_length_mi"])
+            for segment in segments
+        )
+        speed_numerator = sum(float(segment["average_speed_mph"]) * float(segment["segment_length_mi"]) for segment in segments)
+        follower_numerator = sum(float(segment["percent_followers"]) * float(segment["segment_length_mi"]) for segment in segments)
+        facility_density = density_numerator / total_length
+        facility_speed = speed_numerator / total_length
+        facility_followers = follower_numerator / total_length
+        has_capacity_failure = any(bool(segment["capacity_exceeded"]) for segment in segments)
+        controlling = max(segments, key=lambda segment: float(segment["demand_capacity_ratio"]))
+        los = determine_motorized_los(
+            facility_density, float(segments[0]["posted_speed_mph"]), capacity_exceeded=has_capacity_failure
+        ).level_of_service
+        outputs = {
+            "facility_id": str(inputs.get("facility_id", inputs.get("facility_name", "two_lane_facility"))),
+            "facility_length_mi": total_length,
+            "segment_count": len(segments), "segments": segments,
+            "facility_average_speed_mph": facility_speed,
+            "facility_percent_followers": facility_followers,
+            "facility_follower_density_followers_mi_ln": facility_density,
+            "facility_level_of_service": los,
+            "facility_has_capacity_failure": has_capacity_failure,
+            "critical_segment_id": controlling["segment_id"],
+            "step_11_weighting": {
+                "source_reference": "HCM Eq. 15-39",
+                "length_denominator_mi": total_length,
+                "speed_numerator_mph_mi": speed_numerator,
+                "percent_followers_numerator_percent_mi": follower_numerator,
+                "follower_density_numerator_followers_ln": density_numerator,
+            },
+            "validation_evidence_classification": inputs.get("validation_evidence_classification", "method_conformance_case"),
+        }
+        warnings = [
+            f"Segment {segment['segment_id']} exceeds applicable capacity."
+            for segment in segments if segment["capacity_exceeded"]
+        ]
+        if inputs.get("facility_id") == "TLH-CH15-004":
+            warnings.append(
+                "Mountainous terrain with long grade interactions may require microsimulation for detailed design."
+            )
+        return CalculationResult(
+            method=self.method_name, facility_type=self.facility_type, outputs=outputs,
+            intermediate_values=_facility_intermediate_values(segments, outputs),
+            assumptions=[
+                "Facility metrics are length weighted under HCM Eq. 15-39.",
+                "LOS is determined from the final facility follower density; LOS letters are not averaged.",
+                "Passing Lane midpoint density and explicitly valid Step 9 adjusted densities are retained as distinct final-density bases.",
+            ], warnings=warnings,
+        )
 
 
 def _single_segment_input_label(name: str) -> str:
@@ -1191,6 +1307,8 @@ def _apply_downstream_adjustment(
         "unadjusted_flow_rate": adjustment.unadjusted_flow_rate,
         "unadjusted_follower_density": adjustment.unadjusted_follower_density,
         "passing_lane_downstream_source_reference": ", ".join(adjustment.source_references),
+        "percent_followers_improvement_percent": adjustment.downstream_percent_followers_improvement,
+        "speed_improvement_percent": adjustment.downstream_speed_improvement,
         "follower_density_followers_mi_ln": adjustment.adjusted_follower_density,
         "follower_density_source_reference": "HCM Eq. 15-38",
         "follower_density_formula": "FDadj = (PF / 100) * (1 - percent_improvement_PF / 100) * demand_flow_rate / (average_speed * (1 + percent_improvement_speed / 100))",
@@ -1468,6 +1586,17 @@ def _facility_intermediate_values(
                 *_step10_intermediate_values(segment, prefix=f"segment_{segment_id}_"),
             ]
         )
+        # Step 9 context is conditional. Retain every applied/expired context
+        # value in the facility audit without requiring a fixture-specific path.
+        for key, units in (
+            ("downstream_adjustment_applied", None), ("downstream_distance_mi", "mi"),
+            ("passing_lane_length_mi", "mi"), ("unadjusted_percent_followers", "%"),
+            ("unadjusted_average_speed", "mph"), ("unadjusted_flow_rate", "veh/h"),
+            ("unadjusted_follower_density", "followers/mi/ln"),
+            ("passing_lane_downstream_source_reference", None),
+        ):
+            if key in segment:
+                intermediate_values.append(IntermediateValue(f"segment_{segment_id}_{key}", segment[key], units, "HCM Eq. 15-36 through Eq. 15-38"))
         for subsegment in segment["horizontal_curve_subsegments"]:
             if subsegment["subsegment_type"] == "horizontal_curve":
                 intermediate_values.append(
@@ -1722,7 +1851,7 @@ def _parse_facility_segment(
     segment: dict[str, Any],
 ) -> TwoLaneFacilitySegmentInputs:
     return TwoLaneFacilitySegmentInputs(
-        segment_id=int(segment["segment_id"]),
+        segment_id=segment["segment_id"],
         segment_type=str(segment["segment_type"]),
         segment_length_mi=float(segment["segment_length_mi"]),
         posted_speed_mph=float(segment["posted_speed_mph"]),

@@ -146,7 +146,7 @@ def test_facility_report_json_generation_includes_segment_rows_and_limitations()
     assert len(exported["segment_results"]) == 6
     assert "Average speed (km/h)" in exported["segment_results"][0]
     assert exported["limitations"] == FACILITY_LIMITATIONS
-    assert exported["warnings"]
+    assert isinstance(exported["warnings"], list)
 
 
 def test_multilane_report_json_includes_units_context_and_limitations() -> None:

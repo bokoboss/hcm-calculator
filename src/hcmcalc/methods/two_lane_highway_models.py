@@ -55,7 +55,7 @@ class TwoLaneExampleProblem2Inputs(TwoLaneExampleProblem1Inputs):
 class TwoLaneFacilitySegmentInputs:
     """Validated segment input shape for HCM Chapter 26 facility examples."""
 
-    segment_id: int
+    segment_id: str | int
     segment_type: str
     segment_length_mi: float
     posted_speed_mph: float

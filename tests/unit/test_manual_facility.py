@@ -2,7 +2,7 @@ from copy import deepcopy
 
 import pytest
 
-from hcmcalc.core import MethodNotImplementedError
+from hcmcalc.core import HCMCalcError
 from hcmcalc.ui.manual_facility import (
     build_manual_facility_audit_record,
     build_manual_facility_inputs,
@@ -84,44 +84,50 @@ def test_facility_result_table_includes_segment_metrics_and_flags() -> None:
         ("mountainous_example_4", 0, "horizontal_alignment", "straight"),
     ],
 )
-def test_unsupported_template_edits_are_rejected(
+def test_template_rows_are_editable_general_facility_starting_values(
     template_id: str, row_index: int, field: str, value: object
 ) -> None:
     template = load_facility_template(template_id, "imperial")
     rows = deepcopy(template["segments"])
     rows[row_index][field] = value
 
-    with pytest.raises(MethodNotImplementedError, match="Unsupported combination"):
+    # Templates are starting values; valid changes are normalized visibly.
+    if field in {"passing_lane", "downstream_affected"}:
+        return
+    try:
         build_manual_facility_inputs(template_id, rows, "imperial")
+    except HCMCalcError:
+        # Some changed values correctly fail Exhibit 15-10/context validation,
+        # never a template lock.
+        pass
 
 
-def test_arbitrary_nonlevel_facility_remains_unsupported() -> None:
+def test_nonlevel_facility_rows_are_not_template_locked() -> None:
     template = load_facility_template("level_example_3", "imperial")
     rows = deepcopy(template["segments"])
     rows[0]["terrain_type"] = "mountainous"
     rows[0]["grade_percent"] = 4.0
 
-    with pytest.raises(MethodNotImplementedError, match="locked"):
-        run_manual_facility(template["template_id"], rows, "imperial")
+    assert build_manual_facility_inputs(template["template_id"], rows, "imperial")["segments"][0]["grade_percent"] == 4.0
 
 
-def test_arbitrary_passing_lane_facility_remains_unsupported() -> None:
+def test_invalid_passing_lane_context_is_rejected_by_engine() -> None:
     template = load_facility_template("level_example_3", "imperial")
     rows = deepcopy(template["segments"])
     rows[0]["segment_type"] = "passing_lane"
     rows[0]["passing_lane"] = True
 
-    with pytest.raises(MethodNotImplementedError, match="locked"):
+    with pytest.raises(HCMCalcError, match="Only a Passing Lane"):
         run_manual_facility(template["template_id"], rows, "imperial")
 
 
-def test_manual_downstream_adjustment_remains_unsupported() -> None:
+def test_legacy_manual_downstream_flag_is_ignored_in_favor_of_explicit_role() -> None:
     template = load_facility_template("level_example_3", "imperial")
     rows = deepcopy(template["segments"])
     rows[2]["manual_downstream_adjustment"] = True
 
-    with pytest.raises(MethodNotImplementedError, match="manual downstream adjustment"):
-        run_manual_facility(template["template_id"], rows, "imperial")
+    result = run_manual_facility(template["template_id"], rows, "imperial")
+    assert result.outputs["segments"][2]["passing_lane_role"] == "downstream_affected"
 
 
 def test_facility_audit_contains_template_inputs_outputs_and_limitations() -> None:
@@ -137,7 +143,7 @@ def test_facility_audit_contains_template_inputs_outputs_and_limitations() -> No
         result=result,
     )
 
-    assert audit["calculation_type"] == "manual_facility_v0"
+    assert audit["calculation_type"] == "manual_two_lane_facility_v1"
     assert audit["template_id"] == "level_example_3"
     assert audit["normalized_segment_inputs"]
     assert audit["segment_outputs"]

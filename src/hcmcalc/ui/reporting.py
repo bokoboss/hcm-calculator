@@ -25,6 +25,7 @@ REPORT_SCHEMA_VERSION = "0.1"
 SUPPORTED_CALCULATION_TYPES = {
     "manual_single_segment",
     "manual_facility_v0",
+    "manual_two_lane_facility_v1",
     "manual_multilane_v0",
     "manual_basic_freeway_v0",
 }
@@ -36,9 +37,8 @@ SINGLE_SEGMENT_LIMITATIONS = [
     "This is not a full general HCM Chapter 15 calculator.",
 ]
 FACILITY_LIMITATIONS = [
-    "Manual Facility Calculator v0.1 is template-backed.",
-    "Facility support is anchored to validated Example 3/4 behavior.",
-    "This is not full general facility support.",
+    "General ordered Two-Lane facility worksheet.",
+    "Examples 3 and 4 are optional starting values and regression evidence.",
     "Unsupported combinations remain guarded.",
 ]
 
@@ -74,7 +74,7 @@ def build_report(
         report = _single_segment_report(
             result, outputs, unit_system, inputs, audit_record, timestamp
         )
-    elif calculation_type == "manual_facility_v0":
+    elif calculation_type in {"manual_facility_v0", "manual_two_lane_facility_v1"}:
         report = _facility_report(
             result,
             outputs,
@@ -140,6 +140,7 @@ def report_filename(report: dict[str, Any], extension: str) -> str:
     workflow = {
         "manual_single_segment": "single_segment",
         "manual_facility_v0": "facility",
+        "manual_two_lane_facility_v1": "facility",
         "manual_multilane_v0": "multilane",
         "manual_basic_freeway_v0": "basic_freeway",
     }[calculation_type]
@@ -691,7 +692,7 @@ def _validate_result(calculation_type: str, result: dict[str, Any] | None) -> No
                 "facility_length_mi",
                 "segments",
             }
-            if calculation_type == "manual_facility_v0"
+            if calculation_type in {"manual_facility_v0", "manual_two_lane_facility_v1"}
             else (
                 {
                     "density_pc_mi_ln",
@@ -722,9 +723,9 @@ def _validate_result(calculation_type: str, result: dict[str, Any] | None) -> No
     )
     if not required.issubset(result["outputs"]):
         raise ReportingError("Malformed result object: required outputs are missing.")
-    if calculation_type == "manual_facility_v0" and not isinstance(result["outputs"]["segments"], list):
+    if calculation_type in {"manual_facility_v0", "manual_two_lane_facility_v1"} and not isinstance(result["outputs"]["segments"], list):
         raise ReportingError("Malformed result object: facility segments must be a list.")
-    if calculation_type == "manual_facility_v0" and any(
+    if calculation_type in {"manual_facility_v0", "manual_two_lane_facility_v1"} and any(
         not isinstance(segment, dict) for segment in result["outputs"]["segments"]
     ):
         raise ReportingError("Malformed result object: each facility segment must be an object.")

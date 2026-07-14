@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from datetime import datetime, timezone
 from typing import Any
 
@@ -35,7 +36,8 @@ from hcmcalc.ui.manual_segment import build_manual_segment_inputs
 
 PROJECT_SCHEMA_VERSION = "1.0"
 MANUAL_SINGLE_SEGMENT_PROJECT_TYPE = "manual_single_segment"
-MANUAL_FACILITY_PROJECT_TYPE = "manual_facility_v0"
+MANUAL_FACILITY_PROJECT_TYPE = "manual_two_lane_facility_v1"
+LEGACY_MANUAL_FACILITY_PROJECT_TYPE = "manual_facility_v0"
 MANUAL_MULTILANE_PROJECT_TYPE = "manual_multilane_v0"
 MANUAL_BASIC_FREEWAY_PROJECT_TYPE = "manual_basic_freeway_v0"
 REQUIRED_MANUAL_INPUTS = {
@@ -158,6 +160,9 @@ def create_manual_facility_project_payload(
     result = _json_ready(result) if result is not None else None
     audit_record = _json_ready(audit_record) if audit_record is not None else None
     outputs = result.get("outputs", {}) if result else {}
+    fingerprint = hashlib.sha256(
+        json.dumps(normalized_inputs, sort_keys=True, default=str).encode("utf-8")
+    ).hexdigest()
     return {
         "schema_version": PROJECT_SCHEMA_VERSION,
         "project_type": MANUAL_FACILITY_PROJECT_TYPE,
@@ -169,6 +174,7 @@ def create_manual_facility_project_payload(
         "template_name": template["template_label"],
         "editable_facility_inputs": {"segments": segment_rows},
         "normalized_facility_inputs": normalized_inputs,
+        "calculation_fingerprint": fingerprint,
         "segment_rows": segment_rows,
         "calculation_result": result,
         "facility_outputs": {key: value for key, value in outputs.items() if key != "segments"},
@@ -206,8 +212,8 @@ def load_manual_facility_project_json(data: str | bytes) -> dict[str, Any]:
     """Parse and validate a guarded manual facility project JSON document."""
 
     payload = _load_project_document(data)
-    if payload.get("project_type") != MANUAL_FACILITY_PROJECT_TYPE:
-        raise ProjectFileError("Wrong project_type. Expected manual_facility_v0.")
+    if payload.get("project_type") not in {MANUAL_FACILITY_PROJECT_TYPE, LEGACY_MANUAL_FACILITY_PROJECT_TYPE}:
+        raise ProjectFileError("Wrong project_type. Expected manual_two_lane_facility_v1 or manual_facility_v0.")
     if "template_id" not in payload:
         raise ProjectFileError("Missing required field: template_id.")
     if payload["template_id"] not in FACILITY_TEMPLATES:
