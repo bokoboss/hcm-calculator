@@ -14,6 +14,7 @@ from hcmcalc.core import (
     HCMCalcError,
     IntermediateValue,
     MethodNotImplementedError,
+    UnsupportedScopeError,
 )
 from hcmcalc.methods.two_lane_highway_coefficients import (
     HEAVY_VEHICLE_COEFFICIENTS,
@@ -279,13 +280,13 @@ class TwoLaneHighwayChapter15Method:
             )
         if segment.horizontal_alignment == HORIZONTAL_CURVES_ALIGNMENT:
             warnings.append(
-                "Manual horizontal curve support is limited to the validated "
-                "Example Problem 2 calculation path."
+                "Horizontal-curve speed adjustment is a length-weighted Step 5d "
+                "calculation; it does not alter percent followers."
             )
         alignment_assumption = (
             "Analysis is limited to one straight two-lane highway segment."
             if segment.horizontal_alignment == STRAIGHT_ALIGNMENT
-            else "Horizontal curve adjustment uses the validated Example Problem 2 calculation path."
+            else "Horizontal curve adjustment follows HCM Eq. 15-12 through Eq. 15-16."
         )
         assumptions = [
             alignment_assumption,
@@ -294,20 +295,9 @@ class TwoLaneHighwayChapter15Method:
             "No upstream passing lane or downstream facility-wide effects are applied.",
         ]
         if segment.grade_percent != 0.0:
-            lookup = find_vertical_class_record(
-                terrain_type=segment.terrain_type or "mountainous",
-                segment_type=segment.segment_type,
-                grade_percent=segment.grade_percent,
-                grade_length_mi=segment.grade_length_mi or segment.segment_length_mi,
-                heavy_vehicle_percent=segment.heavy_vehicle_percent,
-            )
-            assert lookup.record is not None
             assumptions.append(
-                "Validated vertical scope is limited to the exact "
-                f"{lookup.record.source} segment path; {lookup.record.validation_basis}."
-            )
-            warnings.append(
-                "No general mountainous, vertical-class, or grade-length support is claimed."
+                "Vertical class is derived from HCM Exhibit 15-11; Chapter 26 "
+                "examples are regression evidence and do not select the method path."
             )
         return CalculationResult(
             method=self.method_name,
@@ -935,10 +925,7 @@ def _calculate_facility_segment(
         segment.peak_hour_factor,
     )
     opposing_flow = _facility_segment_opposing_flow(segment)
-    capacity = facility_segment_capacity(
-        segment.segment_type,
-        segment.heavy_vehicle_percent,
-    )
+    capacity = resolve_segment_capacity(segment.segment_type, segment.heavy_vehicle_percent)
     vertical_alignment = classify_vertical_alignment(
         segment.segment_length_mi, segment.grade_percent
     )
@@ -1006,7 +993,10 @@ def _calculate_facility_segment(
     pf_p = step6.percent_followers_power_coefficient_p
     followers = step6.percent_followers
     density = follower_density(demand, speed, followers)
-    step10 = determine_motorized_los(density, segment.posted_speed_mph)
+    capacity_exceeded = demand > capacity
+    step10 = determine_motorized_los(
+        density, segment.posted_speed_mph, capacity_exceeded=capacity_exceeded
+    )
 
     result: dict[str, Any] = {
         "segment_id": segment.segment_id,
@@ -1014,9 +1004,18 @@ def _calculate_facility_segment(
         "segment_length_mi": segment.segment_length_mi,
         "posted_speed_mph": segment.posted_speed_mph,
         "demand_flow_rate_veh_h": demand,
+        "submitted_analysis_direction_volume_veh_h": segment.analysis_direction_volume_veh_h,
+        "peak_hour_factor": segment.peak_hour_factor,
         "opposing_flow_rate_veh_h": opposing_flow,
+        "opposing_flow_derivation": (
+            "submitted opposing-direction volume / PHF"
+            if segment.segment_type == PASSING_ZONE
+            else "HCM required 1,500 veh/h assumption"
+        ),
         "capacity_veh_h": capacity,
         "demand_capacity_ratio": demand / capacity,
+        "capacity_exceeded": capacity_exceeded,
+        "capacity_source_reference": "HCM7 Chapter 15 capacity discussion",
         "vertical_class": vertical_class,
         **_vertical_alignment_output_fields(
             vertical_alignment, segment_length_applicability
@@ -1659,8 +1658,11 @@ def _parse_horizontal_alignment_subsegment(
 ) -> HorizontalAlignmentSubsegment:
     if subsegment.get("length_ft") is None:
         raise HCMCalcError("Horizontal subsegment requires length_ft.")
+    subsegment_type = subsegment.get("type", subsegment.get("subsegment_type"))
+    if subsegment_type is None:
+        raise HCMCalcError("Horizontal subsegment requires type.")
     return HorizontalAlignmentSubsegment(
-        subsegment_type=str(subsegment["type"]),
+        subsegment_type=str(subsegment_type),
         length_ft=float(subsegment["length_ft"]),
         superelevation_percent=_optional_float(subsegment.get("superelevation_percent")),
         radius_ft=_optional_float(subsegment.get("radius_ft")),
@@ -1958,16 +1960,13 @@ def _validate_finite_single_segment_inputs(
 def _validate_manual_horizontal_curve_scope(
     segment: TwoLaneFacilitySegmentInputs,
 ) -> None:
-    if segment.segment_type != PASSING_CONSTRAINED or segment.grade_percent != 0.0:
-        raise MethodNotImplementedError(
-            "Manual horizontal curve calculation is supported only for a level "
-            "Passing Constrained segment using the validated Example Problem 2 path."
+    if segment.segment_type not in {PASSING_CONSTRAINED, PASSING_ZONE}:
+        raise UnsupportedScopeError(
+            "General horizontal-curve analysis is implemented only for Passing "
+            "Constrained and Passing Zone segments in Phase 2."
         )
-    if len(segment.horizontal_alignment_subsegments) != 11:
-        raise HCMCalcError(
-            "Manual horizontal curve calculation requires the 11-subsegment "
-            "Example Problem 2 structure."
-        )
+    if not segment.horizontal_alignment_subsegments:
+        raise HCMCalcError("Horizontal curve alignment requires one or more subsegments.")
 
     total_length_ft = 0.0
     curve_count = 0
@@ -2044,6 +2043,12 @@ def facility_segment_capacity(segment_type: str, heavy_vehicle_percent: float) -
             )
         return 1500.0
     raise MethodNotImplementedError(f"Unsupported two-lane segment type: {segment_type}")
+
+
+def resolve_segment_capacity(segment_type: str, heavy_vehicle_percent: float) -> float:
+    """Centralized Step 2 capacity resolver with source-specific scope."""
+
+    return facility_segment_capacity(segment_type, heavy_vehicle_percent)
 
 
 def vertical_alignment_class(segment_length_mi: float, grade_percent: float) -> int:
@@ -4304,6 +4309,8 @@ def level_of_service(
 def determine_motorized_los(
     follower_density: float,
     posted_speed_limit_mph: float,
+    *,
+    capacity_exceeded: bool = False,
 ) -> MotorizedLOSDetermination:
     """Determine and audit Step 10 LOS using HCM7 Exhibit 15-6."""
 
@@ -4323,6 +4330,12 @@ def determine_motorized_los(
         if upper_boundary is not None and density <= upper_boundary:
             level = candidate
             break
+
+    if capacity_exceeded:
+        # Chapter 15 says LOS is F and the detailed method is not applicable
+        # when expected demand exceeds the applicable capacity.  Inputs and
+        # calculated demand remain visible; demand is never capped.
+        level = "F"
 
     return MotorizedLOSDetermination(
         level_of_service=level,

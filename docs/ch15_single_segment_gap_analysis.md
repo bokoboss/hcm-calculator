@@ -328,3 +328,10 @@ A capability should be called supported only when:
 - Independent validation fixtures and tolerances exist.
 - Method-level, fixture, and regression tests pass.
 - Unsupported combinations fail clearly instead of silently defaulting.
+# Phase 2 update
+
+Passing Constrained and Passing Zone homogeneous single segments are now
+available across the Exhibit 15-10/15-11 applicable Class 1--5 envelope.
+This includes level/nonlevel, upgrade/downgrade, actual Passing Zone opposing
+flow, and valid Step 5d horizontal-curve subsegments. Passing Lane and
+upstream/downstream/facility interactions remain guarded for Phase 3.

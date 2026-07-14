@@ -85,8 +85,8 @@ def test_manual_horizontal_curve_example_2_equivalent_returns_adjusted_speed() -
 
     assert result.outputs["average_speed_mph"] == pytest.approx(49.5, abs=0.1)
     assert len(result.outputs["horizontal_curve_subsegments"]) == 11
-    assert "Example Problem 2 calculation path" in result.assumptions[0]
-    assert "Example Problem 2 calculation path" in result.warnings[0]
+    assert "Eq. 15-12 through Eq. 15-16" in result.assumptions[0]
+    assert "does not alter percent followers" in result.warnings[0]
 
 
 def test_public_single_segment_api_accepts_manual_horizontal_curve_structure() -> None:
@@ -288,23 +288,15 @@ def test_manual_mountainous_supported_grade_length_returns_result() -> None:
         20.2, abs=0.1
     )
     assert result.outputs["level_of_service"] == "E"
-    assert any("TLH-CH15-004 segment 3" in item for item in result.assumptions)
-    assert result.warnings
+    assert any("Exhibit 15-11" in item for item in result.assumptions)
 
 
-def test_manual_mountainous_unsupported_grade_length_is_rejected() -> None:
-    with pytest.raises(
-        MethodNotImplementedError,
-        match="Unsupported mountainous grade/length combination",
-    ):
-        run_manual_single_segment(
-            _manual_values(
-                terrain_type="mountainous",
-                segment_length_mi=1.0,
-                grade_percent=4.0,
-                heavy_vehicle_percent=8.0,
-            )
-        )
+def test_manual_mountainous_applicable_grade_length_is_supported() -> None:
+    result = run_manual_single_segment(_manual_values(
+        terrain_type="mountainous", segment_length_mi=1.0, grade_percent=4.0,
+        heavy_vehicle_percent=8.0,
+    ))
+    assert result.outputs["vertical_class"] == 3
 
 
 def test_manual_passing_lane_rejects_unvalidated_heavy_vehicle_percent() -> None:
@@ -387,15 +379,12 @@ def test_manual_horizontal_curve_rejects_malformed_curve_radius() -> None:
         run_manual_single_segment(values)
 
 
-def test_manual_horizontal_curve_rejects_unsupported_segment_type() -> None:
-    with pytest.raises(
-        MethodNotImplementedError,
-        match="only for a level Passing Constrained segment",
-    ):
-        run_manual_single_segment(
-            _example_2_manual_values()
-            | {"segment_type": "passing_zone", "opposing_direction_volume": 500.0}
-        )
+def test_manual_horizontal_curve_supports_passing_zone() -> None:
+    result = run_manual_single_segment(
+        _example_2_manual_values()
+        | {"segment_type": "passing_zone", "opposing_direction_volume": 500.0}
+    )
+    assert result.outputs["segment_type"] == "passing_zone"
 
 
 def test_successful_manual_audit_record_includes_result_context() -> None:
@@ -413,7 +402,7 @@ def test_successful_manual_audit_record_includes_result_context() -> None:
     assert audit_record["generated_at"]
 
 
-def test_unsupported_manual_audit_record_preserves_submitted_context() -> None:
+def test_supported_generalized_manual_audit_record_preserves_submitted_context() -> None:
     values = _manual_values(
         unit_system="imperial",
         terrain_type="mountainous",
@@ -422,22 +411,14 @@ def test_unsupported_manual_audit_record_preserves_submitted_context() -> None:
         heavy_vehicle_percent=8.0,
     )
 
-    with pytest.raises(MethodNotImplementedError) as exc_info:
-        run_manual_single_segment(values)
+    result = run_manual_single_segment(values)
+    audit_record = build_manual_calculation_audit_record(values, result=result)
 
-    audit_record = build_manual_calculation_audit_record(
-        values, error=exc_info.value
-    )
-
-    assert audit_record["supported_scope_status"] == "insufficient_validation_evidence"
+    assert audit_record["supported_scope_status"] == "supported"
     assert audit_record["unit_system"] == "imperial"
     assert audit_record["user_inputs"] == values
     assert audit_record["normalized_engine_inputs"]["segment_length_mi"] == 1.0
-    assert "Unsupported mountainous" in (
-        audit_record["calculation_metadata"]["error_message"]
-    )
-    assert audit_record["validation_context"]["status"] == "insufficient_validation_evidence"
-    assert "Unsupported mountainous" in audit_record["validation_context"]["message"]
+    assert audit_record["calculation_metadata"]["status"] == "succeeded"
 
 
 def test_selected_vertical_path_audit_includes_validation_provenance() -> None:
@@ -463,7 +444,7 @@ def test_selected_vertical_path_audit_includes_validation_provenance() -> None:
     assert audit_record["vertical_class"] == 4
     assert audit_record["heavy_vehicle_percent"] == 8.0
     assert audit_record["scope_status"] == "supported"
-    assert "TLH-CH15-004 segment 3" in audit_record["validation_basis"]
+    assert "HCM method availability" in audit_record["validation_basis"]
     assert audit_record["outputs"] == result.outputs
     assert audit_record["intermediate_values"]
 

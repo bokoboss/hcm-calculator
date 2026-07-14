@@ -428,3 +428,9 @@ and a standalone validation fixture for one additional path before production
 scope is broadened. The Phase 3B assessment confirms that the remaining
 Example Problem 4 paths are facility-only and must not be promoted as general
 single-segment support without that evidence.
+# Phase 2 calculation use
+
+Exhibit 15-11 classification is method data. For Passing Constrained and
+Passing Zone single segments, each derived Class 1--5 now selects the complete
+Phase 2 Steps 4--6, 8, and 10 coefficient/equation sequence; it is not gated
+by a Chapter 26 example record.

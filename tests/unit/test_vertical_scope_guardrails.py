@@ -87,7 +87,7 @@ def test_outside_exhibit_15_10_is_distinguished_from_invalid_input() -> None:
     assert invalid.status == "invalid_input"
 
 
-def test_downstream_calculations_remain_guarded_after_phase_1() -> None:
+def test_phase_2_downstream_calculations_support_nonlevel_passing_constrained() -> None:
     decision = classify_vertical_scope(
         segment_type="passing_constrained",
         grade_percent=4.0,
@@ -96,21 +96,17 @@ def test_downstream_calculations_remain_guarded_after_phase_1() -> None:
         calculation_scope="steps_4_10",
     )
 
-    assert decision.status == "insufficient_validation_evidence"
-    with pytest.raises(UnsupportedScopeError) as exc_info:
-        require_supported_vertical_scope(
-            segment_type="passing_constrained",
-            grade_percent=4.0,
-            segment_length_mi=1.3,
-            heavy_vehicle_percent=8.0,
-            calculation_scope="steps_4_10",
-        )
-    assert exc_info.value.context["vertical_class"] == 4
-    assert exc_info.value.context["vertical_lookup_row_range"] == ">1.1 mi"
-    assert exc_info.value.context["segment_length_min_mi"] == 0.5
+    assert decision.status == "supported"
+    assert require_supported_vertical_scope(
+        segment_type="passing_constrained",
+        grade_percent=4.0,
+        segment_length_mi=1.3,
+        heavy_vehicle_percent=8.0,
+        calculation_scope="steps_4_10",
+    ).vertical_class == 4
 
 
-def test_existing_downstream_single_segment_guard_still_rejects_new_nonlevel_path() -> None:
+def test_phase_2_single_segment_supports_nonlevel_passing_zone() -> None:
     values = {
         "segment_type": "passing_zone",
         "terrain_type": "mountainous",
@@ -126,8 +122,9 @@ def test_existing_downstream_single_segment_guard_still_rejects_new_nonlevel_pat
         "heavy_vehicle_percent": 8.0,
         "grade_percent": 4.0,
     }
-    with pytest.raises(UnsupportedScopeError, match="downstream"):
-        run_manual_single_segment(values)
+    result = run_manual_single_segment(values)
+    assert result.outputs["vertical_class"] == 2
+    assert result.outputs["segment_type"] == "passing_zone"
 
 
 def test_legacy_saved_project_shape_without_grade_length_still_loads_to_scope() -> None:

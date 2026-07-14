@@ -118,7 +118,7 @@ def test_load_valid_project_json_returns_restored_manual_inputs() -> None:
     assert loaded["manual_inputs"] == manual_inputs
 
 
-def test_unsupported_project_restores_inputs_then_rejects_on_run() -> None:
+def test_generalized_project_restores_inputs_then_runs() -> None:
     manual_inputs = _manual_inputs(
         terrain_type="mountainous",
         grade_percent=4.0,
@@ -129,8 +129,7 @@ def test_unsupported_project_restores_inputs_then_rejects_on_run() -> None:
     loaded = load_manual_project_json(create_manual_project_json(manual_inputs))
 
     assert loaded["manual_inputs"] == manual_inputs
-    with pytest.raises(UnsupportedScopeError, match="outside the currently validated"):
-        run_manual_single_segment(loaded["manual_inputs"])
+    assert run_manual_single_segment(loaded["manual_inputs"]).outputs["vertical_class"] == 3
 
 
 @pytest.mark.parametrize(

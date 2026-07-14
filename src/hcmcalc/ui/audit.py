@@ -73,16 +73,13 @@ def build_manual_calculation_audit_record(
             "error_type": type(error).__name__,
             "message": str(error),
         }
-    validation_basis = None
-    if result is not None and normalized_engine_inputs.get("grade_percent") != 0.0:
-        validation_basis = next(
-            (
-                assumption
-                for assumption in result.assumptions
-                if assumption.startswith("Validated vertical scope")
-            ),
-            None,
-        )
+    validation_basis = (
+        "HCM method availability: Exhibit 15-10/15-11 applicability and "
+        "Chapter 15 Steps 2-6, 8, and 10; Chapter 26 examples are "
+        "published regression evidence."
+        if result is not None
+        else None
+    )
 
     return {
         "schema_version": MANUAL_AUDIT_SCHEMA_VERSION,
