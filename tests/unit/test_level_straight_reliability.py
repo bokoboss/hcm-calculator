@@ -171,11 +171,11 @@ def test_supported_passing_lane_excludes_facility_effects() -> None:
     )
 
 
-def test_passing_lane_rejects_unsupported_heavy_vehicle_percentage_clearly() -> None:
-    with pytest.raises(MethodNotImplementedError, match="only at 8% heavy vehicles"):
-        run_manual_single_segment(
-            _manual_values(segment_type="passing_lane", heavy_vehicle_percent=5.0)
-        )
+def test_passing_lane_supports_heavy_vehicle_percentage_with_hcm_capacity() -> None:
+    result = run_manual_single_segment(
+        _manual_values(segment_type="passing_lane", heavy_vehicle_percent=5.0)
+    )
+    assert result.outputs["passing_lane_total_capacity_veh_h"] == 1500.0
 
 
 @pytest.mark.parametrize(

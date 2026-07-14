@@ -51,6 +51,9 @@ from hcmcalc.methods.two_lane_highway_models import (
     TwoLaneExampleProblem2Inputs,
     TwoLaneExampleProblem3Inputs,
     TwoLaneFacilitySegmentInputs,
+    PASSING_LANE_ROLE_DOWNSTREAM_AFFECTED,
+    PASSING_LANE_ROLE_NONE,
+    PASSING_LANE_ROLE_SEGMENT,
 )
 from hcmcalc.methods.two_lane_highway_scope import require_supported_vertical_scope
 from hcmcalc.methods.two_lane_highway_applicability import (
@@ -307,6 +310,61 @@ class TwoLaneHighwayChapter15Method:
             assumptions=assumptions,
             warnings=warnings,
         )
+
+    def calculate_sequence(self, contexts: list[dict[str, Any]]) -> CalculationResult:
+        """Calculate an ordered Step 7--9 sequence without facility aggregation.
+
+        Each context owns an explicit ``passing_lane_role``: ``passing_lane``
+        identifies the added-lane segment, ``downstream_affected`` opts an
+        ordinary segment into Step 9, and ``none`` is an unaffected ordinary
+        segment.  Distance is measured from the start of the closest upstream
+        passing lane to the downstream segment endpoint, per Chapter 15.
+        """
+        if not isinstance(contexts, list) or not contexts:
+            raise HCMCalcError("Passing Lane sequence requires one or more ordered contexts.")
+        parsed = [_parse_facility_segment({"segment_id": i + 1, **item}) for i, item in enumerate(contexts)]
+        roles = [str(item.get("passing_lane_role", PASSING_LANE_ROLE_SEGMENT if segment.segment_type == PASSING_LANE else PASSING_LANE_ROLE_NONE)) for item, segment in zip(contexts, parsed, strict=True)]
+        if len({segment.segment_id for segment in parsed}) != len(parsed):
+            raise HCMCalcError("Passing Lane sequence segment identifiers must be unique.")
+        results: list[dict[str, Any]] = []
+        active: tuple[TwoLaneFacilitySegmentInputs, dict[str, Any], float, float] | None = None
+        for index, (segment, role) in enumerate(zip(parsed, roles, strict=True)):
+            if role not in {PASSING_LANE_ROLE_NONE, PASSING_LANE_ROLE_SEGMENT, PASSING_LANE_ROLE_DOWNSTREAM_AFFECTED}:
+                raise HCMCalcError("passing_lane_role must be none, passing_lane, or downstream_affected.")
+            if role == PASSING_LANE_ROLE_DOWNSTREAM_AFFECTED and segment.segment_type == PASSING_LANE:
+                raise HCMCalcError("A Passing Lane segment cannot also be downstream affected.")
+            if (role == PASSING_LANE_ROLE_SEGMENT) != (segment.segment_type == PASSING_LANE):
+                raise HCMCalcError("Only a Passing Lane segment may use passing_lane_role='passing_lane'.")
+            _validate_single_segment_scope(segment)
+            result = _calculate_facility_segment(segment)
+            result["passing_lane_role"] = role
+            if role == PASSING_LANE_ROLE_SEGMENT:
+                if index == 0:
+                    raise HCMCalcError("Passing Lane sequence requires a preceding segment for entering percent followers.")
+                upstream = results[-1]
+                effective = passing_lane_effective_length(
+                    float(upstream["follower_density_followers_mi_ln"]), float(upstream["percent_followers"]),
+                    float(upstream["demand_flow_rate_veh_h"]), float(upstream["average_speed_mph"]), segment.segment_length_mi,
+                )
+                result.update({"downstream_effective_length_mi": effective["effective_length_mi"], "effective_length_percent_followers_zero_mi": effective["percent_followers_zero_mi"], "effective_length_95_percent_density_mi": effective["density_95_percent_mi"]})
+                active = (segment, upstream, segment.segment_length_mi, effective["effective_length_mi"])
+            elif role == PASSING_LANE_ROLE_DOWNSTREAM_AFFECTED:
+                if active is None:
+                    raise HCMCalcError("Downstream adjustment requires a preceding Passing Lane context.")
+                lane, entering, distance, effective_length = active
+                distance += segment.segment_length_mi
+                active = (lane, entering, distance, effective_length)
+                result.update({"upstream_passing_lane_id": lane.segment_id, "downstream_distance_mi": distance, "passing_lane_length_mi": lane.segment_length_mi, "within_passing_lane_effective_length": distance <= effective_length})
+                if distance > effective_length:
+                    result.update({"downstream_adjustment_applied": False, "downstream_adjustment_reason": "Downstream influence expired at the HCM effective length."})
+                else:
+                    _apply_downstream_adjustment(result, entering, lane.segment_length_mi, distance)
+            elif active is not None:
+                # An explicit unaffected segment terminates the opt-in context;
+                # do not silently apply Step 9 to later segments.
+                active = None
+            results.append(result)
+        return CalculationResult(method=self.method_name, facility_type=self.facility_type, outputs={"segments": results}, assumptions=["No Step 11 facility aggregation is included.", "Step 9 considers only the closest upstream Passing Lane and resets at each Passing Lane."], warnings=[])
 
 
 def _single_segment_input_label(name: str) -> str:
@@ -925,11 +983,15 @@ def _calculate_facility_segment(
         segment.peak_hour_factor,
     )
     opposing_flow = _facility_segment_opposing_flow(segment)
-    capacity = resolve_segment_capacity(segment.segment_type, segment.heavy_vehicle_percent)
     vertical_alignment = classify_vertical_alignment(
         segment.segment_length_mi, segment.grade_percent
     )
     vertical_class = vertical_alignment.vertical_class
+    capacity = (
+        passing_lane_capacity(vertical_class=vertical_class, heavy_vehicle_percent=segment.heavy_vehicle_percent)
+        if segment.segment_type == PASSING_LANE
+        else resolve_segment_capacity(segment.segment_type, segment.heavy_vehicle_percent)
+    )
     segment_length_applicability = validate_exhibit_15_10_segment_length(
         segment_type=segment.segment_type,
         vertical_class=vertical_class,
@@ -1072,6 +1134,7 @@ def _calculate_facility_segment(
             capacity_veh_h=capacity,
         )
         result.update(passing_lane_values)
+        result["capacity_source_reference"] = "HCM7 Exhibit 15-5 (merge-point total segment capacity)"
         result["follower_density_endpoint_followers_mi_ln"] = density
         result["follower_density_followers_mi_ln"] = passing_lane_values[
             "midpoint_follower_density_followers_mi_ln"
@@ -1096,6 +1159,43 @@ def _facility_segment_opposing_flow(segment: TwoLaneFacilitySegmentInputs) -> fl
             segment.peak_hour_factor,
         )
     return OPPOSING_FLOW_EXAMPLE_1_VEH_H
+
+
+def _apply_downstream_adjustment(
+    result: dict[str, Any], entering_result: dict[str, Any], passing_lane_length_mi: float,
+    downstream_distance_mi: float,
+) -> None:
+    """Apply and label the Step 9 adjustment to one validated sequence result."""
+    adjustment = estimate_passing_lane_downstream_adjustment(
+        downstream_segment_affected_by_passing_lane=True,
+        percent_followers=float(result["percent_followers"]),
+        flow_rate=float(result["demand_flow_rate_veh_h"]),
+        average_speed=float(result["average_speed_mph"]),
+        unadjusted_follower_density=float(result["follower_density_followers_mi_ln"]),
+        downstream_distance_mi=downstream_distance_mi,
+        entering_passing_lane_percent_followers=float(entering_result["percent_followers"]),
+        passing_lane_length_mi=passing_lane_length_mi,
+    )
+    result.update({
+        "unadjusted_follower_density_followers_mi_ln": result["follower_density_followers_mi_ln"],
+        "unadjusted_follower_density_source_reference": result["follower_density_source_reference"],
+        "unadjusted_follower_density_formula": result["follower_density_formula"],
+        "downstream_adjustment_applied": True,
+        "downstream_adjustment_reason": None,
+        "downstream_percent_followers_improvement": adjustment.downstream_percent_followers_improvement,
+        "downstream_speed_improvement": adjustment.downstream_speed_improvement,
+        "adjusted_follower_density": adjustment.adjusted_follower_density,
+        "unadjusted_percent_followers": adjustment.unadjusted_percent_followers,
+        "entering_passing_lane_percent_followers": adjustment.entering_passing_lane_percent_followers,
+        "unadjusted_average_speed": adjustment.unadjusted_average_speed,
+        "unadjusted_flow_rate": adjustment.unadjusted_flow_rate,
+        "unadjusted_follower_density": adjustment.unadjusted_follower_density,
+        "passing_lane_downstream_source_reference": ", ".join(adjustment.source_references),
+        "follower_density_followers_mi_ln": adjustment.adjusted_follower_density,
+        "follower_density_source_reference": "HCM Eq. 15-38",
+        "follower_density_formula": "FDadj = (PF / 100) * (1 - percent_improvement_PF / 100) * demand_flow_rate / (average_speed * (1 + percent_improvement_speed / 100))",
+    })
+    _apply_step10_output_fields(result, adjustment.adjusted_follower_density, float(result["posted_speed_mph"]))
 
 
 def _single_segment_intermediate_values(
@@ -2032,16 +2132,12 @@ def passing_constrained_capacity() -> float:
 
 
 def facility_segment_capacity(segment_type: str, heavy_vehicle_percent: float) -> float:
-    """HCM Ch. 15 capacity for the Example Problem 3 segment types."""
+    """HCM Chapter 15 Step 2 capacity, without demand redistribution."""
 
     if segment_type in {PASSING_CONSTRAINED, PASSING_ZONE}:
         return passing_constrained_capacity()
     if segment_type == PASSING_LANE:
-        if heavy_vehicle_percent != 8.0:
-            raise MethodNotImplementedError(
-                "Passing Lane capacity is implemented only for Example Problem 3."
-            )
-        return 1500.0
+        return passing_lane_capacity(vertical_class=1, heavy_vehicle_percent=heavy_vehicle_percent)
     raise MethodNotImplementedError(f"Unsupported two-lane segment type: {segment_type}")
 
 
@@ -2049,6 +2145,22 @@ def resolve_segment_capacity(segment_type: str, heavy_vehicle_percent: float) ->
     """Centralized Step 2 capacity resolver with source-specific scope."""
 
     return facility_segment_capacity(segment_type, heavy_vehicle_percent)
+
+
+def passing_lane_capacity(*, vertical_class: int, heavy_vehicle_percent: float) -> float:
+    """Return total Passing Lane capacity from HCM Exhibit 15-5."""
+    if vertical_class not in {1, 2, 3, 4, 5}:
+        raise HCMCalcError("Passing Lane capacity requires Vertical Class 1 through 5.")
+    heavy = _validate_step7_percent(heavy_vehicle_percent, "heavy vehicle percent")
+    rows = (
+        (5.0, (1500.0, 1500.0, 1500.0, 1500.0, 1500.0)),
+        (10.0, (1500.0, 1500.0, 1500.0, 1500.0, 1400.0)),
+        (15.0, (1400.0, 1400.0, 1400.0, 1300.0, 1300.0)),
+        (20.0, (1300.0, 1300.0, 1300.0, 1300.0, 1200.0)),
+        (25.0, (1300.0, 1300.0, 1300.0, 1200.0, 1100.0)),
+        (float("inf"), (1100.0, 1100.0, 1100.0, 1100.0, 1100.0)),
+    )
+    return next(values[vertical_class - 1] for limit, values in rows if heavy < limit)
 
 
 def vertical_alignment_class(segment_length_mi: float, grade_percent: float) -> int:
@@ -3138,6 +3250,9 @@ def passing_lane_midpoint_values(
         "passing_lane_faster_lane_midpoint_speed": step7.faster_lane_midpoint_speed,
         "passing_lane_slower_lane_midpoint_speed": step7.slower_lane_midpoint_speed,
         "passing_lane_step7_source_reference": step7_source_reference,
+        "passing_lane_total_capacity_veh_h": capacity_veh_h,
+        "passing_lane_faster_lane_capacity_basis": "Faster-lane HCM Exhibit 15-5 capacity, using lane heavy-vehicle percentage",
+        "passing_lane_slower_lane_capacity_basis": "Slower-lane HCM Exhibit 15-5 capacity, using lane heavy-vehicle percentage",
         "faster_lane_midpoint_percent_followers": faster_lane_pf,
         "slower_lane_midpoint_percent_followers": slower_lane_pf,
         "faster_lane_component": step8.faster_lane_component,
@@ -3831,17 +3946,10 @@ def _passing_lane_lane_capacity(
 ) -> float:
     """HCM Exhibit 15-5 capacity reapplied to a Passing Lane lane."""
 
-    if vertical_class != 1:
-        raise MethodNotImplementedError(
-            "Passing Lane lane-level capacity is implemented only for vertical class 1."
-        )
-    if lane_heavy_vehicle_percent < 10.0:
-        return 1500.0
-    if lane_heavy_vehicle_percent < 15.0:
-        return 1400.0
-    if lane_heavy_vehicle_percent < 25.0:
-        return 1300.0
-    return 1100.0
+    return passing_lane_capacity(
+        vertical_class=vertical_class,
+        heavy_vehicle_percent=lane_heavy_vehicle_percent,
+    )
 
 
 def percent_followers_at_capacity(

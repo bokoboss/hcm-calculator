@@ -243,13 +243,16 @@ Limitations:
   calculated result without changing calculation behavior.
 - No general mountainous grade table; unsupported grade/length combinations are rejected
 - No downstream corridor effects for single passing-lane mode
-- Passing Lane calculation remains limited to the engine's validated Class 1, 8% heavy-vehicle path
+- Passing Lane single-segment calculations cover the Exhibit 15-10/15-11
+  applicable Class 1--5 envelope, using Exhibit 15-5 capacity and audited
+  Step 7--8 midpoint values.
 - Passing Constrained and Passing Zone single segments use the documented Phase 2
   HCM sequence for Exhibit 15-10/15-11-applicable Classes 1--5, including
   valid horizontal-curve subsegments. Chapter 26 examples remain regression
   evidence, not calculation authorization.
-- Passing Lane generalization, downstream passing-lane effects, and facility
-  analysis remain outside Phase 2; other
+- Explicit ordered sequence analysis supports Step 9 downstream adjustment;
+  Step 11 facility aggregation and arbitrary facility UI editing remain Phase 4
+  work; other
   segment types, terrain combinations, and subsegment structures are rejected.
   Curve setup generation does not expand this single-segment validated scope
 - Manual Multilane Highway Segment v0.1 is bounded to one-direction segment

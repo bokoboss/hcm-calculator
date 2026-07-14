@@ -6,6 +6,9 @@ from dataclasses import dataclass
 PASSING_CONSTRAINED = "passing_constrained"
 PASSING_LANE = "passing_lane"
 PASSING_ZONE = "passing_zone"
+PASSING_LANE_ROLE_NONE = "none"
+PASSING_LANE_ROLE_SEGMENT = "passing_lane"
+PASSING_LANE_ROLE_DOWNSTREAM_AFFECTED = "downstream_affected"
 OPPOSING_FLOW_EXAMPLE_1_VEH_H = 1500.0
 STRAIGHT_ALIGNMENT = "straight"
 HORIZONTAL_CURVES_ALIGNMENT = "horizontal_curves"
