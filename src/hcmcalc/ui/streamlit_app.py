@@ -425,14 +425,19 @@ def render_manual_multilane_calculator() -> None:
     width_unit = "m" if metric else "ft"
     access_unit = "points/km" if metric else "per mi"
     with input_column:
+        ffs_source = st.radio(
+            "Free-flow speed source",
+            ["Estimated", "Measured"],
+            index=0 if ui_inputs.get("ffs_source", "estimated") == "estimated" else 1,
+            horizontal=True,
+            key=f"manual_multilane_input_ffs_source_{template_id}_{unit_system}",
+            help=(
+                "Estimated FFS uses posted speed and roadway adjustments. "
+                "Measured FFS uses the supplied speed and does not apply roadway-geometry adjustments."
+            ),
+        ).lower()
         with st.form(f"multilane_form_{template_id}"):
             render_section_label("Roadway / Geometry")
-            ffs_source = st.radio(
-                "Free-flow speed source",
-                ["Estimated", "Measured"],
-                horizontal=True,
-                key=f"manual_multilane_input_ffs_source_{template_id}_{unit_system}",
-            ).lower()
             roadway_columns = st.columns(2)
             number_of_lanes = roadway_columns[0].number_input(
                 "Lanes in analysis direction",
@@ -450,39 +455,51 @@ def render_manual_multilane_calculator() -> None:
             free_flow_speed = None
             if ffs_source == "measured":
                 free_flow_speed = roadway_columns[0].number_input(
-                    f"Free-flow speed ({speed_unit})",
+                    f"Measured free-flow speed ({speed_unit})",
                     min_value=1.0,
                     value=float(ui_inputs.get("free_flow_speed") or ui_inputs["posted_speed_limit"]),
                     key=f"manual_multilane_input_measured_ffs_{template_id}_{unit_system}",
+                    help="Roadway-geometry FFS adjustments are not applied in measured mode.",
                 )
-            posted_speed_limit = roadway_columns[0].number_input(
-                f"Posted speed limit ({speed_unit})",
-                min_value=1.0,
-                value=float(ui_inputs["posted_speed_limit"]),
-                disabled=ffs_source == "measured",
-                key=f"manual_multilane_input_speed_{template_id}_{unit_system}",
-            )
-            lane_width = roadway_columns[1].number_input(
-                f"Lane width ({width_unit})",
-                min_value=0.1,
-                value=float(ui_inputs["lane_width"]),
-                disabled=ffs_source == "measured",
-                key=f"manual_multilane_input_lane_width_{template_id}_{unit_system}",
-            )
-            roadside_lateral_clearance = roadway_columns[0].number_input(
-                f"Roadside lateral clearance ({width_unit})",
-                min_value=0.0,
-                value=float(ui_inputs["roadside_lateral_clearance"]),
-                disabled=ffs_source == "measured",
-                key=f"manual_multilane_input_clearance_{template_id}_{unit_system}",
-            )
-            access_point_density = roadway_columns[1].number_input(
-                f"Access point density ({access_unit})",
-                min_value=0.0,
-                value=float(ui_inputs["access_point_density"]),
-                disabled=ffs_source == "measured",
-                key=f"manual_multilane_input_access_{template_id}_{unit_system}",
-            )
+                posted_speed_limit = lane_width = roadside_lateral_clearance = None
+                access_point_density = median_type = left_side_lateral_clearance = None
+            else:
+                posted_speed_limit = roadway_columns[0].number_input(
+                    f"Posted speed limit ({speed_unit})", min_value=1.0,
+                    value=float(ui_inputs["posted_speed_limit"]),
+                    key=f"manual_multilane_input_speed_{template_id}_{unit_system}",
+                    help="Base FFS is derived from the posted speed and HCM adjustments.",
+                )
+                lane_width = roadway_columns[1].number_input(
+                    f"Lane width ({width_unit})", min_value=0.1,
+                    value=float(ui_inputs["lane_width"]),
+                    key=f"manual_multilane_input_lane_width_{template_id}_{unit_system}",
+                )
+                roadside_lateral_clearance = roadway_columns[0].number_input(
+                    f"Right-side lateral clearance ({width_unit})", min_value=0.0,
+                    value=float(ui_inputs["roadside_lateral_clearance"]),
+                    key=f"manual_multilane_input_clearance_{template_id}_{unit_system}",
+                    help="Clearance from the right edge of the travel lane to the roadside obstruction.",
+                )
+                median_type = roadway_columns[1].selectbox(
+                    "Median type", ["twltl", "undivided", "divided"],
+                    index=["twltl", "undivided", "divided"].index(ui_inputs.get("median_type", "twltl")),
+                    key=f"manual_multilane_input_median_{template_id}_{unit_system}",
+                    help="A divided median requires a separate left-side clearance; TWLTL and undivided use the HCM 6 ft left-side rule.",
+                )
+                left_side_lateral_clearance = None
+                if median_type == "divided":
+                    left_side_lateral_clearance = roadway_columns[0].number_input(
+                        f"Left-side lateral clearance ({width_unit})", min_value=0.0,
+                        value=float(ui_inputs.get("left_side_lateral_clearance", 6.0)),
+                        key=f"manual_multilane_input_left_clearance_{template_id}_{unit_system}",
+                        help="Required for divided-median estimated FFS; measured FFS does not use it.",
+                    )
+                access_point_density = roadway_columns[1].number_input(
+                    f"Access point density ({access_unit})", min_value=0.0,
+                    value=float(ui_inputs["access_point_density"]),
+                    key=f"manual_multilane_input_access_{template_id}_{unit_system}",
+                )
 
             render_section_label("Traffic")
             traffic_columns = st.columns(2)
@@ -511,53 +528,78 @@ def render_manual_multilane_calculator() -> None:
                 value=float(ui_inputs["grade_percent"]),
                 key=f"manual_multilane_input_grade_{template_id}_{unit_system}",
             )
-            render_section_label("Advanced / Optional")
-            supply_pce = st.checkbox(
-                "Supply passenger-car equivalent",
-                value="passenger_car_equivalent" in ui_inputs,
-                key=f"manual_multilane_input_supply_pce_{template_id}_{unit_system}",
+            render_section_label("Heavy vehicles / PCE")
+            pce_mode = st.radio(
+                "Passenger-car-equivalent source", ["Internal HCM lookup", "External override"],
+                index=0 if ui_inputs.get("pce_mode", "internal") == "internal" else 1,
+                horizontal=True, key=f"manual_multilane_input_pce_mode_{template_id}_{unit_system}",
+                help="Internal lookup is bounded to printed HCM table combinations. Use an external PCE when a combination is unsupported.",
             )
             passenger_car_equivalent = None
-            if supply_pce:
+            terrain_type = truck_mix = None
+            if pce_mode == "External override":
                 passenger_car_equivalent = traffic_columns[1].number_input(
-                    "Passenger-car equivalent",
+                    "External passenger-car equivalent",
                     min_value=0.01,
                     value=float(ui_inputs.get("passenger_car_equivalent") or 2.24),
                     key=f"manual_multilane_input_pce_{template_id}_{unit_system}",
+                    help="Positive, finite PCE supplied by the user. Internal lookup is bypassed.",
                 )
+            else:
+                terrain_type = traffic_columns[0].selectbox(
+                    "PCE terrain treatment", ["level", "rolling", "specific_grade"],
+                    index=["level", "rolling", "specific_grade"].index(ui_inputs.get("terrain_type", "specific_grade")),
+                    key=f"manual_multilane_input_terrain_{template_id}_{unit_system}",
+                )
+                if terrain_type == "specific_grade":
+                    mixes = ["default_30_sut_70_tt", "equal_50_sut_50_tt", "majority_70_sut_30_tt"]
+                    truck_mix = traffic_columns[1].selectbox(
+                        "Truck mix", mixes, index=mixes.index(ui_inputs.get("truck_mix", mixes[0])),
+                        key=f"manual_multilane_input_truck_mix_{template_id}_{unit_system}",
+                        help="Only the printed SUT/TT mixtures are supported; the terminal >25% category requires an external PCE.",
+                    )
             st.caption(
-                "One direction, one segment, and default 30% SUT / 70% TT truck mix. "
-                "Example 4 PCE is used only when no supplied PCE is submitted."
+                "Driver population factor is fixed at 1.0 because the bounded Multilane method has no adjustable factor."
             )
             run_multilane = st.form_submit_button(
-                "Run calculation", type="primary", use_container_width=True
+                "Run calculation", type="primary", width="stretch"
             )
 
         displayed_inputs = {
             "number_of_lanes": int(number_of_lanes),
             "segment_length": segment_length,
-            "posted_speed_limit": posted_speed_limit,
-            "lane_width": lane_width,
-            "roadside_lateral_clearance": roadside_lateral_clearance,
-            "access_point_density": access_point_density,
             "demand_volume_veh_h": demand_volume_veh_h,
             "peak_hour_factor": peak_hour_factor,
             "heavy_vehicle_percent": heavy_vehicle_percent,
             "grade_percent": grade_percent,
             "ffs_source": ffs_source,
+            "pce_mode": "external" if pce_mode == "External override" else "internal",
         }
         if ffs_source == "measured":
             displayed_inputs["free_flow_speed"] = free_flow_speed
+        else:
+            displayed_inputs.update({
+                "posted_speed_limit": posted_speed_limit,
+                "lane_width": lane_width,
+                "roadside_lateral_clearance": roadside_lateral_clearance,
+                "median_type": median_type,
+                "access_point_density": access_point_density,
+            })
+            if left_side_lateral_clearance is not None:
+                displayed_inputs["left_side_lateral_clearance"] = left_side_lateral_clearance
         if passenger_car_equivalent is not None:
             displayed_inputs["passenger_car_equivalent"] = passenger_car_equivalent
+        if terrain_type is not None:
+            displayed_inputs["terrain_type"] = terrain_type
+        if truck_mix is not None:
+            displayed_inputs["truck_mix"] = truck_mix
         submitted_inputs = multilane_ui_inputs_to_engine(
             displayed_inputs, inputs, unit_system
         )
         multilane_workflow_inputs = {
-            "template_id": template_id,
-            "unit_system": unit_system,
-            "displayed_inputs": displayed_inputs,
-            "submitted_inputs": submitted_inputs,
+            "method_identifier": "hcm7_multilane_los",
+            "input_contract": "phase_8",
+            "effective_engine_inputs": submitted_inputs,
         }
         multilane_is_current = render_calculation_status(
             "manual_multilane", multilane_workflow_inputs, status_placeholder
@@ -668,21 +710,23 @@ def render_manual_multilane_calculator() -> None:
             else unit_system
         )
         display = multilane_display_outputs(outputs, result_unit_system)
+        def predicted(metric: dict[str, Any], precision: str = ".1f") -> str:
+            value = metric["value"]
+            return (
+                f"{value:{precision}} {metric['unit']}"
+                if value is not None
+                else "Not predicted"
+            )
         render_result_summary_panel(
             primary_label="Level of service",
             primary_value=str(outputs["level_of_service"]),
             primary_kind="los",
             hero_supporting_label="Density",
-            hero_supporting_value=(
-                f"{display['density']['value']:.1f} {display['density']['unit']}"
-            ),
+            hero_supporting_value=predicted(display["density"]),
             secondary_metrics=[
                 {
                     "label": "Speed used for density",
-                    "value": (
-                        f"{display['speed_used_for_density']['value']:.1f} "
-                        f"{display['speed_used_for_density']['unit']}"
-                    ),
+                    "value": predicted(display["speed_used_for_density"]),
                 },
                 {
                     "label": "Demand flow rate",
@@ -702,6 +746,7 @@ def render_manual_multilane_calculator() -> None:
                     "label": "Capacity check",
                     "value": outputs["capacity_check"].replace("_", " "),
                 },
+                {"label": "FFS source", "value": outputs["ffs_source"]},
                 {
                     "label": "Adjusted free-flow speed",
                     "value": (
@@ -720,10 +765,33 @@ def render_manual_multilane_calculator() -> None:
                     "label": "Heavy vehicle adjustment factor",
                     "value": f"{outputs['heavy_vehicle_adjustment_factor']:.3f}",
                 },
+                {
+                    "label": "PCE",
+                    "value": f"{outputs['passenger_car_equivalent']:.2f} ({outputs['pce_source']})",
+                },
             ],
         )
 
         with st.expander(CALCULATION_DETAILS_LABEL, expanded=False):
+            st.markdown("**Free-flow speed audit**")
+            st.json({
+                "ffs_source": outputs["ffs_source"],
+                "base_free_flow_speed_mph": outputs["base_free_flow_speed_mph"],
+                "lane_width_adjustment_mph": outputs["lane_width_adjustment_mph"],
+                "total_lateral_clearance_adjustment_mph": outputs["total_lateral_clearance_adjustment_mph"],
+                "median_type_adjustment_mph": outputs["median_type_adjustment_mph"],
+                "access_point_adjustment_mph": outputs["access_point_adjustment_mph"],
+                "adjusted_free_flow_speed_mph": outputs["adjusted_free_flow_speed_mph"],
+            })
+            st.markdown("**Heavy-vehicle / PCE audit**")
+            st.json({
+                key: outputs.get(key)
+                for key in (
+                    "passenger_car_equivalent", "pce_source", "pce_lookup_path",
+                    "effective_grade_for_pce_percent", "effective_grade_length_mi_for_pce",
+                    "truck_composition", "heavy_vehicle_adjustment_factor",
+                )
+            })
             render_list("Assumptions", result_data["assumptions"], "No assumptions reported.")
             render_list("Warnings", result_data["warnings"], "No warnings reported.")
             render_list(
@@ -1089,21 +1157,23 @@ def render_manual_freeway_calculator() -> None:
             else unit_system
         )
         display = freeway_display_outputs(outputs, result_unit_system)
+        def predicted(metric: dict[str, Any], precision: str = ".1f") -> str:
+            value = metric["value"]
+            return (
+                f"{value:{precision}} {metric['unit']}"
+                if value is not None
+                else "Not predicted"
+            )
         render_result_summary_panel(
             primary_label="Level of service",
             primary_value=str(outputs["level_of_service"]),
             primary_kind="los",
             hero_supporting_label="Density",
-            hero_supporting_value=(
-                f"{display['density']['value']:.1f} {display['density']['unit']}"
-            ),
+            hero_supporting_value=predicted(display["density"]),
             secondary_metrics=[
                 {
                     "label": "Speed used for density",
-                    "value": (
-                        f"{display['speed_used_for_density']['value']:.1f} "
-                        f"{display['speed_used_for_density']['unit']}"
-                    ),
+                    "value": predicted(display["speed_used_for_density"]),
                 },
                 {
                     "label": "Demand flow rate",
@@ -1301,22 +1371,36 @@ def _restore_manual_multilane_project(project: dict[str, Any]) -> None:
     st.session_state["manual_multilane_unit_label"] = unit_system.title()
     st.session_state["multilane_template_id"] = template_id
     st.session_state["manual_multilane_template_context"] = (template_id, unit_system)
+    st.session_state[
+        f"manual_multilane_input_ffs_source_{template_id}_{unit_system}"
+    ] = displayed.get("ffs_source", "estimated").title()
+    st.session_state[
+        f"manual_multilane_input_pce_mode_{template_id}_{unit_system}"
+    ] = "External override" if displayed.get("pce_mode") == "external" else "Internal HCM lookup"
     widget_fields = {
         "lanes": "number_of_lanes",
         "length": "segment_length",
-        "speed": "posted_speed_limit",
-        "lane_width": "lane_width",
-        "clearance": "roadside_lateral_clearance",
-        "access": "access_point_density",
         "demand": "demand_volume_veh_h",
         "phf": "peak_hour_factor",
         "heavy": "heavy_vehicle_percent",
         "grade": "grade_percent",
     }
     for widget_name, input_name in widget_fields.items():
-        st.session_state[
-            f"manual_multilane_input_{widget_name}_{template_id}_{unit_system}"
-        ] = displayed[input_name]
+        if input_name in displayed:
+            st.session_state[
+                f"manual_multilane_input_{widget_name}_{template_id}_{unit_system}"
+            ] = displayed[input_name]
+    for widget_name, input_name in {
+        "speed": "posted_speed_limit", "lane_width": "lane_width",
+        "clearance": "roadside_lateral_clearance", "access": "access_point_density",
+        "median": "median_type", "left_clearance": "left_side_lateral_clearance",
+        "measured_ffs": "free_flow_speed", "pce": "passenger_car_equivalent",
+        "terrain": "terrain_type", "truck_mix": "truck_mix",
+    }.items():
+        if input_name in displayed:
+            st.session_state[
+                f"manual_multilane_input_{widget_name}_{template_id}_{unit_system}"
+            ] = displayed[input_name]
     for state_key, project_key in (
         ("manual_multilane_result", "calculation_result"),
         ("manual_multilane_audit", "audit"),

@@ -12,22 +12,22 @@ for two- and three-lane analysis directions. Estimated FFS uses Exhibit 12-18
 posted-speed defaults (+7 mi/h below 50 mi/h; +5 mi/h from 50 through 65
 mi/h), Exhibits 12-20, 12-22, 12-23, and 12-24. The four-lane and six-lane
 lateral-clearance tables are selected by analysis-direction lane count and
-interpolated to the nearest 0.1 mi/h. Divided-median estimated FFS is rejected
-because the canonical payload has no separate left-clearance input; measured
-FFS remains available for that geometry.
+interpolated to the nearest 0.1 mi/h. Divided-median estimated FFS uses an
+explicit left-side clearance; undivided and TWLTL medians use the HCM 6 ft
+left-side treatment. Measured FFS has no active geometry inputs.
 
 The method uses HCM7 Eq. 12-1 and Exhibit 12-6 through capacity: breakpoint
 1,400 pc/h/ln, capacity density 45 pc/mi/ln, and Multilane exponent 1.31.
 Above capacity it returns LOS F and an explicit capacity-failure status; it
 does not return an oversaturated speed or density prediction.
 
-Specific-grade PCE table transcription is intentionally not claimed. The
-engine requires a positive finite externally selected PCE, reports its source
-and selection path, and treats truck mix as non-operative under that controlled
-workflow. Driver population is fixed to 1.0 because Chapter 12 states that no
-equivalent Multilane speed-flow adjustment is available. Chapter 26 Example 4
-fixtures now provide their published PCE values explicitly and remain regression
-evidence only.
+Internal PCE lookup supports the reviewed general-terrain and printed
+specific-grade table domain, with source and lookup-path audit fields. A
+positive finite external PCE bypasses the lookup. Unprinted truck mixes and
+the ambiguous terminal `>25%` category remain unsupported. Driver population
+is fixed to 1.0 because Chapter 12 states that no equivalent Multilane
+speed-flow adjustment is available. Chapter 26 Example 4 remains regression
+evidence, not a runtime calculation branch.
 
 ## 1. Completion definition
 

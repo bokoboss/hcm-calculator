@@ -92,6 +92,19 @@ def test_freeway_metric_outputs_convert_speed_and_density_only() -> None:
     assert display["capacity"]["unit"] == "pc/h/ln"
 
 
+def test_freeway_display_preserves_absent_above_capacity_speed_and_density() -> None:
+    inputs = load_freeway_preset("BF-CH26-001")["inputs"] | {
+        "demand_volume_veh_h": 20000.0,
+    }
+    outputs = result_to_dict(run_manual_freeway(inputs))["outputs"]
+
+    display = freeway_display_outputs(outputs, "imperial")
+
+    assert outputs["level_of_service"] == "F"
+    assert display["speed_used_for_density"]["value"] is None
+    assert display["density"]["value"] is None
+
+
 def test_freeway_metric_and_imperial_modes_produce_equivalent_engine_results() -> None:
     preset_inputs = load_freeway_preset("BF-CH26-001")["inputs"]
     imperial_inputs = freeway_ui_inputs_to_engine(

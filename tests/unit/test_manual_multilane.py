@@ -16,6 +16,12 @@ from hcmcalc.ui.manual_multilane import (
     run_manual_multilane,
 )
 from hcmcalc.ui.units import MILES_TO_KILOMETERS
+from hcmcalc.ui.workflow_state import (
+    STALE,
+    mark_calculated,
+    normalized_input_fingerprint,
+    workflow_status,
+)
 
 
 def test_multilane_template_options_expose_only_example_4_directions() -> None:
@@ -62,9 +68,11 @@ def test_metric_template_loading_round_trips_to_engine_inputs(case_id: str) -> N
     assert displayed["posted_speed_limit"] == pytest.approx(72.42048)
     assert displayed["lane_width"] == pytest.approx(3.6576)
     assert displayed["roadside_lateral_clearance"] == pytest.approx(3.6576)
-    assert multilane_ui_inputs_to_engine(displayed, template_inputs, "metric") == (
-        template_inputs
-    )
+    normalized = multilane_ui_inputs_to_engine(displayed, template_inputs, "metric")
+    assert normalized["segment_length_ft"] == template_inputs["segment_length_ft"]
+    assert normalized["free_flow_speed_mph"] is None
+    assert normalized["left_side_lateral_clearance_ft"] is None
+    assert normalized["passenger_car_equivalent"] is None
 
 
 def test_metric_access_density_converts_to_engine_native_per_mile() -> None:
@@ -147,7 +155,7 @@ def test_multilane_audit_records_success_without_export_or_project_data() -> Non
 
     assert audit["calculation_succeeded"] is True
     assert audit["unit_system"] == "imperial"
-    assert audit["support_status"] == "bounded_multilane_segment_v0_1"
+    assert audit["support_status"] == "bounded_multilane_segment_phase_8"
     assert "project_type" not in audit
     assert "export" not in audit
 
@@ -166,3 +174,54 @@ def test_multilane_metric_audit_preserves_display_and_engine_inputs() -> None:
     assert audit["unit_system"] == "metric"
     assert audit["displayed_inputs"] == displayed
     assert audit["submitted_inputs"] == template_inputs
+
+
+def test_measured_mode_normalizes_inactive_geometry_and_ignores_hidden_values() -> None:
+    template = load_multilane_template("MLH-CH26-004-EB")["inputs"]
+    values = multilane_template_ui_inputs("MLH-CH26-004-EB", "imperial") | {
+        "ffs_source": "measured", "free_flow_speed": 60.0,
+    }
+    normalized = multilane_ui_inputs_to_engine(values, template, "imperial")
+    changed_hidden_values = values | {
+        "posted_speed_limit": 35.0, "lane_width": 10.0,
+        "roadside_lateral_clearance": 0.0, "access_point_density": 40.0,
+        "median_type": "divided", "left_side_lateral_clearance": 0.0,
+    }
+
+    assert all(normalized[key] is None for key in (
+        "posted_speed_limit_mph", "lane_width_ft", "roadside_lateral_clearance_ft",
+        "median_type", "access_point_density_per_mi", "left_side_lateral_clearance_ft",
+    ))
+    assert normalized == multilane_ui_inputs_to_engine(changed_hidden_values, template, "imperial")
+
+
+def test_estimated_mode_ignores_hidden_measured_speed_and_mode_switch_is_stale() -> None:
+    template = load_multilane_template("MLH-CH26-004-EB")["inputs"]
+    estimated = multilane_template_ui_inputs("MLH-CH26-004-EB", "imperial") | {
+        "ffs_source": "estimated", "pce_mode": "internal", "free_flow_speed": 45.0,
+    }
+    normalized = multilane_ui_inputs_to_engine(estimated, template, "imperial")
+    assert normalized["free_flow_speed_mph"] is None
+    assert normalized_input_fingerprint(normalized) == normalized_input_fingerprint(
+        multilane_ui_inputs_to_engine(estimated | {"free_flow_speed": 70.0}, template, "imperial")
+    )
+
+    state: dict[str, object] = {}
+    mark_calculated(state, "multilane", normalized)
+    measured = multilane_ui_inputs_to_engine(
+        estimated | {"ffs_source": "measured", "free_flow_speed": 55.0}, template, "imperial"
+    )
+    assert workflow_status(state, "multilane", measured) == STALE
+
+
+def test_divided_median_and_external_pce_are_normalized_explicitly() -> None:
+    template = load_multilane_template("MLH-CH26-004-EB")["inputs"]
+    values = multilane_template_ui_inputs("MLH-CH26-004-EB", "imperial") | {
+        "median_type": "divided", "left_side_lateral_clearance": 2.0,
+        "pce_mode": "external", "passenger_car_equivalent": 3.25,
+    }
+    normalized = multilane_ui_inputs_to_engine(values, template, "imperial")
+
+    assert normalized["left_side_lateral_clearance_ft"] == 2.0
+    assert normalized["passenger_car_equivalent"] == 3.25
+    assert run_manual_multilane(normalized).outputs["pce_source"] == "external_user_supplied_override"

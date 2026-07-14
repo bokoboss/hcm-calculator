@@ -34,6 +34,9 @@ Supported:
 - Manual Multilane Segment Calculator
 - bounded HCM Multilane Highway Segment one-direction analysis
 - Chapter 26 Example 4 optional defaults and regression evidence
+- measured FFS, or estimated FFS from posted speed and active roadway geometry
+- two- and three-lane estimated FFS, including divided-median left-side clearance
+- internal HCM PCE lookup or auditable external PCE override
 - Metric/Imperial UI-boundary conversion
 - Save/Load
 - Export/reporting
@@ -42,7 +45,9 @@ Limitations:
 
 - not a Basic Freeway calculator
 - not ramp/weaving/merge/diverge/facility workflow
-- no specific-grade PCE table expansion unless an auditable PCE is supplied
+- internal PCE lookup is limited to printed truck mixtures and numeric table boundaries; use an external PCE otherwise
+- estimated FFS is limited to two or three lanes per analysis direction
+- above-capacity results are LOS F/capacity failure only; speed and density are not predicted
 - unsupported combinations remain guarded
 
 ## Basic Freeway

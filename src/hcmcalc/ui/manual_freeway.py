@@ -163,13 +163,16 @@ def freeway_display_outputs(
     metric = _normalize_unit_system(unit_system) == "metric"
     speed_factor = MILES_TO_KILOMETERS if metric else 1.0
     density_factor = 1.0 / MILES_TO_KILOMETERS if metric else 1.0
+    def optional(value: Any, factor: float = 1.0) -> float | None:
+        return None if value is None else float(value) * factor
+
     return {
         "density": {
-            "value": float(engine_outputs["density_pc_mi_ln"]) * density_factor,
+            "value": optional(engine_outputs["density_pc_mi_ln"], density_factor),
             "unit": "pc/km/ln" if metric else "pc/mi/ln",
         },
         "speed_used_for_density": {
-            "value": float(engine_outputs["speed_used_for_density_mph"]) * speed_factor,
+            "value": optional(engine_outputs["speed_used_for_density_mph"], speed_factor),
             "unit": "km/h" if metric else "mph",
         },
         "adjusted_free_flow_speed": {

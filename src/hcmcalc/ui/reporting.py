@@ -349,6 +349,9 @@ def _multilane_report(
     display = multilane_display_outputs(outputs, unit_system)
     summary = [
         {"label": "Level of service", "value": outputs["level_of_service"], "unit": None},
+        {"label": "FFS source", "value": outputs["ffs_source"], "unit": None},
+        {"label": "PCE source", "value": outputs["pce_source"], "unit": None},
+        {"label": "PCE lookup path", "value": outputs["pce_lookup_path"], "unit": None},
         *[
             {"label": _label(name), "value": metric["value"], "unit": metric["unit"]}
             for name, metric in display.items()
@@ -366,7 +369,7 @@ def _multilane_report(
             0, {"label": "Validated template", "value": template_id, "unit": None}
         )
     report = _base_report(
-        title="HCM7 Manual Multilane Highway Segment v0.1 Report",
+        title="HCM7 Manual Multilane Highway Segment Report",
         report_type="HCM Manual Multilane bounded-scope calculation report",
         calculation_type="manual_multilane_v0",
         unit_system=unit_system,
@@ -454,6 +457,7 @@ def _multilane_input_records(
         "posted_speed_limit": "km/h" if metric else "mph",
         "lane_width": "m" if metric else "ft",
         "roadside_lateral_clearance": "m" if metric else "ft",
+        "left_side_lateral_clearance": "m" if metric else "ft",
         "access_point_density": "access points/km" if metric else "access points/mi",
         "demand_volume_veh_h": "veh/h",
         "heavy_vehicle_percent": "%",

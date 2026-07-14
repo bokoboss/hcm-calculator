@@ -1,4 +1,4 @@
-"""Streamlit-independent adapter for the bounded Multilane v0.1 worksheet."""
+"""Streamlit-independent adapter for the bounded Multilane worksheet."""
 
 from __future__ import annotations
 
@@ -18,15 +18,17 @@ TEMPLATE_LABELS = {
     "MLH-CH26-004-WB": "Chapter 26 Example 4 - Westbound starting values",
 }
 SUPPORTED_UNIT_SYSTEMS = {"metric", "imperial"}
-MANUAL_MULTILANE_CALCULATION_TYPE = "manual_multilane_v0"
+MANUAL_MULTILANE_CALCULATION_TYPE = "manual_multilane_v1"
 MANUAL_MULTILANE_LIMITATIONS = [
-    "Manual Multilane v0.1 is a bounded one-direction Multilane Highway "
-    "Segment calculator within the implemented HCM scope.",
+    "Manual Multilane is a bounded one-direction Multilane Highway Segment "
+    "calculator within the implemented HCM scope.",
     "Chapter 26 Example 4 EB/WB remains available as optional defaults and "
     "regression evidence.",
     "Basic Freeway, ramps, weaving, merge/diverge, managed lanes, work zones, "
     "reliability, and facility/corridor workflows are unsupported.",
-    "Specific-grade PCE table expansion remains unsupported unless an auditable PCE is supplied.",
+    "Internal PCE lookup is bounded to the printed HCM table domain; an external "
+    "PCE is required for unsupported mixes or table boundaries.",
+    "Estimated FFS is supported only for two or three lanes in the analysis direction.",
     "Calculations remain engine-native Imperial; Metric values are UI/reporting conversions.",
 ]
 
@@ -83,33 +85,42 @@ def multilane_engine_inputs_to_ui(
             if metric
             else float(inputs["segment_length_ft"])
         ),
-        "posted_speed_limit": (
-            float(inputs["posted_speed_limit_mph"]) * MILES_TO_KILOMETERS
-            if metric
-            else float(inputs["posted_speed_limit_mph"])
-        ),
-        "lane_width": (
-            float(inputs["lane_width_ft"]) * FEET_TO_METERS
-            if metric
-            else float(inputs["lane_width_ft"])
-        ),
-        "roadside_lateral_clearance": (
-            float(inputs["roadside_lateral_clearance_ft"]) * FEET_TO_METERS
-            if metric
-            else float(inputs["roadside_lateral_clearance_ft"])
-        ),
-        "access_point_density": (
-            float(inputs["access_point_density_per_mi"]) / MILES_TO_KILOMETERS
-            if metric
-            else float(inputs["access_point_density_per_mi"])
-        ),
         "demand_volume_veh_h": float(inputs["demand_volume_veh_h"]),
         "peak_hour_factor": float(inputs["peak_hour_factor"]),
         "heavy_vehicle_percent": float(inputs["heavy_vehicle_percent"]),
         "grade_percent": float(inputs["grade_percent"]),
+        "median_type": inputs.get("median_type") or "twltl",
+        "truck_mix": inputs.get("truck_mix", "default_30_sut_70_tt"),
+        "terrain_type": inputs.get("terrain_type", "specific_grade"),
+        "pce_mode": "external" if inputs.get("passenger_car_equivalent") is not None else "internal",
     }
     if "ffs_source" in inputs:
         displayed["ffs_source"] = inputs["ffs_source"]
+    if inputs.get("ffs_source", "estimated") == "estimated":
+        displayed.update(
+            {
+                "posted_speed_limit": (
+                    float(inputs["posted_speed_limit_mph"]) * MILES_TO_KILOMETERS
+                    if metric
+                    else float(inputs["posted_speed_limit_mph"])
+                ),
+                "lane_width": (
+                    float(inputs["lane_width_ft"]) * FEET_TO_METERS
+                    if metric
+                    else float(inputs["lane_width_ft"])
+                ),
+                "roadside_lateral_clearance": (
+                    float(inputs["roadside_lateral_clearance_ft"]) * FEET_TO_METERS
+                    if metric
+                    else float(inputs["roadside_lateral_clearance_ft"])
+                ),
+                "access_point_density": (
+                    float(inputs["access_point_density_per_mi"]) / MILES_TO_KILOMETERS
+                    if metric
+                    else float(inputs["access_point_density_per_mi"])
+                ),
+            }
+        )
     if inputs.get("free_flow_speed_mph") is not None:
         displayed["free_flow_speed"] = (
             float(inputs["free_flow_speed_mph"]) * MILES_TO_KILOMETERS
@@ -118,6 +129,12 @@ def multilane_engine_inputs_to_ui(
         )
     if inputs.get("passenger_car_equivalent") is not None:
         displayed["passenger_car_equivalent"] = inputs["passenger_car_equivalent"]
+    if inputs.get("left_side_lateral_clearance_ft") is not None:
+        displayed["left_side_lateral_clearance"] = (
+            float(inputs["left_side_lateral_clearance_ft"]) * FEET_TO_METERS
+            if metric
+            else float(inputs["left_side_lateral_clearance_ft"])
+        )
     return displayed
 
 
@@ -127,6 +144,15 @@ def multilane_ui_inputs_to_engine(
     """Convert user-facing worksheet values to engine-native Imperial inputs."""
 
     metric = _normalize_unit_system(unit_system) == "metric"
+    ffs_source = values.get("ffs_source", template_inputs.get("ffs_source", "estimated"))
+    pce_mode = values.get(
+        "pce_mode",
+        "external" if values.get("passenger_car_equivalent") is not None else "internal",
+    )
+    if ffs_source not in {"estimated", "measured"}:
+        raise ValueError("ffs_source must be estimated or measured.")
+    if pce_mode not in {"internal", "external"}:
+        raise ValueError("pce_mode must be internal or external.")
     engine_inputs = {
         **template_inputs,
         "number_of_lanes": int(values["number_of_lanes"]),
@@ -139,48 +165,61 @@ def multilane_ui_inputs_to_engine(
             _rounded(float(values["posted_speed_limit"]) / MILES_TO_KILOMETERS)
             if metric
             else float(values["posted_speed_limit"])
-        ),
+        ) if ffs_source == "estimated" else None,
         "lane_width_ft": (
             _rounded(float(values["lane_width"]) / FEET_TO_METERS)
             if metric
             else float(values["lane_width"])
-        ),
+        ) if ffs_source == "estimated" else None,
         "roadside_lateral_clearance_ft": (
             _rounded(float(values["roadside_lateral_clearance"]) / FEET_TO_METERS)
             if metric
             else float(values["roadside_lateral_clearance"])
-        ),
+        ) if ffs_source == "estimated" else None,
         "access_point_density_per_mi": (
             _rounded(float(values["access_point_density"]) * MILES_TO_KILOMETERS)
             if metric
             else float(values["access_point_density"])
-        ),
+        ) if ffs_source == "estimated" else None,
         "demand_volume_veh_h": float(values["demand_volume_veh_h"]),
         "peak_hour_factor": float(values["peak_hour_factor"]),
         "heavy_vehicle_percent": float(values["heavy_vehicle_percent"]),
         "grade_percent": float(values["grade_percent"]),
     }
-    if "ffs_source" in values or "ffs_source" in template_inputs:
-        engine_inputs["ffs_source"] = values.get(
-            "ffs_source", template_inputs.get("ffs_source", "estimated")
+    engine_inputs["ffs_source"] = ffs_source
+    engine_inputs["free_flow_speed_mph"] = (
+        _rounded(float(values["free_flow_speed"]) / MILES_TO_KILOMETERS)
+        if metric and ffs_source == "measured"
+        else float(values["free_flow_speed"])
+        if ffs_source == "measured"
+        else None
+    )
+    engine_inputs["median_type"] = (
+        values.get("median_type", template_inputs.get("median_type", "twltl"))
+        if ffs_source == "estimated"
+        else None
+    )
+    engine_inputs["left_side_lateral_clearance_ft"] = (
+        _rounded(float(values["left_side_lateral_clearance"]) / FEET_TO_METERS)
+        if metric and ffs_source == "estimated" and values.get("median_type") == "divided"
+        else float(values["left_side_lateral_clearance"])
+        if ffs_source == "estimated" and values.get("median_type") == "divided"
+        else None
+    )
+    engine_inputs["passenger_car_equivalent"] = (
+        float(values["passenger_car_equivalent"]) if pce_mode == "external" else None
+    )
+    # These inputs affect only the internal lookup.  Freeze inactive values to
+    # deterministic defaults so hidden widgets cannot change calculation identity.
+    if pce_mode == "external":
+        engine_inputs["terrain_type"] = "specific_grade"
+        engine_inputs["truck_mix"] = "default_30_sut_70_tt"
+    else:
+        engine_inputs["terrain_type"] = values.get(
+            "terrain_type", template_inputs.get("terrain_type", "specific_grade")
         )
-    if "free_flow_speed" in values or "free_flow_speed_mph" in template_inputs:
-        engine_inputs["free_flow_speed_mph"] = (
-            None
-            if values.get("free_flow_speed") is None
-            else (
-                _rounded(float(values["free_flow_speed"]) / MILES_TO_KILOMETERS)
-                if metric
-                else float(values["free_flow_speed"])
-            )
-        )
-    if (
-        "passenger_car_equivalent" in values
-        or "passenger_car_equivalent" in template_inputs
-    ):
-        engine_inputs["passenger_car_equivalent"] = values.get(
-            "passenger_car_equivalent",
-            template_inputs.get("passenger_car_equivalent"),
+        engine_inputs["truck_mix"] = values.get(
+            "truck_mix", template_inputs.get("truck_mix", "default_30_sut_70_tt")
         )
     return engine_inputs
 
@@ -193,13 +232,16 @@ def multilane_display_outputs(
     metric = _normalize_unit_system(unit_system) == "metric"
     speed_factor = MILES_TO_KILOMETERS if metric else 1.0
     density_factor = 1.0 / MILES_TO_KILOMETERS if metric else 1.0
+    def optional(value: Any, factor: float = 1.0) -> float | None:
+        return None if value is None else float(value) * factor
+
     return {
         "density": {
-            "value": float(engine_outputs["density_pc_mi_ln"]) * density_factor,
+            "value": optional(engine_outputs["density_pc_mi_ln"], density_factor),
             "unit": "pc/km/ln" if metric else "pc/mi/ln",
         },
         "speed_used_for_density": {
-            "value": float(engine_outputs["speed_used_for_density_mph"]) * speed_factor,
+            "value": optional(engine_outputs["speed_used_for_density_mph"], speed_factor),
             "unit": "km/h" if metric else "mph",
         },
         "adjusted_free_flow_speed": {
@@ -243,7 +285,7 @@ def build_manual_multilane_audit_record(
         "calculation_type": MANUAL_MULTILANE_CALCULATION_TYPE,
         "template_id": template_id,
         "unit_system": _normalize_unit_system(unit_system),
-        "support_status": "bounded_multilane_segment_v0_1",
+        "support_status": "bounded_multilane_segment_phase_8",
         "displayed_inputs": deepcopy(displayed_inputs),
         "submitted_inputs": deepcopy(inputs),
         "calculation_succeeded": result is not None,
