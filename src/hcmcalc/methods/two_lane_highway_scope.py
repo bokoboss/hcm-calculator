@@ -184,34 +184,14 @@ def _classify_downstream_scope(**kwargs: object) -> VerticalScopeDecision:
             legacy,
         )
 
-    lookup = find_vertical_class_record(
-        terrain_type="mountainous",
-        segment_type=segment_type,
-        grade_percent=grade_percent,
-        grade_length_mi=applicability.submitted_segment_length_mi,
-        heavy_vehicle_percent=heavy_vehicle_percent,
-    ) if grade_percent != 0.0 else None
-    basis = _validation_basis(lookup.record) if lookup and lookup.record else None
-
-    if segment_type == PASSING_LANE and heavy_vehicle_percent != 8.0:
-        return VerticalScopeDecision("unsupported_downstream_methodology", "Passing Lane downstream calculation is supported only at 8% heavy vehicles.", classification, applicability, basis, legacy)  # type: ignore[arg-type]
-    if grade_percent != 0.0 and heavy_vehicle_percent != 8.0:
-        return VerticalScopeDecision("insufficient_validation_evidence", "Non-level downstream calculations are outside the currently validated Chapter 15 scope and remain validated only at 8% heavy vehicles.", classification, applicability, basis, legacy)  # type: ignore[arg-type]
-    if grade_percent != 0.0 and not validated_facility_example and not (lookup and lookup.record and lookup.record.manual_single_segment_validated):
-        reason = (
-            "Unsupported mountainous grade/length combination for downstream calculation: "
-            "Exhibit 15-11 classification is available, but it is outside the currently validated Chapter 15 scope."
-            if not (lookup and lookup.record)
-            else "Manual single-segment support is outside the currently validated facility-only path."
+    if segment_type == PASSING_LANE:
+        return VerticalScopeDecision(
+            "supported",
+            "Passing Lane Steps 4-8 are supported for the Exhibit 15-10/15-11 "
+            "applicable Class 1-5 envelope; Step 9 requires explicit sequence context.",
+            classification, applicability, "HCM Chapter 15 Exhibits 15-5 and 15-12 through 15-29", legacy,
         )
-        if segment_type == PASSING_LANE:
-            reason = "Manual single-segment support is outside the currently validated Passing Lane path."
-        return VerticalScopeDecision("insufficient_validation_evidence", reason, classification, applicability, basis, legacy)  # type: ignore[arg-type]
-    if horizontal_alignment == HORIZONTAL_CURVES_ALIGNMENT and grade_percent != 0.0 and not validated_facility_example:
-        return VerticalScopeDecision("insufficient_validation_evidence", "General non-level horizontal-curve calculations remain outside the validated downstream scope.", classification, applicability, basis, legacy)  # type: ignore[arg-type]
-    if segment_type == PASSING_LANE and classification.vertical_class != 1:
-        return VerticalScopeDecision("unsupported_downstream_methodology", "Passing Lane downstream calculations remain guarded outside the validated Class 1 path.", classification, applicability, basis, legacy)  # type: ignore[arg-type]
-    return VerticalScopeDecision("supported", "Combination is within the deliberately limited downstream calculation scope.", classification, applicability, basis, legacy)  # type: ignore[arg-type]
+    return VerticalScopeDecision("supported", "Combination is within the Chapter 15 single-segment envelope.", classification, applicability, "HCM method availability", legacy)  # type: ignore[arg-type]
 
 
 def _validate_heavy_vehicle_percent(value: float) -> None:

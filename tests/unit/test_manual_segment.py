@@ -299,24 +299,23 @@ def test_manual_mountainous_applicable_grade_length_is_supported() -> None:
     assert result.outputs["vertical_class"] == 3
 
 
-def test_manual_passing_lane_rejects_unvalidated_heavy_vehicle_percent() -> None:
-    with pytest.raises(MethodNotImplementedError, match="only at 8% heavy vehicles"):
-        run_manual_single_segment(
-            _manual_values(segment_type="passing_lane", heavy_vehicle_percent=5.0)
-        )
+def test_manual_passing_lane_supports_non_example_heavy_vehicle_percent() -> None:
+    result = run_manual_single_segment(
+        _manual_values(segment_type="passing_lane", heavy_vehicle_percent=5.0)
+    )
+    assert result.outputs["passing_lane_total_capacity_veh_h"] == 1500.0
+    assert result.outputs["midpoint_follower_density_followers_mi_ln"] > 0
 
 
-def test_manual_passing_lane_rejects_unvalidated_vertical_path() -> None:
-    with pytest.raises(MethodNotImplementedError, match="Manual single-segment support"):
-        run_manual_single_segment(
-            _manual_values(
-                segment_type="passing_lane",
-                terrain_type="mountainous",
-                segment_length_mi=1.3,
-                grade_percent=4.0,
-                heavy_vehicle_percent=8.0,
-            )
+def test_manual_passing_lane_supports_non_example_vertical_path() -> None:
+    result = run_manual_single_segment(
+        _manual_values(
+            segment_type="passing_lane", terrain_type="mountainous",
+            segment_length_mi=1.0, grade_percent=4.0, heavy_vehicle_percent=8.0,
         )
+    )
+    assert result.outputs["vertical_class"] == 3
+    assert result.outputs["passing_lane_total_capacity_veh_h"] == 1500.0
 
 
 def test_manual_audit_record_contains_user_and_normalized_engine_inputs() -> None:
