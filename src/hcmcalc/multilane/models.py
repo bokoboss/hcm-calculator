@@ -19,11 +19,11 @@ class MultilaneBasicSegmentInputs:
     heavy_vehicle_percent: float
     truck_mix: str
     grade_percent: float
-    posted_speed_limit_mph: float
-    lane_width_ft: float
-    roadside_lateral_clearance_ft: float
-    median_type: str
-    access_point_density_per_mi: float
+    posted_speed_limit_mph: float | None
+    lane_width_ft: float | None
+    roadside_lateral_clearance_ft: float | None
+    median_type: str | None
+    access_point_density_per_mi: float | None
     ffs_source: str = "estimated"
     free_flow_speed_mph: float | None = None
     passenger_car_equivalent: float | None = None

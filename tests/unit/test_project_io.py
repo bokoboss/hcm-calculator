@@ -12,6 +12,7 @@ from hcmcalc.ui.manual_facility import (
 from hcmcalc.ui.manual_multilane import (
     build_manual_multilane_audit_record,
     load_multilane_template,
+    multilane_ui_inputs_to_engine,
     multilane_template_ui_inputs,
     run_manual_multilane,
 )
@@ -399,7 +400,9 @@ def test_manual_multilane_project_round_trip(
     assert loaded["unit_system"] == unit_system
     assert loaded["template_id"] == template_id
     assert loaded["displayed_ui_inputs"] == displayed
-    assert loaded["normalized_engine_inputs"] == template["inputs"]
+    assert loaded["normalized_engine_inputs"] == multilane_ui_inputs_to_engine(
+        displayed, template["inputs"], unit_system
+    )
     assert loaded["calculation_result"]["outputs"]["level_of_service"] == "C"
     assert loaded["limitations"]
     assert loaded["unsupported_behavior_notes"]
@@ -429,9 +432,10 @@ def test_manual_multilane_non_example_project_round_trip_recalculates() -> None:
             "peak_hour_factor": 0.92,
             "heavy_vehicle_percent": 12.0,
             "grade_percent": 0.0,
-            "ffs_source": "measured",
-            "free_flow_speed": 55.0,
-            "passenger_car_equivalent": 2.0,
+                "ffs_source": "measured",
+                "free_flow_speed": 55.0,
+                "pce_mode": "external",
+                "passenger_car_equivalent": 2.0,
         }
     )
     normalized = load_multilane_template("MLH-CH26-004-EB")["inputs"] | {
@@ -469,9 +473,9 @@ def test_manual_multilane_non_example_project_round_trip_recalculates() -> None:
     assert loaded["normalized_engine_inputs"]["ffs_source"] == "measured"
     assert loaded["normalized_engine_inputs"]["free_flow_speed_mph"] == 55.0
     assert loaded["normalized_engine_inputs"]["number_of_lanes"] == 3
-    assert loaded["normalized_engine_inputs"]["lane_width_ft"] == 12.0
-    assert loaded["normalized_engine_inputs"]["roadside_lateral_clearance_ft"] == 12.0
-    assert loaded["normalized_engine_inputs"]["access_point_density_per_mi"] == 10.0
+    assert loaded["normalized_engine_inputs"]["lane_width_ft"] is None
+    assert loaded["normalized_engine_inputs"]["roadside_lateral_clearance_ft"] is None
+    assert loaded["normalized_engine_inputs"]["access_point_density_per_mi"] is None
     assert loaded["normalized_engine_inputs"]["peak_hour_factor"] == 0.92
     assert loaded["normalized_engine_inputs"]["heavy_vehicle_percent"] == 12.0
     assert loaded["normalized_engine_inputs"]["passenger_car_equivalent"] == 2.0
@@ -493,6 +497,7 @@ def test_manual_multilane_estimated_non_example_project_round_trip_recalculates(
             "roadside_lateral_clearance": 4.0,
             "access_point_density": 5.0,
             "ffs_source": "estimated",
+            "pce_mode": "external",
             "passenger_car_equivalent": 2.5,
         }
     )
@@ -734,3 +739,55 @@ def test_manual_freeway_load_clears_stale_result_when_engine_inputs_change() -> 
     assert loaded["calculation_result"] is None
     assert loaded["display_result"] is None
     assert loaded["audit"] is None
+
+
+def test_multilane_legacy_payload_uses_ffs_source_and_discards_unverified_result() -> None:
+    displayed = multilane_template_ui_inputs("MLH-CH26-004-EB", "imperial") | {
+        "ffs_source": "measured", "free_flow_speed": 60.0,
+        "pce_mode": "external", "passenger_car_equivalent": 2.5,
+    }
+    result = result_to_dict(
+        run_manual_multilane(
+            multilane_ui_inputs_to_engine(
+                displayed, load_multilane_template("MLH-CH26-004-EB")["inputs"], "imperial"
+            )
+        )
+    )
+    payload = create_manual_multilane_project_payload(
+        "MLH-CH26-004-EB", "imperial", displayed, result=result
+    )
+    payload["schema_version"] = "1.0"
+    payload.pop("method_identifier")
+    payload.pop("method_version")
+    payload["displayed_ui_inputs"].update({
+        "posted_speed_limit": 25.0, "lane_width": 10.0,
+        "roadside_lateral_clearance": 0.0, "median_type": "divided",
+    })
+
+    loaded = load_manual_multilane_project_json(json.dumps(payload))
+
+    assert loaded["normalized_engine_inputs"]["ffs_source"] == "measured"
+    assert loaded["normalized_engine_inputs"]["free_flow_speed_mph"] == 60.0
+    assert loaded["normalized_engine_inputs"]["lane_width_ft"] is None
+    assert loaded["calculation_result"] is None
+
+
+def test_freeway_load_discards_legacy_above_capacity_speed_and_density() -> None:
+    displayed = freeway_preset_ui_inputs("BF-CH26-001", "imperial") | {
+        "demand_volume_veh_h": 20000.0,
+    }
+    normalized = load_freeway_preset("BF-CH26-001")["inputs"] | {
+        "demand_volume_veh_h": 20000.0,
+    }
+    result = result_to_dict(run_manual_freeway(normalized))
+    assert result["outputs"]["mean_speed_mph"] is None
+    payload = create_manual_freeway_project_payload(
+        "BF-CH26-001", "imperial", displayed, result=result
+    )
+    payload["calculation_result"]["outputs"]["mean_speed_mph"] = 50.0
+    payload["calculation_result"]["outputs"]["density_pc_mi_ln"] = 45.0
+
+    loaded = load_manual_freeway_project_json(json.dumps(payload))
+
+    assert loaded["calculation_result"] is None
+    assert loaded["display_result"] is None

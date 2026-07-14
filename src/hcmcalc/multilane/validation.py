@@ -75,7 +75,6 @@ def validate_inputs(inputs: MultilaneBasicSegmentInputs) -> None:
         "analysis_type": inputs.analysis_type,
         "direction": inputs.direction,
         "truck_mix": inputs.truck_mix,
-        "median_type": inputs.median_type,
         "ffs_source": inputs.ffs_source,
     }
     for name, value in text_fields.items():
@@ -89,10 +88,6 @@ def validate_inputs(inputs: MultilaneBasicSegmentInputs) -> None:
         "peak_hour_factor": inputs.peak_hour_factor,
         "heavy_vehicle_percent": inputs.heavy_vehicle_percent,
         "grade_percent": inputs.grade_percent,
-        "posted_speed_limit_mph": inputs.posted_speed_limit_mph,
-        "lane_width_ft": inputs.lane_width_ft,
-        "roadside_lateral_clearance_ft": inputs.roadside_lateral_clearance_ft,
-        "access_point_density_per_mi": inputs.access_point_density_per_mi,
     }
     for name, value in numeric_fields.items():
         if (
@@ -121,19 +116,6 @@ def validate_inputs(inputs: MultilaneBasicSegmentInputs) -> None:
         raise HCMCalcError("peak_hour_factor must be greater than zero and at most 1.")
     if not 0 <= inputs.heavy_vehicle_percent <= 100:
         raise HCMCalcError("heavy_vehicle_percent must be between 0 and 100.")
-    if inputs.posted_speed_limit_mph <= 0:
-        raise HCMCalcError("posted_speed_limit_mph must be greater than zero.")
-    if inputs.lane_width_ft <= 0:
-        raise HCMCalcError("lane_width_ft must be greater than zero.")
-    if inputs.roadside_lateral_clearance_ft < 0:
-        raise HCMCalcError("roadside_lateral_clearance_ft must be nonnegative.")
-    if inputs.access_point_density_per_mi < 0:
-        raise HCMCalcError("access_point_density_per_mi must be nonnegative.")
-    if inputs.access_point_density_per_mi > 40:
-        raise UnsupportedScopeError(
-            "Multilane Basic Segment v0.1 does not support access point density "
-            "above the implemented Exhibit 12-24 range of 40 per mile."
-        )
 
     if inputs.facility_type != "multilane_highway":
         raise UnsupportedScopeError(
@@ -167,6 +149,31 @@ def validate_inputs(inputs: MultilaneBasicSegmentInputs) -> None:
         if inputs.free_flow_speed_mph <= 0:
             raise HCMCalcError("free_flow_speed_mph must be greater than zero.")
     else:
+        estimated_numeric_fields = {
+            "posted_speed_limit_mph": inputs.posted_speed_limit_mph,
+            "lane_width_ft": inputs.lane_width_ft,
+            "roadside_lateral_clearance_ft": inputs.roadside_lateral_clearance_ft,
+            "access_point_density_per_mi": inputs.access_point_density_per_mi,
+        }
+        if not isinstance(inputs.median_type, str) or not inputs.median_type.strip():
+            raise HCMCalcError("median_type is required when ffs_source is 'estimated'.")
+        for name, value in estimated_numeric_fields.items():
+            if value is None:
+                raise HCMCalcError(f"{name} is required when ffs_source is 'estimated'.")
+            _require_finite_number(name, value)
+        if inputs.posted_speed_limit_mph <= 0:
+            raise HCMCalcError("posted_speed_limit_mph must be greater than zero.")
+        if inputs.lane_width_ft <= 0:
+            raise HCMCalcError("lane_width_ft must be greater than zero.")
+        if inputs.roadside_lateral_clearance_ft < 0:
+            raise HCMCalcError("roadside_lateral_clearance_ft must be nonnegative.")
+        if inputs.access_point_density_per_mi < 0:
+            raise HCMCalcError("access_point_density_per_mi must be nonnegative.")
+        if inputs.access_point_density_per_mi > 40:
+            raise UnsupportedScopeError(
+                "Multilane Basic Segment v0.1 does not support access point density "
+                "above the implemented Exhibit 12-24 range of 40 per mile."
+            )
         if inputs.free_flow_speed_mph is not None:
             raise HCMCalcError(
                 "free_flow_speed_mph must be omitted when ffs_source is 'estimated'."

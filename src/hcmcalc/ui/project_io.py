@@ -34,7 +34,8 @@ from hcmcalc.ui.manual_segment import build_manual_segment_inputs
 from hcmcalc.ui.workflow_state import normalized_input_fingerprint
 
 
-PROJECT_SCHEMA_VERSION = "1.0"
+PROJECT_SCHEMA_VERSION = "1.1"
+LEGACY_PROJECT_SCHEMA_VERSIONS = {"1.0"}
 MANUAL_SINGLE_SEGMENT_PROJECT_TYPE = "manual_single_segment"
 MANUAL_FACILITY_PROJECT_TYPE = "manual_two_lane_facility_v1"
 LEGACY_MANUAL_FACILITY_PROJECT_TYPE = "manual_facility_v0"
@@ -264,6 +265,7 @@ def create_manual_multilane_project_payload(
     result = _json_ready(result) if result is not None else None
     audit_record = _json_ready(audit_record) if audit_record is not None else None
     outputs = result.get("outputs", {}) if result else {}
+    fingerprint = _method_input_fingerprint("hcm7_multilane_los", normalized_inputs)
     return {
         "schema_version": PROJECT_SCHEMA_VERSION,
         "project_type": MANUAL_MULTILANE_PROJECT_TYPE,
@@ -276,6 +278,9 @@ def create_manual_multilane_project_payload(
         "direction": template["inputs"]["direction"],
         "displayed_ui_inputs": displayed_inputs,
         "normalized_engine_inputs": normalized_inputs,
+        "method_identifier": "hcm7_multilane_los",
+        "method_version": "phase_8",
+        "calculation_fingerprint": fingerprint,
         "calculation_result": result,
         "display_result": (
             multilane_display_outputs(outputs, unit_system) if outputs else None
@@ -338,10 +343,7 @@ def load_manual_multilane_project_json(data: str | bytes) -> dict[str, Any]:
     except HCMCalcError as exc:
         raise ProjectFileError(f"Malformed or unsupported input payload: {exc}") from exc
     payload["normalized_engine_inputs"] = normalized_inputs
-    if saved_normalized_inputs != normalized_inputs:
-        payload["calculation_result"] = None
-        payload["display_result"] = None
-        payload["audit"] = None
+    _discard_stale_multilane_result(payload, normalized_inputs, saved_normalized_inputs)
     return payload
 
 
@@ -377,6 +379,11 @@ def create_manual_freeway_project_payload(
         "preset_name": preset["preset_label"],
         "displayed_ui_inputs": displayed_inputs,
         "normalized_engine_inputs": normalized_inputs,
+        "method_identifier": "hcm7_basic_freeway_segment",
+        "method_version": "phase_7_1_above_capacity_contract",
+        "calculation_fingerprint": _method_input_fingerprint(
+            "hcm7_basic_freeway_segment", normalized_inputs
+        ),
         "calculation_result": result,
         "display_result": (
             freeway_display_outputs(outputs, unit_system) if outputs else None
@@ -439,10 +446,7 @@ def load_manual_freeway_project_json(data: str | bytes) -> dict[str, Any]:
     except HCMCalcError as exc:
         raise ProjectFileError(f"Malformed or unsupported input payload: {exc}") from exc
     payload["normalized_engine_inputs"] = normalized_inputs
-    if saved_normalized_inputs != normalized_inputs:
-        payload["calculation_result"] = None
-        payload["display_result"] = None
-        payload["audit"] = None
+    _discard_stale_freeway_result(payload, normalized_inputs, saved_normalized_inputs)
     return payload
 
 
@@ -455,9 +459,9 @@ def _load_project_document(data: str | bytes) -> dict[str, Any]:
         raise ProjectFileError("Project JSON must contain an object.")
     if "project_type" not in payload:
         raise ProjectFileError("Missing required field: project_type.")
-    if payload.get("schema_version") != PROJECT_SCHEMA_VERSION:
+    if payload.get("schema_version") not in ({PROJECT_SCHEMA_VERSION} | LEGACY_PROJECT_SCHEMA_VERSIONS):
         raise ProjectFileError(
-            f"Unsupported schema_version. Expected {PROJECT_SCHEMA_VERSION}."
+            f"Unsupported schema_version. Expected {PROJECT_SCHEMA_VERSION} or a supported legacy version."
         )
     return payload
 
@@ -620,6 +624,69 @@ def _discard_stale_facility_result(
     payload["calculation_result"] = None
     payload["facility_outputs"] = {}
     payload["segment_outputs"] = []
+    payload["audit"] = None
+    payload["warnings"] = []
+    payload["assumptions"] = []
+
+
+def _method_input_fingerprint(method_identifier: str, inputs: dict[str, Any]) -> str:
+    """Fingerprint effective inputs under the calculation contract."""
+
+    return normalized_input_fingerprint(
+        {"method_identifier": method_identifier, "input_contract": "phase_8", "inputs": inputs}
+    )
+
+
+def _discard_stale_multilane_result(
+    payload: dict[str, Any], normalized_inputs: dict[str, Any], saved_inputs: Any
+) -> None:
+    """Retain only Phase 8 Multilane results with matching effective inputs."""
+
+    saved_fingerprint = payload.get("calculation_fingerprint")
+    current_fingerprint = _method_input_fingerprint("hcm7_multilane_los", normalized_inputs)
+    result = payload.get("calculation_result")
+    payload["calculation_fingerprint"] = current_fingerprint
+    if (
+        payload.get("method_identifier") == "hcm7_multilane_los"
+        and payload.get("method_version") == "phase_8"
+        and saved_fingerprint == current_fingerprint
+        and saved_inputs == normalized_inputs
+        and isinstance(result, dict)
+        and result.get("method") == "hcm7_multilane_los"
+    ):
+        return
+    _clear_saved_result(payload)
+
+
+def _discard_stale_freeway_result(
+    payload: dict[str, Any], normalized_inputs: dict[str, Any], saved_inputs: Any
+) -> None:
+    """Discard stale or pre-correction Basic Freeway results safely."""
+
+    saved_fingerprint = payload.get("calculation_fingerprint")
+    current_fingerprint = _method_input_fingerprint(
+        "hcm7_basic_freeway_segment", normalized_inputs
+    )
+    result = payload.get("calculation_result")
+    outputs = result.get("outputs", {}) if isinstance(result, dict) else {}
+    obsolete_above_capacity_result = bool(outputs.get("demand_exceeds_capacity")) and (
+        outputs.get("mean_speed_mph") is not None or outputs.get("density_pc_mi_ln") is not None
+    )
+    payload["calculation_fingerprint"] = current_fingerprint
+    if (
+        payload.get("method_identifier") == "hcm7_basic_freeway_segment"
+        and payload.get("method_version") == "phase_7_1_above_capacity_contract"
+        and saved_fingerprint == current_fingerprint
+        and saved_inputs == normalized_inputs
+        and not obsolete_above_capacity_result
+    ):
+        return
+    _clear_saved_result(payload)
+
+
+def _clear_saved_result(payload: dict[str, Any]) -> None:
+    payload["calculation_result"] = None
+    payload["display_result"] = None
     payload["audit"] = None
     payload["warnings"] = []
     payload["assumptions"] = []

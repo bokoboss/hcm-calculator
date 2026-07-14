@@ -62,6 +62,20 @@ Must satisfy AC-14 through AC-22 for Basic Freeway. Target release: `v0.4`.
 
 Requires both method-completion releases. Changes must not alter qualified calculation outputs unless accompanied by a verified defect report and regression tests. Target release: `v0.5`.
 
+## 3. Phase 8 v0.3 evidence map
+
+| ID | Evidence in this release |
+|---|---|
+| AC-14 | `manual_multilane.py` constructs normalized engine inputs only; `MultilaneHighwayLOSMethod` calculates; result, report, and export adapters consume the result object. |
+| AC-15 | Measured/estimated mode normalization and `workflow_state` fingerprint tests prove active values go stale and inactive values do not; exports are rendered only for current calculations. |
+| AC-16 | Project schema 1.1 persists the effective input fingerprint, method identifier, and method contract. Version 1.0 projects migrate inputs but do not reuse unchecked results. |
+| AC-17 | Manual Multilane and Basic Freeway display adapters preserve `None` speed/density; report JSON, CSV, Excel, and Markdown originate from the same result dictionary. |
+| AC-18 | Full-suite qualification includes the qualified Two-Lane segment and facility tests. |
+| AC-19 | Release note records the Python 3.12 clean-environment full-suite command and result. |
+| AC-20 | Release note records Streamlit launch and each visible workflow smoke result. |
+| AC-21 | `supported_workflows.md`, the Multilane gap analysis, and the v0.3 release note state lane, PCE, driver-population, and above-capacity limits. |
+| AC-22 | `docs/releases/v0_3_multilane_method_completion.md` records scope, migration, validation, and retained limitations. |
+
 ## 4. Required test classes
 
 - Official/reference example regression.

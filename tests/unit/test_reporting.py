@@ -18,6 +18,7 @@ from hcmcalc.ui.manual_multilane import (
     build_manual_multilane_audit_record,
     load_multilane_template,
     multilane_template_ui_inputs,
+    multilane_ui_inputs_to_engine,
     run_manual_multilane,
 )
 from hcmcalc.ui.manual_freeway import (
@@ -190,7 +191,7 @@ def test_freeway_report_json_includes_units_context_results_and_limitations() ->
     [
         (_single_report, "Manual Single Segment"),
         (_facility_report, "Manual Facility Report"),
-        (_multilane_report, "Manual Multilane Highway Segment v0.1"),
+            (_multilane_report, "Manual Multilane Highway Segment Report"),
         (_freeway_report, "Manual Basic Freeway Segment Calculator"),
     ],
 )
@@ -265,7 +266,7 @@ def test_multilane_metric_and_imperial_exports_use_selected_display_units() -> N
         item for item in imperial_report["inputs_summary"]
         if item["label"] == "Segment Length"
     )["unit"] == "ft"
-    assert "Manual Multilane v0.1 is a bounded" in metric_csv
+    assert "Manual Multilane is a bounded" in metric_csv
     assert "## Intermediate Values" in export_report(
         _multilane_report("metric"), "markdown"
     )
@@ -325,7 +326,7 @@ def test_multilane_non_example_markdown_export_includes_key_outputs_and_scope() 
     assert "Level of service" in markdown
     assert "Density" in markdown
     assert "Demand Flow Rate" in markdown
-    assert "bounded_multilane_segment_v0_1" in markdown
+    assert "bounded_multilane_segment_phase_8" in markdown
 
 
 def test_multilane_estimated_non_example_markdown_export_includes_key_outputs_and_scope() -> None:
@@ -381,7 +382,7 @@ def test_multilane_estimated_non_example_markdown_export_includes_key_outputs_an
     assert "Level of service" in markdown
     assert "Density" in markdown
     assert "Demand Flow Rate" in markdown
-    assert "bounded_multilane_segment_v0_1" in markdown
+    assert "bounded_multilane_segment_phase_8" in markdown
 
 
 def test_freeway_metric_and_imperial_exports_use_selected_display_units() -> None:
@@ -502,3 +503,45 @@ def test_report_filename_uses_required_pattern() -> None:
         report_filename(report, "xlsx")
         == "hcm_ch15_single_segment_report_20260612_101112.xlsx"
     )
+
+
+@pytest.mark.parametrize("calculation_type", ["manual_multilane_v0", "manual_basic_freeway_v0"])
+def test_above_capacity_exports_preserve_absent_speed_and_density(
+    calculation_type: str,
+) -> None:
+    if calculation_type == "manual_multilane_v0":
+        template = load_multilane_template("MLH-CH26-004-EB")
+        displayed = multilane_template_ui_inputs("MLH-CH26-004-EB", "imperial") | {
+            "demand_volume_veh_h": 20000.0,
+        }
+        inputs = multilane_ui_inputs_to_engine(displayed, template["inputs"], "imperial")
+        result = result_to_dict(run_manual_multilane(inputs))
+        audit = build_manual_multilane_audit_record(
+            "MLH-CH26-004-EB", inputs, displayed_inputs=displayed,
+            result=run_manual_multilane(inputs),
+        )
+        template_id = "MLH-CH26-004-EB"
+    else:
+        preset = load_freeway_preset("BF-CH26-001")
+        displayed = freeway_preset_ui_inputs("BF-CH26-001", "imperial") | {
+            "demand_volume_veh_h": 20000.0,
+        }
+        inputs = preset["inputs"] | {"demand_volume_veh_h": 20000.0}
+        result = result_to_dict(run_manual_freeway(inputs))
+        audit = build_manual_freeway_audit_record(
+            "BF-CH26-001", inputs, displayed_inputs=displayed,
+            result=run_manual_freeway(inputs),
+        )
+        template_id = "BF-CH26-001"
+
+    report = build_report(
+        calculation_type, result, "imperial", inputs=displayed,
+        audit_record=audit, template_id=template_id,
+    )
+    exported = json.loads(export_report(report, "json"))
+    summary = {row["label"]: row["value"] for row in exported["results_summary"]}
+
+    assert result["outputs"]["level_of_service"] == "F"
+    assert summary["Speed Used For Density"] is None
+    assert summary["Density"] is None
+    assert "None" not in export_report(report, "markdown")
