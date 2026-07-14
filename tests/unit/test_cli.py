@@ -84,7 +84,7 @@ def test_malformed_file_returns_nonzero(capsys, monkeypatch) -> None:
     assert "Input file is malformed" in captured.err
 
 
-def test_unsupported_vertical_scope_returns_clear_cli_error(
+def test_generalized_vertical_scope_runs_from_cli(
     capsys, tmp_path: Path
 ) -> None:
     fixture = yaml.safe_load(EXAMPLE_INPUTS.read_text(encoding="utf-8"))
@@ -97,6 +97,5 @@ def test_unsupported_vertical_scope_returns_clear_cli_error(
     exit_code = main(["run", str(input_path), "--case", "TLH-CH15-001"])
 
     captured = capsys.readouterr()
-    assert exit_code == 1
-    assert captured.out == ""
-    assert "outside the currently validated Chapter 15 scope" in captured.err
+    assert exit_code == 0
+    assert '"vertical_class": 3' in captured.out

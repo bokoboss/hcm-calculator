@@ -702,3 +702,10 @@ Acceptance criteria:
   any exact-example guard.
 - Keep unsupported-scope errors explicit enough to distinguish invalid input,
   missing HCM table data, missing implementation, and missing validation.
+# Phase 2 audit
+
+The public single-segment envelope is now Passing Constrained and Passing Zone,
+Classes 1--5, subject to Exhibit 15-10 and Exhibit 15-11.  Step 5d accepts an
+arbitrary valid sequence of tangent/curve subsegments and rejects Exhibit
+15-22 dash cells as non-restricting curves that must instead be represented as
+tangents.  Passing Lane remains deliberately outside this generalization.

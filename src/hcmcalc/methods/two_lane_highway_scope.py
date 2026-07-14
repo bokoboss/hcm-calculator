@@ -158,7 +158,7 @@ def require_supported_vertical_scope(**inputs: object) -> VerticalScopeDecision:
 
 
 def _classify_downstream_scope(**kwargs: object) -> VerticalScopeDecision:
-    """Keep Steps 4-10 explicitly limited to separately validated paths."""
+    """Resolve the documented Phase 2 Step 4--10 single-segment envelope."""
 
     classification = kwargs["classification"]
     applicability = kwargs["applicability"]
@@ -170,6 +170,20 @@ def _classify_downstream_scope(**kwargs: object) -> VerticalScopeDecision:
     horizontal_alignment = str(kwargs["horizontal_alignment"])
     validated_facility_example = bool(kwargs["validated_facility_example"])
     legacy = kwargs["normalized_legacy_grade_length_mi"]
+    # Exhibits 15-12 through 15-29 provide the Class 1--5 Passing
+    # Constrained/Passing Zone sequence.  Chapter 26 records are validation
+    # evidence only; they must not gate a fully specified HCM calculation.
+    if segment_type in {PASSING_CONSTRAINED, PASSING_ZONE}:
+        return VerticalScopeDecision(
+            "supported",
+            "Passing Constrained and Passing Zone Steps 4-10 are supported for "
+            "the Exhibit 15-10/15-11 applicable single-segment envelope.",
+            classification,
+            applicability,
+            "HCM method availability; Phase 2 method-conformance evidence",
+            legacy,
+        )
+
     lookup = find_vertical_class_record(
         terrain_type="mountainous",
         segment_type=segment_type,
