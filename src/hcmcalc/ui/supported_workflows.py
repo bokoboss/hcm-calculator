@@ -124,13 +124,18 @@ SUPPORTED_WORKFLOW_SECTIONS: tuple[WorkflowSection, ...] = (
             "Manual Basic Freeway Segment Calculator",
             "bounded Chapter 12 one-direction, one-segment uninterrupted-flow analysis",
             "Chapter 26 Example 1 optional defaults and regression evidence",
+            "measured FFS or estimated FFS with active geometry inputs only",
+            "internal level, rolling, and printed specific-grade PCE lookup or external PCE override with provenance",
+            "Chapter 26 driver-population category with paired SAF/CAF, or explicitly governed SAF/CAF factors",
+            "above-capacity LOS F/capacity-failure result without predicted speed or density",
             "Metric/Imperial UI-boundary conversion",
             "Project Save/Load and reporting exports",
         ],
         "limitations": [
             "not a general freeway facility calculator",
             "ramps, weaving, merge/diverge, managed lanes, work zones, reliability, and facility/corridor workflows are outside this page",
-            "specific-grade and mountainous-terrain PCE tables are unsupported",
+            "mountainous and mixed-flow PCE domains, unprinted truck mixes, and PCE extrapolation are rejected",
+            "above-capacity conditions do not predict queues, delay, travel time, or congested speed",
         ],
         "save_load_export": (
             "Project JSON Save/Load and CSV, Excel, Markdown, and report JSON exports."

@@ -16,6 +16,7 @@ from hcmcalc.ui.manual_freeway import (
     run_manual_freeway,
 )
 from hcmcalc.ui.units import MILES_TO_KILOMETERS
+from hcmcalc.ui.workflow_state import normalized_input_fingerprint
 
 
 def test_freeway_preset_options_expose_only_chapter_26_example_1() -> None:
@@ -64,8 +65,10 @@ def test_freeway_metric_template_loading_round_trips_to_engine_inputs() -> None:
         75.4 * MILES_TO_KILOMETERS
     )
     assert displayed["total_ramp_density"] == pytest.approx(4.0 / MILES_TO_KILOMETERS)
-    assert freeway_ui_inputs_to_engine(displayed, preset_inputs, "metric") == (
-        preset_inputs
+    normalized = freeway_ui_inputs_to_engine(displayed, preset_inputs, "metric")
+    assert normalized["driver_population_category"] == "regular"
+    assert result_to_dict(run_manual_freeway(normalized)) == result_to_dict(
+        run_manual_freeway(preset_inputs)
     )
 
 
@@ -178,3 +181,76 @@ def test_freeway_engine_inputs_to_ui_preserves_measured_ffs_path_shape() -> None
     assert displayed["ffs_source"] == "measured"
     assert displayed["free_flow_speed"] == 65.0
     assert displayed["base_free_flow_speed"] is None
+
+
+def test_freeway_normalization_ignores_inactive_ffs_and_internal_pce_values() -> None:
+    preset = load_freeway_preset("BF-CH26-001")["inputs"]
+    displayed = freeway_preset_ui_inputs("BF-CH26-001") | {
+        "ffs_source": "measured",
+        "free_flow_speed": 65.0,
+        "base_free_flow_speed": 70.0,
+        "lane_width": 10.0,
+        "right_side_lateral_clearance": 0.0,
+        "total_ramp_density": 6.0,
+        "pce_mode": "external",
+        "passenger_car_equivalent": 2.3,
+        "passenger_car_equivalent_provenance": "agency study",
+        "terrain_type": "specific_grade",
+        "grade_percent": 6.0,
+        "truck_mix": "majority_70_sut_30_tt",
+    }
+    normalized = freeway_ui_inputs_to_engine(displayed, preset, "imperial")
+
+    assert normalized["free_flow_speed_mph"] == 65.0
+    assert normalized["base_free_flow_speed_mph"] is None
+    assert normalized["lane_width_ft"] is None
+    assert normalized["terrain_type"] == "level"
+    assert normalized["grade_percent"] is None
+    assert normalized["truck_mix"] == "default_30_sut_70_tt"
+
+
+def test_freeway_normalization_uses_paired_driver_population_adjustments() -> None:
+    preset = load_freeway_preset("BF-CH26-001")["inputs"]
+    displayed = freeway_preset_ui_inputs("BF-CH26-001") | {
+        "driver_population_category": "mostly_unfamiliar",
+        "speed_adjustment_factor": 1.0,
+        "capacity_adjustment_factor": 1.0,
+    }
+    normalized = freeway_ui_inputs_to_engine(displayed, preset, "imperial")
+
+    assert normalized["speed_adjustment_factor"] == pytest.approx(0.913)
+    assert normalized["capacity_adjustment_factor"] == pytest.approx(0.898)
+    assert normalized["speed_adjustment_factor_source"] == "chapter_26_driver_population"
+
+
+def test_freeway_fingerprint_changes_only_for_effective_normalized_inputs() -> None:
+    preset = load_freeway_preset("BF-CH26-001")["inputs"]
+    displayed = freeway_preset_ui_inputs("BF-CH26-001") | {
+        "ffs_source": "measured", "free_flow_speed": 65.0,
+        "base_free_flow_speed": 70.0, "lane_width": 10.0,
+        "right_side_lateral_clearance": 0.0, "total_ramp_density": 6.0,
+    }
+    inactive_changed = displayed | {
+        "base_free_flow_speed": 75.0, "lane_width": 12.0,
+        "right_side_lateral_clearance": 6.0, "total_ramp_density": 0.0,
+    }
+    active_changed = displayed | {"free_flow_speed": 66.0}
+
+    baseline = normalized_input_fingerprint(
+        freeway_ui_inputs_to_engine(displayed, preset, "imperial")
+    )
+    assert baseline == normalized_input_fingerprint(
+        freeway_ui_inputs_to_engine(inactive_changed, preset, "imperial")
+    )
+    assert baseline != normalized_input_fingerprint(
+        freeway_ui_inputs_to_engine(active_changed, preset, "imperial")
+    )
+
+
+def test_freeway_normalization_rejects_unknown_ui_inputs() -> None:
+    with pytest.raises(ValueError, match="Unrecognized Basic Freeway UI inputs"):
+        freeway_ui_inputs_to_engine(
+            freeway_preset_ui_inputs("BF-CH26-001") | {"unsupported": True},
+            load_freeway_preset("BF-CH26-001")["inputs"],
+            "imperial",
+        )

@@ -39,11 +39,12 @@ Implemented:
   Multilane Highway Segment analysis within the implemented HCM scope. Chapter
   26 Multilane Highway Example Problem 4 remains regression evidence and
   optional defaults.
-- HCM7 Chapter 12 Basic Freeway Segment engine v0.1 under
+- HCM7 Chapter 12 Basic Freeway Segment engine under
   `src/hcmcalc/freeway/`, limited to one-direction, one-segment,
   uninterrupted-flow Basic Freeway Segment calculations with measured or
-  estimated FFS, general-terrain level/rolling heavy-vehicle PCEs, audit
-  outputs, unsupported-scope guardrails, and Chapter 26 Example Problem 1
+  estimated FFS, level/rolling and bounded printed specific-grade PCE paths or
+  external PCE provenance, SAF/CAF and driver-population audit outputs,
+  unsupported-scope guardrails, and Chapter 26 Example Problem 1
   validation fixtures
 - Chapter 26 second-case inventory documenting that no additional compatible
   Multilane Highway motorized-vehicle validation case is available in the
@@ -64,7 +65,8 @@ Not implemented yet:
 - Multilane Highway facility, ramp, weaving, merge/diverge, managed lane, work
   zone, reliability, and unsupported PCE table expansion workflows
 - Basic Freeway ramps, weaving, merge/diverge, managed lanes, work zones,
-  reliability, facility/corridor workflows, and specific-grade PCE tables
+  reliability, facility/corridor workflows, mountainous/mixed-flow PCE domains,
+  unprinted PCE combinations, and oversaturated prediction
 - Production validation dataset
 
 ## Supported Workflows
@@ -89,12 +91,14 @@ Currently supported:
   managed lane, work zone, or reliability workflows.
 - **Basic Freeway:** Manual Basic Freeway Segment Calculator for bounded
   Chapter 12 one-direction, one-segment uninterrupted-flow analysis,
-  Chapter 26 Example 1 optional defaults and regression evidence,
-  Metric/Imperial UI-boundary conversion, Save/Load, and Export/reporting. It
+  Chapter 26 Example 1 optional defaults and regression evidence, measured or
+  estimated FFS, bounded internal/external PCE paths, governed SAF/CAF and
+  driver-population inputs, Metric/Imperial UI-boundary conversion, Save/Load,
+  and Export/reporting. It
   is not a general freeway facility calculator and does not support ramps,
   weaving, merge/diverge, managed lanes, work zones, reliability,
-  facility/corridor workflows, specific-grade PCE tables, or mountainous-terrain
-  PCE tables.
+  facility/corridor workflows, mountainous/mixed-flow PCE domains, unprinted
+  PCE combinations, or oversaturated prediction.
 
 See [Supported Workflows](docs/supported_workflows.md) for the concise app-wide
 scope summary.
@@ -197,7 +201,7 @@ The single-page app provides six modes:
   in the selected unit system and normalized engine-native Imperial inputs.
   Reports display the selected unit system and label engine-native Imperial
   values explicitly where included.
-- **Manual Basic Freeway Segment Calculator** is a calculator-first v0.1
+- **Manual Basic Freeway Segment Calculator** is a calculator-first worksheet
   worksheet for one-direction, one-segment uninterrupted-flow Basic Freeway
   Segment analysis within the implemented HCM7 Chapter 12 scope. It exposes
   Setup, Roadway / Geometry, Traffic, Advanced / Optional, Results, Details,
@@ -206,7 +210,9 @@ The single-page app provides six modes:
   `references/freeway_example_inputs.yaml`; it remains regression evidence, not
   the supported methodology boundary. Metric inputs are converted to
   engine-native Imperial values at the UI boundary and speed/density outputs are
-  converted back for display. The page calls only the existing
+  converted back for display. Measured and estimated FFS, internal/external
+  PCE, driver-population, SAF/CAF, and their provenance are normalized before
+  calculation and freshness checks. The page calls only the existing
   `src/hcmcalc/freeway` engine and does not add or change formulas. Save/Load
   controls are compactly placed around the calculator inputs: load sits near
   the optional defaults controls and save sits below the worksheet inputs.
@@ -215,7 +221,7 @@ The single-page app provides six modes:
   `project_type = manual_basic_freeway_v0`, preserves displayed UI values,
   engine-native Imperial inputs, limitations, warnings, assumptions, and any
   matching current result. Export/reporting preserves the same bounded Basic
-  Freeway Segment v0.1 scope only.
+  Basic Freeway Segment scope only.
 - **Supported Workflows** summarizes current Two-Lane Highway, Multilane
   Highway, Basic Freeway, Save/Load, Export / Report, and validation-reference
   scope in the app. Limitations are visible but kept secondary to the calculator
@@ -287,9 +293,9 @@ Limitations:
   `project_type = manual_basic_freeway_v0` and the bounded implemented Chapter
   12 Basic Freeway Segment envelope. Basic Freeway ramps, weaving,
   merge/diverge, managed lanes, work zones, reliability analysis,
-  facility/corridor workflows, specific-grade Basic Freeway PCE tables, and
-  mountainous-terrain PCE tables remain unsupported. The Manual Basic Freeway
-  Segment Calculator v0.1 is not a general freeway facility calculator;
+  facility/corridor workflows, mountainous/mixed-flow PCE domains, and
+  unprinted or extrapolated PCE combinations remain unsupported. The Manual Basic Freeway
+  Segment Calculator is not a general freeway facility calculator;
   BF-CH26-001 remains optional defaults and Chapter 26 regression evidence.
 - User-supplied Multilane adjusted free-flow speed and driver-population
   adjustment inputs remain unsupported.

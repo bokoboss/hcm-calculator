@@ -34,8 +34,8 @@ from hcmcalc.ui.manual_segment import build_manual_segment_inputs
 from hcmcalc.ui.workflow_state import normalized_input_fingerprint
 
 
-PROJECT_SCHEMA_VERSION = "1.1"
-LEGACY_PROJECT_SCHEMA_VERSIONS = {"1.0"}
+PROJECT_SCHEMA_VERSION = "1.2"
+LEGACY_PROJECT_SCHEMA_VERSIONS = {"1.0", "1.1"}
 MANUAL_SINGLE_SEGMENT_PROJECT_TYPE = "manual_single_segment"
 MANUAL_FACILITY_PROJECT_TYPE = "manual_two_lane_facility_v1"
 LEGACY_MANUAL_FACILITY_PROJECT_TYPE = "manual_facility_v0"
@@ -380,7 +380,7 @@ def create_manual_freeway_project_payload(
         "displayed_ui_inputs": displayed_inputs,
         "normalized_engine_inputs": normalized_inputs,
         "method_identifier": "hcm7_basic_freeway_segment",
-        "method_version": "phase_7_1_above_capacity_contract",
+        "method_version": "phase_10_product_integration",
         "calculation_fingerprint": _method_input_fingerprint(
             "hcm7_basic_freeway_segment", normalized_inputs
         ),
@@ -675,10 +675,13 @@ def _discard_stale_freeway_result(
     payload["calculation_fingerprint"] = current_fingerprint
     if (
         payload.get("method_identifier") == "hcm7_basic_freeway_segment"
-        and payload.get("method_version") == "phase_7_1_above_capacity_contract"
+        and payload.get("method_version") == "phase_10_product_integration"
         and saved_fingerprint == current_fingerprint
         and saved_inputs == normalized_inputs
         and not obsolete_above_capacity_result
+        and isinstance(result, dict)
+        and result.get("method") == "hcm7_basic_freeway_segment"
+        and outputs.get("method_version") == "phase_9_engine"
     ):
         return
     _clear_saved_result(payload)
