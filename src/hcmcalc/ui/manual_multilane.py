@@ -8,6 +8,7 @@ from typing import Any
 
 from hcmcalc.cli import find_case, load_input_file
 from hcmcalc.multilane import MultilaneHighwayLOSMethod
+from hcmcalc.ui.input_contracts import reject_unknown_keys, require_finite_number
 from hcmcalc.ui.units import FEET_TO_METERS, MILES_TO_KILOMETERS
 
 
@@ -18,6 +19,14 @@ TEMPLATE_LABELS = {
     "MLH-CH26-004-WB": "Chapter 26 Example 4 - Westbound starting values",
 }
 SUPPORTED_UNIT_SYSTEMS = {"metric", "imperial"}
+MULTILANE_UI_INPUT_KEYS = {
+    "number_of_lanes", "segment_length", "ffs_source", "free_flow_speed",
+    "posted_speed_limit", "lane_width", "roadside_lateral_clearance",
+    "left_side_lateral_clearance", "access_point_density", "median_type",
+    "demand_volume_veh_h", "peak_hour_factor", "heavy_vehicle_percent",
+    "grade_percent", "terrain_type", "truck_mix", "pce_mode",
+    "passenger_car_equivalent",
+}
 MANUAL_MULTILANE_CALCULATION_TYPE = "manual_multilane_v1"
 MANUAL_MULTILANE_LIMITATIONS = [
     "Manual Multilane is a bounded one-direction Multilane Highway Segment "
@@ -143,6 +152,7 @@ def multilane_ui_inputs_to_engine(
 ) -> dict[str, Any]:
     """Convert user-facing worksheet values to engine-native Imperial inputs."""
 
+    reject_unknown_keys(values, MULTILANE_UI_INPUT_KEYS, "Multilane UI")
     metric = _normalize_unit_system(unit_system) == "metric"
     ffs_source = values.get("ffs_source", template_inputs.get("ffs_source", "estimated"))
     pce_mode = values.get(
@@ -153,6 +163,23 @@ def multilane_ui_inputs_to_engine(
         raise ValueError("ffs_source must be estimated or measured.")
     if pce_mode not in {"internal", "external"}:
         raise ValueError("pce_mode must be internal or external.")
+    for name in (
+        "number_of_lanes", "segment_length", "demand_volume_veh_h",
+        "peak_hour_factor", "heavy_vehicle_percent", "grade_percent",
+    ):
+        require_finite_number(name, values[name])
+    if ffs_source == "estimated":
+        for name in (
+            "posted_speed_limit", "lane_width", "roadside_lateral_clearance",
+            "access_point_density",
+        ):
+            require_finite_number(name, values[name])
+        if values.get("median_type") == "divided":
+            require_finite_number("left_side_lateral_clearance", values.get("left_side_lateral_clearance"))
+    else:
+        require_finite_number("free_flow_speed", values.get("free_flow_speed"))
+    if pce_mode == "external":
+        require_finite_number("passenger_car_equivalent", values.get("passenger_car_equivalent"))
     engine_inputs = {
         **template_inputs,
         "number_of_lanes": int(values["number_of_lanes"]),

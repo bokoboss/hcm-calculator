@@ -31,11 +31,22 @@ from hcmcalc.ui.manual_multilane import (
     run_manual_multilane,
 )
 from hcmcalc.ui.manual_segment import build_manual_segment_inputs
-from hcmcalc.ui.workflow_state import normalized_input_fingerprint
+from hcmcalc.ui.workflow_state import (
+    calculation_input_fingerprint,
+    normalized_input_fingerprint,
+)
 
 
 PROJECT_SCHEMA_VERSION = "1.2"
 LEGACY_PROJECT_SCHEMA_VERSIONS = {"1.0", "1.1"}
+TWO_LANE_SEGMENT_METHOD = "hcm7_two_lane_highway_segment"
+TWO_LANE_SEGMENT_CONTRACT = "phase_5_product_integration"
+TWO_LANE_FACILITY_METHOD = "hcm7_two_lane_highway_facility"
+TWO_LANE_FACILITY_CONTRACT = "phase_5_product_integration"
+MULTILANE_METHOD = "hcm7_multilane_los"
+MULTILANE_CONTRACT = "phase_8"
+FREEWAY_METHOD = "hcm7_basic_freeway_segment"
+FREEWAY_CONTRACT = "phase_10_product_integration"
 MANUAL_SINGLE_SEGMENT_PROJECT_TYPE = "manual_single_segment"
 MANUAL_FACILITY_PROJECT_TYPE = "manual_two_lane_facility_v1"
 LEGACY_MANUAL_FACILITY_PROJECT_TYPE = "manual_facility_v0"
@@ -92,10 +103,16 @@ def create_manual_project_payload(
         "manual_inputs": manual_inputs,
         "normalized_engine_inputs": normalized_engine_inputs,
         "calculation_fingerprint": (
-            normalized_input_fingerprint(normalized_engine_inputs)
+            _method_input_fingerprint(
+                TWO_LANE_SEGMENT_METHOD,
+                TWO_LANE_SEGMENT_CONTRACT,
+                normalized_engine_inputs,
+            )
             if normalized_engine_inputs is not None
             else None
         ),
+        "method_identifier": TWO_LANE_SEGMENT_METHOD,
+        "method_version": TWO_LANE_SEGMENT_CONTRACT,
         "result": result,
         "audit_record": audit_record,
         "warnings": warnings,
@@ -168,7 +185,9 @@ def create_manual_facility_project_payload(
     result = _json_ready(result) if result is not None else None
     audit_record = _json_ready(audit_record) if audit_record is not None else None
     outputs = result.get("outputs", {}) if result else {}
-    fingerprint = normalized_input_fingerprint(normalized_inputs)
+    fingerprint = _method_input_fingerprint(
+        TWO_LANE_FACILITY_METHOD, TWO_LANE_FACILITY_CONTRACT, normalized_inputs
+    )
     return {
         "schema_version": PROJECT_SCHEMA_VERSION,
         "project_type": MANUAL_FACILITY_PROJECT_TYPE,
@@ -181,6 +200,8 @@ def create_manual_facility_project_payload(
         "editable_facility_inputs": {"segments": segment_rows},
         "normalized_facility_inputs": normalized_inputs,
         "calculation_fingerprint": fingerprint,
+        "method_identifier": TWO_LANE_FACILITY_METHOD,
+        "method_version": TWO_LANE_FACILITY_CONTRACT,
         "segment_rows": segment_rows,
         "calculation_result": result,
         "facility_outputs": {key: value for key, value in outputs.items() if key != "segments"},
@@ -265,7 +286,9 @@ def create_manual_multilane_project_payload(
     result = _json_ready(result) if result is not None else None
     audit_record = _json_ready(audit_record) if audit_record is not None else None
     outputs = result.get("outputs", {}) if result else {}
-    fingerprint = _method_input_fingerprint("hcm7_multilane_los", normalized_inputs)
+    fingerprint = _method_input_fingerprint(
+        MULTILANE_METHOD, MULTILANE_CONTRACT, normalized_inputs
+    )
     return {
         "schema_version": PROJECT_SCHEMA_VERSION,
         "project_type": MANUAL_MULTILANE_PROJECT_TYPE,
@@ -278,8 +301,8 @@ def create_manual_multilane_project_payload(
         "direction": template["inputs"]["direction"],
         "displayed_ui_inputs": displayed_inputs,
         "normalized_engine_inputs": normalized_inputs,
-        "method_identifier": "hcm7_multilane_los",
-        "method_version": "phase_8",
+        "method_identifier": MULTILANE_METHOD,
+        "method_version": MULTILANE_CONTRACT,
         "calculation_fingerprint": fingerprint,
         "calculation_result": result,
         "display_result": (
@@ -379,10 +402,10 @@ def create_manual_freeway_project_payload(
         "preset_name": preset["preset_label"],
         "displayed_ui_inputs": displayed_inputs,
         "normalized_engine_inputs": normalized_inputs,
-        "method_identifier": "hcm7_basic_freeway_segment",
-        "method_version": "phase_10_product_integration",
+        "method_identifier": FREEWAY_METHOD,
+        "method_version": FREEWAY_CONTRACT,
         "calculation_fingerprint": _method_input_fingerprint(
-            "hcm7_basic_freeway_segment", normalized_inputs
+            FREEWAY_METHOD, FREEWAY_CONTRACT, normalized_inputs
         ),
         "calculation_result": result,
         "display_result": (
@@ -463,6 +486,8 @@ def _load_project_document(data: str | bytes) -> dict[str, Any]:
         raise ProjectFileError(
             f"Unsupported schema_version. Expected {PROJECT_SCHEMA_VERSION} or a supported legacy version."
         )
+    if payload["schema_version"] in LEGACY_PROJECT_SCHEMA_VERSIONS:
+        payload["load_status"] = "project_migrated"
     return payload
 
 
@@ -600,14 +625,29 @@ def _discard_stale_single_segment_result(
     """Never restore a result unless its normalized-input fingerprint matches."""
 
     saved_fingerprint = payload.get("calculation_fingerprint")
-    current_fingerprint = normalized_input_fingerprint(normalized_inputs)
+    current_fingerprint = _method_input_fingerprint(
+        TWO_LANE_SEGMENT_METHOD, TWO_LANE_SEGMENT_CONTRACT, normalized_inputs
+    )
+    legacy_fingerprint = normalized_input_fingerprint(normalized_inputs)
     payload["normalized_engine_inputs"] = normalized_inputs
-    if saved_fingerprint == current_fingerprint:
+    payload["calculation_fingerprint"] = current_fingerprint
+    if (
+        payload.get("method_identifier") == TWO_LANE_SEGMENT_METHOD
+        and payload.get("method_version") == TWO_LANE_SEGMENT_CONTRACT
+        and saved_fingerprint == current_fingerprint
+    ):
+        _mark_load_status(payload, "result_current")
+        return
+    if saved_fingerprint == legacy_fingerprint:
+        payload["method_identifier"] = TWO_LANE_SEGMENT_METHOD
+        payload["method_version"] = TWO_LANE_SEGMENT_CONTRACT
+        _mark_load_status(payload, "project_migrated")
         return
     payload["result"] = None
     payload["audit_record"] = None
     payload["warnings"] = []
     payload["assumptions"] = []
+    _mark_load_status(payload, "project_requires_recalculation")
 
 
 def _discard_stale_facility_result(
@@ -616,10 +656,23 @@ def _discard_stale_facility_result(
     """Discard stale or legacy stored facility results while retaining inputs."""
 
     saved_fingerprint = payload.get("calculation_fingerprint")
-    current_fingerprint = normalized_input_fingerprint(normalized_inputs)
+    current_fingerprint = _method_input_fingerprint(
+        TWO_LANE_FACILITY_METHOD, TWO_LANE_FACILITY_CONTRACT, normalized_inputs
+    )
+    legacy_fingerprint = normalized_input_fingerprint(normalized_inputs)
     payload["normalized_facility_inputs"] = normalized_inputs
     payload["calculation_fingerprint"] = current_fingerprint
-    if saved_fingerprint == current_fingerprint:
+    if (
+        payload.get("method_identifier") == TWO_LANE_FACILITY_METHOD
+        and payload.get("method_version") == TWO_LANE_FACILITY_CONTRACT
+        and saved_fingerprint == current_fingerprint
+    ):
+        _mark_load_status(payload, "result_current")
+        return
+    if saved_fingerprint == legacy_fingerprint:
+        payload["method_identifier"] = TWO_LANE_FACILITY_METHOD
+        payload["method_version"] = TWO_LANE_FACILITY_CONTRACT
+        _mark_load_status(payload, "project_migrated")
         return
     payload["calculation_result"] = None
     payload["facility_outputs"] = {}
@@ -627,14 +680,15 @@ def _discard_stale_facility_result(
     payload["audit"] = None
     payload["warnings"] = []
     payload["assumptions"] = []
+    _mark_load_status(payload, "project_requires_recalculation")
 
 
-def _method_input_fingerprint(method_identifier: str, inputs: dict[str, Any]) -> str:
+def _method_input_fingerprint(
+    method_identifier: str, input_contract: str, inputs: dict[str, Any]
+) -> str:
     """Fingerprint effective inputs under the calculation contract."""
 
-    return normalized_input_fingerprint(
-        {"method_identifier": method_identifier, "input_contract": "phase_8", "inputs": inputs}
-    )
+    return calculation_input_fingerprint(method_identifier, input_contract, inputs)
 
 
 def _discard_stale_multilane_result(
@@ -643,19 +697,23 @@ def _discard_stale_multilane_result(
     """Retain only Phase 8 Multilane results with matching effective inputs."""
 
     saved_fingerprint = payload.get("calculation_fingerprint")
-    current_fingerprint = _method_input_fingerprint("hcm7_multilane_los", normalized_inputs)
+    current_fingerprint = _method_input_fingerprint(
+        MULTILANE_METHOD, MULTILANE_CONTRACT, normalized_inputs
+    )
     result = payload.get("calculation_result")
     payload["calculation_fingerprint"] = current_fingerprint
     if (
-        payload.get("method_identifier") == "hcm7_multilane_los"
-        and payload.get("method_version") == "phase_8"
+        payload.get("method_identifier") == MULTILANE_METHOD
+        and payload.get("method_version") == MULTILANE_CONTRACT
         and saved_fingerprint == current_fingerprint
         and saved_inputs == normalized_inputs
         and isinstance(result, dict)
-        and result.get("method") == "hcm7_multilane_los"
+        and result.get("method") == MULTILANE_METHOD
     ):
+        _mark_load_status(payload, "result_current")
         return
     _clear_saved_result(payload)
+    _mark_load_status(payload, "project_requires_recalculation")
 
 
 def _discard_stale_freeway_result(
@@ -665,7 +723,7 @@ def _discard_stale_freeway_result(
 
     saved_fingerprint = payload.get("calculation_fingerprint")
     current_fingerprint = _method_input_fingerprint(
-        "hcm7_basic_freeway_segment", normalized_inputs
+        FREEWAY_METHOD, FREEWAY_CONTRACT, normalized_inputs
     )
     result = payload.get("calculation_result")
     outputs = result.get("outputs", {}) if isinstance(result, dict) else {}
@@ -674,17 +732,43 @@ def _discard_stale_freeway_result(
     )
     payload["calculation_fingerprint"] = current_fingerprint
     if (
-        payload.get("method_identifier") == "hcm7_basic_freeway_segment"
-        and payload.get("method_version") == "phase_10_product_integration"
+        payload.get("method_identifier") == FREEWAY_METHOD
+        and payload.get("method_version") == FREEWAY_CONTRACT
         and saved_fingerprint == current_fingerprint
         and saved_inputs == normalized_inputs
         and not obsolete_above_capacity_result
         and isinstance(result, dict)
-        and result.get("method") == "hcm7_basic_freeway_segment"
+        and result.get("method") == FREEWAY_METHOD
         and outputs.get("method_version") == "phase_9_engine"
     ):
+        _mark_load_status(payload, "result_current")
         return
     _clear_saved_result(payload)
+    _mark_load_status(payload, "project_requires_recalculation")
+
+
+def _mark_load_status(payload: dict[str, Any], status: str) -> None:
+    """Keep the most consequential safe load outcome visible to the UI."""
+
+    if status == "project_requires_recalculation" or "load_status" not in payload:
+        payload["load_status"] = status
+
+
+def project_load_message(project: dict[str, Any]) -> str:
+    """Return one user-facing status sentence for a validated project load."""
+
+    status = project.get("load_status")
+    if status == "project_requires_recalculation":
+        return (
+            "Project loaded, but its stored result is not current. Review the "
+            "restored inputs and click Run calculation to recalculate."
+        )
+    if status == "project_migrated":
+        return (
+            "Project migrated to the current input contract. Review the restored "
+            "inputs before using the retained result."
+        )
+    return "Project loaded with a current result. Review the restored inputs as needed."
 
 
 def _clear_saved_result(payload: dict[str, Any]) -> None:

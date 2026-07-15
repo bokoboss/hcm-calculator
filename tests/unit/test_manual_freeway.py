@@ -254,3 +254,18 @@ def test_freeway_normalization_rejects_unknown_ui_inputs() -> None:
             load_freeway_preset("BF-CH26-001")["inputs"],
             "imperial",
         )
+
+
+@pytest.mark.parametrize("invalid", [True, float("nan"), float("inf")])
+def test_freeway_normalization_rejects_non_finite_or_boolean_ui_numbers(
+    invalid: float | bool,
+) -> None:
+    preset = load_freeway_preset("BF-CH26-001")
+    displayed = freeway_preset_ui_inputs("BF-CH26-001") | {
+        "demand_volume_veh_h": invalid
+    }
+
+    with pytest.raises(
+        ValueError, match="demand_volume_veh_h must be a finite numeric value"
+    ):
+        freeway_ui_inputs_to_engine(displayed, preset["inputs"], "imperial")

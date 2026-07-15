@@ -103,6 +103,12 @@ Currently supported:
 See [Supported Workflows](docs/supported_workflows.md) for the concise app-wide
 scope summary.
 
+The authoritative cross-method scope, units, capacity behavior, persistence,
+exports, terminology decisions, and exclusions are in the
+[supported methods matrix](docs/methodology/supported_methods_matrix.md).
+The current maintenance release is documented in
+[v0.4.1 cross-method consolidation](docs/releases/v0_4_1_cross_method_consolidation.md).
+
 ## Run Locally
 
 Use this exact two-step Windows workflow from the repository root:
@@ -227,8 +233,17 @@ The single-page app provides six modes:
   scope in the app. Limitations are visible but kept secondary to the calculator
   workflow.
 
+Across all four calculator workflows, a stored result is exportable only while
+it matches the effective normalized inputs, method identifier, and method
+contract. Changing an active input or mode makes the result stale and requires
+recalculation. Hidden inactive inputs are non-operative. Project loading
+identifies whether a result is current, a project was migrated, or a result
+must be recalculated; JSON, CSV, Excel, Markdown, and report JSON exports are
+rendered from the stored engine result and preserve null/not-predicted values.
+
 The engine and CLI validation behavior remains based on the existing validated
-fixtures. CLI inputs, outputs, and JSON schema are unchanged.
+fixtures. Result JSON adds explicit method-contract metadata; engineering
+inputs and qualified numerical outputs are unchanged.
 
 ## Two-Lane Highway Phase 5 supported envelope
 
