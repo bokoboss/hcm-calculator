@@ -19,6 +19,10 @@ from hcmcalc.ui.manual_multilane import (
     MANUAL_MULTILANE_LIMITATIONS,
     multilane_display_outputs,
 )
+from hcmcalc.ui.manual_weaving import (
+    MANUAL_WEAVING_LIMITATIONS,
+    weaving_display_outputs,
+)
 from hcmcalc.ui.units import MILES_TO_KILOMETERS, display_outputs
 from hcmcalc.ui.i18n import field_label, normalize_locale, translate
 
@@ -30,6 +34,7 @@ SUPPORTED_CALCULATION_TYPES = {
     "manual_two_lane_facility_v1",
     "manual_multilane_v0",
     "manual_basic_freeway_v0",
+    "manual_freeway_weaving_segment_v1",
 }
 SUPPORTED_EXPORT_FORMATS = {"csv", "xlsx", "markdown", "json"}
 
@@ -97,7 +102,7 @@ def build_report(
             template_id,
             timestamp,
         )
-    else:
+    elif calculation_type == "manual_basic_freeway_v0":
         report = _freeway_report(
             result,
             outputs,
@@ -106,6 +111,10 @@ def build_report(
             audit_record,
             template_id,
             timestamp,
+        )
+    else:
+        report = _weaving_report(
+            result, outputs, unit_system, inputs, audit_record, template_id, timestamp
         )
     report = _localized_report(report, locale)
     _ensure_json_serializable(report)
@@ -147,8 +156,10 @@ def report_filename(report: dict[str, Any], extension: str) -> str:
         "manual_two_lane_facility_v1": "facility",
         "manual_multilane_v0": "multilane",
         "manual_basic_freeway_v0": "basic_freeway",
+        "manual_freeway_weaving_segment_v1": "weaving_segment",
     }[calculation_type]
-    return f"hcm_ch15_{workflow}_report_{timestamp:%Y%m%d_%H%M%S}.{extension}"
+    chapter = "13" if calculation_type == "manual_freeway_weaving_segment_v1" else "15"
+    return f"hcm_ch{chapter}_{workflow}_report_{timestamp:%Y%m%d_%H%M%S}.{extension}"
 
 
 def report_to_csv(report: dict[str, Any]) -> str:
@@ -472,6 +483,48 @@ def _freeway_report(
     return report
 
 
+def _weaving_report(
+    result: dict[str, Any], outputs: dict[str, Any], unit_system: str, inputs: Any,
+    audit_record: dict[str, Any] | None, preset_id: str | None, timestamp: str,
+) -> dict[str, Any]:
+    display = weaving_display_outputs(outputs, unit_system)
+    summary = [
+        {"label": "Level of service", "value": outputs.get("level_of_service"), "unit": None},
+        {"label": "Support status", "value": outputs.get("support_status"), "unit": None},
+        {"label": "Scope status", "value": outputs.get("scope_status"), "unit": None},
+        {"label": "Capacity status", "value": outputs.get("capacity_status"), "unit": None},
+        {"label": "Mean speed", "value": display["mean_speed"]["value"], "unit": display["mean_speed"]["unit"]},
+        {"label": "Density", "value": display["density"]["value"], "unit": display["density"]["unit"]},
+        {"label": "Governing capacity", "value": display["capacity"]["value"], "unit": "veh/h"},
+        {"label": "Demand-to-capacity ratio", "value": outputs.get("demand_capacity_ratio"), "unit": None},
+        {"label": "Weaving speed", "value": display["weaving_speed"]["value"], "unit": display["weaving_speed"]["unit"]},
+        {"label": "Nonweaving speed", "value": display["nonweaving_speed"]["value"], "unit": display["nonweaving_speed"]["unit"]},
+        {"label": "Total adjusted demand", "value": display["demand"]["value"], "unit": "pc/h"},
+        {"label": "Weaving flow", "value": outputs.get("weaving_flow_pc_h"), "unit": "pc/h"},
+        {"label": "Nonweaving flow", "value": outputs.get("nonweaving_flow_pc_h"), "unit": "pc/h"},
+        {"label": "Volume ratio", "value": outputs.get("volume_ratio"), "unit": None},
+        {"label": "Minimum lane changes", "value": outputs.get("minimum_lane_changes_lc_h"), "unit": "lc/h"},
+        {"label": "Maximum weaving length", "value": outputs.get("maximum_weaving_length_ft"), "unit": "ft"},
+        {"label": "Stopping handoff reason", "value": outputs.get("stopping_handoff_reason"), "unit": None},
+    ]
+    input_records = _weaving_input_records(inputs or {}, unit_system)
+    if preset_id:
+        input_records.insert(0, {"label": "Reference preset", "value": preset_id, "unit": None})
+    report = _base_report(
+        title="HCM 7.0 Freeway Weaving Segment Calculator Report",
+        report_type="Qualified HCM 7.0 freeway weaving operational calculation report",
+        calculation_type="manual_freeway_weaving_segment_v1", unit_system=unit_system,
+        timestamp=timestamp, inputs=input_records, results=summary, segment_results=[],
+        result=result, audit_record=audit_record, limitations=MANUAL_WEAVING_LIMITATIONS,
+    )
+    report["selected_validation_preset"] = preset_id
+    report["support_scope"] = "Qualified HCM 7.0 isolated freeway weaving segment only; HCM 7.1 is known but unavailable."
+    report["normalized_engine_inputs_summary"] = _input_records(
+        (audit_record or {}).get("normalized_engine_inputs", {}), "imperial"
+    )
+    return report
+
+
 def _multilane_input_records(
     inputs: Any, unit_system: str
 ) -> list[dict[str, Any]]:
@@ -513,6 +566,25 @@ def _freeway_input_records(inputs: Any, unit_system: str) -> list[dict[str, Any]
         {"label": _label(key), "value": value, "unit": units.get(key)}
         for key, value in inputs.items()
     ]
+
+
+def _weaving_input_records(inputs: Any, unit_system: str) -> list[dict[str, Any]]:
+    if not isinstance(inputs, dict):
+        raise ReportingError("Weaving report inputs must be an object.")
+    metric = unit_system == "metric"
+    units = {
+        "segment_length": "m" if metric else "ft",
+        "free_flow_speed": "km/h" if metric else "mph",
+        "base_free_flow_speed": "km/h" if metric else "mph",
+        "lane_width": "m" if metric else "ft",
+        "right_side_lateral_clearance": "m" if metric else "ft",
+        "interchange_density": "interchanges/km" if metric else "interchanges/mi",
+        "total_ramp_density": "ramps/km" if metric else "ramps/mi",
+        "heavy_vehicle_percent": "%",
+        "volume_ff_veh_h": "veh/h", "volume_fr_veh_h": "veh/h",
+        "volume_rf_veh_h": "veh/h", "volume_rr_veh_h": "veh/h",
+    }
+    return [{"label": _label(key), "value": value, "unit": units.get(key)} for key, value in inputs.items()]
 
 
 def _base_report(**values: Any) -> dict[str, Any]:
@@ -784,7 +856,7 @@ def _validate_result(calculation_type: str, result: dict[str, Any] | None) -> No
                     "capacity_check",
                 }
                 if calculation_type == "manual_multilane_v0"
-                else {
+                else ({
                 "density_pc_mi_ln",
                 "level_of_service",
                 "speed_used_for_density_mph",
@@ -795,7 +867,12 @@ def _validate_result(calculation_type: str, result: dict[str, Any] | None) -> No
                 "capacity_pc_h_ln",
                 "adjusted_capacity_pc_h_ln",
                 "capacity_check",
-            }
+            } if calculation_type == "manual_basic_freeway_v0" else {
+                "level_of_service", "support_status", "scope_status", "capacity_status",
+                "mean_speed_mph", "density_pc_mi_ln", "adjusted_prevailing_capacity_veh_h",
+                "demand_capacity_ratio", "weaving_speed_mph", "nonweaving_speed_mph",
+                "maximum_weaving_length_ft",
+            })
             )
         )
     )

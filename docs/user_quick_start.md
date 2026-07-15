@@ -74,6 +74,11 @@ audit details.
 - **Export / Report** produces CSV, Excel, Markdown, and report JSON from the
   calculated engine result. `Not predicted` values, including above-capacity
   speed and density where applicable, are not converted to zero.
+- **Weaving Segment** is HCM 7.0 only. Use the reference presets as starting
+  values or enter a custom isolated freeway weaving case, review the conceptual
+  schematic and explicit geometry evidence, then run the calculation. HCM 7.1,
+  C-D/multilane weaving, long-segment handoffs, and above-capacity null
+  predictions remain visibly guarded.
 
 See the [supported methods matrix](methodology/supported_methods_matrix.md)
 before using a workflow outside its documented scope.

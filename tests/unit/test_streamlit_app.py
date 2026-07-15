@@ -172,12 +172,14 @@ def test_app_mode_list_includes_supported_workflows() -> None:
         "Two-Lane Facility",
         "Multilane Segment",
         "Basic Freeway Segment",
+        "Weaving Segment",
         "Supported Workflows",
     )
     assert APP_MODE_LABELS[0] == "Two-Lane Segment"
     assert APP_MODE_TO_VIEW["Supported Workflows"] == "supported_workflows"
     assert APP_MODE_TO_VIEW["Two-Lane Segment"] == "manual_single_segment"
     assert APP_MODE_TO_VIEW["Basic Freeway Segment"] == "manual_basic_freeway"
+    assert APP_MODE_TO_VIEW["Weaving Segment"] == "manual_weaving"
     assert "Validation Examples" not in APP_MODE_LABELS
 
 
@@ -216,6 +218,7 @@ def test_supported_workflows_content_names_current_scope() -> None:
         "Two-Lane Facility",
         "Multilane Highway",
         "Basic Freeway",
+        "Freeway Weaving Segment",
         "Validation Evidence",
     }
     assert "Manual Single Segment Calculator" in sections["Two-Lane Highway"]["supported"]

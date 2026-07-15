@@ -19,6 +19,7 @@ APP_MODE_LABELS = (
     "Two-Lane Facility",
     "Multilane Segment",
     "Basic Freeway Segment",
+    "Weaving Segment",
     "Supported Workflows",
 )
 
@@ -28,6 +29,7 @@ APP_MODE_TO_VIEW = {
     "Two-Lane Facility": "manual_facility",
     "Multilane Segment": "manual_multilane",
     "Basic Freeway Segment": "manual_basic_freeway",
+    "Weaving Segment": "manual_weaving",
 }
 
 INTERNAL_VALIDATION_QUERY_PARAM = "qa_view"
@@ -140,6 +142,21 @@ SUPPORTED_WORKFLOW_SECTIONS: tuple[WorkflowSection, ...] = (
         "save_load_export": (
             "Project JSON Save/Load and CSV, Excel, Markdown, and report JSON exports."
         ),
+    },
+    {
+        "title": "Freeway Weaving Segment",
+        "supported": [
+            "Qualified HCM 7.0 isolated freeway weaving operational analysis",
+            "one-sided and two-sided geometry within the documented lane envelope",
+            "HCM Chapter 27 Examples 1–3 optional reference presets",
+            "Project Save/Load and CSV, Excel, Markdown, and report JSON exports",
+        ],
+        "limitations": [
+            "HCM 7.1 is known but unqualified and cannot be selected or loaded as a calculable project",
+            "C-D roadways, multilane weaving, Design/Sensitivity, queues, and automatic geometry derivation are unsupported",
+            "LS >= LMAX is a merge/diverge/basic-segment handoff; above-capacity speed and density are not predicted",
+        ],
+        "save_load_export": "Version-pinned project JSON and current-result-only exports.",
     },
     {
         "title": "Validation Evidence",

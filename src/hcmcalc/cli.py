@@ -19,6 +19,7 @@ RESULT_CONTRACT_VERSIONS = {
     "hcm7_ch15_two_lane_motorized": "phase_5_product_integration",
     "hcm7_multilane_los": "phase_8",
     "hcm7_basic_freeway_segment": "phase_10_product_integration",
+    "hcm7_v70_freeway_weaving_segment": "hcm_7_0_weaving_segment_operational_v1",
 }
 
 
