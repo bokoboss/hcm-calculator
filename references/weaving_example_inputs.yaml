@@ -1,0 +1,156 @@
+metadata:
+  fixture_version: 1.0.0
+  purpose: Independently transcribed HCM 7.0 Chapter 27 freeway-weaving operational examples
+  status: validation_fixture
+  method_version: hcm_7_0
+  source_reference: HCM 7th.pdf, Chapter 27, printed pp. 27-2 through 27-16
+  note: No copyrighted narrative or source images are included. Values are native US customary units.
+cases:
+  - id: WVG-CH27-001
+    source_pages: 27-2 through 27-7
+    configuration: one_sided_major
+    inputs: &one_sided_major
+      method_version: hcm_7_0
+      case_id: WVG-CH27-001
+      facility_type: freeway_weaving_segment
+      analysis_type: operational_analysis
+      direction: peak_direction
+      configuration: one_sided
+      analysis_period_minutes: 15
+      peak_hour_factor: 0.91
+      segment_length_ft: 1500
+      number_of_lanes: 4
+      number_of_weaving_lanes: 3
+      volume_ff_veh_h: 1815
+      volume_fr_veh_h: 692
+      volume_rf_veh_h: 1037
+      volume_rr_veh_h: 1297
+      interchange_density_per_mi: 0.8
+      ffs_source: measured
+      free_flow_speed_mph: 65
+      base_free_flow_speed_mph:
+      lane_width_ft:
+      right_side_lateral_clearance_ft:
+      total_ramp_density_per_mi:
+      heavy_vehicle_percent: 5
+      terrain_type: level
+      speed_adjustment_factor: 1.0
+      capacity_adjustment_factor: 1.0
+      speed_adjustment_factor_source: hcm_base_conditions
+      capacity_adjustment_factor_source: hcm_base_conditions
+      lc_rf: 0
+      lc_fr: 1
+      lc_rr:
+      geometry: &one_sided_geometry
+        entry_side: right
+        exit_side: right
+        reachable_origin_destination_lanes: {ff: mainline, fr: exit, rf: mainline, rr: ramp}
+        option_lane_status: {fr: true, rf: false, rr: false}
+        nwl_basis: Reviewed Chapter 27 one-sided major-weave geometry.
+        lane_change_basis: Reviewed Chapter 27 movement lane-change diagram.
+    expected:
+      volume_ratio: 0.357
+      minimum_lane_changes_lc_h: 798
+      maximum_weaving_length_ft: 4639
+      density_governed_capacity_veh_h: 8038
+      weaving_lane_changes_lc_h: 1144
+      nonweaving_lane_changes_lc_h: 782
+      total_lane_changes_lc_h: 1926
+      weaving_intensity: 0.275
+      weaving_speed_mph: 54.2
+      nonweaving_speed_mph: 52.5
+      mean_speed_mph: 53.1
+      density_pc_mi_ln: 26.3
+      level_of_service: C
+    tolerances: {ratio: 0.002, rate: 2.0, speed: 0.2, density: 0.2}
+  - id: WVG-CH27-002
+    source_pages: 27-7 through 27-11
+    configuration: one_sided_ramp
+    inputs:
+      <<: *one_sided_major
+      case_id: WVG-CH27-002
+      peak_hour_factor: 1.0
+      segment_length_ft: 1000
+      number_of_weaving_lanes: 2
+      volume_ff_veh_h: 4000
+      volume_fr_veh_h: 300
+      volume_rf_veh_h: 600
+      volume_rr_veh_h: 100
+      interchange_density_per_mi: 1.0
+      free_flow_speed_mph: 75
+      heavy_vehicle_percent: 0
+      lc_rf: 1
+      lc_fr: 1
+    expected:
+      volume_ratio: 0.180
+      minimum_lane_changes_lc_h: 900
+      maximum_weaving_length_ft: 4333
+      density_governed_capacity_veh_h: 8580
+      weaving_lane_changes_lc_h: 1187
+      nonweaving_lane_changes_lc_h: 616
+      total_lane_changes_lc_h: 1803
+      weaving_intensity: 0.360
+      weaving_speed_mph: 59.1
+      nonweaving_speed_mph: 62.5
+      mean_speed_mph: 61.9
+      density_pc_mi_ln: 20.2
+      level_of_service: C
+    tolerances: {ratio: 0.002, rate: 2.0, speed: 0.2, density: 0.2}
+  - id: WVG-CH27-003
+    source_pages: 27-12 through 27-16
+    configuration: two_sided
+    ambiguity_notes: The published lane-change chain uses nonweaving flow 5,015 pc/h despite the equation-defined 4,995 pc/h; expected lane-change values use equations, not the printed inconsistency.
+    inputs:
+      method_version: hcm_7_0
+      case_id: WVG-CH27-003
+      facility_type: freeway_weaving_segment
+      analysis_type: operational_analysis
+      direction: peak_direction
+      configuration: two_sided
+      analysis_period_minutes: 15
+      peak_hour_factor: 0.94
+      segment_length_ft: 750
+      number_of_lanes: 3
+      number_of_weaving_lanes: 0
+      volume_ff_veh_h: 3500
+      volume_fr_veh_h: 250
+      volume_rf_veh_h: 100
+      volume_rr_veh_h: 300
+      interchange_density_per_mi: 2.0
+      ffs_source: measured
+      free_flow_speed_mph: 60
+      base_free_flow_speed_mph:
+      lane_width_ft:
+      right_side_lateral_clearance_ft:
+      total_ramp_density_per_mi:
+      heavy_vehicle_percent: 11
+      terrain_type: rolling
+      speed_adjustment_factor: 1.0
+      capacity_adjustment_factor: 1.0
+      speed_adjustment_factor_source: hcm_base_conditions
+      capacity_adjustment_factor_source: hcm_base_conditions
+      lc_rf:
+      lc_fr:
+      lc_rr: 2
+      geometry:
+        entry_side: right
+        exit_side: left
+        reachable_origin_destination_lanes: {ff: mainline, fr: exit, rf: mainline, rr: cross_segment}
+        option_lane_status: {fr: false, rf: false, rr: false}
+        nwl_basis: Two-sided definition sets NWL to zero.
+        lane_change_basis: Reviewed Chapter 27 two-sided movement lane-change diagram.
+    expected:
+      volume_ratio: 0.072
+      minimum_lane_changes_lc_h: 778
+      maximum_weaving_length_ft: 6405
+      density_governed_capacity_veh_h: 4593
+      weaving_lane_changes_lc_h: 960
+      nonweaving_lane_changes_lc_h: 857
+      total_lane_changes_lc_h: 1817
+      weaving_intensity: 0.454
+      weaving_speed_mph: 45.9
+      nonweaving_speed_mph: 45.8
+      mean_speed_mph: 45.8
+      density_pc_mi_ln: 39.2
+      level_of_service: E
+    tolerances: {ratio: 0.002, rate: 3.0, speed: 0.3, density: 0.3}
