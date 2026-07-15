@@ -186,6 +186,17 @@ def test_freeway_report_json_includes_units_context_results_and_limitations() ->
     assert exported["intermediate_values"]
 
 
+def test_freeway_report_preserves_phase_9_audit_fields_without_recalculation() -> None:
+    exported = json.loads(export_report(_freeway_report("imperial"), "json"))
+    summary = {item["label"]: item["value"] for item in exported["results_summary"]}
+
+    assert summary["FFS source"] == "estimated"
+    assert summary["PCE source"] == "internal_hcm7_exhibit_12_25"
+    assert summary["SAF provenance"] == "hcm_base_conditions"
+    assert summary["CAF provenance"] == "hcm_base_conditions"
+    assert summary["Demand-to-capacity ratio"] is not None
+
+
 @pytest.mark.parametrize(
     ("report_factory", "expected"),
     [

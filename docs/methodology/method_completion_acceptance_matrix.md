@@ -1,6 +1,6 @@
 # Method Completion Acceptance Matrix
 
-Status: Phase 6 scope lock  
+Status: Phase 10 Basic Freeway product integration and release qualification
 Sequence: Multilane completion first, Basic Freeway completion second
 
 ## 1. Milestone boundaries
@@ -91,9 +91,21 @@ Requires both method-completion releases. Changes must not alter qualified calcu
 | AC-13 | The result carries normalized inputs, FFS/SAF/CAF/PCE provenance, driver category, intermediates, assumptions, warnings, scope notes, and sources. |
 | AC-18 | The full repository regression is required before merge; Two-Lane calculation code is unchanged. |
 
-AC-14 through AC-22 remain deliberately unqualified in Phase 9 and are Phase 10 work.
+## 5. Phase 10 v0.4 evidence map
 
-## 5. Required test classes
+| ID | Evidence in this release |
+|---|---|
+| AC-14 | `manual_freeway.py` constructs normalized engine inputs only; the Streamlit worksheet, report builders, and project files consume the `BasicFreewaySegmentMethod` result and do not reproduce HCM equations. |
+| AC-15 | Canonical normalized inputs are the Basic Freeway workflow fingerprint. Tests prove inactive measured/estimated FFS and internal/external PCE values do not affect identity; exports render only when the stored calculation is current. |
+| AC-16 | Schema 1.2 persists the normalized Phase 9 input contract, mode selectors, provenance, method identifier, version, and fingerprint. Schema 1.0/1.1 projects load editable values but pre-Phase-10 results are discarded. |
+| AC-17 | JSON, CSV, Excel, Markdown, report JSON, UI display, and saved projects derive from the same result dictionary. Reports retain FFS/PCE/SAF/CAF provenance and preserve null speed/density above capacity. |
+| AC-18 | Full-suite qualification retains Two-Lane and Multilane regressions unchanged. |
+| AC-19 | Python 3.12 clean-environment installation and full test suite are recorded in the v0.4 release note. |
+| AC-20 | Streamlit HTTP and interaction smoke evidence is recorded in the v0.4 release note. |
+| AC-21 | `supported_workflows.md`, the in-app support page, the Phase 9 audit, and the v0.4 release note state the supported Basic Freeway domain and exclusions. |
+| AC-22 | `docs/releases/v0_4_basic_freeway_method_completion.md` records implementation, migration, scope, and qualification evidence. |
+
+## 6. Required test classes
 
 - Official/reference example regression.
 - Independent non-example normal cases.
@@ -108,6 +120,6 @@ AC-14 through AC-22 remain deliberately unqualified in Phase 9 and are Phase 10 
 - Cross-surface export/report parity.
 - Full repository regression and application smoke tests.
 
-## 6. Change-control rule
+## 7. Change-control rule
 
 Two-Lane Highway methods remain in maintenance mode. A change to a qualified Two-Lane calculation requires a reproducible defect, a documented engineering rationale, targeted regression tests, and confirmation that historical validation examples remain correct.

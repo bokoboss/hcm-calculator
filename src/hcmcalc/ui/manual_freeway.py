@@ -8,6 +8,7 @@ from typing import Any
 
 from hcmcalc.cli import find_case, load_input_file
 from hcmcalc.freeway import BasicFreewaySegmentMethod
+from hcmcalc.freeway.validation import DRIVER_POPULATION_FACTORS
 from hcmcalc.ui.units import MILES_TO_KILOMETERS
 
 
@@ -17,7 +18,17 @@ PRESET_LABELS = {
     "BF-CH26-001": "Chapter 26 Example 1 starting values",
 }
 SUPPORTED_UNIT_SYSTEMS = {"metric", "imperial"}
-MANUAL_FREEWAY_CALCULATION_TYPE = "manual_basic_freeway_segment_v0_1"
+FREEWAY_UI_INPUT_KEYS = {
+    "number_of_lanes", "segment_length", "ffs_source", "free_flow_speed",
+    "base_free_flow_speed", "lane_width", "right_side_lateral_clearance",
+    "total_ramp_density", "demand_volume_veh_h", "peak_hour_factor",
+    "heavy_vehicle_percent", "terrain_type", "truck_mix", "grade_percent",
+    "pce_mode", "passenger_car_equivalent",
+    "passenger_car_equivalent_provenance", "speed_adjustment_factor",
+    "capacity_adjustment_factor", "speed_adjustment_factor_source",
+    "capacity_adjustment_factor_source", "driver_population_category",
+}
+MANUAL_FREEWAY_CALCULATION_TYPE = "manual_basic_freeway_segment_v1"
 MANUAL_FREEWAY_LIMITATIONS = [
     "Manual Basic Freeway Segment v0.1 supports bounded one-direction, one-segment uninterrupted-flow Chapter 12 basic segment calculations.",
     "BF-CH26-001 remains available as optional example defaults and regression evidence.",
@@ -25,7 +36,7 @@ MANUAL_FREEWAY_LIMITATIONS = [
     "One direction, one segment, uninterrupted flow, and general-purpose lanes only.",
     "Ramp, weaving, merge/diverge, managed-lane, work-zone, reliability, and facility/corridor workflows are unsupported.",
     "Calculations remain engine-native Imperial; Metric values are UI/reporting conversions.",
-    "Save/Load and export/reporting preserve only this bounded Basic Freeway Segment v0.1 workflow.",
+    "Save/Load and export/reporting preserve only this bounded Basic Freeway Segment workflow.",
 ]
 
 
@@ -75,7 +86,7 @@ def freeway_engine_inputs_to_ui(
     speed_factor = MILES_TO_KILOMETERS if metric else 1.0
     length_factor = MILES_TO_KILOMETERS if metric else 1.0
     density_factor = 1.0 / MILES_TO_KILOMETERS if metric else 1.0
-    return {
+    displayed = {
         "number_of_lanes": int(inputs["number_of_lanes"]),
         "segment_length": float(inputs["segment_length_mi"]) * length_factor,
         "ffs_source": inputs["ffs_source"],
@@ -100,9 +111,18 @@ def freeway_engine_inputs_to_ui(
         "peak_hour_factor": float(inputs["peak_hour_factor"]),
         "heavy_vehicle_percent": float(inputs["heavy_vehicle_percent"]),
         "terrain_type": inputs["terrain_type"],
+        "truck_mix": inputs.get("truck_mix", "default_30_sut_70_tt"),
+        "grade_percent": inputs.get("grade_percent"),
+        "pce_mode": "external" if inputs.get("passenger_car_equivalent") is not None else "internal",
+        "passenger_car_equivalent": inputs.get("passenger_car_equivalent"),
+        "passenger_car_equivalent_provenance": inputs.get("passenger_car_equivalent_provenance"),
         "speed_adjustment_factor": float(inputs["speed_adjustment_factor"]),
         "capacity_adjustment_factor": float(inputs["capacity_adjustment_factor"]),
+        "speed_adjustment_factor_source": inputs.get("speed_adjustment_factor_source", "hcm_base_conditions"),
+        "capacity_adjustment_factor_source": inputs.get("capacity_adjustment_factor_source", "hcm_base_conditions"),
+        "driver_population_category": inputs.get("driver_population_category", "regular"),
     }
+    return displayed
 
 
 def freeway_ui_inputs_to_engine(
@@ -110,20 +130,44 @@ def freeway_ui_inputs_to_engine(
 ) -> dict[str, Any]:
     """Convert user-facing worksheet values to engine-native Imperial inputs."""
 
+    unknown_keys = sorted(set(values) - FREEWAY_UI_INPUT_KEYS)
+    if unknown_keys:
+        raise ValueError("Unrecognized Basic Freeway UI inputs: " + ", ".join(unknown_keys))
     metric = _normalize_unit_system(unit_system) == "metric"
     speed_factor = 1.0 / MILES_TO_KILOMETERS if metric else 1.0
     length_factor = 1.0 / MILES_TO_KILOMETERS if metric else 1.0
     width_factor = 1.0 / 0.3048 if metric else 1.0
     ramp_density_factor = MILES_TO_KILOMETERS if metric else 1.0
     ffs_source = values["ffs_source"]
-    return {
-        **preset_inputs,
+    pce_mode = values.get("pce_mode", "internal")
+    if ffs_source not in {"measured", "estimated"}:
+        raise ValueError("ffs_source must be measured or estimated.")
+    if pce_mode not in {"internal", "external"}:
+        raise ValueError("pce_mode must be internal or external.")
+    driver_category = values.get("driver_population_category", "regular")
+    if driver_category not in DRIVER_POPULATION_FACTORS:
+        raise ValueError("driver_population_category is unsupported.")
+    engine_inputs = {
+        "case_id": preset_inputs["case_id"],
+        "facility_type": preset_inputs["facility_type"],
+        "analysis_type": preset_inputs["analysis_type"],
+        "direction": preset_inputs["direction"],
         "number_of_lanes": int(values["number_of_lanes"]),
         "segment_length_mi": _rounded(float(values["segment_length"]) * length_factor),
         "demand_volume_veh_h": float(values["demand_volume_veh_h"]),
         "peak_hour_factor": float(values["peak_hour_factor"]),
         "heavy_vehicle_percent": float(values["heavy_vehicle_percent"]),
-        "terrain_type": values["terrain_type"],
+        "terrain_type": values.get("terrain_type", "level") if pce_mode == "internal" else "level",
+        "truck_mix": (
+            values.get("truck_mix", "default_30_sut_70_tt")
+            if pce_mode == "internal" and values.get("terrain_type") == "specific_grade"
+            else "default_30_sut_70_tt"
+        ),
+        "grade_percent": (
+            float(values["grade_percent"])
+            if pce_mode == "internal" and values.get("terrain_type") == "specific_grade"
+            else None
+        ),
         "ffs_source": ffs_source,
         "free_flow_speed_mph": (
             _rounded(float(values["free_flow_speed"]) * speed_factor)
@@ -152,7 +196,26 @@ def freeway_ui_inputs_to_engine(
         ),
         "speed_adjustment_factor": float(values["speed_adjustment_factor"]),
         "capacity_adjustment_factor": float(values["capacity_adjustment_factor"]),
+        "speed_adjustment_factor_source": values.get("speed_adjustment_factor_source", "hcm_base_conditions"),
+        "capacity_adjustment_factor_source": values.get("capacity_adjustment_factor_source", "hcm_base_conditions"),
+        "driver_population_category": driver_category,
+        "passenger_car_equivalent": (
+            float(values["passenger_car_equivalent"]) if pce_mode == "external" else None
+        ),
+        "passenger_car_equivalent_provenance": (
+            str(values.get("passenger_car_equivalent_provenance") or "").strip()
+            if pce_mode == "external" else None
+        ),
     }
+    if driver_category != "regular":
+        saf, caf = DRIVER_POPULATION_FACTORS[driver_category]
+        engine_inputs.update(
+            speed_adjustment_factor=saf,
+            capacity_adjustment_factor=caf,
+            speed_adjustment_factor_source="chapter_26_driver_population",
+            capacity_adjustment_factor_source="chapter_26_driver_population",
+        )
+    return engine_inputs
 
 
 def freeway_display_outputs(
@@ -178,6 +241,10 @@ def freeway_display_outputs(
         "adjusted_free_flow_speed": {
             "value": float(engine_outputs["adjusted_free_flow_speed_mph"])
             * speed_factor,
+            "unit": "km/h" if metric else "mph",
+        },
+        "free_flow_speed_before_saf": {
+            "value": float(engine_outputs["free_flow_speed_before_saf_mph"]) * speed_factor,
             "unit": "km/h" if metric else "mph",
         },
         "base_free_flow_speed": {

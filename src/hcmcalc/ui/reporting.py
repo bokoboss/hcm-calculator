@@ -405,6 +405,9 @@ def _freeway_report(
     display = freeway_display_outputs(outputs, unit_system)
     summary = [
         {"label": "Level of service", "value": outputs["level_of_service"], "unit": None},
+        {"label": "Support status", "value": outputs["support_status"], "unit": None},
+        {"label": "Scope status", "value": outputs["scope_status"], "unit": None},
+        {"label": "FFS source", "value": outputs["ffs_source"], "unit": None},
         *[
             {"label": _label(name), "value": metric["value"], "unit": metric["unit"]}
             for name, metric in display.items()
@@ -414,6 +417,16 @@ def _freeway_report(
             "value": outputs["heavy_vehicle_adjustment_factor"],
             "unit": None,
         },
+        {"label": "PCE source", "value": outputs["pce_source"], "unit": None},
+        {"label": "PCE lookup path", "value": outputs["pce_lookup_path"], "unit": None},
+        {"label": "Terrain / grade classification", "value": outputs["terrain_grade_classification"], "unit": None},
+        {"label": "Effective grade", "value": outputs["effective_grade_percent"], "unit": "%"},
+        {"label": "Speed adjustment factor", "value": outputs["speed_adjustment_factor"], "unit": None},
+        {"label": "SAF provenance", "value": outputs["speed_adjustment_factor_source"], "unit": None},
+        {"label": "Capacity adjustment factor", "value": outputs["capacity_adjustment_factor"], "unit": None},
+        {"label": "CAF provenance", "value": outputs["capacity_adjustment_factor_source"], "unit": None},
+        {"label": "Driver population category", "value": outputs["driver_population_category"], "unit": None},
+        {"label": "Demand-to-capacity ratio", "value": outputs["demand_capacity_ratio"], "unit": None},
         {"label": "Capacity check", "value": outputs["capacity_check"], "unit": None},
     ]
     input_records = _freeway_input_records(inputs or {}, unit_system)

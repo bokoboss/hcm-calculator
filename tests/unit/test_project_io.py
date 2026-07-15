@@ -19,6 +19,7 @@ from hcmcalc.ui.manual_multilane import (
 from hcmcalc.ui.manual_freeway import (
     build_manual_freeway_audit_record,
     freeway_preset_ui_inputs,
+    freeway_ui_inputs_to_engine,
     load_freeway_preset,
     run_manual_freeway,
 )
@@ -603,7 +604,9 @@ def test_manual_freeway_project_round_trip(unit_system: str) -> None:
     assert loaded["unit_system"] == unit_system
     assert loaded["preset_id"] == "BF-CH26-001"
     assert loaded["displayed_ui_inputs"] == displayed
-    assert loaded["normalized_engine_inputs"] == preset["inputs"]
+    assert loaded["normalized_engine_inputs"] == freeway_ui_inputs_to_engine(
+        displayed, preset["inputs"], unit_system
+    )
     assert loaded["calculation_result"]["outputs"]["level_of_service"] == "C"
     assert loaded["limitations"]
     assert loaded["unsupported_behavior_notes"]
@@ -739,6 +742,22 @@ def test_manual_freeway_load_clears_stale_result_when_engine_inputs_change() -> 
     assert loaded["calculation_result"] is None
     assert loaded["display_result"] is None
     assert loaded["audit"] is None
+
+
+def test_manual_freeway_phase_10_load_invalidates_pre_phase_10_result() -> None:
+    displayed = freeway_preset_ui_inputs("BF-CH26-001", "imperial")
+    result = result_to_dict(run_manual_freeway(load_freeway_preset("BF-CH26-001")["inputs"]))
+    payload = create_manual_freeway_project_payload(
+        "BF-CH26-001", "imperial", displayed, result=result
+    )
+    payload["schema_version"] = "1.1"
+    payload["method_version"] = "phase_9_engine"
+
+    loaded = load_manual_freeway_project_json(json.dumps(payload))
+
+    assert loaded["schema_version"] == "1.1"
+    assert loaded["calculation_result"] is None
+    assert loaded["display_result"] is None
 
 
 def test_multilane_legacy_payload_uses_ffs_source_and_discards_unverified_result() -> None:

@@ -57,6 +57,10 @@ Supported:
 - Manual Basic Freeway Segment Calculator
 - bounded Chapter 12 one-direction, one-segment uninterrupted-flow analysis
 - Chapter 26 Example 1 optional defaults and regression evidence
+- measured FFS or estimated FFS with active geometry inputs only
+- internal level, rolling, and printed specific-grade PCE lookup, or an external PCE override with provenance
+- Chapter 26 driver-population category with paired SAF/CAF, or explicitly governed SAF/CAF factors
+- above-capacity LOS F/capacity failure without predicted speed or density
 - Metric/Imperial UI-boundary conversion
 - Save/Load
 - Export/reporting
@@ -71,7 +75,8 @@ Limitations:
 - no work zones
 - no reliability
 - no facility/corridor workflow
-- no specific-grade or mountainous-terrain PCE tables
+- no mountainous or mixed-flow PCE domains, unprinted truck mixes, or PCE extrapolation
+- no oversaturated speed, density, queue, delay, or travel-time prediction
 
 ## Validation Evidence
 

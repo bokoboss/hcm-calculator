@@ -92,6 +92,7 @@ from hcmcalc.ui.supported_workflows import (
 )
 from hcmcalc.ui.units import (
     DEFAULT_UNIT_SYSTEM,
+    MILES_TO_KILOMETERS,
     display_outputs,
     manual_defaults,
 )
@@ -736,10 +737,10 @@ def render_manual_multilane_calculator() -> None:
                     ),
                 },
                 {
-                    "label": "Capacity",
+                    "label": "Adjusted capacity",
                     "value": (
-                        f"{display['capacity']['value']:.0f} "
-                        f"{display['capacity']['unit']}"
+                        f"{display['adjusted_capacity']['value']:.0f} "
+                        f"{display['adjusted_capacity']['unit']}"
                     ),
                 },
                 {
@@ -764,6 +765,10 @@ def render_manual_multilane_calculator() -> None:
                 {
                     "label": "Heavy vehicle adjustment factor",
                     "value": f"{outputs['heavy_vehicle_adjustment_factor']:.3f}",
+                },
+                {
+                    "label": "Demand / capacity",
+                    "value": f"{outputs['demand_capacity_ratio']:.3f}",
                 },
                 {
                     "label": "PCE",
@@ -935,8 +940,10 @@ def render_manual_freeway_calculator() -> None:
                     f"Free-flow speed ({speed_unit})",
                     min_value=1.0,
                     value=float(
-                        ui_inputs["free_flow_speed"]
-                        or ui_inputs["base_free_flow_speed"]
+                        ui_inputs["free_flow_speed"] or min(
+                            ui_inputs["base_free_flow_speed"],
+                            75.0 * (MILES_TO_KILOMETERS if metric else 1.0),
+                        )
                     ),
                     key=f"manual_freeway_input_free_flow_speed_{preset_id}_{unit_system}",
                 )
@@ -996,31 +1003,94 @@ def render_manual_freeway_calculator() -> None:
                 value=float(ui_inputs["heavy_vehicle_percent"]),
                 key=f"manual_freeway_input_heavy_{preset_id}_{unit_system}",
             )
-            terrain_type = traffic_columns[1].selectbox(
-                "Terrain type",
-                ["level", "rolling"],
-                index=0 if ui_inputs["terrain_type"] == "level" else 1,
-                key=f"manual_freeway_input_terrain_{preset_id}_{unit_system}",
+            pce_mode = traffic_columns[1].selectbox(
+                "Heavy-vehicle PCE source",
+                ["internal", "external"],
+                index=0 if ui_inputs.get("pce_mode", "internal") == "internal" else 1,
+                format_func=lambda value: "Internal HCM lookup" if value == "internal" else "External PCE override",
+                key=f"manual_freeway_input_pce_mode_{preset_id}_{unit_system}",
+                help="External override bypasses the internal PCE lookup; it does not bypass the heavy-vehicle adjustment.",
             )
+            if pce_mode == "internal":
+                terrain_type = traffic_columns[0].selectbox(
+                    "Terrain / grade path",
+                    ["level", "rolling", "specific_grade"],
+                    index=["level", "rolling", "specific_grade"].index(ui_inputs["terrain_type"]),
+                    key=f"manual_freeway_input_terrain_{preset_id}_{unit_system}",
+                    help="Mountainous and mixed-flow domains are not supported.",
+                )
+                if terrain_type == "specific_grade":
+                    grade_percent = traffic_columns[1].number_input(
+                        "Grade (%)", value=float(ui_inputs.get("grade_percent") or 0.0),
+                        key=f"manual_freeway_input_grade_{preset_id}_{unit_system}",
+                    )
+                    truck_mix = traffic_columns[0].selectbox(
+                        "Truck mix (SUT/TT)",
+                        ["default_30_sut_70_tt", "equal_50_sut_50_tt", "majority_70_sut_30_tt"],
+                        index=["default_30_sut_70_tt", "equal_50_sut_50_tt", "majority_70_sut_30_tt"].index(ui_inputs.get("truck_mix", "default_30_sut_70_tt")),
+                        key=f"manual_freeway_input_truck_mix_{preset_id}_{unit_system}",
+                    )
+                else:
+                    grade_percent = None
+                    truck_mix = "default_30_sut_70_tt"
+            else:
+                terrain_type = "level"
+                grade_percent = None
+                truck_mix = "default_30_sut_70_tt"
+                passenger_car_equivalent = traffic_columns[0].number_input(
+                    "External passenger-car equivalent", min_value=0.01,
+                    value=float(ui_inputs.get("passenger_car_equivalent") or 1.0),
+                    key=f"manual_freeway_input_external_pce_{preset_id}_{unit_system}",
+                )
+                passenger_car_equivalent_provenance = traffic_columns[1].text_input(
+                    "External PCE provenance", value=ui_inputs.get("passenger_car_equivalent_provenance") or "",
+                    key=f"manual_freeway_input_external_pce_provenance_{preset_id}_{unit_system}",
+                    help="Identify the approved external source; this bypasses internal lookup only.",
+                )
+            if pce_mode == "internal":
+                passenger_car_equivalent = None
+                passenger_car_equivalent_provenance = None
 
             render_section_label("Advanced / Optional")
             advanced_columns = st.columns(2)
-            speed_adjustment_factor = advanced_columns[0].number_input(
-                "Speed adjustment factor",
-                min_value=0.01,
-                max_value=1.0,
-                value=float(ui_inputs["speed_adjustment_factor"]),
-                key=f"manual_freeway_input_saf_{preset_id}_{unit_system}",
+            driver_population_category = advanced_columns[0].selectbox(
+                "Driver population category",
+                ["regular", "mostly_familiar", "balanced", "mostly_unfamiliar", "overwhelmingly_unfamiliar"],
+                index=["regular", "mostly_familiar", "balanced", "mostly_unfamiliar", "overwhelmingly_unfamiliar"].index(ui_inputs.get("driver_population_category", "regular")),
+                key=f"manual_freeway_input_driver_population_{preset_id}_{unit_system}",
+                help="Non-regular categories use the paired Chapter 26 SAF and CAF values required by the engine.",
             )
-            capacity_adjustment_factor = advanced_columns[1].number_input(
-                "Capacity adjustment factor",
-                min_value=0.01,
-                max_value=1.0,
-                value=float(ui_inputs["capacity_adjustment_factor"]),
-                key=f"manual_freeway_input_caf_{preset_id}_{unit_system}",
-            )
+            if driver_population_category == "regular":
+                speed_adjustment_factor = advanced_columns[0].number_input(
+                    "Speed adjustment factor (SAF)", min_value=0.01, max_value=1.0,
+                    value=float(ui_inputs["speed_adjustment_factor"]),
+                    key=f"manual_freeway_input_saf_{preset_id}_{unit_system}",
+                    help="A calibrated or user-governed factor; it is applied once to FFS.",
+                )
+                capacity_adjustment_factor = advanced_columns[1].number_input(
+                    "Capacity adjustment factor (CAF)", min_value=0.01, max_value=1.0,
+                    value=float(ui_inputs["capacity_adjustment_factor"]),
+                    key=f"manual_freeway_input_caf_{preset_id}_{unit_system}",
+                    help="A calibrated or user-governed factor; it is applied once to capacity.",
+                )
+                speed_adjustment_factor_source = advanced_columns[0].selectbox(
+                    "SAF provenance", ["hcm_base_conditions", "project_local_calibration"],
+                    index=0 if ui_inputs.get("speed_adjustment_factor_source", "hcm_base_conditions") == "hcm_base_conditions" else 1,
+                    key=f"manual_freeway_input_saf_source_{preset_id}_{unit_system}",
+                )
+                capacity_adjustment_factor_source = advanced_columns[1].selectbox(
+                    "CAF provenance", ["hcm_base_conditions", "project_local_calibration"],
+                    index=0 if ui_inputs.get("capacity_adjustment_factor_source", "hcm_base_conditions") == "hcm_base_conditions" else 1,
+                    key=f"manual_freeway_input_caf_source_{preset_id}_{unit_system}",
+                )
+            else:
+                speed_adjustment_factor = ui_inputs["speed_adjustment_factor"]
+                capacity_adjustment_factor = ui_inputs["capacity_adjustment_factor"]
+                speed_adjustment_factor_source = "chapter_26_driver_population"
+                capacity_adjustment_factor_source = "chapter_26_driver_population"
+                advanced_columns[1].caption("SAF and CAF use the paired Chapter 26 values for the selected driver-population category.")
             run_freeway = st.form_submit_button(
-                "Run calculation", type="primary", use_container_width=True
+                "Run calculation", type="primary", width="stretch"
             )
 
         displayed_inputs = {
@@ -1036,8 +1106,16 @@ def render_manual_freeway_calculator() -> None:
             "peak_hour_factor": peak_hour_factor,
             "heavy_vehicle_percent": heavy_vehicle_percent,
             "terrain_type": terrain_type,
+            "grade_percent": grade_percent,
+            "truck_mix": truck_mix,
+            "pce_mode": pce_mode,
+            "passenger_car_equivalent": passenger_car_equivalent,
+            "passenger_car_equivalent_provenance": passenger_car_equivalent_provenance,
             "speed_adjustment_factor": speed_adjustment_factor,
             "capacity_adjustment_factor": capacity_adjustment_factor,
+            "speed_adjustment_factor_source": speed_adjustment_factor_source,
+            "capacity_adjustment_factor_source": capacity_adjustment_factor_source,
+            "driver_population_category": driver_population_category,
         }
         submitted_inputs = freeway_ui_inputs_to_engine(
             displayed_inputs, inputs, unit_system
@@ -1045,8 +1123,7 @@ def render_manual_freeway_calculator() -> None:
         freeway_workflow_inputs = {
             "preset_id": preset_id,
             "unit_system": unit_system,
-            "displayed_inputs": displayed_inputs,
-            "submitted_inputs": submitted_inputs,
+            "normalized_engine_inputs": submitted_inputs,
         }
         freeway_is_current = render_calculation_status(
             "manual_freeway", freeway_workflow_inputs, status_placeholder
@@ -1062,15 +1139,19 @@ def render_manual_freeway_calculator() -> None:
                 and stored_audit.get("unit_system") == unit_system
                 and stored_audit.get("preset_id") == preset_id
             )
-            project_json = create_manual_freeway_project_json(
-                preset_id,
-                unit_system,
-                displayed_inputs,
-                result=st.session_state.get("manual_freeway_result")
-                if calculation_matches_inputs
-                else None,
-                audit_record=stored_audit if calculation_matches_inputs else None,
-            )
+            try:
+                project_json = create_manual_freeway_project_json(
+                    preset_id,
+                    unit_system,
+                    displayed_inputs,
+                    result=st.session_state.get("manual_freeway_result")
+                    if calculation_matches_inputs
+                    else None,
+                    audit_record=stored_audit if calculation_matches_inputs else None,
+                )
+            except ProjectFileError:
+                st.caption("Project save is unavailable until the displayed inputs are valid.")
+                return
             st.download_button(
                 "Save project",
                 data=project_json,
@@ -1215,6 +1296,21 @@ def render_manual_freeway_calculator() -> None:
         )
 
         with st.expander(CALCULATION_DETAILS_LABEL, expanded=False):
+            st.markdown("**FFS and SAF audit**")
+            st.json({key: outputs[key] for key in (
+                "ffs_source", "base_free_flow_speed_mph", "lane_width_adjustment_mph",
+                "right_lateral_clearance_adjustment_mph", "total_ramp_density_adjustment_mph",
+                "free_flow_speed_before_saf_mph", "speed_adjustment_factor",
+                "speed_adjustment_factor_source", "adjusted_free_flow_speed_mph",
+            )})
+            st.markdown("**PCE, CAF, and driver-population audit**")
+            st.json({key: outputs[key] for key in (
+                "passenger_car_equivalent", "pce_source", "pce_lookup_path",
+                "terrain_grade_classification", "effective_grade_percent", "segment_length_mi",
+                "heavy_vehicle_adjustment_factor", "driver_population_category",
+                "driver_population_factor", "capacity_pc_h_ln", "capacity_adjustment_factor",
+                "capacity_adjustment_factor_source", "adjusted_capacity_pc_h_ln",
+            )})
             render_list("Assumptions", result_data["assumptions"], "No assumptions reported.")
             render_list("Warnings", result_data["warnings"], "No warnings reported.")
             render_list(
@@ -1225,14 +1321,17 @@ def render_manual_freeway_calculator() -> None:
         with st.expander(AUDIT_EXPANDER_LABEL, expanded=False):
             st.json(audit)
             st.dataframe(
-                result_data["intermediate_values"],
+                [
+                    {**value, "value": str(value["value"])}
+                    for value in result_data["intermediate_values"]
+                ],
                 hide_index=True,
-                use_container_width=True,
+                width="stretch",
             )
         with st.expander("Full JSON"):
             st.json(
                 {
-                    "calculation_type": "manual_basic_freeway_segment_v0_1",
+                    "calculation_type": "manual_basic_freeway_segment_v1",
                     "unit_system": result_unit_system,
                     "display_outputs": display,
                     "engine_result": result_data,
@@ -1300,13 +1399,22 @@ def _restore_manual_freeway_project(project: dict[str, Any]) -> None:
         "phf": "peak_hour_factor",
         "heavy": "heavy_vehicle_percent",
         "terrain": "terrain_type",
+        "grade": "grade_percent",
+        "truck_mix": "truck_mix",
+        "pce_mode": "pce_mode",
+        "external_pce": "passenger_car_equivalent",
+        "external_pce_provenance": "passenger_car_equivalent_provenance",
+        "driver_population": "driver_population_category",
         "saf": "speed_adjustment_factor",
         "caf": "capacity_adjustment_factor",
+        "saf_source": "speed_adjustment_factor_source",
+        "caf_source": "capacity_adjustment_factor_source",
     }
     for widget_name, input_name in widget_fields.items():
-        st.session_state[
-            f"manual_freeway_input_{widget_name}_{preset_id}_{unit_system}"
-        ] = displayed[input_name]
+        if displayed.get(input_name) is not None:
+            st.session_state[
+                f"manual_freeway_input_{widget_name}_{preset_id}_{unit_system}"
+            ] = displayed[input_name]
     st.session_state[
         f"manual_freeway_input_ffs_source_{preset_id}_{unit_system}"
     ] = ffs_source_label
@@ -1329,8 +1437,7 @@ def _restore_manual_freeway_project(project: dict[str, Any]) -> None:
             {
                 "preset_id": preset_id,
                 "unit_system": unit_system,
-                "displayed_inputs": displayed,
-                "submitted_inputs": project["normalized_engine_inputs"],
+                "normalized_engine_inputs": project["normalized_engine_inputs"],
             },
         )
     st.session_state.pop("manual_freeway_error", None)
