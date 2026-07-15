@@ -41,6 +41,7 @@ from hcmcalc.ui.project_io import (
     load_manual_freeway_project_json,
     load_manual_multilane_project_json,
     load_manual_project_json,
+    project_load_message,
 )
 from hcmcalc.cli import result_to_dict
 from hcmcalc.ui.units import manual_horizontal_curve_defaults
@@ -91,6 +92,18 @@ def test_create_project_payload_from_manual_inputs() -> None:
         1.2 / 1.609344
     )
     assert payload["created_at"]
+    assert payload["method_identifier"] == "hcm7_two_lane_highway_segment"
+    assert payload["method_version"] == "phase_5_product_integration"
+
+
+def test_project_load_status_explains_current_migrated_and_stale_results() -> None:
+    current = {"load_status": "result_current"}
+    migrated = {"load_status": "project_migrated"}
+    stale = {"load_status": "project_requires_recalculation"}
+
+    assert "current result" in project_load_message(current)
+    assert "migrated" in project_load_message(migrated).lower()
+    assert "recalculate" in project_load_message(stale).lower()
 
 
 def test_create_project_payload_including_result_and_audit_record() -> None:

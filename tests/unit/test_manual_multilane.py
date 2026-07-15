@@ -225,3 +225,18 @@ def test_divided_median_and_external_pce_are_normalized_explicitly() -> None:
     assert normalized["left_side_lateral_clearance_ft"] == 2.0
     assert normalized["passenger_car_equivalent"] == 3.25
     assert run_manual_multilane(normalized).outputs["pce_source"] == "external_user_supplied_override"
+
+
+@pytest.mark.parametrize("invalid", [True, float("nan"), float("inf")])
+def test_multilane_normalization_rejects_non_finite_or_boolean_ui_numbers(
+    invalid: float | bool,
+) -> None:
+    template = load_multilane_template("MLH-CH26-004-EB")
+    displayed = multilane_template_ui_inputs("MLH-CH26-004-EB") | {
+        "demand_volume_veh_h": invalid
+    }
+
+    with pytest.raises(
+        ValueError, match="demand_volume_veh_h must be a finite numeric value"
+    ):
+        multilane_ui_inputs_to_engine(displayed, template["inputs"], "imperial")

@@ -15,6 +15,13 @@ from hcmcalc.core import CalculationResult, HCMCalcError
 from hcmcalc.methods import get_method
 
 
+RESULT_CONTRACT_VERSIONS = {
+    "hcm7_ch15_two_lane_motorized": "phase_5_product_integration",
+    "hcm7_multilane_los": "phase_8",
+    "hcm7_basic_freeway_segment": "phase_10_product_integration",
+}
+
+
 class CLIInputError(HCMCalcError):
     """Raised when a CLI input file cannot supply a runnable case."""
 
@@ -89,6 +96,9 @@ def result_to_dict(result: CalculationResult) -> dict[str, Any]:
     result_data = asdict(result)
     return {
         "method": result_data["method"],
+        "result_contract_version": RESULT_CONTRACT_VERSIONS.get(
+            result_data["method"], "unversioned"
+        ),
         "facility_type": result_data["facility_type"],
         "outputs": result_data["outputs"],
         "intermediate_values": result_data["intermediate_values"],

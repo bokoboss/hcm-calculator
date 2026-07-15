@@ -3,6 +3,7 @@ from hcmcalc.ui.workflow_state import (
     MISSING_REQUIRED_INPUT,
     READY,
     STALE,
+    calculation_input_fingerprint,
     is_current_calculation,
     mark_calculated,
     normalized_input_fingerprint,
@@ -38,3 +39,14 @@ def test_each_workflow_keeps_its_own_calculation_fingerprint() -> None:
     mark_calculated(state, "two_lane", inputs)
 
     assert workflow_status(state, "multilane", inputs) == READY
+
+
+def test_calculation_fingerprint_includes_method_and_contract() -> None:
+    inputs = {"demand_volume_veh_h": 900.0}
+    baseline = calculation_input_fingerprint("multilane", "phase_8", inputs)
+
+    assert baseline != calculation_input_fingerprint("freeway", "phase_8", inputs)
+    assert baseline != calculation_input_fingerprint("multilane", "phase_10", inputs)
+    assert baseline == calculation_input_fingerprint(
+        "multilane", "phase_8", {"demand_volume_veh_h": 900.0}
+    )

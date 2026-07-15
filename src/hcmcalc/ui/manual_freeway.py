@@ -9,6 +9,7 @@ from typing import Any
 from hcmcalc.cli import find_case, load_input_file
 from hcmcalc.freeway import BasicFreewaySegmentMethod
 from hcmcalc.freeway.validation import DRIVER_POPULATION_FACTORS
+from hcmcalc.ui.input_contracts import reject_unknown_keys, require_finite_number
 from hcmcalc.ui.units import MILES_TO_KILOMETERS
 
 
@@ -130,9 +131,7 @@ def freeway_ui_inputs_to_engine(
 ) -> dict[str, Any]:
     """Convert user-facing worksheet values to engine-native Imperial inputs."""
 
-    unknown_keys = sorted(set(values) - FREEWAY_UI_INPUT_KEYS)
-    if unknown_keys:
-        raise ValueError("Unrecognized Basic Freeway UI inputs: " + ", ".join(unknown_keys))
+    reject_unknown_keys(values, FREEWAY_UI_INPUT_KEYS, "Basic Freeway UI")
     metric = _normalize_unit_system(unit_system) == "metric"
     speed_factor = 1.0 / MILES_TO_KILOMETERS if metric else 1.0
     length_factor = 1.0 / MILES_TO_KILOMETERS if metric else 1.0
@@ -147,6 +146,22 @@ def freeway_ui_inputs_to_engine(
     driver_category = values.get("driver_population_category", "regular")
     if driver_category not in DRIVER_POPULATION_FACTORS:
         raise ValueError("driver_population_category is unsupported.")
+    for name in (
+        "number_of_lanes", "segment_length", "demand_volume_veh_h",
+        "peak_hour_factor", "heavy_vehicle_percent", "speed_adjustment_factor",
+        "capacity_adjustment_factor",
+    ):
+        require_finite_number(name, values[name])
+    if ffs_source == "measured":
+        require_finite_number("free_flow_speed", values.get("free_flow_speed"))
+    else:
+        for name in (
+            "base_free_flow_speed", "lane_width", "right_side_lateral_clearance",
+            "total_ramp_density",
+        ):
+            require_finite_number(name, values.get(name))
+    if pce_mode == "external":
+        require_finite_number("passenger_car_equivalent", values.get("passenger_car_equivalent"))
     engine_inputs = {
         "case_id": preset_inputs["case_id"],
         "facility_type": preset_inputs["facility_type"],

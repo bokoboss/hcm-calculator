@@ -23,7 +23,7 @@ dev = [
   "pytest>=8.2"
 ]
 ui = [
-  "streamlit>=1.35"
+  "streamlit>=1.59"
 ]
 
 [tool.pytest.ini_options]

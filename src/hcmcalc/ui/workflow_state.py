@@ -25,6 +25,24 @@ def normalized_input_fingerprint(inputs: Mapping[str, Any]) -> str:
     return sha256(payload.encode("utf-8")).hexdigest()
 
 
+def calculation_input_fingerprint(
+    method_identifier: str, input_contract: str, inputs: Mapping[str, Any]
+) -> str:
+    """Fingerprint a result identity including method and input contract."""
+
+    if not isinstance(method_identifier, str) or not method_identifier.strip():
+        raise ValueError("method_identifier must be a nonempty string.")
+    if not isinstance(input_contract, str) or not input_contract.strip():
+        raise ValueError("input_contract must be a nonempty string.")
+    return normalized_input_fingerprint(
+        {
+            "method_identifier": method_identifier,
+            "input_contract": input_contract,
+            "inputs": inputs,
+        }
+    )
+
+
 def workflow_status(
     session_state: Mapping[str, Any], workflow: str, inputs: Mapping[str, Any], *,
     required_fields: Sequence[str] = (),

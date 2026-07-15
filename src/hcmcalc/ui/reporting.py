@@ -153,7 +153,10 @@ def report_to_csv(report: dict[str, Any]) -> str:
     output = StringIO(newline="")
     writer = csv.writer(output)
     writer.writerow([report["title"]])
-    for key in ("report_type", "calculation_type", "unit_system", "generated_at"):
+    for key in (
+        "report_type", "calculation_type", "method_identifier", "method_version",
+        "unit_system", "generated_at",
+    ):
         writer.writerow([_label(key), report.get(key, "")])
     _write_key_value_csv(writer, "Summary", report["results_summary"])
     _write_key_value_csv(writer, "Inputs", report["inputs_summary"])
@@ -180,6 +183,7 @@ def report_to_markdown(report: dict[str, Any]) -> str:
         f"# {report['title']}",
         "",
         f"- **Calculation type:** {report['calculation_type']}",
+        f"- **Method:** {report['method_identifier']} ({report['method_version']})",
         f"- **Unit system:** {report['unit_system']}",
         f"- **Generated at:** {report['generated_at']}",
         "",
@@ -510,6 +514,8 @@ def _base_report(**values: Any) -> dict[str, Any]:
         "title": values["title"],
         "report_type": values["report_type"],
         "calculation_type": values["calculation_type"],
+        "method_identifier": result["method"],
+        "method_version": result["result_contract_version"],
         "unit_system": values["unit_system"],
         "inputs_summary": values["inputs"],
         "results_summary": values["results"],

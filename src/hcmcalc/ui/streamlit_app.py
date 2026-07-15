@@ -65,6 +65,7 @@ from hcmcalc.ui.project_io import (
     load_manual_facility_project_json,
     load_manual_multilane_project_json,
     load_manual_project_json,
+    project_load_message,
 )
 from hcmcalc.ui.result_view import (
     compact_rows,
@@ -231,13 +232,13 @@ def render_result(result_id: str, result_data: dict[str, Any]) -> None:
     st.subheader("Outputs")
     scalar_outputs = compact_rows(outputs)
     if scalar_outputs:
-        st.dataframe(scalar_outputs, hide_index=True, use_container_width=True)
+        st.dataframe(scalar_outputs, hide_index=True, width="stretch")
     else:
         st.caption("No scalar outputs were returned.")
 
     if isinstance(segments, list):
         st.subheader("Segment outputs")
-        st.dataframe(segments, hide_index=True, use_container_width=True)
+        st.dataframe(segments, hide_index=True, width="stretch")
 
     render_list("Assumptions", result_data["assumptions"], "No assumptions reported.")
     render_list("Warnings", result_data["warnings"], "No warnings reported.")
@@ -246,7 +247,7 @@ def render_result(result_id: str, result_data: dict[str, Any]) -> None:
         st.dataframe(
             result_data["intermediate_values"],
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
         )
 
     with st.expander("Full result JSON"):
@@ -630,7 +631,7 @@ def render_manual_multilane_calculator() -> None:
                 data=project_json,
                 file_name=f"{template_id}-manual-multilane-project.json",
                 mime="application/json",
-                use_container_width=True,
+                width="stretch",
             )
 
     if run_multilane:
@@ -809,7 +810,7 @@ def render_manual_multilane_calculator() -> None:
             st.dataframe(
                 result_data["intermediate_values"],
                 hide_index=True,
-                use_container_width=True,
+                width="stretch",
             )
         with st.expander("Full JSON"):
             st.json(
@@ -1157,7 +1158,7 @@ def render_manual_freeway_calculator() -> None:
                 data=project_json,
                 file_name=f"{preset_id}-manual-basic-freeway-project.json",
                 mime="application/json",
-                use_container_width=True,
+                width="stretch",
             )
 
     if run_freeway:
@@ -1363,7 +1364,7 @@ def _render_manual_freeway_load_controls() -> None:
     if st.button(
         "Load saved project",
         disabled=uploaded_project is None,
-        use_container_width=True,
+        width="stretch",
     ):
         try:
             project = load_manual_freeway_project_json(uploaded_project.getvalue())
@@ -1441,10 +1442,7 @@ def _restore_manual_freeway_project(project: dict[str, Any]) -> None:
             },
         )
     st.session_state.pop("manual_freeway_error", None)
-    st.session_state["manual_freeway_project_load_message"] = (
-        "Manual Basic Freeway project loaded. Review the restored inputs and "
-        "click Run calculation to calculate again."
-    )
+    st.session_state["manual_freeway_project_load_message"] = project_load_message(project)
 
 
 def _render_manual_multilane_load_controls() -> None:
@@ -1458,7 +1456,7 @@ def _render_manual_multilane_load_controls() -> None:
     if st.button(
         "Load saved project",
         disabled=uploaded_project is None,
-        use_container_width=True,
+        width="stretch",
     ):
         try:
             project = load_manual_multilane_project_json(uploaded_project.getvalue())
@@ -1528,9 +1526,7 @@ def _restore_manual_multilane_project(project: dict[str, Any]) -> None:
             },
         )
     st.session_state.pop("manual_multilane_error", None)
-    st.session_state["manual_multilane_project_load_message"] = (
-        "Manual Multilane project loaded. Review the restored validated-path inputs."
-    )
+    st.session_state["manual_multilane_project_load_message"] = project_load_message(project)
 
 
 def render_manual_facility_calculator() -> None:
@@ -1602,7 +1598,7 @@ def render_manual_facility_calculator() -> None:
             key=f"facility_segment_editor_{template_id}_{unit_system}_{editor_version}",
             hide_index=True,
             num_rows="dynamic",
-            use_container_width=True,
+            width="stretch",
             column_config={
                 "segment_length": st.column_config.NumberColumn(
                     f"Length ({'km' if unit_system == 'metric' else 'mi'})",
@@ -1645,7 +1641,7 @@ def render_manual_facility_calculator() -> None:
         calculate = calculate_column.button(
             "Run calculation",
             type="primary",
-            use_container_width=True,
+            width="stretch",
             key="facility_calculate",
         )
         scope_column.caption(
@@ -1786,7 +1782,7 @@ def render_manual_facility_result_panel(
     st.dataframe(
         st.session_state["manual_facility_result_rows"],
         hide_index=True,
-        use_container_width=True,
+        width="stretch",
         column_config={
             "segment_id": "Segment ID",
             "segment_name": "Segment name",
@@ -1831,7 +1827,7 @@ def render_manual_facility_result_panel(
             data=json.dumps(full_result, indent=2),
             file_name=f"{template_id}-facility-result.json",
             mime="application/json",
-            use_container_width=True,
+            width="stretch",
         )
     if not is_current:
         st.caption("Export unavailable until recalculation completes.")
@@ -1890,7 +1886,7 @@ def _render_manual_facility_project_file_controls(
             data=project_json,
             file_name=f"{template_id}-manual-facility-project.json",
             mime="application/json",
-            use_container_width=True,
+            width="stretch",
         ),
     )
 
@@ -1906,7 +1902,7 @@ def _render_manual_facility_load_controls() -> None:
     if st.button(
         "Load saved project",
         disabled=uploaded_project is None,
-        use_container_width=True,
+        width="stretch",
     ):
         try:
             project = load_manual_facility_project_json(uploaded_project.getvalue())
@@ -1953,10 +1949,7 @@ def _restore_manual_facility_project(project: dict[str, Any]) -> None:
             },
         )
     st.session_state.pop("manual_facility_error", None)
-    st.session_state["manual_facility_project_load_message"] = (
-        "Facility project loaded. Review the restored inputs and "
-        "click Run calculation to calculate again."
-    )
+    st.session_state["manual_facility_project_load_message"] = project_load_message(project)
 
 
 def _calculation_result_from_dict(result: dict[str, Any]) -> Any:
@@ -2175,7 +2168,7 @@ def render_manual_single_segment_calculator() -> None:
                             "subsegment_count": subsegment_count,
                         }
                         generate_curve = st.form_submit_button(
-                            "Generate curve subsegments", use_container_width=True
+                            "Generate curve subsegments", width="stretch"
                         )
                         editor_version = st.session_state.get(
                             f"manual_horizontal_subsegments_version_{unit_system}", 0
@@ -2199,7 +2192,7 @@ def render_manual_single_segment_calculator() -> None:
                             ),
                             hide_index=True,
                             num_rows="fixed",
-                            use_container_width=True,
+                            width="stretch",
                             column_config={
                                 "type": st.column_config.SelectboxColumn(
                                     "Subsegment type",
@@ -2237,7 +2230,7 @@ def render_manual_single_segment_calculator() -> None:
                     )
 
             run_manual = st.form_submit_button(
-                "Run calculation", type="primary", use_container_width=True
+                "Run calculation", type="primary", width="stretch"
             )
 
         values = {
@@ -2379,7 +2372,7 @@ def render_manual_project_file_controls(manual_inputs: dict[str, Any]) -> None:
             data=project_json,
             file_name="manual-single-segment-project.json",
             mime="application/json",
-            use_container_width=False,
+            width="content",
         ),
     )
 
@@ -2395,7 +2388,7 @@ def _render_manual_project_load_controls() -> None:
     if st.button(
         "Load saved project",
         disabled=uploaded_project is None,
-        use_container_width=True,
+        width="stretch",
     ):
         try:
             project = load_manual_project_json(uploaded_project.getvalue())
@@ -2455,10 +2448,7 @@ def _restore_manual_project(project: dict[str, Any]) -> None:
     if project.get("result") is not None:
         mark_calculated(st.session_state, "manual_segment", manual_inputs)
     st.session_state.pop("manual_segment_error", None)
-    st.session_state["manual_project_load_message"] = (
-        "Project loaded. Review the restored inputs and click Run calculation "
-        "to calculate again."
-    )
+    st.session_state["manual_project_load_message"] = project_load_message(project)
 
 
 def render_audit_record(audit_record: dict[str, Any] | None) -> None:
@@ -2517,7 +2507,7 @@ def render_manual_result(
         st.dataframe(
             result_data["intermediate_values"],
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
         )
         if audit_record is not None:
             st.markdown("**Audit record**")
@@ -2545,7 +2535,7 @@ def render_manual_result(
                 data=full_result_json,
                 file_name="manual-single-segment-result.json",
                 mime="application/json",
-                use_container_width=True,
+                width="stretch",
             )
 
 
@@ -2627,7 +2617,7 @@ def render_export_report_downloads(
             data=data,
             file_name=filename,
             mime=mime,
-            use_container_width=True,
+            width="stretch",
             key=f"{calculation_type}_{filename}",
         )
 

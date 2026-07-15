@@ -12,6 +12,10 @@ The main workflow is:
 5. Inspect calculation details and audit / intermediate values.
 6. Save Project or Export / Report.
 
+For the authoritative cross-method comparison of analysis unit, FFS/PCE modes,
+capacity behavior, units, exports, and exclusions, see the
+[supported methods matrix](methodology/supported_methods_matrix.md).
+
 ## Two-Lane Highway
 
 Supported:
@@ -83,4 +87,18 @@ Limitations:
 Validation examples are regression and reference evidence for implemented
 fixture cases. They are not user-facing workflows or product modes, and they do
 not broaden supported methodology scope.
+
+## Cross-method result and persistence rules
+
+- Use the same labels for genuinely shared concepts, but do not treat Two-Lane
+  follower density as Multilane/Freeway density or facility outputs as segment
+  outputs.
+- Above-capacity Multilane and Basic Freeway results are LOS F/capacity-failure
+  results; speed and density are **Not predicted**, not zero.
+- Exports are available only for current results and use the stored engine
+  result rather than recomputing methodology.
+- A project loader reports whether a result is current, the project was
+  migrated, or recalculation is required. See the
+  [v0.4.1 release note](releases/v0_4_1_cross_method_consolidation.md) for the
+  detailed contract.
 
