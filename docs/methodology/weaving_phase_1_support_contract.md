@@ -92,8 +92,9 @@ capacity when applicable, base/CAF-adjusted governing capacity, v/c, capacity
 status, weaving/nonweaving/mean speed, density, LOS, and governing reason.
 The audit trail must include movement map, VR, LCMIN, LS/LMAX, capacity
 candidates, fHV/PCE and FFS provenance, lane-change branch and values, and
-equation/exhibit location.  Capacity values remain pc/h unless specifically
-named pc/h/ln.
+equation/exhibit location.  Ideal lane/weaving-flow capacities are pc/h/ln or
+pc/h as explicitly named; prevailing unadjusted and CAF-adjusted segment
+capacities are veh/h after `fHV`/CAF.  The result must never mix those units.
 
 At capacity/above-capacity behavior is deliberately explicit: exactly unrounded
 `v/c = 1.00` continues to the HCM speed/density/LOS calculation; only `v/c >
@@ -139,7 +140,7 @@ Candidate core operational examples are local HCM 7.0 Chapter 27 Example 1
 (major weave, pp. 27-2--7), Example 2 (ramp weave, pp. 27-7--11), and Example
 3 (two-sided weave, pp. 27-12--16).  Their visually checked published final
 evidence is respectively: `D=26.3`, `S=53.1`, `LOS C`, capacity `8,038 veh/h`;
-`D=20.2`, `S=61.9`, `LOS C`, capacity `8,580 pc/h`; and `D=39.2`, `S=45.8`,
+`D=20.2`, `S=61.9`, `LOS C`, capacity `8,580 veh/h`; and `D=39.2`, `S=45.8`,
 `LOS E`, capacity `4,593 veh/h`.  Published display rounding requires
 tolerances derived from each displayed precision, not artificial exactness.
 
@@ -156,9 +157,9 @@ their narrative. `V` is raw veh/h and `v` is pc/h unless stated otherwise.
 
 | Example | Configuration / inputs | FFS/HV/capacity path | Published intermediate and result evidence | Precision/tolerance |
 | --- | --- | --- | --- | --- |
-| 1, major weave, pp. 27-2--7 | one-sided; LS 1,500 ft; N 4; PHF .91; level; ID .8; V(FF,FR,RF,RR)=(1,815,692,1,037,1,297) | FFS 65 mi/h; PT 5%, ET 2, fHV .952; cIFL 2,350 pc/h/ln | v=5,586; vW=1,995; VR=.357; LCRF=0, LCFR=1, NWL=3; LCMIN=798; LMAX=4,639 ft; density capacity 8,038 veh/h governs vs weaving 9,333; LCW=1,144; LCNW=782; LCALL=1,926; W=.275; Sw=54.2, Snw=52.5, S=53.1 mi/h; D=26.3 pc/mi/ln; LOS C | one decimal where displayed; tolerances to published precision |
-| 2, ramp weave, pp. 27-7--11 | one-sided; LS 1,000 ft; N 4; PHF/fHV 1; v(FF,FR,RF,RR)=(4,000,300,600,100) | flows already pc/h; capacity path published | v=5,000; vW=900; VR=.18; LCRF=1, LCFR=1, NWL=2; LCMIN=900; LMAX=4,333 ft; density capacity 8,580 pc/h governs; LCW=1,187; LCNW=616; LCALL=1,803; W=.360; Sw=59.1, Snw=62.5, S=61.9 mi/h; D=20.2 pc/mi/ln; LOS C | one decimal where displayed; tolerances to published precision |
-| 3, two-sided weave, pp. 27-12--16 | two-sided; LS 750 ft; N 3; PHF .94; rolling; ID 2; V(FF,FR,RF,RR)=(3,500,250,100,300) | FFS 60 mi/h; PT 11%, ET 3, fHV .82; cIFL 2,300 pc/h/ln | ideal v=(4,541,324,130,389); v=5,384; vW=389; defined vNW=4,995; VR=.072; LCRR=2, NWL=0; LCMIN=778; LMAX=6,405 ft; density capacity 4,593 veh/h vs demand 4,150; LCW=960; printed LCNW=861/LCALL=1,821; W=.455; Sw=45.9, Snw=45.8, S=45.8 mi/h; D=39.2 pc/mi/ln; LOS E | printed 5,015 pc/h lane-change input conflicts with defined 4,995; review that chain separately; final tolerance needed |
+| 1, major weave, pp. 27-2--7 | one-sided; LS 1,500 ft; N 4; PHF .91; level; ID .8; V(FF,FR,RF,RR)=(1,815,692,1,037,1,297) | FFS 65 mi/h; PT 5%, ET 2, fHV .952; cIFL 2,350 pc/h/ln; CAF/SAF source values await second transcription | v=5,586; vW=1,995; VR=.357; LCRF=0, LCFR=1, NWL=3; LCMIN=798; LMAX=4,639 ft; density capacity 8,038 veh/h governs vs weaving 9,333; LCW=1,144; LCNW=782; LCALL=1,926; W=.275; Sw=54.2, Snw=52.5, S=53.1 mi/h; D=26.3 pc/mi/ln; LOS C | speed/density ±0.05; integer capacities/lane changes ±0.5; LOS exact |
+| 2, ramp weave, pp. 27-7--11 | one-sided; LS 1,000 ft; N 4; PHF/fHV 1; v(FF,FR,RF,RR)=(4,000,300,600,100) | flows already pc/h; capacity path published; CAF/SAF source values await second transcription | v=5,000; vW=900; VR=.18; LCRF=1, LCFR=1, NWL=2; LCMIN=900; LMAX=4,333 ft; density capacity 8,580 veh/h governs; LCW=1,187; LCNW=616; LCALL=1,803; W=.360; Sw=59.1, Snw=62.5, S=61.9 mi/h; D=20.2 pc/mi/ln; LOS C | speed/density ±0.05; integer capacities/lane changes ±0.5; LOS exact |
+| 3, two-sided weave, pp. 27-12--16 | two-sided; LS 750 ft; N 3; PHF .94; rolling; ID 2; V(FF,FR,RF,RR)=(3,500,250,100,300) | FFS 60 mi/h; PT 11%, ET 3, fHV .82; cIFL 2,300 pc/h/ln; CAF/SAF source values await second transcription | ideal v=(4,541,324,130,389); v=5,384; vW=389; defined vNW=4,995; VR=.072; LCRR=2, NWL=0; LCMIN=778; LMAX=6,405 ft; density capacity 4,593 veh/h vs demand 4,150; LCW=960; printed LCNW=861/LCALL=1,821; W=.455; Sw=45.9, Snw=45.8, S=45.8 mi/h; D=39.2 pc/mi/ln; LOS E | speed/density ±0.05; capacity ±0.5; LOS exact; do not assert LCNW/LCALL until ambiguity resolution |
 
 No `references/weaving_example_inputs.yaml` is created: before Phase 2 it
 would imply a runtime-ready fixture despite the Example 3 ambiguity and absent
