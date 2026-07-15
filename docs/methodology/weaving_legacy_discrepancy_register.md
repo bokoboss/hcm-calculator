@@ -16,6 +16,26 @@ well enough for code or image reuse.  Its single HTML file couples calculation,
 DOM interaction, design search, sensitivity charting, and rendering; none is a
 production implementation candidate.
 
+## McTrans/HCS comparison addendum
+
+McTrans/HCS is official implementation-reference evidence, not a replacement
+for the HCM 7.0 column in this register.  Its current HCS 2025/2026 material is
+mixed-version: the [official version history](https://mctrans.ce.ufl.edu/highway-capacity-software-hcs/version-history/)
+states that HCS 2025 release 8.4 added selectable HCM 7.1/NCHRP 07-26
+single-segment weave analysis, while [McTrans update news](https://mctrans.ce.ufl.edu/highway-capacity-software-hcs/hcs-update-news/)
+states users can select HCM 7 or HCM 7.1.  Any observed current-HCS output
+without an explicit HCM 7 selection is therefore unusable for parity.
+
+| Register topic | HCM 7.0/project decision | HCS implementation evidence | Legacy comparison/action |
+| --- | --- | --- | --- |
+| Method version | v7.0 equations and 43 pc/mi/ln freeway LOS F density boundary govern | HCS 2025/2026 also offers 7.1 with a new method and 35 pc/mi/ln capacity-density statement | legacy’s undifferentiated “HCM7” claim is `unverified`; add version tag to every diagnostic comparison |
+| C-D/multilane | freeway-only; v7.0 describes C-D/multilane as approximate | [HCS knowledge base](https://mctrans.ce.ufl.edu/highway-capacity-software-hcs/knowledge-base/) exposes “Highway or C-D Roadway” and asks for multilane-consistent FFS | HCS availability does not cure legacy `multilane_cd` overreach; retain `unsupported_overreach` |
+| Option lanes / lane changes | LC inputs and N_WL must be geometry-derived and auditable | HCS says LC_RF, LC_FR, and N_WL are separate inputs; option-lane exit is not a lane change | legacy lacks an auditable option-lane geometry contract; retain `methodology_defect` and add option-lane tests |
+| Movement coding | FF/FR/RF/RR remain HCM-defined | HCS labels LC_RF/LC_FR by movement | legacy labels require source-backed mapping, not HCS-output parity |
+| Validation severity | malformed input vs unsupported scope vs HCM handoff are distinct | HCS information box presents error/warning/info; warning may accompany software adjustment | legacy’s permissive parsing/clipping is not validated by HCS; project must not normalize silently |
+| Capacity/above capacity | only v7.0 `v/c > 1.00` stops speed/density | HCS history notes LOS/F and facility-analysis warnings, but current reports are mixed-version | legacy speed/density continuation remains a defect; HCS does not authorize a v7.0 alternative |
+| Diagrams | redraw/provenance required | HCS option-lane diagrams are proprietary UX material | legacy PNGs remain not approved; do not reuse either source’s imagery |
+
 | Legacy item | Legacy location | Legacy behavior/value | Governing HCM evidence | Classification | Risk | Required production action | Test implication |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Scope claim | README; `index.html:3,11,35` | Calls itself a complete HCM7 Ch. 13 tool | HCM 7.0 Ch. 13; no legacy source map | unsupported_overreach | high | Treat as secondary only | no parity test |
