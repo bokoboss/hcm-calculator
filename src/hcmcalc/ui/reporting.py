@@ -23,6 +23,12 @@ from hcmcalc.ui.manual_weaving import (
     MANUAL_WEAVING_LIMITATIONS,
     weaving_display_outputs,
 )
+from hcmcalc.ui.manual_ramp_influence import (
+    LIMITATIONS as RAMP_INFLUENCE_LIMITATIONS,
+    MANUAL_DIVERGE_PROJECT_TYPE,
+    MANUAL_MERGE_PROJECT_TYPE,
+    ramp_display_outputs,
+)
 from hcmcalc.ui.units import MILES_TO_KILOMETERS, display_outputs
 from hcmcalc.ui.i18n import field_label, normalize_locale, translate
 
@@ -35,6 +41,8 @@ SUPPORTED_CALCULATION_TYPES = {
     "manual_multilane_v0",
     "manual_basic_freeway_v0",
     "manual_freeway_weaving_segment_v1",
+    MANUAL_MERGE_PROJECT_TYPE,
+    MANUAL_DIVERGE_PROJECT_TYPE,
 }
 SUPPORTED_EXPORT_FORMATS = {"csv", "xlsx", "markdown", "json"}
 
@@ -112,9 +120,13 @@ def build_report(
             template_id,
             timestamp,
         )
-    else:
+    elif calculation_type == "manual_freeway_weaving_segment_v1":
         report = _weaving_report(
             result, outputs, unit_system, inputs, audit_record, template_id, timestamp
+        )
+    else:
+        report = _ramp_report(
+            calculation_type, result, outputs, unit_system, inputs, audit_record, template_id, timestamp
         )
     report = _localized_report(report, locale)
     _ensure_json_serializable(report)
@@ -157,8 +169,10 @@ def report_filename(report: dict[str, Any], extension: str) -> str:
         "manual_multilane_v0": "multilane",
         "manual_basic_freeway_v0": "basic_freeway",
         "manual_freeway_weaving_segment_v1": "weaving_segment",
+        MANUAL_MERGE_PROJECT_TYPE: "merge_segment",
+        MANUAL_DIVERGE_PROJECT_TYPE: "diverge_segment",
     }[calculation_type]
-    chapter = "13" if calculation_type == "manual_freeway_weaving_segment_v1" else "15"
+    chapter = "14" if calculation_type in {MANUAL_MERGE_PROJECT_TYPE, MANUAL_DIVERGE_PROJECT_TYPE} else "13" if calculation_type == "manual_freeway_weaving_segment_v1" else "15"
     return f"hcm_ch{chapter}_{workflow}_report_{timestamp:%Y%m%d_%H%M%S}.{extension}"
 
 
@@ -525,6 +539,69 @@ def _weaving_report(
     return report
 
 
+def _ramp_report(
+    calculation_type: str,
+    result: dict[str, Any],
+    outputs: dict[str, Any],
+    unit_system: str,
+    inputs: Any,
+    audit_record: dict[str, Any] | None,
+    preset_id: str | None,
+    timestamp: str,
+) -> dict[str, Any]:
+    display = ramp_display_outputs(outputs, unit_system)
+    is_merge = calculation_type == MANUAL_MERGE_PROJECT_TYPE
+    movement = "Merge" if is_merge else "Diverge"
+    downstream_label = "Downstream combined flow" if is_merge else "Continuing freeway flow"
+    downstream_key = "downstream_freeway_flow_pc_h" if is_merge else "continuing_freeway_flow_pc_h"
+    max_key = "maximum_desirable_merge_flow_pc_h" if is_merge else "maximum_desirable_diverge_flow_pc_h"
+    vc_key = "downstream_freeway_demand_capacity_ratio" if is_merge else "upstream_freeway_demand_capacity_ratio"
+    summary = [
+        {"label": "Level of service", "value": outputs.get("level_of_service"), "unit": None},
+        {"label": "Support status", "value": outputs.get("support_status"), "unit": None},
+        {"label": "Scope status", "value": outputs.get("scope_status"), "unit": None},
+        {"label": "Capacity status", "value": outputs.get("capacity_status"), "unit": None},
+        {"label": "Density", "value": display["density"]["value"], "unit": display["density"]["unit"]},
+        {"label": "Ramp influence speed", "value": display["ramp_influence_speed"]["value"], "unit": display["ramp_influence_speed"]["unit"]},
+        {"label": "All-lanes speed", "value": display["all_lanes_speed"]["value"], "unit": display["all_lanes_speed"]["unit"]},
+        {"label": "Governing capacity", "value": display["governing_capacity"]["value"], "unit": "pc/h"},
+        {"label": "Governing v/c", "value": outputs.get(vc_key), "unit": None},
+        {"label": "Freeway flow", "value": outputs.get("freeway_flow_pc_h"), "unit": "pc/h"},
+        {"label": "Ramp flow", "value": outputs.get("ramp_flow_pc_h"), "unit": "pc/h"},
+        {"label": downstream_label, "value": outputs.get(downstream_key), "unit": "pc/h"},
+        {"label": "Adjusted influence-lane flow", "value": outputs.get("adjusted_v12_pc_h"), "unit": "pc/h"},
+        {"label": "Ramp roadway capacity", "value": outputs.get("adjusted_ramp_roadway_capacity_pc_h"), "unit": "pc/h"},
+        {"label": "Maximum desirable flow exceeded", "value": outputs.get("maximum_desirable_influence_flow_exceeded"), "unit": None},
+        {"label": "Maximum desirable flow", "value": outputs.get(max_key), "unit": "pc/h"},
+        {"label": "Governing capacity reason", "value": outputs.get("governing_capacity_failure"), "unit": None},
+    ]
+    input_records = _ramp_input_records(inputs or {}, unit_system)
+    if preset_id:
+        input_records.insert(0, {"label": "Reference preset", "value": preset_id, "unit": None})
+    report = _base_report(
+        title=f"HCM 7.0 Freeway {movement} Segment Calculator Report",
+        report_type=f"Qualified HCM 7.0 freeway {movement.lower()} operational calculation report",
+        calculation_type=calculation_type,
+        unit_system=unit_system,
+        timestamp=timestamp,
+        inputs=input_records,
+        results=summary,
+        segment_results=[],
+        result=result,
+        audit_record=audit_record,
+        limitations=RAMP_INFLUENCE_LIMITATIONS,
+    )
+    report["selected_validation_preset"] = preset_id
+    report["support_scope"] = (
+        f"Qualified HCM 7.0 isolated one-lane right-side freeway {movement.lower()} segment only; "
+        "HCM 7.1 and adjacent-ramp contexts are known but unavailable."
+    )
+    report["normalized_engine_inputs_summary"] = _input_records(
+        (audit_record or {}).get("normalized_engine_inputs", {}), "imperial"
+    )
+    return report
+
+
 def _multilane_input_records(
     inputs: Any, unit_system: str
 ) -> list[dict[str, Any]]:
@@ -583,6 +660,26 @@ def _weaving_input_records(inputs: Any, unit_system: str) -> list[dict[str, Any]
         "heavy_vehicle_percent": "%",
         "volume_ff_veh_h": "veh/h", "volume_fr_veh_h": "veh/h",
         "volume_rf_veh_h": "veh/h", "volume_rr_veh_h": "veh/h",
+    }
+    return [{"label": _label(key), "value": value, "unit": units.get(key)} for key, value in inputs.items()]
+
+
+def _ramp_input_records(inputs: Any, unit_system: str) -> list[dict[str, Any]]:
+    if not isinstance(inputs, dict):
+        raise ReportingError("Merge/Diverge report inputs must be an object.")
+    metric = unit_system == "metric"
+    units = {
+        "auxiliary_lane_length": "m" if metric else "ft",
+        "free_flow_speed": "km/h" if metric else "mph",
+        "base_free_flow_speed": "km/h" if metric else "mph",
+        "lane_width": "m" if metric else "ft",
+        "right_side_lateral_clearance": "m" if metric else "ft",
+        "total_ramp_density": "ramps/km" if metric else "ramps/mi",
+        "ramp_ffs": "km/h" if metric else "mph",
+        "freeway_demand_veh_h": "veh/h",
+        "ramp_demand_veh_h": "veh/h",
+        "freeway_heavy_vehicle_percent": "%",
+        "ramp_heavy_vehicle_percent": "%",
     }
     return [{"label": _label(key), "value": value, "unit": units.get(key)} for key, value in inputs.items()]
 
@@ -823,8 +920,8 @@ def _validate_result(calculation_type: str, result: dict[str, Any] | None) -> No
         raise ReportingError(f"Unsupported calculation_type: {calculation_type}.")
     if not isinstance(result, dict) or not isinstance(result.get("outputs"), dict):
         raise ReportingError("Malformed result object: outputs must be an object.")
-    required = (
-        {
+    required_by_type = {
+        "manual_single_segment": {
             "level_of_service",
             "follower_density_followers_mi_ln",
             "average_speed_mph",
@@ -832,50 +929,87 @@ def _validate_result(calculation_type: str, result: dict[str, Any] | None) -> No
             "demand_flow_rate_veh_h",
             "capacity_veh_h",
             "free_flow_speed_mph",
-        }
-        if calculation_type == "manual_single_segment"
-        else (
-            {
-                "facility_level_of_service",
-                "facility_follower_density_followers_mi_ln",
-                "facility_average_speed_mph",
-                "facility_length_mi",
-                "segments",
-            }
-            if calculation_type in {"manual_facility_v0", "manual_two_lane_facility_v1"}
-            else (
-                {
-                    "density_pc_mi_ln",
-                    "level_of_service",
-                    "speed_used_for_density_mph",
-                    "demand_flow_rate_pc_h_ln",
-                    "adjusted_free_flow_speed_mph",
-                    "base_free_flow_speed_mph",
-                    "heavy_vehicle_adjustment_factor",
-                    "capacity_pc_h_ln",
-                    "capacity_check",
-                }
-                if calculation_type == "manual_multilane_v0"
-                else ({
-                "density_pc_mi_ln",
-                "level_of_service",
-                "speed_used_for_density_mph",
-                "demand_flow_rate_pc_h_ln",
-                "adjusted_free_flow_speed_mph",
-                "base_free_flow_speed_mph",
-                "heavy_vehicle_adjustment_factor",
-                "capacity_pc_h_ln",
-                "adjusted_capacity_pc_h_ln",
-                "capacity_check",
-            } if calculation_type == "manual_basic_freeway_v0" else {
-                "level_of_service", "support_status", "scope_status", "capacity_status",
-                "mean_speed_mph", "density_pc_mi_ln", "adjusted_prevailing_capacity_veh_h",
-                "demand_capacity_ratio", "weaving_speed_mph", "nonweaving_speed_mph",
-                "maximum_weaving_length_ft",
-            })
-            )
-        )
-    )
+        },
+        "manual_facility_v0": {
+            "facility_level_of_service",
+            "facility_follower_density_followers_mi_ln",
+            "facility_average_speed_mph",
+            "facility_length_mi",
+            "segments",
+        },
+        "manual_two_lane_facility_v1": {
+            "facility_level_of_service",
+            "facility_follower_density_followers_mi_ln",
+            "facility_average_speed_mph",
+            "facility_length_mi",
+            "segments",
+        },
+        "manual_multilane_v0": {
+            "density_pc_mi_ln",
+            "level_of_service",
+            "speed_used_for_density_mph",
+            "demand_flow_rate_pc_h_ln",
+            "adjusted_free_flow_speed_mph",
+            "base_free_flow_speed_mph",
+            "heavy_vehicle_adjustment_factor",
+            "capacity_pc_h_ln",
+            "capacity_check",
+        },
+        "manual_basic_freeway_v0": {
+            "density_pc_mi_ln",
+            "level_of_service",
+            "speed_used_for_density_mph",
+            "demand_flow_rate_pc_h_ln",
+            "adjusted_free_flow_speed_mph",
+            "base_free_flow_speed_mph",
+            "heavy_vehicle_adjustment_factor",
+            "capacity_pc_h_ln",
+            "adjusted_capacity_pc_h_ln",
+            "capacity_check",
+        },
+        "manual_freeway_weaving_segment_v1": {
+            "level_of_service",
+            "support_status",
+            "scope_status",
+            "capacity_status",
+            "mean_speed_mph",
+            "density_pc_mi_ln",
+            "adjusted_prevailing_capacity_veh_h",
+            "demand_capacity_ratio",
+            "weaving_speed_mph",
+            "nonweaving_speed_mph",
+            "maximum_weaving_length_ft",
+        },
+        MANUAL_MERGE_PROJECT_TYPE: {
+            "level_of_service",
+            "support_status",
+            "scope_status",
+            "capacity_status",
+            "density_pc_mi_ln",
+            "ramp_influence_speed_mph",
+            "adjusted_freeway_capacity_pc_h",
+            "adjusted_ramp_roadway_capacity_pc_h",
+            "freeway_flow_pc_h",
+            "ramp_flow_pc_h",
+            "adjusted_v12_pc_h",
+            "maximum_desirable_influence_flow_exceeded",
+        },
+        MANUAL_DIVERGE_PROJECT_TYPE: {
+            "level_of_service",
+            "support_status",
+            "scope_status",
+            "capacity_status",
+            "density_pc_mi_ln",
+            "ramp_influence_speed_mph",
+            "adjusted_freeway_capacity_pc_h",
+            "adjusted_ramp_roadway_capacity_pc_h",
+            "freeway_flow_pc_h",
+            "ramp_flow_pc_h",
+            "adjusted_v12_pc_h",
+            "maximum_desirable_influence_flow_exceeded",
+        },
+    }
+    required = required_by_type[calculation_type]
     if not required.issubset(result["outputs"]):
         raise ReportingError("Malformed result object: required outputs are missing.")
     if calculation_type in {"manual_facility_v0", "manual_two_lane_facility_v1"} and not isinstance(result["outputs"]["segments"], list):

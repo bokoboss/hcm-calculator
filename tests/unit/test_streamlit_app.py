@@ -177,6 +177,8 @@ def test_app_mode_list_includes_supported_workflows() -> None:
         "Multilane Segment",
         "Basic Freeway Segment",
         "Weaving Segment",
+        "Merge Segment",
+        "Diverge Segment",
         "Supported Workflows",
     )
     assert APP_MODE_LABELS[0] == "Two-Lane Segment"
@@ -223,6 +225,7 @@ def test_supported_workflows_content_names_current_scope() -> None:
         "Multilane Highway",
         "Basic Freeway",
         "Freeway Weaving Segment",
+        "Freeway Merge and Diverge Segments",
         "Validation Evidence",
     }
     assert "Manual Single Segment Calculator" in sections["Two-Lane Highway"]["supported"]

@@ -51,6 +51,13 @@ Implemented:
   product worksheet, with explicit one-/two-sided geometry evidence,
   reference presets, Metric/Imperial conversion, bilingual navigation,
   save/load freshness protection, and CSV/Excel/Markdown/JSON exports
+- Qualified HCM 7.0 Chapter 14 isolated freeway Merge Segment and Diverge
+  Segment product worksheets for one-lane right-side ramps, 2-4 freeway lanes,
+  explicit acceleration/deceleration lane length, separate freeway/ramp PHF and
+  heavy-vehicle inputs, measured or Chapter 12 estimated freeway FFS, explicit
+  ramp FFS, bilingual labels, Metric/Imperial UI conversion, original local SVG
+  diagrams, project save/load, stale-result protection, and CSV/Excel/Markdown
+  and report JSON exports
 - Chapter 26 second-case inventory documenting that no additional compatible
   Multilane Highway motorized-vehicle validation case is available in the
   supplied example-problem reference
@@ -108,6 +115,14 @@ Currently supported:
   for explicit one-sided and two-sided freeway geometry. It preserves the
   public versioned engine contract, has no selectable HCM 7.1 method, and
   reports long-segment handoffs or above-capacity null predictions explicitly.
+- **Freeway Merge Segment / Diverge Segment:** qualified HCM 7.0 isolated
+  right-side one-lane ramp operational analysis. The product exposes only the
+  public `MergeSegmentMethod(version="hcm_7_0").calculate(inputs)` and
+  `DivergeSegmentMethod(version="hcm_7_0").calculate(inputs)` facades. HCM 7.1
+  and adjacent-ramp contexts are rejected on load and not selectable. Capacity
+  failure reports LOS F with speed and density as Not predicted; maximum
+  desirable influence-flow exceedance remains a warning when capacity is not
+  failed.
 
 See [Supported Workflows](docs/supported_workflows.md) for the concise app-wide
 scope summary.
@@ -242,6 +257,14 @@ The single-page app provides six modes:
   Highway, Basic Freeway, Save/Load, Export / Report, and validation-reference
   scope in the app. Limitations are visible but kept secondary to the calculator
   workflow.
+- **Merge Segment** and **Diverge Segment** are visible calculator modes beside
+  Basic Freeway and Weaving. They use separate project identities
+  `manual_freeway_merge_segment_v1` and
+  `manual_freeway_diverge_segment_v1`, original packaged SVG diagrams under
+  `src/hcmcalc/ui/assets/ramp_influence/`, Chapter 28 reference presets, and
+  current-result-only exports. Switching display units or language does not
+  change the canonical engineering case; changing calculation inputs marks the
+  stored result stale and blocks exports until recalculation.
 
 Across all four calculator workflows, a stored result is exportable only while
 it matches the effective normalized inputs, method identifier, and method

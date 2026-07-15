@@ -100,6 +100,50 @@ Limitations:
 - `LS >= LMAX` is a stopping/handoff condition: no LOS is assigned; use applicable separate merge/diverge/basic-segment analysis
 - above capacity is LOS F with capacity and `v/c`; speed and density are **Not predicted**, never zero
 
+## Freeway Merge Segment
+
+Supported:
+
+- HCM 7.0 qualified isolated one-lane right-side on-ramp operational analysis
+- 2-4 freeway lanes per analysis direction
+- explicit acceleration-lane length `LA`
+- upstream freeway and on-ramp demand in `veh/h`
+- separate freeway and on-ramp PHF and heavy-vehicle percentages
+- measured freeway FFS or Chapter 12 estimated freeway FFS; explicit ramp FFS
+- level or rolling terrain
+- original local configuration diagram visible by default
+- Chapter 28 Example 1 and Example 3 merge-component validation/reference presets
+- Metric/Imperial display conversion, English/Thai labels, project save/load, and CSV, Excel, Markdown, calculation JSON, and report JSON exports
+
+Limitations:
+
+- HCM 7.1 is known but unqualified and rejected on project load
+- adjacent ramps, left-side ramps, two-lane ramps, lane additions, major merges, managed lanes, C-D roads, ramp metering, work zones, queues, delay, spillback, and service-volume/design analysis are unsupported
+- capacity failure is LOS F with capacity and `v/c`; speed and density are **Not predicted**, never zero
+- maximum desirable influence-area flow exceedance is warning-only unless a roadway capacity check also fails
+
+## Freeway Diverge Segment
+
+Supported:
+
+- HCM 7.0 qualified isolated one-lane right-side off-ramp operational analysis
+- 2-4 freeway lanes per analysis direction
+- explicit deceleration-lane length `LD`
+- upstream freeway and off-ramp demand in `veh/h`, with continuing freeway demand derived and checked
+- separate freeway and off-ramp PHF and heavy-vehicle percentages
+- measured freeway FFS or Chapter 12 estimated freeway FFS; explicit ramp FFS
+- level or rolling terrain
+- original local configuration diagram visible by default
+- Chapter 28 Example 3 diverge-component validation/reference preset
+- Metric/Imperial display conversion, English/Thai labels, project save/load, and CSV, Excel, Markdown, calculation JSON, and report JSON exports
+
+Limitations:
+
+- HCM 7.1 is known but unqualified and rejected on project load
+- adjacent ramps, left-side ramps, two-lane ramps, lane drops, option lanes, major diverges, managed lanes, C-D roads, ramp metering, work zones, queues, delay, spillback, and service-volume/design analysis are unsupported
+- capacity failure is LOS F with capacity and `v/c`; speed and density are **Not predicted**, never zero
+- maximum desirable influence-area flow exceedance is warning-only unless a roadway capacity check also fails
+
 ## Validation Evidence
 
 Validation examples are regression and reference evidence for implemented
