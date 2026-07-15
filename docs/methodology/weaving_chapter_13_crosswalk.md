@@ -38,6 +38,96 @@ Source ledger:
 | NCHRP Report 1038 proposed chapters | primary institutional corroboration, not governing HCM 7.0 | proposed 7.1 Ch. 13/27 wording and LOS context | web/text review |
 | `hcm7-weaving-segments` at `8bcdf89038329fbdc46dac286733d6d18f9f3504` | secondary only | implementation inventory and risk discovery | source review |
 
+## McTrans/HCS implementation-reference evidence
+
+McTrans/HCS is an implementation and UX reference, ranked below the governing
+HCM 7.0 source.  It is not an equation, coefficient, threshold, or applicability
+authority.  The ledger was accessed on 2026-07-15; no guide, screenshot,
+report, extracted HTML, or proprietary HCS content is committed.
+
+| McTrans source | HCS/version mapping | Relevant section | Evidence type | Finding classification and relation to HCM 7.0 | Contract effect |
+| --- | --- | --- | --- | --- | --- |
+| [HCS User Guide archive](https://mctrans.ce.ufl.edu/userguide/) and [2024 Freeways guide](https://mctranswordpresssa.blob.core.windows.net/uploads/2024/01/Freeways-User-Guide-2024.pdf) | HCS 2024, HCM 7.0-era; version inferred from the official history: 7.1 is added only in HCS 2025 | Freeways guide listing | method-version/source availability | `confirms_phase_1`: a versioned freeway guide exists, but it is not evidence for 7.1 behavior | v7.0 reference candidate only |
+| [2025 Freeways guide](https://mctranswordpresssa.blob.core.windows.net/uploads/2024/10/HCS-2025-User-Guide-Freeways.pdf) | HCS 2025 / release 8.4: HCM 7 plus selectable HCM 7.1 single-segment method | Freeways release entry | method-version difference | `hcm_7_1_only` for its new merge/diverge/weave path; mixed-version guide | never use without explicit method selection |
+| [2026 Freeways guide](https://mctranswordpresssa.blob.core.windows.net/uploads/2025/09/HCS-2026-User-Guide-Freeways.pdf) | HCS 2026; current product supports HCM 7 and 7.1 selection | contents: Freeway Weaving Segments, Chs. 13/27, operational/design/report sections | terminology, input/report behavior | `ux_reference_only`: guide structure is useful, but version selection remains mandatory | no numerical rule imported |
+| [HCS version history](https://mctrans.ce.ufl.edu/highway-capacity-software-hcs/version-history/) | HCS 2023 implements 7th Edition; HCS 2025 release 8.4 adds HCM 7.1/NCHRP 07-26 for single merge/diverge/weave | HCS 2023; HCS 2025 release 8.4; later freeway notes | method-version difference, report behavior | `clarifies_phase_1`: a software version/year does not itself identify the procedure | add version/method pinning gate |
+| [HCS 2026 update news](https://mctrans.ce.ufl.edu/highway-capacity-software-hcs/hcs-update-news/) | latest HCS can select HCM 7 or HCM 7.1 | “New methods – Freeway Segments (HCM 7.1)” | method-version difference, report behavior | `hcm_7_1_only`: 7.1 has a new approach and 35 pc/mi/ln capacity-density statement | explicit contamination control |
+| [HCS knowledge base](https://mctrans.ce.ufl.edu/highway-capacity-software-hcs/knowledge-base/) | current HCS; individual tip does not state selected HCM method | “Multilane Highways Merge/Diverge and Weaving Segments” | applicability/UX | `hcs_software_specific`: HCS exposes “Highway or C-D Roadway”; its availability is not v7.0 release evidence | retain freeway-only scope |
+| [HCS knowledge base](https://mctrans.ce.ufl.edu/highway-capacity-software-hcs/knowledge-base/) | current HCS; method version not identified | “Modeling Option Lanes in Freeway Weaves” | terminology, input coding | `clarifies_phase_1`: HCS names LC_RF, LC_FR and N_WL as separate lane-changing inputs | add explicit geometry-coding requirements |
+| [HCS knowledge base](https://mctrans.ce.ufl.edu/highway-capacity-software-hcs/knowledge-base/) | current HCS, all-module feature | “Information Box” | validation behavior | `hcs_software_specific`: error/warning/info severity is UX evidence only | recommend analogous taxonomy, no auto-adjustment |
+| [McTrans HCM page](https://mctrans.ce.ufl.edu/highway-capacity-software-hcs/order-hcm/) | HCS 2025 onward permits HCM 7 / 7.1 choice | “Beyond HCM 7th Edition” | method-version difference | `hcm_7_1_only`: HCM 7.1 chapters are a later method, including 35 pc/mi/ln capacity density | version selection required before Phase 2 |
+
+### Version mapping and contamination control
+
+The version history says HCS 2023 implements the seventh edition; the 2024
+release contains Freeways changes but no listed HCM 7.1 weave method.  HCS 2025
+release 8.4 explicitly adds HCM 7.1/NCHRP 07-26 single-segment merge, diverge,
+and weaving analyses.  McTrans then states that the latest HCS allows the user
+to choose HCM 7 or HCM 7.1.  Therefore HCS 2024 is usable only as a **v7.0-era
+implementation reference**, HCS 2025/2026 documentation is mixed-version, and
+no current-guide behavior is v7.0 evidence unless the selected method is
+identified as HCM 7.
+
+**Phase 2 contamination-control rule:** every weaving source, fixture, report
+sample, screen observation, and test must carry `method_version = hcm_7_0`.
+Reject or quarantine evidence labeled HCM 7.1, NCHRP 07-26, 35 pc/mi/ln,
+“volume served,” queue/work-zone output, or an unspecified current-HCS method
+until a reviewer maps it to the governing v7.0 equation/exhibit.  HCS version
+year alone is insufficient, and HCS 2025/2026 dual-method screens/reports must
+record the selected method before comparison.
+
+### HCS observations and limits
+
+HCS’s option-lane tip states that the inputs are: `LC_RF` (minimum
+ramp-to-freeway lane changes), `LC_FR` (minimum freeway-to-ramp lane changes),
+and `N_WL` (lanes from which a weaving maneuver can be completed with zero or
+one lane change).  Its stated coding interpretation is that a freeway-to-ramp
+exit through an option lane is not itself a lane change.  This clarifies an
+implementation input convention; it does not change HCM 7.0 movement
+definitions.  The tip does not establish a lane-edge versus centerline counting
+rule, an `LC_RR` option-lane rule, an automatic `N_WL` derivation, or numerical
+lane-count bounds.  Those remain `unresolved` pending an HCM-backed geometry
+crosswalk.
+
+Thus the future UI/model must collect a configuration diagram or structured
+movement-to-destination lane information sufficient to enter `LC_RF`, `LC_FR`,
+`LC_RR` when applicable, and `N_WL` independently.  Two sites with equal `N`
+may legitimately have different lane-change inputs because an option lane
+changes the available destination movement; neither HCS nor this project may
+silently infer the values from lane count alone.
+
+The HCS knowledge base says the software permits an isolated “Highway or C-D
+Roadway” option and asks the user to match multilane FFS inputs.  That is
+software/applicability evidence only.  It neither supersedes the v7.0 Chapter
+13 approximation warning nor adds Chapter 27 validation evidence, so it has no
+effect on the freeway-only first-release decision.
+
+HCS’s general information box distinguishes errors (invalid results prevented),
+warnings (software/HCM adjustment but results produced), and information
+(defaults/optional inputs, normal results).  Use this as a UX taxonomy
+reference only.  The future contract must not copy HCS automatic adjustment or
+clipping: unknown or out-of-domain values remain input errors or unsupported
+scope unless HCM explicitly authorizes normalization.  HCS release notes do
+confirm a warning to use facility analysis when single-segment LOS is F, but do
+not establish v7.0 speed/density output semantics.  The governing HCM null
+behavior remains unchanged.
+
+HCS documentation inspected here does not provide a version-qualified
+movement-specific heavy-vehicle aggregation rule.  The HCS 2025 release note
+that SAF and CAF are global inputs does not identify the selected method, so it
+is excluded as software-release behavior rather than treated as HCM 7.0
+evidence.  Accordingly, the Phase 1 common segment-level `fHV` decision remains
+`confirms_phase_1` by absence of contrary governing evidence; it is not changed
+by HCS UI capability.
+
+| Crosswalk IDs | HCS implementation-evidence status | Effect |
+| --- | --- | --- |
+| W13-001, W13-007--009 | `clarifies_phase_1` for separate configuration/lane-change coding | collect geometry and LC/N_WL inputs explicitly |
+| W13-004, W13-012--017 | `unresolved` for v7.0 HV/SAF/CAF aggregation | retain governing v7.0/common-fHV scope |
+| W13-010--011 | `hcs_software_specific`/no v7.0 behavior proof | retain HCM LMAX handoff |
+| W13-018, W13-022--023 | HCS 7.1/report behavior excluded; v7.0 HCS evidence incomplete | retain HCM LOS F/null semantics |
+| W13-001, W13-024 | HCS C-D option is `hcs_software_specific` | no expansion beyond freeway-only |
+
 ## Verified operational sequence
 
 For a supported freeway case, Phase 2 must implement the following sequence in

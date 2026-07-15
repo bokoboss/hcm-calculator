@@ -117,6 +117,69 @@ multilane branches, and any input requiring table extrapolation or silent
 clipping.  It also does not implement a Chapter 14 handoff calculation; it
 identifies the handoff only.
 
+## McTrans/HCS evidence and version pinning
+
+McTrans/HCS is a helpful implementation-reference source, not governing method
+authority.  The governing method remains HCM **Version 7.0**.  Official
+[McTrans version history](https://mctrans.ce.ufl.edu/highway-capacity-software-hcs/version-history/)
+identifies HCS 2025 release 8.4 as adding HCM 7.1/NCHRP 07-26 single-segment
+merge/diverge/weave analysis.  The [HCS update page](https://mctrans.ce.ufl.edu/highway-capacity-software-hcs/hcs-update-news/)
+states current HCS lets the analyst choose HCM 7 or HCM 7.1; its 7.1 description
+mentions a new approach and 35 pc/mi/ln capacity density.  Therefore a current
+HCS guide, report, or screenshot is contaminated unless it identifies the
+selected HCM 7 method.
+
+Phase 2 may use an HCS observation only for terminology, a separately marked
+geometry coding convention, or a UX/checking hypothesis—and only after the
+observation records HCS version and HCM 7 selection.  It may not import HCS
+7.1/NCHRP 07-26 equations, thresholds, `volume served`, queues, work-zone
+behavior, global SAF/CAF UI, or automatic adjustments into this v7.0 method.
+No HCS report is a validation fixture.  The source ledger and crosswalk control
+are in [the Chapter 13 crosswalk](weaving_chapter_13_crosswalk.md).
+
+### Decision impact
+
+| Decision ID | Existing Phase 1 decision | McTrans/HCS evidence | HCM resolution | Final effect |
+| --- | --- | --- | --- | --- |
+| WEAVE-DEC-002 | v7.0 method identity | HCS 2025/2026 are dual-method; HCM 7.1 is expressly new | local HCM 7.0 remains governing | `narrows_phase_1`: persist `hcm_7_0` in every Phase 2 source/test/result |
+| WEAVE-DEC-003 | one-/two-sided configurations planned | HCS history mentions two-sided weaving graphics; no new method rule | Ch. 13 controls | `confirms_phase_1`; no terminology change |
+| WEAVE-DEC-004 | freeway-only/C-D excluded | HCS exposes “Highway or C-D Roadway” | Ch. 13 v7.0 remains approximate and Chapter 27 core examples are freeway | `confirms_phase_1` |
+| WEAVE-DEC-005 | common segment fHV | no version-qualified HCS rule for movement-specific capacity aggregation | singular v7.0 fHV still controls | `confirms_phase_1` |
+| WEAVE-DEC-006 | measured/qualified estimated FFS | HCS tells C-D/highway users to use multilane-consistent FFS | no v7.0 support expansion | `confirms_phase_1`; C-D still excluded |
+| WEAVE-DEC-008 | LS >= LMAX is a handoff | current HCS design material/UI does not establish v7.0 automatic handoff | Eq. 13-4 and p. 13-21 control | `confirms_phase_1` |
+| WEAVE-DEC-009--010 | only `v/c > 1.00` failure; null speed/density | HCS notes LOS/F warnings but is mixed-version and report-specific | HCM v7.0 controls | `confirms_phase_1` |
+| WEAVE-DEC-012 | no legacy diagram reuse | HCS tips offer proprietary diagrams | provenance/license constraints remain | `confirms_phase_1` |
+| WEAVE-DEC-013 | lane count/NWL are validated geometry inputs | HCS names LC_RF, LC_FR, N_WL separately; option-lane exit is not a lane change | HCM governs values, HCS clarifies coding risk | `clarifies_phase_1`: add explicit geometry fields; do not infer from N |
+
+### Option-lane input requirements
+
+The official [HCS option-lane guidance](https://mctrans.ce.ufl.edu/highway-capacity-software-hcs/knowledge-base/)
+states that an option-lane exit permits the FR movement without a lane change,
+and identifies `LC_RF`, `LC_FR`, and `N_WL` as required coding inputs.  This is
+an HCS coding interpretation, not a substitute for HCM geometry evidence.
+Phase 2 must require a diagram-independent structured representation of:
+
+- entry and exit side;
+- each movement’s origin and reachable destination lanes;
+- whether a lane is an option lane at the divergence;
+- `LC_RF`, `LC_FR`, and `LC_RR` where applicable, with an engineering basis;
+- `N_WL`, with an engineering basis.
+
+It must reject missing/ambiguous geometry rather than calculate from N alone.
+The HCS tip does not resolve lane-edge versus centerline counting, `LC_RR`
+option-lane treatment, or an automatic N_WL rule; those remain Phase 2 source
+questions and are not silently normalized.
+
+### Validation taxonomy recommendation
+
+The HCS information box’s error/warning/info categories are useful UI evidence,
+but its documented warnings can accompany software input adjustment.  The
+project instead proposes: **input error** (invalid/missing physical data),
+**unsupported scope** (well-formed but unqualified method case), **HCM stopping
+condition** (`LS >= LMAX` or capacity failure), **warning** (valid result with
+engineering limitation), and **informational engineering note**.  No HCS
+automatic clipping/normalization is adopted.
+
 ## Decision register
 
 | ID | Question/evidence | Decision and rationale | Implementation consequence / revisit condition |
@@ -187,3 +250,7 @@ qualification.
 Entry gate: select HCM version explicitly; independently transcribe/visual
 review Example 1--3 inputs/intermediates; resolve/document Example 3 tolerance;
 map selected Chapter 12 FFS/PCE/SAF/CAF domains; and approve common-fHV scope.
+In addition, Phase 2 must add a version identifier to the method/input/result
+contract, model option-lane geometry and LC/N_WL bases explicitly, retain
+validation severity and source references in the audit trail, and add tests
+that reject HCM 7.1 thresholds/equations/samples from an `hcm_7_0` path.
