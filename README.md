@@ -116,7 +116,8 @@ The authoritative cross-method scope, units, capacity behavior, persistence,
 exports, terminology decisions, and exclusions are in the
 [supported methods matrix](docs/methodology/supported_methods_matrix.md).
 The current maintenance release is documented in
-[v0.6 HCM 7.0 Freeway Weaving Segment](docs/releases/v0_6_weaving_segment_hcm_7_0.md).
+[v0.6 HCM 7.0 Freeway Weaving Segment](docs/releases/v0_6_weaving_segment_hcm_7_0.md),
+with [v0.6.1 configuration reference images](docs/releases/v0_6_1_weaving_configuration_images.md).
 
 ## Run Locally
 
