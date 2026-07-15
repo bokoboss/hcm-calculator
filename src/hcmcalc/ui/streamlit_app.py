@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from html import escape
 import json
 from pathlib import Path
 from typing import Any
@@ -54,6 +53,7 @@ from hcmcalc.ui.manual_weaving import (
     weaving_preset_ui_inputs,
     weaving_ui_inputs_to_engine,
 )
+from hcmcalc.ui.weaving_diagrams import get_weaving_diagram, get_weaving_diagram_subtype
 from hcmcalc.ui.manual_segment import run_manual_single_segment
 from hcmcalc.ui.layout import (
     render_calculator_shell,
@@ -157,10 +157,6 @@ def _ui_locale() -> str:
     """Read the session-scoped presentation locale without touching calculation state."""
 
     return normalize_locale(st.session_state.get("ui_locale"))
-
-
-def _svg_text(value: Any) -> str:
-    return escape(str(value), quote=True)
 
 
 def _weaving_text(key: str, **params: Any) -> str:
@@ -885,100 +881,47 @@ def render_manual_multilane_calculator() -> None:
             st.caption("Export unavailable until recalculation completes.")
 
 
-def _render_weaving_schematic(
+def _render_weaving_configuration_reference(
     *,
     configuration: str,
     number_of_lanes: int,
     number_of_weaving_lanes: int,
     entry_side: str,
     exit_side: str,
-    option_fr: bool,
-    option_rf: bool,
-    option_rr: bool,
     lc_rf: int | None,
     lc_fr: int | None,
     lc_rr: int | None,
 ) -> None:
-    """Render a conceptual, non-computational freeway weaving schematic."""
+    """Render the owner-authorized, presentation-only configuration reference."""
 
-    lane_count = max(1, int(number_of_lanes))
-    lane_height = 24
-    road_top = 42
-    road_bottom = road_top + lane_count * lane_height
-    road_mid = (road_top + road_bottom) / 2
-    width = 720
-    height = road_bottom + 72
-    weaving_label = f"N={lane_count}; NWL={int(number_of_weaving_lanes)}"
-    config_label = _weaving_text(f"config.{configuration}")
-    entry_y = road_top - 26 if entry_side == "left" else road_bottom + 26
-    exit_y = road_top - 26 if exit_side == "left" else road_bottom + 26
-    entry_label_y = max(18, entry_y - 8) if entry_side == "left" else min(height - 8, entry_y + 22)
-    exit_label_y = max(18, exit_y - 8) if exit_side == "left" else min(height - 8, exit_y + 22)
-    option_lanes = [
-        label for label, active in (("FR", option_fr), ("RF", option_rf), ("RR", option_rr)) if active
-    ]
-    option_label = ", ".join(option_lanes) if option_lanes else _weaving_text("schematic.option_none")
-    lc_parts = []
-    if lc_rf is not None:
-        lc_parts.append(f"LC_RF={lc_rf}")
-    if lc_fr is not None:
-        lc_parts.append(f"LC_FR={lc_fr}")
-    if lc_rr is not None:
-        lc_parts.append(f"LC_RR={lc_rr}")
-    lc_label = ", ".join(lc_parts) if lc_parts else _weaving_text("schematic.option_none")
-    lane_lines = "\n".join(
-        (
-            f'<line x1="64" y1="{road_top + i * lane_height}" '
-            f'x2="{width - 64}" y2="{road_top + i * lane_height}" '
-            'stroke="#d1d5db" stroke-width="1"/>'
-        )
-        for i in range(1, lane_count)
+    render_section_label(_weaving_text("reference.title"))
+    subtype = get_weaving_diagram_subtype(configuration, number_of_weaving_lanes)
+    diagram = get_weaving_diagram(subtype)
+    if diagram is None:
+        st.info(_weaving_text("reference.incomplete"))
+        return
+    title = _weaving_text(f"reference.subtype.{subtype}")
+    movement_text = _weaving_text("movement_caption")
+    lane_changes = ", ".join(
+        f"{label}={value}"
+        for label, value in (("LC_RF", lc_rf), ("LC_FR", lc_fr), ("LC_RR", lc_rr))
+        if value is not None
     )
-    svg = f"""
-    <svg viewBox="0 0 {width} {height}" role="img"
-         aria-label="Conceptual freeway weaving schematic"
-         style="width:100%;max-width:720px;height:auto;border:1px solid #d1d5db;border-radius:8px;background:#ffffff;">
-      <defs>
-        <marker id="weavingArrow" viewBox="0 0 10 10" refX="8" refY="5"
-                markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#245b86"></path>
-        </marker>
-        <marker id="rampArrow" viewBox="0 0 10 10" refX="8" refY="5"
-                markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill="#7c3aed"></path>
-        </marker>
-      </defs>
-      <text x="64" y="24" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="#111827">
-        {_svg_text(_weaving_text("schematic.title", configuration=config_label))}
-      </text>
-      <rect x="64" y="{road_top}" width="{width - 128}" height="{lane_count * lane_height}"
-            fill="#f9fafb" stroke="#9ca3af" stroke-width="1.5"></rect>
-      {lane_lines}
-      <rect x="260" y="{road_top + 5}" width="200" height="{lane_count * lane_height - 10}"
-            fill="#dbeafe" stroke="#245b86" stroke-width="1.4" stroke-dasharray="6 5" opacity="0.95"></rect>
-      <text x="360" y="{road_mid + 5}" text-anchor="middle" font-family="Arial, sans-serif"
-            font-size="13" fill="#1f2937">{_svg_text(_weaving_text("schematic.weaving_area", summary=weaving_label))}</text>
-      <line x1="88" y1="{road_mid}" x2="{width - 88}" y2="{road_mid}"
-            stroke="#245b86" stroke-width="3" marker-end="url(#weavingArrow)"></line>
-      <path d="M 114 {entry_y} C 190 {entry_y}, 190 {road_mid}, 266 {road_mid}"
-            fill="none" stroke="#7c3aed" stroke-width="3" marker-end="url(#rampArrow)"></path>
-      <path d="M 454 {road_mid} C 530 {road_mid}, 530 {exit_y}, 606 {exit_y}"
-            fill="none" stroke="#7c3aed" stroke-width="3" marker-end="url(#rampArrow)"></path>
-      <text x="90" y="{entry_label_y}" font-family="Arial, sans-serif" font-size="12" fill="#4c1d95">
-        {_svg_text(_weaving_text("schematic.entry", side=_weaving_text(f"side.{entry_side}")))}
-      </text>
-      <text x="506" y="{exit_label_y}" font-family="Arial, sans-serif" font-size="12" fill="#4c1d95">
-        {_svg_text(_weaving_text("schematic.exit", side=_weaving_text(f"side.{exit_side}")))}
-      </text>
-      <text x="64" y="{height - 36}" font-family="Arial, sans-serif" font-size="12" fill="#374151">
-        {_svg_text(_weaving_text("schematic.option_lanes", lanes=option_label))}; {_svg_text(_weaving_text("schematic.lc_values", values=lc_label))}
-      </text>
-      <text x="64" y="{height - 18}" font-family="Arial, sans-serif" font-size="12" fill="#374151">
-        {_svg_text(_weaving_text("schematic.legend"))}
-      </text>
-    </svg>
-    """
-    st.html(svg)
+    st.markdown(f"**{title}**")
+    st.image(str(diagram.path), width="stretch")
+    st.caption(_weaving_text("reference.caption"))
+    st.caption(
+        _weaving_text(
+            "reference.geometry_summary",
+            lanes=number_of_lanes,
+            weaving_lanes=number_of_weaving_lanes,
+            entry=_weaving_text(f"side.{entry_side}"),
+            exit=_weaving_text(f"side.{exit_side}"),
+            lane_changes=lane_changes or _weaving_text("schematic.option_none"),
+        )
+    )
+    st.markdown(f"**{_weaving_text('reference.movement_legend')}** {movement_text}")
+    st.caption(_weaving_text("reference.accessible_text", title=title))
 
 
 def render_manual_weaving_calculator() -> None:
@@ -1020,7 +963,9 @@ def render_manual_weaving_calculator() -> None:
     length_unit, speed_unit, width_unit = ("m", "km/h", "m") if metric else ("ft", "mph", "ft")
     density_unit = "interchanges/km" if metric else "interchanges/mi"
     with input_column:
-        with st.form(f"weaving_form_{preset_id}_{unit_system}"):
+        # This is deliberately a container rather than a form: the reference image
+        # must refresh as a user changes the coded configuration.
+        with st.container():
             render_section_label(_weaving_text("configuration_geometry"))
             geometry = st.columns(2)
             configuration = geometry[0].selectbox(_weaving_text("configuration"), ["one_sided", "two_sided"], index=["one_sided", "two_sided"].index(ui["configuration"]), format_func=lambda value: _weaving_text(f"config.{value}"))
@@ -1041,6 +986,16 @@ def render_manual_weaving_calculator() -> None:
             else:
                 lc_rf = lc_fr = None
                 lc_rr = geometry[1].selectbox("LC_RR", [2, 3, 4], index=[2, 3, 4].index(ui["lc_rr"] if ui["lc_rr"] in {2, 3, 4} else 2))
+            _render_weaving_configuration_reference(
+                configuration=configuration,
+                number_of_lanes=number_of_lanes,
+                number_of_weaving_lanes=number_of_weaving_lanes,
+                entry_side=entry_side,
+                exit_side=exit_side,
+                lc_rf=lc_rf,
+                lc_fr=lc_fr,
+                lc_rr=lc_rr,
+            )
             render_section_label(_weaving_text("traffic_demand"))
             traffic = st.columns(2)
             volume_ff = traffic[0].number_input("FF (veh/h)", min_value=0.0, value=float(ui["volume_ff_veh_h"]))
@@ -1074,21 +1029,7 @@ def render_manual_weaving_calculator() -> None:
             reachable_rr = evidence[0].text_input(_weaving_text("reachable_rr"), value=ui["reachable_rr"])
             nwl_basis = evidence[1].text_input(_weaving_text("nwl_basis"), value=ui["nwl_basis"])
             lane_change_basis = evidence[0].text_input(_weaving_text("lane_change_basis"), value=ui["lane_change_basis"])
-            _render_weaving_schematic(
-                configuration=configuration,
-                number_of_lanes=number_of_lanes,
-                number_of_weaving_lanes=number_of_weaving_lanes,
-                entry_side=entry_side,
-                exit_side=exit_side,
-                option_fr=option_fr,
-                option_rf=option_rf,
-                option_rr=option_rr,
-                lc_rf=lc_rf,
-                lc_fr=lc_fr,
-                lc_rr=lc_rr,
-            )
-            st.caption(_weaving_text("schematic_caption"))
-            run_weaving = st.form_submit_button(_weaving_text("run"), type="primary", width="stretch")
+            run_weaving = st.button(_weaving_text("run"), type="primary", width="stretch")
         displayed_inputs = {
             "case_name": case_name, "configuration": configuration, "segment_length": segment_length, "number_of_lanes": number_of_lanes, "number_of_weaving_lanes": number_of_weaving_lanes,
             "entry_side": entry_side, "exit_side": exit_side, "option_fr": option_fr, "option_rf": option_rf, "option_rr": option_rr,
