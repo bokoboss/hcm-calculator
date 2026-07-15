@@ -23,6 +23,7 @@ from .coefficients import (
 )
 from .models import BasicFreewaySegmentInputs
 from .validation import reject_unsupported_scope_keys, validate_inputs
+from hcmcalc.multilane.coefficients import PCE_TRUCK_PERCENT_COLUMNS, SPECIFIC_GRADE_PCE
 
 
 class BasicFreewaySegmentMethod:
@@ -46,7 +47,12 @@ class BasicFreewaySegmentMethod:
         lane_adjustment = None
         right_clearance_adjustment = None
         ramp_density_adjustment = None
-        base_free_flow_speed = parsed.free_flow_speed_mph
+        base_free_flow_speed = (
+            parsed.free_flow_speed_mph
+            if parsed.ffs_source == "measured"
+            else parsed.base_free_flow_speed_mph
+        )
+        free_flow_speed_before_saf = base_free_flow_speed
         if parsed.ffs_source == "estimated":
             lane_adjustment = lane_width_adjustment(parsed.lane_width_ft)
             right_clearance_adjustment = right_lateral_clearance_adjustment(
@@ -55,7 +61,7 @@ class BasicFreewaySegmentMethod:
             ramp_density_adjustment = total_ramp_density_adjustment(
                 parsed.total_ramp_density_per_mi
             )
-            base_free_flow_speed = estimated_free_flow_speed(
+            free_flow_speed_before_saf = estimated_free_flow_speed(
                 parsed.base_free_flow_speed_mph,
                 lane_adjustment,
                 right_clearance_adjustment,
@@ -63,7 +69,7 @@ class BasicFreewaySegmentMethod:
             )
 
         adjusted_ffs = adjusted_free_flow_speed(
-            base_free_flow_speed, parsed.speed_adjustment_factor
+            free_flow_speed_before_saf, parsed.speed_adjustment_factor
         )
         capacity = basic_freeway_capacity(adjusted_ffs)
         adjusted_capacity = adjusted_capacity_pc_h_ln(
@@ -72,8 +78,10 @@ class BasicFreewaySegmentMethod:
         breakpoint = breakpoint_flow_rate(
             adjusted_ffs, parsed.capacity_adjustment_factor
         )
-        pce = general_terrain_passenger_car_equivalent(parsed.terrain_type)
+        pce, pce_source, pce_lookup_path = select_passenger_car_equivalent(parsed)
         hv_factor = heavy_vehicle_adjustment_factor(parsed.heavy_vehicle_percent, pce)
+        # Chapter 26 replaced the legacy demand-flow driver-population factor
+        # with paired SAF/CAF values.  It is retained only as an audit marker.
         driver_population_factor = 1.0
         flow_rate = demand_flow_rate(
             parsed.demand_volume_veh_h,
@@ -94,7 +102,7 @@ class BasicFreewaySegmentMethod:
         los = level_of_service(density, demand_exceeds_capacity=demand_exceeds_capacity)
 
         warnings = [
-            "Basic Freeway Segment v0.1 is bounded to the implemented Chapter 12 "
+            "Basic Freeway Segment Phase 9 is bounded to the implemented Chapter 12 "
             "one-direction, one-segment uninterrupted-flow scope; Chapter 26 "
             "Example Problem 1 remains regression evidence."
         ]
@@ -105,10 +113,17 @@ class BasicFreewaySegmentMethod:
             )
         assumptions = [
             "One-direction, one-segment uninterrupted-flow Basic Freeway Segment analysis.",
-            "Driver population consists of regular users; driver population factor = 1.0.",
+            "Chapter 26 driver population is represented by the reported SAF/CAF pair; no legacy demand-flow factor is applied.",
             "General-purpose lanes only; no ramps, weaving, merge/diverge, managed lanes, work zones, reliability, or facility workflow.",
-            "Heavy-vehicle PCE uses Chapter 12 general-terrain level/rolling defaults only.",
+            "Heavy-vehicle PCE uses the reported Chapter 12 general-terrain, specific-grade, or external-override path.",
         ]
+        if parsed.driver_population_category == "regular":
+            assumptions.append("Driver population consists of regular users; SAF and CAF = 1.0.")
+        else:
+            assumptions.append(
+                "Driver-population SAF/CAF pair follows Chapter 26 Exhibit 26-9 "
+                f"for '{parsed.driver_population_category}'."
+            )
         if parsed.speed_adjustment_factor == 1.0:
             assumptions.append("Base speed adjustment factor SAF = 1.0.")
         if parsed.capacity_adjustment_factor == 1.0:
@@ -117,7 +132,7 @@ class BasicFreewaySegmentMethod:
         unsupported_scope_notes = [
             "No Multilane Highway Segment calculations.",
             "No ramp, weaving, merge/diverge, managed-lane, work-zone, reliability, or facility/corridor analysis.",
-            "No specific-grade or mountainous-terrain PCE tables in v0.1.",
+            "No mountainous-terrain or mixed-flow analysis; specific-grade lookup is limited to printed HCM cells.",
             "Save/Load and export/reporting integration does not broaden Basic Freeway Segment v0.1 scope.",
         ]
         source_references = [
@@ -125,28 +140,40 @@ class BasicFreewaySegmentMethod:
             "HCM7 Eq. 12-1 and Exhibit 12-6",
             "HCM7 Eq. 12-2; Exhibits 12-20 and 12-21",
             "HCM7 Eq. 12-5, Eq. 12-6, Eq. 12-8",
-            "HCM7 Eq. 12-9 and Eq. 12-10; Exhibit 12-25",
+            "HCM7 Eq. 12-9 and Eq. 12-10; Exhibits 12-25 through 12-28",
+            "HCM7 Chapter 26 Exhibit 26-9 driver-population SAF/CAF guidance",
             "HCM7 Eq. 12-11; Exhibit 12-15",
             "HCM7 Chapter 26 Freeway and Multilane Highway Example Problem 1",
         ]
         outputs = {
             "calculation_type": "basic_freeway_segment_v0_1",
+            "method_version": "phase_9_engine",
+            "calculation_contract": "hcm7_basic_freeway_one_direction_one_segment_phase_9",
             "support_status": "supported_basic_freeway_segment_v0_1",
             "scope_status": "supported_basic_freeway_segment_v0_1",
             "input_summary": asdict(parsed),
             "ffs_source": parsed.ffs_source,
             "base_free_flow_speed_mph": base_free_flow_speed,
+            "free_flow_speed_before_saf_mph": free_flow_speed_before_saf,
             "lane_width_adjustment_mph": lane_adjustment,
             "right_lateral_clearance_adjustment_mph": right_clearance_adjustment,
             "total_ramp_density_adjustment_mph": ramp_density_adjustment,
             "speed_adjustment_factor": parsed.speed_adjustment_factor,
+            "speed_adjustment_factor_source": parsed.speed_adjustment_factor_source,
             "adjusted_free_flow_speed_mph": adjusted_ffs,
             "capacity_pc_h_ln": capacity,
             "capacity_adjustment_factor": parsed.capacity_adjustment_factor,
+            "capacity_adjustment_factor_source": parsed.capacity_adjustment_factor_source,
             "adjusted_capacity_pc_h_ln": adjusted_capacity,
             "breakpoint_flow_rate_pc_h_ln": breakpoint,
             "passenger_car_equivalent": pce,
+            "pce_source": pce_source,
+            "pce_lookup_path": pce_lookup_path,
+            "terrain_grade_classification": parsed.terrain_type,
+            "effective_grade_percent": parsed.grade_percent,
+            "segment_length_mi": parsed.segment_length_mi,
             "heavy_vehicle_adjustment_factor": hv_factor,
+            "driver_population_category": parsed.driver_population_category,
             "driver_population_factor": driver_population_factor,
             "demand_flow_rate_pc_h_ln": flow_rate,
             "demand_capacity_ratio": flow_rate / adjusted_capacity,
@@ -312,6 +339,112 @@ def general_terrain_passenger_car_equivalent(terrain_type: str) -> float:
         ) from exc
 
 
+def select_passenger_car_equivalent(
+    inputs: BasicFreewaySegmentInputs,
+) -> tuple[float, str, str]:
+    """Select a Basic Freeway PCE once, with explicit HCM provenance.
+
+    The specific-grade grids are the shared, verbatim HCM7 Exhibit 12-26--12-28
+    transcript also used by Multilane.  The selection equation and all scope
+    checks remain Basic-Freeway-specific in this module.
+    """
+
+    if inputs.passenger_car_equivalent is not None:
+        return (
+            inputs.passenger_car_equivalent,
+            "external_user_supplied_override",
+            f"external_override:{inputs.passenger_car_equivalent_provenance}",
+        )
+    if inputs.heavy_vehicle_percent == 0:
+        return (1.0, "not_applicable_zero_heavy_vehicles", "no_heavy_vehicles")
+    if inputs.terrain_type in GENERAL_TERRAIN_PCE:
+        return (
+            general_terrain_passenger_car_equivalent(inputs.terrain_type),
+            "internal_hcm7_exhibit_12_25",
+            f"general_terrain_{inputs.terrain_type}",
+        )
+    pce = specific_grade_passenger_car_equivalent(
+        truck_mix=inputs.truck_mix,
+        grade_percent=inputs.grade_percent,
+        segment_length_mi=inputs.segment_length_mi,
+        heavy_vehicle_percent=inputs.heavy_vehicle_percent,
+    )
+    return (
+        pce,
+        "internal_hcm7_exhibits_12_26_12_28",
+        f"specific_grade_{inputs.grade_percent:g}_percent_{inputs.truck_mix}",
+    )
+
+
+def specific_grade_passenger_car_equivalent(
+    *, truck_mix: str, grade_percent: float | None, segment_length_mi: float,
+    heavy_vehicle_percent: float,
+) -> float:
+    """Interpolate only printed HCM7 specific-grade PCE cells."""
+
+    if grade_percent is None:
+        raise HCMCalcError("Specific-grade PCE requires grade_percent.")
+    sut_percent = {
+        "default_30_sut_70_tt": 30,
+        "equal_50_sut_50_tt": 50,
+        "majority_70_sut_30_tt": 70,
+    }.get(truck_mix)
+    if sut_percent is None:
+        raise UnsupportedScopeError("Specific-grade PCE requires a printed SUT/TT mix.")
+    if heavy_vehicle_percent > 20.0:
+        raise UnsupportedScopeError(
+            "The Exhibits 12-26 through 12-28 terminal >25% category is not a "
+            "numeric interpolation endpoint; provide an external PCE above 20%."
+        )
+    grid = SPECIFIC_GRADE_PCE[sut_percent]
+    lower_grade, upper_grade = _bounds(tuple(grid), grade_percent)
+    lower_value = _specific_grade_value(
+        grid[lower_grade], segment_length_mi, heavy_vehicle_percent
+    )
+    if lower_grade == upper_grade:
+        return lower_value
+    upper_value = _specific_grade_value(
+        grid[upper_grade], segment_length_mi, heavy_vehicle_percent
+    )
+    return _interpolate(lower_grade, lower_value, upper_grade, upper_value, grade_percent)
+
+
+def _specific_grade_value(
+    grid: dict[float, tuple[float, ...]], length_mi: float, heavy_vehicle_percent: float
+) -> float:
+    lower_length, upper_length = _bounds(tuple(grid), length_mi)
+    lower = _pce_row_value(grid[lower_length], heavy_vehicle_percent)
+    if lower_length == upper_length:
+        return lower
+    upper = _pce_row_value(grid[upper_length], heavy_vehicle_percent)
+    return _interpolate(lower_length, lower, upper_length, upper, length_mi)
+
+
+def _pce_row_value(row: tuple[float, ...], heavy_vehicle_percent: float) -> float:
+    lower, upper = _bounds(PCE_TRUCK_PERCENT_COLUMNS[:-1], heavy_vehicle_percent)
+    value = row[PCE_TRUCK_PERCENT_COLUMNS.index(lower)]
+    if lower == upper:
+        return value
+    upper_value = row[PCE_TRUCK_PERCENT_COLUMNS.index(upper)]
+    return _interpolate(lower, value, upper, upper_value, heavy_vehicle_percent)
+
+
+def _bounds(values: tuple[float, ...], value: float) -> tuple[float, float]:
+    values = tuple(sorted(values))
+    if value < values[0] or value > values[-1]:
+        raise UnsupportedScopeError(
+            f"HCM7 exhibit lookup does not support extrapolation outside {values[0]} through {values[-1]}."
+        )
+    return (
+        max(candidate for candidate in values if candidate <= value),
+        min(candidate for candidate in values if candidate >= value),
+    )
+
+
+def _interpolate(x0: float, y0: float, x1: float, y1: float, x: float) -> float:
+    return y0 if x0 == x1 else y0 + (y1 - y0) * (x - x0) / (x1 - x0)
+
+
 def heavy_vehicle_adjustment_factor(heavy_vehicle_percent: float, pce: float) -> float:
     """HCM7 Eq. 12-10."""
 
@@ -432,6 +565,7 @@ def _validate_computed_output(
 def _intermediate_values(outputs: dict[str, Any]) -> list[IntermediateValue]:
     sources = {
         "base_free_flow_speed_mph": "HCM7 Step 2; measured FFS or Eq. 12-2",
+        "free_flow_speed_before_saf_mph": "HCM7 Eq. 12-2 before SAF",
         "lane_width_adjustment_mph": "HCM7 Exhibit 12-20",
         "right_lateral_clearance_adjustment_mph": "HCM7 Exhibit 12-21",
         "total_ramp_density_adjustment_mph": "HCM7 Eq. 12-2",
@@ -441,7 +575,12 @@ def _intermediate_values(outputs: dict[str, Any]) -> list[IntermediateValue]:
         "capacity_adjustment_factor": "HCM7 Eq. 12-8",
         "adjusted_capacity_pc_h_ln": "HCM7 Eq. 12-8",
         "breakpoint_flow_rate_pc_h_ln": "HCM7 Exhibit 12-6",
-        "passenger_car_equivalent": "HCM7 Exhibit 12-25",
+        "passenger_car_equivalent": "HCM7 Exhibit 12-25 or Exhibits 12-26 through 12-28",
+        "pce_source": "PCE provenance",
+        "pce_lookup_path": "PCE selection path",
+        "terrain_grade_classification": "HCM7 terrain/grade path",
+        "effective_grade_percent": "HCM7 Exhibits 12-26 through 12-28",
+        "segment_length_mi": "HCM7 specific-grade lookup input",
         "heavy_vehicle_adjustment_factor": "HCM7 Eq. 12-10",
         "driver_population_factor": "HCM7 Chapter 26 Example Problem 1 regular users",
         "demand_flow_rate_pc_h_ln": "HCM7 Eq. 12-9",

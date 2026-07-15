@@ -66,7 +66,6 @@ def test_unsupported_workflows_are_rejected(unsupported_key: str) -> None:
         "median_type",
         "total_lateral_clearance_ft",
         "left_side_lateral_clearance_ft",
-        "grade_percent",
         "driver_population_factor",
     ],
 )
@@ -84,7 +83,7 @@ def test_mountainous_terrain_is_rejected() -> None:
     inputs = _inputs()
     inputs["terrain_type"] = "mountainous"
 
-    with pytest.raises(UnsupportedScopeError, match="level and rolling"):
+    with pytest.raises(UnsupportedScopeError, match="mixed-flow"):
         BasicFreewaySegmentMethod().calculate(inputs)
 
 
