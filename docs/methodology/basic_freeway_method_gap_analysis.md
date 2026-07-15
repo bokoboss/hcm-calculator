@@ -1,8 +1,8 @@
 # Basic Freeway Method Completion Gap Analysis
 
-Status: Phase 6 scope lock  
+Status: Phase 9 engine completion
 Target: HCM7 one-direction, one-segment Basic Freeway Segment analysis  
-Current implementation: `basic_freeway_segment_v0_1`
+Current implementation: bounded Phase 9 Basic Freeway engine
 
 ## 1. Completion definition
 
@@ -17,22 +17,22 @@ This milestone does **not** include ramp influence areas, weaving, merge/diverge
 - Lane-width, right-side lateral-clearance, and total-ramp-density FFS adjustments.
 - Speed and capacity adjustment factors.
 - Capacity, breakpoint flow, speed-flow relationship, density, LOS, and capacity check.
-- General-terrain PCE for level and rolling terrain.
-- Explicit above-capacity warning with a bounded audit-continuity output.
+- General-terrain and printed specific-grade PCE paths with explicit external override provenance.
+- Explicit above-capacity capacity-failure result with no speed or density prediction.
 - Auditable intermediate values and explicit unsupported-scope validation.
 
 ## 3. Material gaps
 
 | Area | Current state | Completion requirement | Priority |
 |---|---|---|---|
-| Heavy-vehicle PCE | Only level and rolling general-terrain defaults are implemented | Implement the declared specific-grade/mountainous domain, or explicitly exclude it with a defensible completed-scope definition | P0 |
-| Driver population | Hard-coded to 1.0 for regular users | Decide whether a driver population factor belongs in the completed segment scope; if supported, expose, validate, calculate, and report it consistently | P1 |
-| Adjustment factors | SAF and CAF are accepted as user inputs | Define provenance, valid ranges, defaults, and warning behavior so arbitrary factors cannot silently imply unsupported calibration | P0 |
-| Above-capacity behavior | LOS F is returned and speed is capped at density-at-capacity for audit continuity | Confirm the intended engineering contract: capacity-status result rather than oversaturated operational prediction; ensure wording is identical across all surfaces | P0 |
+| Heavy-vehicle PCE | General terrain and bounded specific-grade PCEs are implemented | Mountainous/mixed-flow and unprinted PCE domains remain explicitly excluded | Complete boundary |
+| Driver population | Chapter 26 paired SAF/CAF category contract is implemented | No legacy demand-flow driver factor is applied | Complete boundary |
+| Adjustment factors | SAF/CAF have neutral defaults, provenance, and project governance range | Weather/incident calibration design remains outside this engine phase | Complete boundary |
+| Above-capacity behavior | LOS F and no speed/density prediction | Facility/queue analysis remains excluded | Complete boundary |
 | Estimated FFS | Core branches are implemented for lane width, right clearance, and ramp density | Verify all table domains, lane-count handling, interpolation boundaries, and base-FFS input requirements against the selected HCM7 scope | P0 |
 | Speed-flow relationship | Implemented through breakpoint/capacity equations | Add independent branch and boundary qualification, including exact breakpoint, exact capacity, and adjusted-capacity cases | P0 |
 | Tests | Example 1 and bounded guardrail tests exist | Add non-example normal cases, sensitivity/monotonicity, interpolation, invalid-input, deterministic, and cross-surface consistency tests | P0 |
-| Product integration | v0.1 is integrated into UI/save/export/reporting | Replace v0.1 labels only after qualification; verify calculation freshness and report/export parity | P1 |
+| Product integration | Existing consumers remain compatibility consumers | AC-14--AC-22 product qualification is Phase 10 | Deferred |
 
 ## 4. Required engine work packages
 

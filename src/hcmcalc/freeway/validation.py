@@ -35,8 +35,7 @@ UNSUPPORTED_INPUT_KEYS = {
     "median_type": "Multilane Highway median adjustment",
     "total_lateral_clearance_ft": "Multilane Highway total lateral clearance",
     "left_side_lateral_clearance_ft": "Multilane Highway left-side lateral clearance",
-    "grade_percent": "specific grade PCE branch",
-    "driver_population_factor": "driver population adjustment inputs",
+    "driver_population_factor": "obsolete driver-population factor; use driver_population_category",
 }
 
 ALLOWED_INPUT_KEYS = {
@@ -59,12 +58,34 @@ ALLOWED_INPUT_KEYS = {
     "total_ramp_density_per_mi",
     "speed_adjustment_factor",
     "capacity_adjustment_factor",
+    "speed_adjustment_factor_source",
+    "capacity_adjustment_factor_source",
+    "driver_population_category",
+    "grade_percent",
+    "passenger_car_equivalent",
+    "passenger_car_equivalent_provenance",
 }
 
 SUPPORTED_ANALYSIS_TYPES = {"basic_segment", "basic_freeway_segment"}
 SUPPORTED_FFS_SOURCES = {"measured", "estimated"}
-SUPPORTED_TERRAIN_TYPES = {"level", "rolling"}
-SUPPORTED_TRUCK_MIX = "default_30_sut_70_tt"
+SUPPORTED_TERRAIN_TYPES = {"level", "rolling", "specific_grade"}
+SUPPORTED_TRUCK_MIXES = {
+    "default_30_sut_70_tt",
+    "equal_50_sut_50_tt",
+    "majority_70_sut_30_tt",
+}
+FACTOR_SOURCES = {
+    "hcm_base_conditions",
+    "chapter_26_driver_population",
+    "project_local_calibration",
+}
+DRIVER_POPULATION_FACTORS = {
+    "regular": (1.000, 1.000),
+    "mostly_familiar": (0.975, 0.968),
+    "balanced": (0.950, 0.939),
+    "mostly_unfamiliar": (0.913, 0.898),
+    "overwhelmingly_unfamiliar": (0.863, 0.852),
+}
 
 
 def reject_unsupported_scope_keys(values: dict[str, Any]) -> None:
@@ -102,6 +123,9 @@ def validate_inputs(inputs: BasicFreewaySegmentInputs) -> None:
         "truck_mix": inputs.truck_mix,
         "terrain_type": inputs.terrain_type,
         "ffs_source": inputs.ffs_source,
+        "speed_adjustment_factor_source": inputs.speed_adjustment_factor_source,
+        "capacity_adjustment_factor_source": inputs.capacity_adjustment_factor_source,
+        "driver_population_category": inputs.driver_population_category,
     }
     for name, value in text_fields.items():
         if not isinstance(value, str) or not value.strip():
@@ -125,6 +149,8 @@ def validate_inputs(inputs: BasicFreewaySegmentInputs) -> None:
         "lane_width_ft": inputs.lane_width_ft,
         "right_side_lateral_clearance_ft": inputs.right_side_lateral_clearance_ft,
         "total_ramp_density_per_mi": inputs.total_ramp_density_per_mi,
+        "grade_percent": inputs.grade_percent,
+        "passenger_car_equivalent": inputs.passenger_car_equivalent,
     }
     for name, value in optional_numeric_fields.items():
         if value is not None:
@@ -162,20 +188,50 @@ def validate_inputs(inputs: BasicFreewaySegmentInputs) -> None:
             "Basic Freeway Segment v0.1 supports only one-segment uninterrupted-flow "
             "basic segment analysis."
         )
-    if inputs.truck_mix != SUPPORTED_TRUCK_MIX:
+    if inputs.truck_mix not in SUPPORTED_TRUCK_MIXES:
         raise UnsupportedScopeError(
-            "Basic Freeway Segment v0.1 supports only the Chapter 12 default "
-            "30% SUT / 70% TT truck mix for general-terrain PCEs."
+            "Basic Freeway Segment supports only the printed Chapter 12 "
+            "30/70, 50/50, or 70/30 SUT/TT truck mixes."
         )
     if inputs.terrain_type not in SUPPORTED_TERRAIN_TYPES:
         raise UnsupportedScopeError(
-            "Basic Freeway Segment v0.1 supports only general-terrain level and "
-            "rolling PCEs; specific grades and mountainous terrain are unsupported."
+            "Basic Freeway Segment supports general terrain and printed specific-grade "
+            "PCEs; mountainous terrain requires the mixed-flow method."
         )
     if inputs.ffs_source not in SUPPORTED_FFS_SOURCES:
         raise UnsupportedScopeError(
             "ffs_source must be 'measured' or 'estimated' for Basic Freeway Segment v0.1."
         )
+    if inputs.speed_adjustment_factor_source not in FACTOR_SOURCES:
+        raise HCMCalcError("speed_adjustment_factor_source is not a recognized provenance.")
+    if inputs.capacity_adjustment_factor_source not in FACTOR_SOURCES:
+        raise HCMCalcError("capacity_adjustment_factor_source is not a recognized provenance.")
+    if inputs.driver_population_category not in DRIVER_POPULATION_FACTORS:
+        raise UnsupportedScopeError("driver_population_category is outside Exhibit 26-9.")
+    expected_saf, expected_caf = DRIVER_POPULATION_FACTORS[inputs.driver_population_category]
+    if inputs.driver_population_category != "regular":
+        if (inputs.speed_adjustment_factor_source != "chapter_26_driver_population" or
+                inputs.capacity_adjustment_factor_source != "chapter_26_driver_population"):
+            raise HCMCalcError("Non-regular driver population requires Chapter 26 driver-population SAF and CAF provenance.")
+        if abs(inputs.speed_adjustment_factor - expected_saf) > 1e-9 or abs(inputs.capacity_adjustment_factor - expected_caf) > 1e-9:
+            raise HCMCalcError("Non-regular driver population SAF and CAF must match Exhibit 26-9.")
+    if inputs.passenger_car_equivalent is not None:
+        if inputs.passenger_car_equivalent <= 0:
+            raise HCMCalcError("passenger_car_equivalent must be greater than zero.")
+        if not isinstance(inputs.passenger_car_equivalent_provenance, str) or not inputs.passenger_car_equivalent_provenance.strip():
+            raise HCMCalcError("External passenger_car_equivalent requires nonempty provenance.")
+    elif inputs.passenger_car_equivalent_provenance is not None:
+        raise HCMCalcError("passenger_car_equivalent_provenance is only valid with an external PCE.")
+    if inputs.terrain_type == "specific_grade":
+        if inputs.grade_percent is None:
+            raise HCMCalcError("specific_grade terrain requires grade_percent.")
+        if inputs.passenger_car_equivalent is None:
+            if not -2.0 <= inputs.grade_percent <= 6.0:
+                raise UnsupportedScopeError("Specific-grade PCE supports grades from -2% through 6%.")
+            if not 0.125 <= inputs.segment_length_mi <= 1.5:
+                raise UnsupportedScopeError("Specific-grade PCE supports printed segment lengths from 0.125 through 1.5 mi.")
+    elif inputs.grade_percent is not None:
+        raise HCMCalcError("grade_percent is only applicable to terrain_type 'specific_grade'.")
 
     if inputs.ffs_source == "measured":
         if inputs.free_flow_speed_mph is None:

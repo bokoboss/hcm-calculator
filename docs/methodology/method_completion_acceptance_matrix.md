@@ -76,7 +76,24 @@ Requires both method-completion releases. Changes must not alter qualified calcu
 | AC-21 | `supported_workflows.md`, the Multilane gap analysis, and the v0.3 release note state lane, PCE, driver-population, and above-capacity limits. |
 | AC-22 | `docs/releases/v0_3_multilane_method_completion.md` records scope, migration, validation, and retained limitations. |
 
-## 4. Required test classes
+## 4. Phase 9 engine evidence map
+
+| ID | Evidence in this phase |
+|---|---|
+| AC-01 | Basic Freeway PCE selection is input-driven; Chapter 26 Example 1 remains a regression fixture. |
+| AC-02 | `BasicFreewaySegmentInputs` normalizes documented neutral provenance/category defaults and preserves the input summary. |
+| AC-03 | `HCMCalcError` distinguishes malformed/physical values from `UnsupportedScopeError` methodology boundaries. |
+| AC-04--05 | Measured and estimated FFS branches, right-clearance interpolation, and FFS bounds are unit tested. |
+| AC-06--07 | Results identify PCE source/path; printed general and specific-grade paths are bounded and external override is explicit. |
+| AC-08 | Equation 12-9 factor ordering and single heavy-vehicle application are exercised by formula and independent cases. |
+| AC-09--11 | Breakpoint/capacity, above-capacity no-prediction, and exact LOS boundary tests cover deterministic semantics. |
+| AC-12 | Independent tests exercise PCE and SAF/CAF sensitivity/separation; existing engine tests cover demand and geometry monotonicity. |
+| AC-13 | The result carries normalized inputs, FFS/SAF/CAF/PCE provenance, driver category, intermediates, assumptions, warnings, scope notes, and sources. |
+| AC-18 | The full repository regression is required before merge; Two-Lane calculation code is unchanged. |
+
+AC-14 through AC-22 remain deliberately unqualified in Phase 9 and are Phase 10 work.
+
+## 5. Required test classes
 
 - Official/reference example regression.
 - Independent non-example normal cases.
@@ -91,6 +108,6 @@ Requires both method-completion releases. Changes must not alter qualified calcu
 - Cross-surface export/report parity.
 - Full repository regression and application smoke tests.
 
-## 5. Change-control rule
+## 6. Change-control rule
 
 Two-Lane Highway methods remain in maintenance mode. A change to a qualified Two-Lane calculation requires a reproducible defect, a documented engineering rationale, targeted regression tests, and confirmation that historical validation examples remain correct.

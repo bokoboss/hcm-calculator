@@ -3,7 +3,7 @@ from copy import deepcopy
 import pytest
 
 from hcmcalc.cli import result_to_dict
-from hcmcalc.core import UnsupportedScopeError
+from hcmcalc.core import HCMCalcError, UnsupportedScopeError
 from hcmcalc.ui.manual_freeway import (
     build_manual_freeway_audit_record,
     clear_manual_freeway_state,
@@ -51,7 +51,7 @@ def test_unsupported_freeway_edit_rejects_clearly() -> None:
     inputs = deepcopy(load_freeway_preset("BF-CH26-001")["inputs"])
     inputs["grade_percent"] = 0.0
 
-    with pytest.raises(UnsupportedScopeError, match="specific grade"):
+    with pytest.raises(HCMCalcError, match="only applicable"):
         run_manual_freeway(inputs)
 
 
