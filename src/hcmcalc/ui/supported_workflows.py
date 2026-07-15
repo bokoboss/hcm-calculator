@@ -20,6 +20,8 @@ APP_MODE_LABELS = (
     "Multilane Segment",
     "Basic Freeway Segment",
     "Weaving Segment",
+    "Merge Segment",
+    "Diverge Segment",
     "Supported Workflows",
 )
 
@@ -30,6 +32,8 @@ APP_MODE_TO_VIEW = {
     "Multilane Segment": "manual_multilane",
     "Basic Freeway Segment": "manual_basic_freeway",
     "Weaving Segment": "manual_weaving",
+    "Merge Segment": "manual_merge",
+    "Diverge Segment": "manual_diverge",
 }
 
 INTERNAL_VALIDATION_QUERY_PARAM = "qa_view"
@@ -157,6 +161,23 @@ SUPPORTED_WORKFLOW_SECTIONS: tuple[WorkflowSection, ...] = (
             "LS >= LMAX is a merge/diverge/basic-segment handoff; above-capacity speed and density are not predicted",
         ],
         "save_load_export": "Version-pinned project JSON and current-result-only exports.",
+    },
+    {
+        "title": "Freeway Merge and Diverge Segments",
+        "supported": [
+            "Qualified HCM 7.0 isolated one-lane right-side Merge Segment and Diverge Segment operational analysis",
+            "2-4 freeway lanes with explicit acceleration or deceleration lane length",
+            "separate freeway and ramp PHF/heavy-vehicle inputs",
+            "measured freeway FFS or Chapter 12 estimated freeway FFS, plus explicit ramp FFS",
+            "Chapter 28 validation/reference presets",
+            "Project Save/Load and CSV, Excel, Markdown, and report JSON exports",
+        ],
+        "limitations": [
+            "HCM 7.1 is known but unqualified and cannot be selected or loaded as a calculable project",
+            "adjacent ramps, left-side ramps, two-lane ramps, lane additions/drops, option lanes, C-D roads, queues, delay, spillback, and design/service-volume analysis are unsupported",
+            "capacity failure reports LOS F with speed and density not predicted; maximum-desirable influence flow is warning-only unless capacity also fails",
+        ],
+        "save_load_export": "Separate version-pinned project JSON types and current-result-only exports.",
     },
     {
         "title": "Validation Evidence",

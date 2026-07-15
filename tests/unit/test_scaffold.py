@@ -3,7 +3,7 @@ from hcmcalc.methods import available_methods
 
 
 def test_package_imports() -> None:
-    assert __version__ == "0.5.0"
+    assert __version__ == "0.7.0"
 
 
 def test_method_registry_includes_implemented_example_targets() -> None:

@@ -40,6 +40,22 @@ from hcmcalc.ui.manual_weaving import (
     weaving_ui_inputs_to_engine,
     run_manual_weaving,
 )
+from hcmcalc.ui.manual_ramp_influence import (
+    DIVERGE_CALCULATION_CONTRACT,
+    DIVERGE_METHOD_FAMILY,
+    LIMITATIONS as RAMP_INFLUENCE_LIMITATIONS,
+    MANUAL_DIVERGE_PROJECT_TYPE,
+    MANUAL_MERGE_PROJECT_TYPE,
+    MERGE_CALCULATION_CONTRACT,
+    MERGE_METHOD_FAMILY,
+    METHOD_VERSION as RAMP_INFLUENCE_METHOD_VERSION,
+    calculation_contract as ramp_calculation_contract,
+    method_family as ramp_method_family,
+    project_type as ramp_project_type,
+    ramp_display_outputs,
+    ramp_ui_inputs_to_engine,
+    run_manual_ramp,
+)
 from hcmcalc.ui.workflow_state import (
     calculation_input_fingerprint,
     normalized_input_fingerprint,
@@ -62,6 +78,8 @@ LEGACY_MANUAL_FACILITY_PROJECT_TYPE = "manual_facility_v0"
 MANUAL_MULTILANE_PROJECT_TYPE = "manual_multilane_v0"
 MANUAL_BASIC_FREEWAY_PROJECT_TYPE = "manual_basic_freeway_v0"
 MANUAL_WEAVING_PROJECT_TYPE = "manual_freeway_weaving_segment_v1"
+MANUAL_MERGE_PROJECT_TYPE = MANUAL_MERGE_PROJECT_TYPE
+MANUAL_DIVERGE_PROJECT_TYPE = MANUAL_DIVERGE_PROJECT_TYPE
 REQUIRED_MANUAL_INPUTS = {
     "segment_type",
     "terrain_type",
@@ -591,6 +609,125 @@ def load_manual_weaving_project_json(data: str | bytes) -> dict[str, Any]:
     return payload
 
 
+def create_manual_ramp_project_payload(
+    workflow: str,
+    preset_id: str,
+    unit_system: str,
+    displayed_inputs: dict[str, Any],
+    *,
+    result: dict[str, Any] | None = None,
+    audit_record: dict[str, Any] | None = None,
+    locale: str | None = None,
+) -> dict[str, Any]:
+    """Create a version-pinned project document for merge/diverge workflows."""
+
+    workflow = _validate_ramp_workflow(workflow)
+    unit_system = _validate_unit_system(unit_system)
+    displayed_inputs = _json_ready(displayed_inputs)
+    normalized_inputs = _build_ramp_inputs(workflow, unit_system, displayed_inputs)
+    try:
+        run_manual_ramp(workflow, normalized_inputs)
+    except HCMCalcError as exc:
+        raise ProjectFileError(f"Malformed or unsupported input payload: {exc}") from exc
+    result = _json_ready(result) if result is not None else None
+    audit_record = _json_ready(audit_record) if audit_record is not None else None
+    outputs = result.get("outputs", {}) if isinstance(result, dict) else {}
+    method = ramp_method_family(workflow)
+    contract = ramp_calculation_contract(workflow)
+    return {
+        "schema_version": PROJECT_SCHEMA_VERSION,
+        "project_type": ramp_project_type(workflow),
+        "generated_by": f"hcm-calculator {__version__}",
+        "app_version": __version__,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "unit_system": unit_system,
+        "preset_id": preset_id,
+        "displayed_ui_inputs": displayed_inputs,
+        "normalized_engine_inputs": normalized_inputs,
+        "method_family": method,
+        "method_version": RAMP_INFLUENCE_METHOD_VERSION,
+        "calculation_contract": contract,
+        "calculation_fingerprint": _method_input_fingerprint(
+            method, contract, normalized_inputs
+        ),
+        "calculation_result": result,
+        "display_result": ramp_display_outputs(outputs, unit_system) if outputs else None,
+        "audit": audit_record,
+        "warnings": _calculation_context("warnings", result, audit_record),
+        "assumptions": _calculation_context("assumptions", result, audit_record),
+        "limitations": list(RAMP_INFLUENCE_LIMITATIONS),
+        "unsupported_behavior_notes": list(RAMP_INFLUENCE_LIMITATIONS),
+        "presentation": _presentation_metadata(locale),
+    }
+
+
+def create_manual_ramp_project_json(
+    workflow: str, preset_id: str, unit_system: str, displayed_inputs: dict[str, Any], **kwargs: Any
+) -> str:
+    return json.dumps(
+        create_manual_ramp_project_payload(
+            workflow, preset_id, unit_system, displayed_inputs, **kwargs
+        ),
+        indent=2,
+    )
+
+
+def load_manual_ramp_project_json(data: str | bytes, workflow: str) -> dict[str, Any]:
+    """Load only the exact released HCM 7.0 merge/diverge project identity."""
+
+    workflow = _validate_ramp_workflow(workflow)
+    payload = _load_project_document(data)
+    expected_project = ramp_project_type(workflow)
+    expected_method = ramp_method_family(workflow)
+    expected_contract = ramp_calculation_contract(workflow)
+    if payload.get("project_type") != expected_project:
+        raise ProjectFileError(f"Wrong project_type. Expected {expected_project}.")
+    if payload.get("method_family") != expected_method:
+        raise ProjectFileError(f"Wrong method_family. Expected {expected_method}.")
+    if payload.get("method_version") != RAMP_INFLUENCE_METHOD_VERSION:
+        raise ProjectFileError("Only hcm_7_0 merge/diverge projects are calculable.")
+    if payload.get("calculation_contract") != expected_contract:
+        raise ProjectFileError("Unsupported merge/diverge calculation contract.")
+    unit_system = _validate_unit_system(payload.get("unit_system"))
+    displayed_inputs = payload.get("displayed_ui_inputs")
+    if not isinstance(displayed_inputs, dict):
+        raise ProjectFileError("Malformed input payload: displayed_ui_inputs must be an object.")
+    saved_inputs = payload.get("normalized_engine_inputs")
+    normalized_inputs = _build_ramp_inputs(workflow, unit_system, displayed_inputs)
+    if normalized_inputs.get("method_version") != RAMP_INFLUENCE_METHOD_VERSION:
+        raise ProjectFileError("HCM 7.1 projects are not calculable.")
+    if normalized_inputs.get("adjacent_ramp_context") != "isolated":
+        raise ProjectFileError("Only isolated ramp context is supported.")
+    try:
+        run_manual_ramp(workflow, normalized_inputs)
+    except HCMCalcError as exc:
+        raise ProjectFileError(f"Malformed or unsupported input payload: {exc}") from exc
+    saved_fingerprint = payload.get("calculation_fingerprint")
+    current_fingerprint = _method_input_fingerprint(
+        expected_method, expected_contract, normalized_inputs
+    )
+    payload["normalized_engine_inputs"] = normalized_inputs
+    payload["calculation_fingerprint"] = current_fingerprint
+    result = payload.get("calculation_result")
+    expected_result_method = (
+        "hcm7_v70_freeway_merge_segment"
+        if workflow == "merge"
+        else "hcm7_v70_freeway_diverge_segment"
+    )
+    if (
+        saved_fingerprint == current_fingerprint
+        and saved_inputs == normalized_inputs
+        and isinstance(result, dict)
+        and result.get("method") == expected_result_method
+        and result.get("outputs", {}).get("method_version") == RAMP_INFLUENCE_METHOD_VERSION
+    ):
+        _mark_load_status(payload, "result_current")
+    else:
+        _clear_saved_result(payload)
+        _mark_load_status(payload, "project_requires_recalculation")
+    return payload
+
+
 def _load_project_document(data: str | bytes) -> dict[str, Any]:
     try:
         payload = json.loads(data)
@@ -653,6 +790,21 @@ def _build_weaving_inputs(unit_system: str, displayed_inputs: dict[str, Any]) ->
         return weaving_ui_inputs_to_engine(displayed_inputs, unit_system)
     except (HCMCalcError, KeyError, TypeError, ValueError) as exc:
         raise ProjectFileError(f"Malformed input payload: {exc}") from exc
+
+
+def _build_ramp_inputs(
+    workflow: str, unit_system: str, displayed_inputs: dict[str, Any]
+) -> dict[str, Any]:
+    try:
+        return ramp_ui_inputs_to_engine(workflow, displayed_inputs, unit_system)  # type: ignore[arg-type]
+    except (HCMCalcError, KeyError, TypeError, ValueError) as exc:
+        raise ProjectFileError(f"Malformed input payload: {exc}") from exc
+
+
+def _validate_ramp_workflow(workflow: Any) -> str:
+    if workflow not in {"merge", "diverge"}:
+        raise ProjectFileError("Ramp influence workflow must be merge or diverge.")
+    return str(workflow)
 
 
 def _validate_manual_inputs(manual_inputs: dict[str, Any]) -> None:

@@ -53,6 +53,19 @@ from hcmcalc.ui.manual_weaving import (
     weaving_preset_ui_inputs,
     weaving_ui_inputs_to_engine,
 )
+from hcmcalc.ui.manual_ramp_influence import (
+    build_manual_ramp_audit_record,
+    calculation_contract as ramp_calculation_contract,
+    clear_manual_ramp_state,
+    diagram_path as ramp_diagram_path,
+    method_family as ramp_method_family,
+    project_type as ramp_project_type,
+    ramp_display_outputs,
+    ramp_preset_options,
+    ramp_preset_ui_inputs,
+    ramp_ui_inputs_to_engine,
+    run_manual_ramp,
+)
 from hcmcalc.ui.weaving_diagrams import get_weaving_diagram, get_weaving_diagram_subtype
 from hcmcalc.ui.manual_segment import run_manual_single_segment
 from hcmcalc.ui.layout import (
@@ -75,7 +88,9 @@ from hcmcalc.ui.project_io import (
     load_manual_facility_project_json,
     load_manual_multilane_project_json,
     create_manual_weaving_project_json,
+    create_manual_ramp_project_json,
     load_manual_weaving_project_json,
+    load_manual_ramp_project_json,
     load_manual_project_json,
     project_load_message,
     project_presentation_locale,
@@ -166,6 +181,14 @@ def _weaving_text(key: str, **params: Any) -> str:
 def _weaving_preset_label(preset_id: str) -> str:
     normalized = preset_id.lower().replace("-", "_")
     return _weaving_text(f"preset.{normalized}")
+
+
+def _ramp_text(key: str, **params: Any) -> str:
+    return translate(f"ramp.{key}", _ui_locale(), **params)
+
+
+def _ramp_preset_label(preset_id: str) -> str:
+    return _ramp_text(f"preset.{preset_id}")
 
 
 def _restore_project_locale(project: dict[str, Any]) -> None:
@@ -396,6 +419,378 @@ def render_supported_workflows_page() -> None:
         with columns[2]:
             st.markdown("**Save/Load and Export availability**")
             st.caption(section["save_load_export"])
+
+
+def render_manual_ramp_calculator(workflow: str) -> None:
+    """Render qualified HCM 7.0 merge or diverge worksheet."""
+
+    pending = st.session_state.pop(f"manual_{workflow}_pending_project", None)
+    if pending is not None:
+        _restore_manual_ramp_project(workflow, pending)
+    load_message = st.session_state.pop(f"manual_{workflow}_project_load_message", None)
+    if load_message:
+        st.success(load_message)
+    render_page_header(_ramp_text(f"{workflow}.title"), _ramp_text(f"{workflow}.subtitle"))
+    status_placeholder = st.empty()
+    input_column, result_column = render_calculator_shell()
+    with input_column:
+        render_project_load_section(lambda: _render_manual_ramp_load_controls(workflow))
+        render_section_label(_ramp_text("setup"))
+        st.caption(_ramp_text("method_caption"))
+        st.caption(_ramp_text("fixed_scope"))
+        unit_label = st.radio(
+            _ramp_text("unit_system"),
+            ["Metric", "Imperial"],
+            horizontal=True,
+            format_func=lambda item: _ramp_text(f"unit.{item.lower()}"),
+            key=f"manual_{workflow}_unit_label",
+        )
+        preset_id = st.selectbox(
+            _ramp_text("validation_preset"),
+            list(ramp_preset_options(workflow)),
+            format_func=_ramp_preset_label,
+            key=f"manual_{workflow}_preset_id",
+        )
+    unit_system = unit_label.lower()
+    context = (preset_id, unit_system)
+    if st.session_state.get(f"manual_{workflow}_preset_context") != context:
+        clear_manual_ramp_state(st.session_state, workflow)
+        st.session_state[f"manual_{workflow}_preset_context"] = context
+    ui = st.session_state.get(f"manual_{workflow}_loaded_displayed") or ramp_preset_ui_inputs(
+        workflow, preset_id, unit_system
+    )
+    metric = unit_system == "metric"
+    length_unit, speed_unit, width_unit = ("m", "km/h", "m") if metric else ("ft", "mph", "ft")
+    ramp_density_unit = "ramps/km" if metric else "ramps/mi"
+    with input_column:
+        render_section_label(_ramp_text("geometry"))
+        geometry = st.columns(2)
+        case_name = geometry[0].text_input(
+            _ramp_text("case_name"),
+            value=ui["case_name"],
+            key=f"manual_{workflow}_input_case_{preset_id}_{unit_system}",
+        )
+        freeway_lanes = geometry[1].selectbox(
+            _ramp_text("freeway_lanes"),
+            [2, 3, 4],
+            index=[2, 3, 4].index(int(ui["freeway_lanes"])),
+            key=f"manual_{workflow}_input_lanes_{preset_id}_{unit_system}",
+        )
+        aux_label = "acceleration_length" if workflow == "merge" else "deceleration_length"
+        auxiliary_lane_length = geometry[0].number_input(
+            _ramp_text(aux_label, unit=length_unit),
+            min_value=0.0,
+            value=float(ui["auxiliary_lane_length"]),
+            key=f"manual_{workflow}_input_aux_{preset_id}_{unit_system}",
+        )
+        render_section_label(_ramp_text("demand"))
+        demand = st.columns(2)
+        freeway_demand = demand[0].number_input(
+            _ramp_text("freeway_demand"),
+            min_value=0.0,
+            value=float(ui["freeway_demand_veh_h"]),
+            key=f"manual_{workflow}_input_freeway_demand_{preset_id}_{unit_system}",
+        )
+        ramp_demand_key = "on_ramp_demand" if workflow == "merge" else "off_ramp_demand"
+        ramp_demand = demand[1].number_input(
+            _ramp_text(ramp_demand_key),
+            min_value=0.0,
+            value=float(ui["ramp_demand_veh_h"]),
+            key=f"manual_{workflow}_input_ramp_demand_{preset_id}_{unit_system}",
+        )
+        derived = freeway_demand + ramp_demand if workflow == "merge" else freeway_demand - ramp_demand
+        st.caption(
+            _ramp_text("derived_downstream" if workflow == "merge" else "derived_continuing", value=derived)
+        )
+        render_section_label(_ramp_text("ffs"))
+        ffs = st.columns(2)
+        ffs_source = ffs[0].selectbox(
+            _ramp_text("ffs_source"),
+            ["measured", "estimated"],
+            index=0 if ui["ffs_source"] == "measured" else 1,
+            format_func=lambda value: _ramp_text(f"ffs.{value}"),
+            key=f"manual_{workflow}_input_ffs_source_{preset_id}_{unit_system}",
+        )
+        if ffs_source == "measured":
+            free_flow_speed = ffs[1].number_input(
+                _ramp_text("measured_ffs", unit=speed_unit),
+                min_value=1.0,
+                value=float(ui["free_flow_speed"] or 60.0),
+                key=f"manual_{workflow}_input_ffs_{preset_id}_{unit_system}",
+            )
+            base_free_flow_speed = lane_width = right_side_lateral_clearance = total_ramp_density = None
+        else:
+            free_flow_speed = None
+            base_free_flow_speed = ffs[1].number_input(
+                _ramp_text("base_ffs", unit=speed_unit),
+                min_value=1.0,
+                value=float(ui["base_free_flow_speed"] or 60.0),
+                key=f"manual_{workflow}_input_base_ffs_{preset_id}_{unit_system}",
+            )
+            lane_width = ffs[0].number_input(
+                _ramp_text("lane_width", unit=width_unit),
+                min_value=0.1,
+                value=float(ui["lane_width"] or (3.6 if metric else 12.0)),
+                key=f"manual_{workflow}_input_lane_width_{preset_id}_{unit_system}",
+            )
+            right_side_lateral_clearance = ffs[1].number_input(
+                _ramp_text("right_lateral_clearance", unit=width_unit),
+                min_value=0.0,
+                value=float(ui["right_side_lateral_clearance"] or (1.8 if metric else 6.0)),
+                key=f"manual_{workflow}_input_clearance_{preset_id}_{unit_system}",
+            )
+            total_ramp_density = ffs[0].number_input(
+                _ramp_text("total_ramp_density", unit=ramp_density_unit),
+                min_value=0.0,
+                value=float(ui["total_ramp_density"] or 0.0),
+                key=f"manual_{workflow}_input_ramp_density_{preset_id}_{unit_system}",
+            )
+        ramp_ffs = ffs[1].number_input(
+            _ramp_text("ramp_ffs", unit=speed_unit),
+            min_value=1.0,
+            value=float(ui["ramp_ffs"]),
+            key=f"manual_{workflow}_input_ramp_ffs_{preset_id}_{unit_system}",
+        )
+        render_section_label(_ramp_text("phf_hv"))
+        phf = st.columns(2)
+        freeway_phf = phf[0].number_input(
+            _ramp_text("freeway_phf"),
+            min_value=0.01,
+            max_value=1.0,
+            value=float(ui["freeway_peak_hour_factor"]),
+            key=f"manual_{workflow}_input_freeway_phf_{preset_id}_{unit_system}",
+        )
+        ramp_phf = phf[1].number_input(
+            _ramp_text("ramp_phf"),
+            min_value=0.01,
+            max_value=1.0,
+            value=float(ui["ramp_peak_hour_factor"]),
+            key=f"manual_{workflow}_input_ramp_phf_{preset_id}_{unit_system}",
+        )
+        freeway_hv = phf[0].number_input(
+            _ramp_text("freeway_hv"),
+            min_value=0.0,
+            max_value=100.0,
+            value=float(ui["freeway_heavy_vehicle_percent"]),
+            key=f"manual_{workflow}_input_freeway_hv_{preset_id}_{unit_system}",
+        )
+        ramp_hv = phf[1].number_input(
+            _ramp_text("ramp_hv"),
+            min_value=0.0,
+            max_value=100.0,
+            value=float(ui["ramp_heavy_vehicle_percent"]),
+            key=f"manual_{workflow}_input_ramp_hv_{preset_id}_{unit_system}",
+        )
+        terrain_type = phf[0].selectbox(
+            _ramp_text("terrain"),
+            ["level", "rolling"],
+            index=["level", "rolling"].index(ui["terrain_type"]),
+            format_func=lambda value: _ramp_text(f"terrain.{value}"),
+            key=f"manual_{workflow}_input_terrain_{preset_id}_{unit_system}",
+        )
+        render_section_label(_ramp_text("evidence"))
+        evidence = st.columns(2)
+        geometry_source = evidence[0].text_input(
+            _ramp_text("evidence_source"),
+            value=ui["geometry_source"],
+            key=f"manual_{workflow}_input_geometry_source_{preset_id}_{unit_system}",
+        )
+        geometry_notes = evidence[1].text_input(
+            _ramp_text("evidence_notes"),
+            value=ui["geometry_notes"],
+            key=f"manual_{workflow}_input_geometry_notes_{preset_id}_{unit_system}",
+        )
+        render_section_label(_ramp_text("reference"))
+        st.image(str(ramp_diagram_path(workflow)), caption=_ramp_text("reference_caption"))
+        st.caption(_ramp_text("reference_text_merge" if workflow == "merge" else "reference_text_diverge"))
+        run_ramp = st.button(_ramp_text("run"), type="primary", width="stretch", key=f"manual_{workflow}_run")
+        displayed_inputs = {
+            "case_name": case_name,
+            "freeway_lanes": freeway_lanes,
+            "auxiliary_lane_length": auxiliary_lane_length,
+            "freeway_demand_veh_h": freeway_demand,
+            "ramp_demand_veh_h": ramp_demand,
+            "freeway_peak_hour_factor": freeway_phf,
+            "ramp_peak_hour_factor": ramp_phf,
+            "freeway_heavy_vehicle_percent": freeway_hv,
+            "ramp_heavy_vehicle_percent": ramp_hv,
+            "terrain_type": terrain_type,
+            "ffs_source": ffs_source,
+            "free_flow_speed": free_flow_speed,
+            "base_free_flow_speed": base_free_flow_speed,
+            "lane_width": lane_width,
+            "right_side_lateral_clearance": right_side_lateral_clearance,
+            "total_ramp_density": total_ramp_density,
+            "ramp_ffs": ramp_ffs,
+            "speed_adjustment_factor_source": "hcm_base_conditions",
+            "capacity_adjustment_factor_source": "hcm_base_conditions",
+            "geometry_source": geometry_source,
+            "geometry_notes": geometry_notes,
+        }
+        try:
+            submitted_inputs = ramp_ui_inputs_to_engine(workflow, displayed_inputs, unit_system)
+        except (HCMCalcError, ValueError) as exc:
+            submitted_inputs = {"invalid": str(exc)}
+        workflow_inputs = {
+            "method_family": ramp_method_family(workflow),
+            "calculation_contract": ramp_calculation_contract(workflow),
+            "normalized_engine_inputs": submitted_inputs,
+        }
+        current = render_calculation_status(f"manual_{workflow}", workflow_inputs, status_placeholder)
+        if run_ramp:
+            st.session_state.pop(f"manual_{workflow}_error", None)
+            st.session_state.pop(f"manual_{workflow}_result", None)
+            try:
+                engine_inputs = ramp_ui_inputs_to_engine(workflow, displayed_inputs, unit_system)
+                result = run_manual_ramp(workflow, engine_inputs)
+                st.session_state[f"manual_{workflow}_result"] = result_to_dict(result)
+                st.session_state[f"manual_{workflow}_audit"] = build_manual_ramp_audit_record(
+                    workflow,
+                    preset_id,
+                    engine_inputs,
+                    unit_system=unit_system,
+                    displayed_inputs=displayed_inputs,
+                    result=result,
+                )
+                mark_calculated(st.session_state, f"manual_{workflow}", workflow_inputs)
+                current = render_calculation_status(f"manual_{workflow}", workflow_inputs, status_placeholder)
+            except (HCMCalcError, ValueError) as exc:
+                st.session_state[f"manual_{workflow}_error"] = str(exc)
+    with result_column:
+        render_validation_basis_and_limitations(
+            validation_basis=_ramp_text("validation_basis"),
+            supported_scope=_ramp_text("supported_scope"),
+            not_supported=_ramp_text("not_supported"),
+        )
+        error = st.session_state.get(f"manual_{workflow}_error")
+        result_data = st.session_state.get(f"manual_{workflow}_result")
+        audit = st.session_state.get(f"manual_{workflow}_audit")
+        if error:
+            st.error(error)
+        elif not result_data:
+            st.caption(PRERUN_RESULTS_PLACEHOLDER)
+        elif not current:
+            st.info(_ramp_text("stale_info"))
+            with st.expander(AUDIT_EXPANDER_LABEL):
+                st.json(audit)
+        else:
+            outputs = result_data["outputs"]
+            display = ramp_display_outputs(outputs, unit_system)
+            st.metric(_ramp_text("los"), outputs.get("level_of_service"))
+            if outputs.get("capacity_status") == "demand_exceeds_capacity":
+                st.warning(_ramp_text("capacity_failure"))
+            if outputs.get("maximum_desirable_influence_flow_exceeded"):
+                st.warning(_ramp_text("maximum_warning"))
+            for key, label in (
+                ("density", "density"),
+                ("ramp_influence_speed", "ramp_influence_speed"),
+                ("all_lanes_speed", "all_lanes_speed"),
+                ("governing_capacity", "governing_capacity"),
+                ("governing_vc", "vc"),
+            ):
+                metric = display[key]
+                value = (
+                    translate("status.not_predicted", _ui_locale())
+                    if metric["value"] is None
+                    else f"{metric['value']:.3f}" if metric["unit"] is None else f"{metric['value']:.1f} {metric['unit']}"
+                )
+                st.metric(_ramp_text(label), value)
+            with st.expander(CALCULATION_DETAILS_LABEL, expanded=False):
+                st.json(outputs)
+            with st.expander(AUDIT_EXPANDER_LABEL, expanded=False):
+                st.json(audit)
+            render_manual_ramp_project_file_controls(
+                workflow, preset_id, unit_system, displayed_inputs, result_data, audit
+            )
+            render_export_report_section(
+                ramp_project_type(workflow),
+                result_data,
+                unit_system,
+                inputs=displayed_inputs,
+                audit_record=audit,
+                template_id=preset_id,
+            )
+        if not result_data or not current:
+            render_manual_ramp_project_file_controls(
+                workflow, preset_id, unit_system, displayed_inputs, None, None
+            )
+
+
+def render_manual_ramp_project_file_controls(
+    workflow: str,
+    preset_id: str,
+    unit_system: str,
+    displayed_inputs: dict[str, Any],
+    result: dict[str, Any] | None,
+    audit: dict[str, Any] | None,
+) -> None:
+    try:
+        project_json = create_manual_ramp_project_json(
+            workflow,
+            preset_id,
+            unit_system,
+            displayed_inputs,
+            result=result,
+            audit_record=audit,
+            locale=_ui_locale(),
+        )
+    except ProjectFileError as exc:
+        st.caption(str(exc))
+        return
+    render_project_output_section(
+        _ramp_text("save_project"),
+        lambda: st.download_button(
+            _ramp_text("save_project"),
+            data=project_json,
+            file_name=f"manual-freeway-{workflow}-segment-project.json",
+            mime="application/json",
+            width="content",
+            key=f"manual_{workflow}_save_project",
+        ),
+    )
+
+
+def _render_manual_ramp_load_controls(workflow: str) -> None:
+    uploaded = st.file_uploader(
+        _ramp_text("project_file"),
+        type=["json"],
+        key=f"manual_{workflow}_project_file_uploader",
+    )
+    if uploaded is not None and st.button(_ramp_text("load_project"), key=f"manual_{workflow}_project_load"):
+        try:
+            st.session_state[f"manual_{workflow}_pending_project"] = load_manual_ramp_project_json(
+                uploaded.getvalue(), workflow
+            )
+            st.rerun()
+        except ProjectFileError as exc:
+            st.error(str(exc))
+
+
+def _restore_manual_ramp_project(workflow: str, project: dict[str, Any]) -> None:
+    _restore_project_locale(project)
+    unit_system = project["unit_system"]
+    displayed = project["displayed_ui_inputs"]
+    st.session_state[f"manual_{workflow}_loaded_displayed"] = displayed
+    st.session_state[f"manual_{workflow}_unit_label"] = unit_system.title()
+    st.session_state[f"manual_{workflow}_preset_id"] = project.get("preset_id", "blank_custom")
+    st.session_state[f"manual_{workflow}_preset_context"] = (
+        project.get("preset_id", "blank_custom"),
+        unit_system,
+    )
+    if project.get("load_status") == "result_current":
+        st.session_state[f"manual_{workflow}_result"] = project.get("calculation_result")
+        st.session_state[f"manual_{workflow}_audit"] = project.get("audit")
+        normalized = project["normalized_engine_inputs"]
+        mark_calculated(
+            st.session_state,
+            f"manual_{workflow}",
+            {
+                "method_family": ramp_method_family(workflow),
+                "calculation_contract": ramp_calculation_contract(workflow),
+                "normalized_engine_inputs": normalized,
+            },
+        )
+    st.session_state[f"manual_{workflow}_project_load_message"] = project_load_message(project, _ui_locale())
 
 
 def render_manual_multilane_calculator() -> None:
@@ -2935,7 +3330,7 @@ def main() -> None:
     header_left, header_right = st.columns([1.4, 1.0], gap="large")
     with header_left:
         st.markdown(
-            f"**{translate('app.title', _ui_locale())}** - Two-Lane Highway, Multilane Highway, Basic Freeway, and Weaving Segment"
+            f"**{translate('app.title', _ui_locale())}** - Two-Lane Highway, Multilane Highway, Basic Freeway, Weaving, Merge, and Diverge"
         )
     with header_right:
         st.selectbox(
@@ -2962,6 +3357,8 @@ def main() -> None:
                     "Multilane Segment": "nav.multilane_segment",
                     "Basic Freeway Segment": "nav.basic_freeway_segment",
                     "Weaving Segment": "nav.weaving_segment",
+                    "Merge Segment": "nav.merge_segment",
+                    "Diverge Segment": "nav.diverge_segment",
                     "Supported Workflows": "nav.supported_workflows",
                 }[value], locale
             ),
@@ -2982,6 +3379,10 @@ def main() -> None:
         render_manual_freeway_calculator()
     elif mode == "manual_weaving":
         render_manual_weaving_calculator()
+    elif mode == "manual_merge":
+        render_manual_ramp_calculator("merge")
+    elif mode == "manual_diverge":
+        render_manual_ramp_calculator("diverge")
     elif mode == "supported_workflows":
         render_supported_workflows_page()
     else:

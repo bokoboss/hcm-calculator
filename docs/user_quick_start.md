@@ -79,6 +79,13 @@ audit details.
   schematic and explicit geometry evidence, then run the calculation. HCM 7.1,
   C-D/multilane weaving, long-segment handoffs, and above-capacity null
   predictions remain visibly guarded.
+- **Merge Segment** and **Diverge Segment** are HCM 7.0 only. Use the Chapter
+  28 reference presets or enter a custom isolated right-side one-lane ramp case.
+  The visible diagram is conceptual and not a source of inputs; the worksheet
+  fields control the calculation. HCM 7.1 and adjacent-ramp contexts cannot be
+  loaded as calculable projects. Capacity failure shows LOS F with speed and
+  density as **Not predicted**; maximum desirable influence-flow exceedance is
+  a warning when capacity has not failed.
 
 See the [supported methods matrix](methodology/supported_methods_matrix.md)
 before using a workflow outside its documented scope.
