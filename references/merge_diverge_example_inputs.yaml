@@ -1,0 +1,156 @@
+version: 1
+source: HCM 7.0 Chapter 28 Freeway Merges and Diverges supplemental examples
+notes:
+  - Licensed source text, page images, and copied tables are not included.
+  - Expected values are rounded display values transcribed independently from compatible examples.
+examples:
+  - id: chapter_28_example_1_merge
+    compatibility: runtime_fixture
+    method_family: merge_segment
+    source_pages: "Chapter 28 pp. 28-2 through 28-4"
+    inputs:
+      method_version: hcm_7_0
+      case_id: chapter_28_example_1_merge
+      facility_type: freeway_merge_segment
+      analysis_type: operational_analysis
+      analysis_period_minutes: 15
+      freeway_lanes: 2
+      ramp_side: right
+      ramp_lanes: 1
+      freeway_demand_veh_h: 2500
+      ramp_demand_veh_h: 535
+      freeway_peak_hour_factor: 0.90
+      ramp_peak_hour_factor: 0.90
+      freeway_heavy_vehicle_percent: 5
+      ramp_heavy_vehicle_percent: 5
+      terrain_type: level
+      ffs_source: measured
+      free_flow_speed_mph: 60
+      base_free_flow_speed_mph:
+      lane_width_ft:
+      right_side_lateral_clearance_ft:
+      total_ramp_density_per_mi:
+      ramp_ffs_mph: 45
+      speed_adjustment_factor: 1.0
+      capacity_adjustment_factor: 1.0
+      speed_adjustment_factor_source: hcm_base_conditions
+      capacity_adjustment_factor_source: hcm_base_conditions
+      adjacent_ramp_context: isolated
+      geometry_evidence:
+        source: chapter_28_example
+        configuration: isolated_one_lane_right_side_on_ramp
+        reviewed_by: phase_14_2_second_pass
+        notes: no adjacent ramps
+      acceleration_lane_length_ft: 740
+      downstream_freeway_demand_veh_h:
+      lane_addition: false
+      major_merge: false
+    expected:
+      freeway_flow_pc_h: 2918
+      ramp_flow_pc_h: 625
+      adjusted_v12_pc_h: 2918
+      downstream_freeway_flow_pc_h: 3543
+      density_pc_mi_ln: 28.2
+      level_of_service: D
+      ramp_influence_speed_mph: 53.0
+  - id: chapter_28_example_3_merge_component
+    compatibility: runtime_fixture
+    method_family: merge_segment
+    source_pages: "Chapter 28 pp. 28-10 through 28-13"
+    inputs:
+      method_version: hcm_7_0
+      case_id: chapter_28_example_3_merge_component
+      facility_type: freeway_merge_segment
+      analysis_type: operational_analysis
+      analysis_period_minutes: 15
+      freeway_lanes: 4
+      ramp_side: right
+      ramp_lanes: 1
+      freeway_demand_veh_h: 5490
+      ramp_demand_veh_h: 410
+      freeway_peak_hour_factor: 0.94
+      ramp_peak_hour_factor: 0.94
+      freeway_heavy_vehicle_percent: 10
+      ramp_heavy_vehicle_percent: 5
+      terrain_type: level
+      ffs_source: measured
+      free_flow_speed_mph: 65
+      base_free_flow_speed_mph:
+      lane_width_ft:
+      right_side_lateral_clearance_ft:
+      total_ramp_density_per_mi:
+      ramp_ffs_mph: 30
+      speed_adjustment_factor: 1.0
+      capacity_adjustment_factor: 1.0
+      speed_adjustment_factor_source: hcm_base_conditions
+      capacity_adjustment_factor_source: hcm_base_conditions
+      adjacent_ramp_context: isolated
+      geometry_evidence:
+        source: chapter_28_example
+        configuration: eight_lane_on_ramp_component_adjacent_ignored_by_hcm_7_0
+        reviewed_by: phase_14_2_second_pass
+        notes: adjacent ramp influence ignored for eight-lane lane distribution
+      acceleration_lane_length_ft: 260
+      downstream_freeway_demand_veh_h:
+      lane_addition: false
+      major_merge: false
+    expected:
+      freeway_flow_pc_h: 6425
+      ramp_flow_pc_h: 458
+      initial_v12_pc_h: 1028
+      adjusted_v12_pc_h: 2570
+      merge_influence_entering_flow_vr12_pc_h: 3028
+      density_pc_mi_ln: 27.2
+      level_of_service: C
+      ramp_influence_speed_mph: 56.2
+      all_lanes_speed_mph: 58.8
+  - id: chapter_28_example_3_diverge_component
+    compatibility: runtime_fixture
+    method_family: diverge_segment
+    source_pages: "Chapter 28 pp. 28-11 through 28-14"
+    inputs:
+      method_version: hcm_7_0
+      case_id: chapter_28_example_3_diverge_component
+      facility_type: freeway_diverge_segment
+      analysis_type: operational_analysis
+      analysis_period_minutes: 15
+      freeway_lanes: 4
+      ramp_side: right
+      ramp_lanes: 1
+      freeway_demand_veh_h: 5881.9231
+      ramp_demand_veh_h: 600
+      freeway_peak_hour_factor: 0.94
+      ramp_peak_hour_factor: 0.94
+      freeway_heavy_vehicle_percent: 10
+      ramp_heavy_vehicle_percent: 10
+      terrain_type: level
+      ffs_source: measured
+      free_flow_speed_mph: 65
+      base_free_flow_speed_mph:
+      lane_width_ft:
+      right_side_lateral_clearance_ft:
+      total_ramp_density_per_mi:
+      ramp_ffs_mph: 25
+      speed_adjustment_factor: 1.0
+      capacity_adjustment_factor: 1.0
+      speed_adjustment_factor_source: hcm_base_conditions
+      capacity_adjustment_factor_source: hcm_base_conditions
+      adjacent_ramp_context: isolated
+      geometry_evidence:
+        source: chapter_28_example
+        configuration: eight_lane_off_ramp_component_adjacent_ignored_by_hcm_7_0
+        reviewed_by: phase_14_2_second_pass
+        notes: input freeway volume back-calculates 6883 pc/h between ramps
+      deceleration_lane_length_ft: 260
+      continuing_freeway_demand_veh_h:
+      lane_drop: false
+      option_lane: false
+      major_diverge: false
+    expected:
+      freeway_flow_pc_h: 6883
+      ramp_flow_pc_h: 702
+      adjusted_v12_pc_h: 3397
+      density_pc_mi_ln: 31.1
+      level_of_service: D
+      ramp_influence_speed_mph: 50.7
+      all_lanes_speed_mph: 58.3

@@ -1,0 +1,1 @@
+"""Diverge Segment method family."""
