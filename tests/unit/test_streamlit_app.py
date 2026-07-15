@@ -1,3 +1,7 @@
+from pathlib import Path
+
+import pytest
+
 from hcmcalc.ui.result_view import (
     compact_rows,
     format_display_metric,
@@ -247,3 +251,76 @@ def test_supported_workflows_content_names_current_scope() -> None:
         in sections["Validation Evidence"]["supported"]
     )
     assert "not user-facing workflows" in EXAMPLE_WORKFLOW_NOTE
+
+
+def test_multilane_streamlit_source_does_not_reference_missing_capacity_key() -> None:
+    source = Path("src/hcmcalc/ui/streamlit_app.py").read_text(encoding="utf-8")
+
+    assert "display['adjusted_capacity']" not in source
+    assert 'display["adjusted_capacity"]' not in source
+    assert "display['capacity']" in source
+
+
+def _apptest():
+    streamlit_testing = pytest.importorskip("streamlit.testing.v1")
+    return streamlit_testing.AppTest
+
+
+def test_multilane_streamlit_result_panel_uses_canonical_capacity_display_key() -> None:
+    AppTest = _apptest()
+    app = AppTest.from_file("src/hcmcalc/ui/streamlit_app.py", default_timeout=20)
+    app.run()
+    app.radio[0].set_value("Multilane Segment")
+    app.run()
+
+    app.button[1].click()
+    app.run()
+
+    assert not app.exception
+    metrics = {metric.label: metric.value for metric in app.metric}
+    assert metrics["Speed used for density"] == "79.7 km/h"
+    assert metrics["Demand flow rate"] == "895 pc/h/ln"
+    assert metrics["Capacity"] == "1990 pc/h/ln"
+    assert metrics["Capacity check"] == "within capacity"
+    assert "Adjusted capacity" not in metrics
+    assert any("LOS C" in markdown.value for markdown in app.markdown)
+    assert any("Density <strong>11.2 pc/km/ln</strong>" in markdown.value for markdown in app.markdown)
+
+    app.number_input[6].set_value(1600.0)
+    app.run()
+
+    assert not app.exception
+    assert any(
+        "Input changed" in caption.value and "recalculate required" in caption.value
+        for caption in app.caption
+    )
+
+    app.button[1].click()
+    app.run()
+
+    assert not app.exception
+    metrics = {metric.label: metric.value for metric in app.metric}
+    assert metrics["Demand flow rate"] == "955 pc/h/ln"
+    assert metrics["Capacity"] == "1990 pc/h/ln"
+
+
+def test_multilane_streamlit_above_capacity_preserves_not_predicted_outputs() -> None:
+    AppTest = _apptest()
+    app = AppTest.from_file("src/hcmcalc/ui/streamlit_app.py", default_timeout=20)
+    app.run()
+    app.radio[0].set_value("Multilane Segment")
+    app.run()
+    app.number_input[6].set_value(10000.0)
+    app.run()
+
+    app.button[1].click()
+    app.run()
+
+    assert not app.exception
+    metrics = {metric.label: metric.value for metric in app.metric}
+    assert metrics["Speed used for density"] == "Not predicted"
+    assert metrics["Demand flow rate"] == "5969 pc/h/ln"
+    assert metrics["Capacity"] == "1990 pc/h/ln"
+    assert metrics["Capacity check"] == "demand exceeds capacity"
+    assert any("LOS F" in markdown.value for markdown in app.markdown)
+    assert any("Density <strong>Not predicted</strong>" in markdown.value for markdown in app.markdown)

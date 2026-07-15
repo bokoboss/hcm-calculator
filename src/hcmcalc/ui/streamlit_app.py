@@ -783,10 +783,10 @@ def render_manual_multilane_calculator() -> None:
                     ),
                 },
                 {
-                    "label": "Adjusted capacity",
+                    "label": "Capacity",
                     "value": (
-                        f"{display['adjusted_capacity']['value']:.0f} "
-                        f"{display['adjusted_capacity']['unit']}"
+                        f"{display['capacity']['value']:.0f} "
+                        f"{display['capacity']['unit']}"
                     ),
                 },
                 {
