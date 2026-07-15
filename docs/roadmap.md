@@ -5,6 +5,9 @@ qualified HCM scope in a maintenance release.
 
 ## Maintenance candidates
 
+- Maintain the v0.5 Thai/English presentation catalog and terminology review
+  without expanding qualified engineering scope.
+
 - Correct verified implementation defects without silently changing qualified
   numerical behavior.
 - Refine the single-page worksheet UX, terminology, help text, accessibility,

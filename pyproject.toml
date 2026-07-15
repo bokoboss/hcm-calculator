@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "hcm-calculator"
-version = "0.1.0"
+version = "0.5.0"
 description = "Auditable Highway Capacity Manual calculator scaffold"
 readme = "README.md"
 requires-python = ">=3.12"
