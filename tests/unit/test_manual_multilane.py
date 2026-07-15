@@ -104,8 +104,30 @@ def test_multilane_metric_outputs_convert_speed_and_density_only() -> None:
         ),
         "unit": "pc/km/ln",
     }
+    assert "adjusted_capacity" not in display
     assert display["capacity"]["value"] == result["outputs"]["capacity_pc_h_ln"]
     assert display["capacity"]["unit"] == "pc/h/ln"
+
+
+def test_multilane_display_outputs_exposes_canonical_capacity_metric() -> None:
+    result = result_to_dict(
+        run_manual_multilane(load_multilane_template("MLH-CH26-004-EB")["inputs"])
+    )
+
+    display = multilane_display_outputs(result["outputs"], "imperial")
+
+    assert set(display) == {
+        "density",
+        "speed_used_for_density",
+        "adjusted_free_flow_speed",
+        "base_free_flow_speed",
+        "demand_flow_rate",
+        "capacity",
+    }
+    assert display["capacity"] == {
+        "value": result["outputs"]["capacity_pc_h_ln"],
+        "unit": "pc/h/ln",
+    }
 
 
 @pytest.mark.parametrize("case_id", ["MLH-CH26-004-EB", "MLH-CH26-004-WB"])
