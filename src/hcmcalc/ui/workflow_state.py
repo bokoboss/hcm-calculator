@@ -61,6 +61,20 @@ def workflow_status(
     )
 
 
+def localized_workflow_status(status: str, locale: str | None = None) -> str:
+    """Render a calculation status without changing its canonical state value."""
+
+    from hcmcalc.ui.i18n import translate
+
+    keys = {
+        READY: "status.ready",
+        MISSING_REQUIRED_INPUT: "status.missing_required",
+        CALCULATED: "status.calculated",
+        STALE: "status.stale",
+    }
+    return translate(keys.get(status, "status.ready"), locale)
+
+
 def mark_calculated(
     session_state: MutableMapping[str, Any], workflow: str, inputs: Mapping[str, Any]
 ) -> None:

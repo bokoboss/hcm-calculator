@@ -50,6 +50,15 @@ then close the terminal window.
 
 ## Calculate, save, and export safely
 
+### Language / ภาษา
+
+Choose **English** or **ไทย** in the global language selector. This is a
+presentation choice: it does not alter inputs, numerical results, method
+identity, or stale-result state. Save files can restore an explicitly saved
+language; legacy files retain the active application language. Under **Export /
+Report**, choose same-as-UI, English, or Thai. JSON remains machine-readable
+with stable keys and values.
+
 Each calculator follows the same compact pattern: choose the calculator, enter
 the applicable setup/roadway/traffic/heavy-vehicle inputs, select any supported
 advanced adjustments, click **Run calculation**, then review the result and

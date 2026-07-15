@@ -66,7 +66,9 @@ from hcmcalc.ui.project_io import (
     load_manual_multilane_project_json,
     load_manual_project_json,
     project_load_message,
+    project_presentation_locale,
 )
+from hcmcalc.ui.i18n import SUPPORTED_LOCALES, normalize_locale, translate
 from hcmcalc.ui.result_view import (
     compact_rows,
     format_display_metric,
@@ -101,6 +103,7 @@ from hcmcalc.ui.workflow_state import (
     CALCULATED,
     mark_calculated,
     workflow_status,
+    localized_workflow_status,
 )
 
 
@@ -136,6 +139,20 @@ LIMITATIONS_FOOTER = (
     "Use each calculator's Validation basis and limitations section for method "
     "coverage details."
 )
+
+
+def _ui_locale() -> str:
+    """Read the session-scoped presentation locale without touching calculation state."""
+
+    return normalize_locale(st.session_state.get("ui_locale"))
+
+
+def _restore_project_locale(project: dict[str, Any]) -> None:
+    """Restore explicitly stored project presentation metadata, if present."""
+
+    saved_locale = project_presentation_locale(project)
+    if saved_locale is not None:
+        st.session_state["ui_locale"] = saved_locale
 
 
 def apply_ui_styles() -> None:
@@ -211,7 +228,13 @@ def render_calculation_status(
     """Render the shared compact freshness state and return export eligibility."""
 
     status = workflow_status(st.session_state, workflow, inputs)
-    (target or st).caption(f"Calculation status: {status}")
+    (target or st).caption(
+        translate(
+            "status.calculation",
+            _ui_locale(),
+            status=localized_workflow_status(status, _ui_locale()),
+        )
+    )
     return status == CALCULATED
 
 
@@ -223,38 +246,38 @@ def render_result(result_id: str, result_data: dict[str, Any]) -> None:
     full_result = {"result_id": result_id, **result_data}
     full_result_json = json.dumps(full_result, indent=2)
 
-    st.subheader("Key result summary")
+    st.subheader(translate("result.key_summary", _ui_locale()))
     summary_columns = st.columns(3)
-    summary_columns[0].metric("Result", result_id)
-    summary_columns[1].metric("Method", result_data["method"])
-    summary_columns[2].metric("Facility type", result_data["facility_type"])
+    summary_columns[0].metric(translate("common.result", _ui_locale()), result_id)
+    summary_columns[1].metric(translate("common.method", _ui_locale()), result_data["method"])
+    summary_columns[2].metric(translate("common.facility_type", _ui_locale()), result_data["facility_type"])
 
-    st.subheader("Outputs")
+    st.subheader(translate("result.outputs", _ui_locale()))
     scalar_outputs = compact_rows(outputs)
     if scalar_outputs:
         st.dataframe(scalar_outputs, hide_index=True, width="stretch")
     else:
-        st.caption("No scalar outputs were returned.")
+        st.caption(translate("common.no_outputs", _ui_locale()))
 
     if isinstance(segments, list):
-        st.subheader("Segment outputs")
+        st.subheader(translate("result.segment_outputs", _ui_locale()))
         st.dataframe(segments, hide_index=True, width="stretch")
 
-    render_list("Assumptions", result_data["assumptions"], "No assumptions reported.")
-    render_list("Warnings", result_data["warnings"], "No warnings reported.")
+    render_list(translate("common.assumptions", _ui_locale()), result_data["assumptions"], translate("common.no_assumptions", _ui_locale()))
+    render_list(translate("common.warnings", _ui_locale()), result_data["warnings"], translate("common.no_warnings", _ui_locale()))
 
-    with st.expander("Intermediate values"):
+    with st.expander(translate("common.intermediate_values", _ui_locale())):
         st.dataframe(
             result_data["intermediate_values"],
             hide_index=True,
             width="stretch",
         )
 
-    with st.expander("Full result JSON"):
+    with st.expander(translate("result.full_json", _ui_locale())):
         st.json(full_result)
 
     st.download_button(
-        "Download full result JSON",
+        translate("result.download_json", _ui_locale()),
         data=full_result_json,
         file_name=f"{result_id}-result.json",
         mime="application/json",
@@ -625,6 +648,7 @@ def render_manual_multilane_calculator() -> None:
                 if calculation_matches_inputs
                 else None,
                 audit_record=stored_audit if calculation_matches_inputs else None,
+                locale=_ui_locale(),
             )
             st.download_button(
                 "Save project",
@@ -1149,6 +1173,7 @@ def render_manual_freeway_calculator() -> None:
                     if calculation_matches_inputs
                     else None,
                     audit_record=stored_audit if calculation_matches_inputs else None,
+                    locale=_ui_locale(),
                 )
             except ProjectFileError:
                 st.caption("Project save is unavailable until the displayed inputs are valid.")
@@ -1442,7 +1467,8 @@ def _restore_manual_freeway_project(project: dict[str, Any]) -> None:
             },
         )
     st.session_state.pop("manual_freeway_error", None)
-    st.session_state["manual_freeway_project_load_message"] = project_load_message(project)
+    _restore_project_locale(project)
+    st.session_state["manual_freeway_project_load_message"] = project_load_message(project, _ui_locale())
 
 
 def _render_manual_multilane_load_controls() -> None:
@@ -1526,7 +1552,8 @@ def _restore_manual_multilane_project(project: dict[str, Any]) -> None:
             },
         )
     st.session_state.pop("manual_multilane_error", None)
-    st.session_state["manual_multilane_project_load_message"] = project_load_message(project)
+    _restore_project_locale(project)
+    st.session_state["manual_multilane_project_load_message"] = project_load_message(project, _ui_locale())
 
 
 def render_manual_facility_calculator() -> None:
@@ -1875,6 +1902,7 @@ def _render_manual_facility_project_file_controls(
             else None
         ),
         audit_record=stored_audit if calculation_matches_inputs else None,
+        locale=_ui_locale(),
     )
     render_project_output_section(
         (
@@ -1949,7 +1977,8 @@ def _restore_manual_facility_project(project: dict[str, Any]) -> None:
             },
         )
     st.session_state.pop("manual_facility_error", None)
-    st.session_state["manual_facility_project_load_message"] = project_load_message(project)
+    _restore_project_locale(project)
+    st.session_state["manual_facility_project_load_message"] = project_load_message(project, _ui_locale())
 
 
 def _calculation_result_from_dict(result: dict[str, Any]) -> Any:
@@ -2362,7 +2391,7 @@ def render_manual_project_file_controls(manual_inputs: dict[str, Any]) -> None:
     )
     audit_record = stored_audit if calculation_matches_inputs else None
     project_json = create_manual_project_json(
-        manual_inputs, result=result, audit_record=audit_record
+        manual_inputs, result=result, audit_record=audit_record, locale=_ui_locale()
     )
 
     render_project_output_section(
@@ -2448,7 +2477,8 @@ def _restore_manual_project(project: dict[str, Any]) -> None:
     if project.get("result") is not None:
         mark_calculated(st.session_state, "manual_segment", manual_inputs)
     st.session_state.pop("manual_segment_error", None)
-    st.session_state["manual_project_load_message"] = project_load_message(project)
+    _restore_project_locale(project)
+    st.session_state["manual_project_load_message"] = project_load_message(project, _ui_locale())
 
 
 def render_audit_record(audit_record: dict[str, Any] | None) -> None:
@@ -2573,6 +2603,13 @@ def render_export_report_downloads(
 ) -> None:
     """Render report downloads in the caller's selected container."""
 
+    export_choice = st.selectbox(
+        translate("export.language", _ui_locale()),
+        ("same_ui", "en", "th"),
+        format_func=lambda value: translate(f"export.{value.replace('same_ui', 'same_as_ui')}", _ui_locale()),
+        key=f"{calculation_type}_export_locale",
+    )
+    export_locale = _ui_locale() if export_choice == "same_ui" else export_choice
     try:
         report = build_report(
             calculation_type,
@@ -2581,17 +2618,18 @@ def render_export_report_downloads(
             inputs=inputs,
             audit_record=audit_record,
             template_id=template_id,
+            locale=export_locale,
         )
         downloads = (
-            ("Download CSV", "csv", "csv", "text/csv"),
+            (translate("export.download_csv", _ui_locale()), "csv", "csv", "text/csv"),
             (
-                "Download Excel",
+                translate("export.download_excel", _ui_locale()),
                 "xlsx",
                 "xlsx",
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             ),
-            ("Download Markdown", "markdown", "md", "text/markdown"),
-            ("Download Report JSON", "json", "json", "application/json"),
+            (translate("export.download_markdown", _ui_locale()), "markdown", "md", "text/markdown"),
+            (translate("export.download_json", _ui_locale()), "json", "json", "application/json"),
         )
         rendered = [
             (
@@ -2603,13 +2641,10 @@ def render_export_report_downloads(
             for label, export_format, extension, mime in downloads
         ]
     except ReportingError as exc:
-        st.error(f"Report export unavailable: {exc}")
+        st.error(translate("export.unavailable", _ui_locale(), error=str(exc)))
         return
 
-    st.caption(
-        "Exports reflect this calculated result in the selected display unit "
-        "system. They do not broaden methodology support."
-    )
+    st.caption(translate("export.guidance", _ui_locale()))
     columns = st.columns(2)
     for index, (label, data, filename, mime) in enumerate(rendered):
         columns[index % 2].download_button(
@@ -2625,22 +2660,47 @@ def render_export_report_downloads(
 def main() -> None:
     """Run the single-page Streamlit calculator."""
 
-    st.set_page_config(page_title="HCM Calculator", layout="wide")
+    st.set_page_config(page_title=translate("app.title"), layout="wide")
     apply_ui_styles()
+    st.session_state.setdefault("ui_locale", "en")
     header_left, header_right = st.columns([1.4, 1.0], gap="large")
     with header_left:
         st.markdown(
-            "**HCM Calculator** - Two-Lane Highway, Multilane Highway, and Basic Freeway"
+            f"**{translate('app.title', _ui_locale())}** - Two-Lane Highway, Multilane Highway, and Basic Freeway"
         )
     with header_right:
+        st.selectbox(
+            translate("locale.label", _ui_locale()),
+            SUPPORTED_LOCALES,
+            # Keep these option labels stable while the widget itself changes
+            # locale; a dynamic formatter would invalidate Streamlit's prior
+            # widget state during an English ↔ Thai switch.
+            format_func=lambda value: {"en": "English", "th": "ไทย"}[value],
+            key="ui_locale",
+        )
+        mode_locale = _ui_locale()
+        selected_mode = st.session_state.get("selected_calculator_mode", APP_MODE_LABELS[0])
+        if selected_mode not in APP_MODE_LABELS:
+            selected_mode = APP_MODE_LABELS[0]
         mode_label = st.radio(
-            "Calculator mode",
+            translate("nav.calculator_mode", mode_locale),
             APP_MODE_LABELS,
+            index=APP_MODE_LABELS.index(selected_mode),
+            format_func=lambda value, locale=mode_locale: translate(
+                {
+                    "Two-Lane Segment": "nav.two_lane_segment",
+                    "Two-Lane Facility": "nav.two_lane_facility",
+                    "Multilane Segment": "nav.multilane_segment",
+                    "Basic Freeway Segment": "nav.basic_freeway_segment",
+                    "Supported Workflows": "nav.supported_workflows",
+                }[value], locale
+            ),
             horizontal=True,
             label_visibility="collapsed",
-            key="calculator_mode",
+            key=f"calculator_mode_{mode_locale}",
         )
-    st.caption(SCOPE_NOTICE)
+        st.session_state["selected_calculator_mode"] = mode_label
+    st.caption(translate("app.scope_notice", _ui_locale()))
     mode = resolve_app_view(mode_label, st.query_params)
     if mode == "manual_single_segment":
         render_manual_single_segment_calculator()
@@ -2655,7 +2715,7 @@ def main() -> None:
     else:
         render_validated_case_viewer()
     st.divider()
-    st.caption(LIMITATIONS_FOOTER)
+    st.caption(translate("app.limitations_footer", _ui_locale()))
 
 
 if __name__ == "__main__":

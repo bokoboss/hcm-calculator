@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+from copy import deepcopy
 import json
 from datetime import datetime, timezone
 from io import BytesIO, StringIO
@@ -19,6 +20,7 @@ from hcmcalc.ui.manual_multilane import (
     multilane_display_outputs,
 )
 from hcmcalc.ui.units import MILES_TO_KILOMETERS, display_outputs
+from hcmcalc.ui.i18n import field_label, normalize_locale, translate
 
 
 REPORT_SCHEMA_VERSION = "0.1"
@@ -56,6 +58,7 @@ def build_report(
     audit_record: dict[str, Any] | None = None,
     template_id: str | None = None,
     generated_at: str | None = None,
+    locale: str | None = None,
 ) -> dict[str, Any]:
     """Build a report-friendly structure from an existing calculated result."""
 
@@ -104,6 +107,7 @@ def build_report(
             template_id,
             timestamp,
         )
+    report = _localized_report(report, locale)
     _ensure_json_serializable(report)
     return report
 
@@ -158,21 +162,21 @@ def report_to_csv(report: dict[str, Any]) -> str:
         "unit_system", "generated_at",
     ):
         writer.writerow([_label(key), report.get(key, "")])
-    _write_key_value_csv(writer, "Summary", report["results_summary"])
-    _write_key_value_csv(writer, "Inputs", report["inputs_summary"])
+    _write_key_value_csv(writer, _report_text(report, "report.summary", "Summary"), report["results_summary"])
+    _write_key_value_csv(writer, _report_text(report, "report.inputs", "Inputs"), report["inputs_summary"])
     if report.get("normalized_engine_inputs_summary"):
         _write_key_value_csv(
             writer,
-            "Normalized Engine Inputs",
+            _report_text(report, "report.normalized_inputs", "Normalized Engine Inputs"),
             report["normalized_engine_inputs_summary"],
         )
-    _write_table_csv(writer, "Segment Results", report["segment_results"])
-    _write_list_csv(writer, "Assumptions", report["assumptions"])
-    _write_list_csv(writer, "Warnings", report["warnings"])
-    _write_list_csv(writer, "Limitations", report["limitations"])
-    _write_key_value_csv(writer, "Audit", report["audit_summary"])
+    _write_table_csv(writer, _report_text(report, "report.segment_results", "Segment Results"), report["segment_results"])
+    _write_list_csv(writer, _report_text(report, "report.assumptions", "Assumptions"), report["assumptions"])
+    _write_list_csv(writer, _report_text(report, "report.warnings", "Warnings"), report["warnings"])
+    _write_list_csv(writer, _report_text(report, "report.limitations", "Limitations"), report["limitations"])
+    _write_key_value_csv(writer, _report_text(report, "report.audit", "Audit"), report["audit_summary"])
     if report.get("intermediate_values"):
-        _write_table_csv(writer, "Intermediate Values", report["intermediate_values"])
+        _write_table_csv(writer, _report_text(report, "report.intermediate_values", "Intermediate Values"), report["intermediate_values"])
     return output.getvalue()
 
 
@@ -187,11 +191,11 @@ def report_to_markdown(report: dict[str, Any]) -> str:
         f"- **Unit system:** {report['unit_system']}",
         f"- **Generated at:** {report['generated_at']}",
         "",
-        "## Summary Result",
+        f"## {_report_text(report, 'report.summary', 'Summary Result')}",
         "",
         *_markdown_key_value_table(report["results_summary"]),
         "",
-        "## Key Inputs",
+        f"## {_report_text(report, 'report.inputs', 'Key Inputs')}",
         "",
         *_markdown_key_value_table(report["inputs_summary"]),
     ]
@@ -199,24 +203,24 @@ def report_to_markdown(report: dict[str, Any]) -> str:
         lines.extend(
             [
                 "",
-                "## Normalized Engine Inputs",
+                f"## {_report_text(report, 'report.normalized_inputs', 'Normalized Engine Inputs')}",
                 "",
                 *_markdown_key_value_table(report["normalized_engine_inputs_summary"]),
             ]
         )
     if report["segment_results"]:
-        lines.extend(["", "## Segment Results", "", *_markdown_table(report["segment_results"])])
+        lines.extend(["", f"## {_report_text(report, 'report.segment_results', 'Segment Results')}", "", *_markdown_table(report["segment_results"])])
     for heading, key in (
-        ("Assumptions", "assumptions"),
-        ("Warnings", "warnings"),
-        ("Limitations", "limitations"),
+        (_report_text(report, "report.assumptions", "Assumptions"), "assumptions"),
+        (_report_text(report, "report.warnings", "Warnings"), "warnings"),
+        (_report_text(report, "report.limitations", "Limitations"), "limitations"),
     ):
         values = report[key] or [f"No {heading.lower()} reported."]
         lines.extend(["", f"## {heading}", "", *(f"- {value}" for value in values)])
     lines.extend(
         [
             "",
-            "## Audit / Source References Summary",
+            f"## {_report_text(report, 'report.audit', 'Audit / Source References Summary')}",
             "",
             *_markdown_key_value_table(report["audit_summary"]),
         ]
@@ -225,7 +229,7 @@ def report_to_markdown(report: dict[str, Any]) -> str:
         lines.extend(
             [
                 "",
-                "## Intermediate Values",
+                f"## {_report_text(report, 'report.intermediate_values', 'Intermediate Values')}",
                 "",
                 *_markdown_table(report["intermediate_values"]),
             ]
@@ -239,31 +243,36 @@ def report_to_xlsx(report: dict[str, Any]) -> bytes:
 
     workbook = Workbook()
     summary = workbook.active
-    summary.title = "Summary"
+    summary.title = _report_text(report, "report.summary", "Summary")[:31]
     _append_metadata(summary, report)
-    _append_key_values(summary, report["results_summary"])
+    _append_key_values(summary, report["results_summary"], report)
 
-    inputs = workbook.create_sheet("Inputs")
-    _append_key_values(inputs, report["inputs_summary"])
+    inputs = workbook.create_sheet(_report_text(report, "report.inputs", "Inputs")[:31])
+    _append_key_values(inputs, report["inputs_summary"], report)
     if report.get("normalized_engine_inputs_summary"):
         inputs.append([])
-        inputs.append(["Normalized Engine Inputs"])
-        _append_key_values(inputs, report["normalized_engine_inputs_summary"])
+        inputs.append([_report_text(report, "report.normalized_inputs", "Normalized Engine Inputs")])
+        _append_key_values(inputs, report["normalized_engine_inputs_summary"], report)
 
-    segments = workbook.create_sheet("Segment Results")
+    segments = workbook.create_sheet(_report_text(report, "report.segment_results", "Segment Results")[:31])
     _append_table(segments, report["segment_results"])
 
-    context = workbook.create_sheet("Assumptions Warnings Limits")
-    context.append(["Category", "Text"])
+    context_name = (
+        "ข้อสมมติ คำเตือน ข้อจำกัด"
+        if _report_locale(report) == "th"
+        else "Assumptions Warnings Limits"
+    )
+    context = workbook.create_sheet(context_name[:31])
+    context.append([_report_text(report, "report.category", "Category"), _report_text(report, "report.text", "Text")])
     for key in ("assumptions", "warnings", "limitations"):
         for value in report[key]:
             context.append([_label(key), value])
 
-    audit = workbook.create_sheet("Audit")
-    _append_key_values(audit, report["audit_summary"])
+    audit = workbook.create_sheet(_worksheet_title(_report_text(report, "report.audit", "Audit")))
+    _append_key_values(audit, report["audit_summary"], report)
     if report.get("intermediate_values"):
         audit.append([])
-        audit.append(["Intermediate Values"])
+        audit.append([_report_text(report, "report.intermediate_values", "Intermediate Values")])
         _append_table(audit, report["intermediate_values"])
 
     for worksheet in workbook.worksheets:
@@ -529,6 +538,48 @@ def _base_report(**values: Any) -> dict[str, Any]:
     }
 
 
+def _localized_report(report: dict[str, Any], locale: str | None) -> dict[str, Any]:
+    """Add localized presentation labels while retaining all canonical report data."""
+
+    active_locale = normalize_locale(locale)
+    localized = deepcopy(report)
+    localized["presentation"] = {"locale": active_locale, "labels_localized": active_locale == "th"}
+    if active_locale != "th":
+        return localized
+    localized["title"] = f"{localized['title']} / รายงานการวิเคราะห์ HCM"
+    for section in ("inputs_summary", "results_summary", "audit_summary"):
+        for row in localized.get(section, []):
+            label = row.get("label")
+            if isinstance(label, str):
+                row["label"] = field_label(label.lower().replace(" ", "_"), active_locale) if label.replace(" ", "_").isalnum() else label
+            if row.get("value") is None:
+                row["value"] = translate("status.not_predicted", active_locale)
+    for row in localized.get("segment_results", []):
+        for key in list(row):
+            value = row.pop(key)
+            row[field_label(key.lower().replace(" ", "_"), active_locale)] = (
+                translate("status.not_predicted", active_locale) if value is None else value
+            )
+    return localized
+
+
+def _report_locale(report: dict[str, Any]) -> str:
+    presentation = report.get("presentation")
+    return presentation.get("locale", "en") if isinstance(presentation, dict) else "en"
+
+
+def _report_text(report: dict[str, Any], key: str, english: str) -> str:
+    """Keep legacy English exports byte-for-byte familiar while localizing Thai."""
+
+    return translate(key, "th") if _report_locale(report) == "th" else english
+
+
+def _worksheet_title(value: str) -> str:
+    """Apply Excel's sheet-title character and length constraints."""
+
+    return value.translate(str.maketrans({"/": " ", "\\": " ", "*": " ", "?": " ", "[": "(", "]": ")", ":": "-"}))[:31]
+
+
 def _single_segment_row(outputs: dict[str, Any], unit_system: str) -> dict[str, Any]:
     metric = unit_system == "metric"
     return {
@@ -674,8 +725,12 @@ def _append_metadata(worksheet: Any, report: dict[str, Any]) -> None:
     worksheet.append([])
 
 
-def _append_key_values(worksheet: Any, records: list[dict[str, Any]]) -> None:
-    worksheet.append(["Label", "Value", "Unit"])
+def _append_key_values(worksheet: Any, records: list[dict[str, Any]], report: dict[str, Any]) -> None:
+    worksheet.append([
+        _report_text(report, "report.label", "Label"),
+        _report_text(report, "report.value", "Value"),
+        _report_text(report, "report.unit", "Unit"),
+    ])
     for record in records:
         worksheet.append([record["label"], _cell(record.get("value")), record.get("unit")])
 

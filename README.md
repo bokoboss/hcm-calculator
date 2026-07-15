@@ -326,6 +326,16 @@ src/hcmcalc/                Python package
 tests/                      Unit and validation fixture tests
 ```
 
+## Language / ภาษา
+
+Version 0.5 supports English and Thai presentation. Select the language at the
+top of the worksheet before calculation; switching it preserves canonical
+inputs, results, and freshness. Project files may retain a presentation locale
+without changing schema 1.2 or engineering identity. Exports can use the UI
+language, English, or Thai; JSON machine keys remain canonical. See the
+[localization architecture](docs/localization/localization_architecture.md) and
+[engineering glossary](docs/localization/engineering_terminology_glossary.md).
+
 ## Validation Requirement
 
 HCM 7th Edition Chapter 26 Two-Lane Highway Example Problems 1 through 4 (`TLH-CH15-001` through `TLH-CH15-004`) are implemented and validated as the current baseline. Phase 1 also classifies Step 1-3 segment applicability for all HCM Exhibit 15-10/15-11 table combinations, but this does not expand the guarded Step 4-10 manual calculation scope.

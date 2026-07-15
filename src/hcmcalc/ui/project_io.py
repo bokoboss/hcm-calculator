@@ -76,6 +76,7 @@ def create_manual_project_payload(
     *,
     result: dict[str, Any] | None = None,
     audit_record: dict[str, Any] | None = None,
+    locale: str | None = None,
 ) -> dict[str, Any]:
     """Create a JSON-ready manual single-segment project payload."""
 
@@ -117,6 +118,7 @@ def create_manual_project_payload(
         "audit_record": audit_record,
         "warnings": warnings,
         "assumptions": assumptions,
+        "presentation": _presentation_metadata(locale),
     }
 
 
@@ -125,12 +127,13 @@ def create_manual_project_json(
     *,
     result: dict[str, Any] | None = None,
     audit_record: dict[str, Any] | None = None,
+    locale: str | None = None,
 ) -> str:
     """Create formatted JSON for a manual single-segment project."""
 
     return json.dumps(
         create_manual_project_payload(
-            manual_inputs, result=result, audit_record=audit_record
+            manual_inputs, result=result, audit_record=audit_record, locale=locale
         ),
         indent=2,
     )
@@ -174,6 +177,7 @@ def create_manual_facility_project_payload(
     *,
     result: dict[str, Any] | None = None,
     audit_record: dict[str, Any] | None = None,
+    locale: str | None = None,
 ) -> dict[str, Any]:
     """Create a JSON-ready guarded manual facility project payload."""
 
@@ -210,6 +214,7 @@ def create_manual_facility_project_payload(
         "warnings": _calculation_context("warnings", result, audit_record),
         "assumptions": _calculation_context("assumptions", result, audit_record),
         "unsupported_behavior_notes": template["unsupported_behavior_notes"],
+        "presentation": _presentation_metadata(locale),
     }
 
 
@@ -220,6 +225,7 @@ def create_manual_facility_project_json(
     *,
     result: dict[str, Any] | None = None,
     audit_record: dict[str, Any] | None = None,
+    locale: str | None = None,
 ) -> str:
     """Create formatted JSON for a guarded manual facility project."""
 
@@ -230,6 +236,7 @@ def create_manual_facility_project_json(
             segment_rows,
             result=result,
             audit_record=audit_record,
+            locale=locale,
         ),
         indent=2,
     )
@@ -270,6 +277,7 @@ def create_manual_multilane_project_payload(
     *,
     result: dict[str, Any] | None = None,
     audit_record: dict[str, Any] | None = None,
+    locale: str | None = None,
 ) -> dict[str, Any]:
     """Create a JSON-ready guarded Manual Multilane project payload."""
 
@@ -313,6 +321,7 @@ def create_manual_multilane_project_payload(
         "assumptions": _calculation_context("assumptions", result, audit_record),
         "limitations": list(MANUAL_MULTILANE_LIMITATIONS),
         "unsupported_behavior_notes": list(MANUAL_MULTILANE_LIMITATIONS),
+        "presentation": _presentation_metadata(locale),
     }
 
 
@@ -323,6 +332,7 @@ def create_manual_multilane_project_json(
     *,
     result: dict[str, Any] | None = None,
     audit_record: dict[str, Any] | None = None,
+    locale: str | None = None,
 ) -> str:
     """Create formatted JSON for a guarded Manual Multilane project."""
 
@@ -333,6 +343,7 @@ def create_manual_multilane_project_json(
             displayed_inputs,
             result=result,
             audit_record=audit_record,
+            locale=locale,
         ),
         indent=2,
     )
@@ -377,6 +388,7 @@ def create_manual_freeway_project_payload(
     *,
     result: dict[str, Any] | None = None,
     audit_record: dict[str, Any] | None = None,
+    locale: str | None = None,
 ) -> dict[str, Any]:
     """Create a JSON-ready bounded Manual Basic Freeway project payload."""
 
@@ -416,6 +428,7 @@ def create_manual_freeway_project_payload(
         "assumptions": _calculation_context("assumptions", result, audit_record),
         "limitations": list(MANUAL_FREEWAY_LIMITATIONS),
         "unsupported_behavior_notes": list(MANUAL_FREEWAY_LIMITATIONS),
+        "presentation": _presentation_metadata(locale),
     }
 
 
@@ -426,6 +439,7 @@ def create_manual_freeway_project_json(
     *,
     result: dict[str, Any] | None = None,
     audit_record: dict[str, Any] | None = None,
+    locale: str | None = None,
 ) -> str:
     """Create formatted JSON for a bounded Manual Basic Freeway project."""
 
@@ -436,6 +450,7 @@ def create_manual_freeway_project_json(
             displayed_inputs,
             result=result,
             audit_record=audit_record,
+            locale=locale,
         ),
         indent=2,
     )
@@ -488,6 +503,12 @@ def _load_project_document(data: str | bytes) -> dict[str, Any]:
         )
     if payload["schema_version"] in LEGACY_PROJECT_SCHEMA_VERSIONS:
         payload["load_status"] = "project_migrated"
+    presentation = payload.get("presentation")
+    if presentation is not None and (
+        not isinstance(presentation, dict)
+        or presentation.get("locale") not in {"en", "th"}
+    ):
+        raise ProjectFileError("presentation.locale must be en or th when supplied.")
     return payload
 
 
@@ -754,21 +775,34 @@ def _mark_load_status(payload: dict[str, Any], status: str) -> None:
         payload["load_status"] = status
 
 
-def project_load_message(project: dict[str, Any]) -> str:
+def project_load_message(project: dict[str, Any], locale: str | None = None) -> str:
     """Return one user-facing status sentence for a validated project load."""
 
+    from hcmcalc.ui.i18n import translate
+
     status = project.get("load_status")
-    if status == "project_requires_recalculation":
-        return (
-            "Project loaded, but its stored result is not current. Review the "
-            "restored inputs and click Run calculation to recalculate."
-        )
-    if status == "project_migrated":
-        return (
-            "Project migrated to the current input contract. Review the restored "
-            "inputs before using the retained result."
-        )
-    return "Project loaded with a current result. Review the restored inputs as needed."
+    key = {
+        "project_requires_recalculation": "project.recalculation_required",
+        "project_migrated": "project.migrated",
+    }.get(status, "project.load_current")
+    return translate(key, locale)
+
+
+def project_presentation_locale(project: dict[str, Any]) -> str | None:
+    """Return an explicitly saved locale; legacy projects deliberately return None."""
+
+    presentation = project.get("presentation")
+    if isinstance(presentation, dict) and presentation.get("locale") in {"en", "th"}:
+        return presentation["locale"]
+    return None
+
+
+def _presentation_metadata(locale: str | None) -> dict[str, str]:
+    """Store optional presentation metadata outside calculation identity."""
+
+    from hcmcalc.ui.i18n import normalize_locale
+
+    return {"locale": normalize_locale(locale)}
 
 
 def _clear_saved_result(payload: dict[str, Any]) -> None:
