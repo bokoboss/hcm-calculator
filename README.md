@@ -15,7 +15,8 @@ Auditable Python calculator for bounded Highway Capacity Manual (HCM) workflows.
 
 The current v0.1 calculator-first MVP provides single-page, auditable
 worksheets for supported Two-Lane Highway, Basic Freeway Segment, and
-Multilane Segment workflows. It does **not** implement general HCM facility
+Multilane Segment workflows, plus a qualified HCM 7.0 Freeway Weaving Segment
+workflow. It does **not** implement general HCM facility
 analysis. Validation examples remain regression and reference evidence, and
 are intentionally hidden from product navigation.
 
@@ -46,6 +47,10 @@ Implemented:
   external PCE provenance, SAF/CAF and driver-population audit outputs,
   unsupported-scope guardrails, and Chapter 26 Example Problem 1
   validation fixtures
+- Qualified HCM 7.0 Chapter 13 isolated freeway weaving engine and compact
+  product worksheet, with explicit one-/two-sided geometry evidence,
+  reference presets, Metric/Imperial conversion, bilingual navigation,
+  save/load freshness protection, and CSV/Excel/Markdown/JSON exports
 - Chapter 26 second-case inventory documenting that no additional compatible
   Multilane Highway motorized-vehicle validation case is available in the
   supplied example-problem reference
@@ -99,6 +104,10 @@ Currently supported:
   weaving, merge/diverge, managed lanes, work zones, reliability,
   facility/corridor workflows, mountainous/mixed-flow PCE domains, unprinted
   PCE combinations, or oversaturated prediction.
+- **Freeway Weaving Segment:** qualified HCM 7.0 isolated operational analysis
+  for explicit one-sided and two-sided freeway geometry. It preserves the
+  public versioned engine contract, has no selectable HCM 7.1 method, and
+  reports long-segment handoffs or above-capacity null predictions explicitly.
 
 See [Supported Workflows](docs/supported_workflows.md) for the concise app-wide
 scope summary.
@@ -107,7 +116,7 @@ The authoritative cross-method scope, units, capacity behavior, persistence,
 exports, terminology decisions, and exclusions are in the
 [supported methods matrix](docs/methodology/supported_methods_matrix.md).
 The current maintenance release is documented in
-[v0.4.1 cross-method consolidation](docs/releases/v0_4_1_cross_method_consolidation.md).
+[v0.6 HCM 7.0 Freeway Weaving Segment](docs/releases/v0_6_weaving_segment_hcm_7_0.md).
 
 ## Run Locally
 

@@ -82,6 +82,24 @@ Limitations:
 - no mountainous or mixed-flow PCE domains, unprinted truck mixes, or PCE extrapolation
 - no oversaturated speed, density, queue, delay, or travel-time prediction
 
+## Freeway Weaving Segment
+
+Supported:
+
+- HCM 7.0 qualified isolated freeway weaving operational analysis
+- one-sided and two-sided configurations within the documented `N`/`NWL` envelope
+- explicit movement volumes, option-lane status, lane-change values, and geometry provenance
+- measured FFS or qualified estimated freeway FFS; level/rolling common heavy-vehicle path
+- Metric/Imperial display conversion; English/Thai presentation; version-pinned project save/load
+- CSV, Excel, Markdown, calculation JSON, and report JSON exports from current results
+
+Limitations:
+
+- HCM 7.1 is known but unqualified, unavailable in navigation, and rejected on project load
+- C-D roadway, multilane weaving, Design/Sensitivity, multiple/overlapping weaves, queue/volume-served prediction, managed-lane/cross-weave, signal influence, ramp metering, and automatic movement geometry are unsupported
+- `LS >= LMAX` is a stopping/handoff condition: no LOS is assigned; use applicable separate merge/diverge/basic-segment analysis
+- above capacity is LOS F with capacity and `v/c`; speed and density are **Not predicted**, never zero
+
 ## Validation Evidence
 
 Validation examples are regression and reference evidence for implemented

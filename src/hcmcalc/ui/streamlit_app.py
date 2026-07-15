@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from html import escape
 import json
 from pathlib import Path
 from typing import Any
@@ -44,6 +45,15 @@ from hcmcalc.ui.manual_multilane import (
     multilane_ui_inputs_to_engine,
     run_manual_multilane,
 )
+from hcmcalc.ui.manual_weaving import (
+    build_manual_weaving_audit_record,
+    clear_manual_weaving_state,
+    run_manual_weaving,
+    weaving_display_outputs,
+    weaving_preset_options,
+    weaving_preset_ui_inputs,
+    weaving_ui_inputs_to_engine,
+)
 from hcmcalc.ui.manual_segment import run_manual_single_segment
 from hcmcalc.ui.layout import (
     render_calculator_shell,
@@ -64,6 +74,8 @@ from hcmcalc.ui.project_io import (
     load_manual_freeway_project_json,
     load_manual_facility_project_json,
     load_manual_multilane_project_json,
+    create_manual_weaving_project_json,
+    load_manual_weaving_project_json,
     load_manual_project_json,
     project_load_message,
     project_presentation_locale,
@@ -145,6 +157,19 @@ def _ui_locale() -> str:
     """Read the session-scoped presentation locale without touching calculation state."""
 
     return normalize_locale(st.session_state.get("ui_locale"))
+
+
+def _svg_text(value: Any) -> str:
+    return escape(str(value), quote=True)
+
+
+def _weaving_text(key: str, **params: Any) -> str:
+    return translate(f"weaving.{key}", _ui_locale(), **params)
+
+
+def _weaving_preset_label(preset_id: str) -> str:
+    normalized = preset_id.lower().replace("-", "_")
+    return _weaving_text(f"preset.{normalized}")
 
 
 def _restore_project_locale(project: dict[str, Any]) -> None:
@@ -858,6 +883,309 @@ def render_manual_multilane_calculator() -> None:
             )
         else:
             st.caption("Export unavailable until recalculation completes.")
+
+
+def _render_weaving_schematic(
+    *,
+    configuration: str,
+    number_of_lanes: int,
+    number_of_weaving_lanes: int,
+    entry_side: str,
+    exit_side: str,
+    option_fr: bool,
+    option_rf: bool,
+    option_rr: bool,
+    lc_rf: int | None,
+    lc_fr: int | None,
+    lc_rr: int | None,
+) -> None:
+    """Render a conceptual, non-computational freeway weaving schematic."""
+
+    lane_count = max(1, int(number_of_lanes))
+    lane_height = 24
+    road_top = 42
+    road_bottom = road_top + lane_count * lane_height
+    road_mid = (road_top + road_bottom) / 2
+    width = 720
+    height = road_bottom + 72
+    weaving_label = f"N={lane_count}; NWL={int(number_of_weaving_lanes)}"
+    config_label = _weaving_text(f"config.{configuration}")
+    entry_y = road_top - 26 if entry_side == "left" else road_bottom + 26
+    exit_y = road_top - 26 if exit_side == "left" else road_bottom + 26
+    entry_label_y = max(18, entry_y - 8) if entry_side == "left" else min(height - 8, entry_y + 22)
+    exit_label_y = max(18, exit_y - 8) if exit_side == "left" else min(height - 8, exit_y + 22)
+    option_lanes = [
+        label for label, active in (("FR", option_fr), ("RF", option_rf), ("RR", option_rr)) if active
+    ]
+    option_label = ", ".join(option_lanes) if option_lanes else _weaving_text("schematic.option_none")
+    lc_parts = []
+    if lc_rf is not None:
+        lc_parts.append(f"LC_RF={lc_rf}")
+    if lc_fr is not None:
+        lc_parts.append(f"LC_FR={lc_fr}")
+    if lc_rr is not None:
+        lc_parts.append(f"LC_RR={lc_rr}")
+    lc_label = ", ".join(lc_parts) if lc_parts else _weaving_text("schematic.option_none")
+    lane_lines = "\n".join(
+        (
+            f'<line x1="64" y1="{road_top + i * lane_height}" '
+            f'x2="{width - 64}" y2="{road_top + i * lane_height}" '
+            'stroke="#d1d5db" stroke-width="1"/>'
+        )
+        for i in range(1, lane_count)
+    )
+    svg = f"""
+    <svg viewBox="0 0 {width} {height}" role="img"
+         aria-label="Conceptual freeway weaving schematic"
+         style="width:100%;max-width:720px;height:auto;border:1px solid #d1d5db;border-radius:8px;background:#ffffff;">
+      <defs>
+        <marker id="weavingArrow" viewBox="0 0 10 10" refX="8" refY="5"
+                markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#245b86"></path>
+        </marker>
+        <marker id="rampArrow" viewBox="0 0 10 10" refX="8" refY="5"
+                markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#7c3aed"></path>
+        </marker>
+      </defs>
+      <text x="64" y="24" font-family="Arial, sans-serif" font-size="14" font-weight="700" fill="#111827">
+        {_svg_text(_weaving_text("schematic.title", configuration=config_label))}
+      </text>
+      <rect x="64" y="{road_top}" width="{width - 128}" height="{lane_count * lane_height}"
+            fill="#f9fafb" stroke="#9ca3af" stroke-width="1.5"></rect>
+      {lane_lines}
+      <rect x="260" y="{road_top + 5}" width="200" height="{lane_count * lane_height - 10}"
+            fill="#dbeafe" stroke="#245b86" stroke-width="1.4" stroke-dasharray="6 5" opacity="0.95"></rect>
+      <text x="360" y="{road_mid + 5}" text-anchor="middle" font-family="Arial, sans-serif"
+            font-size="13" fill="#1f2937">{_svg_text(_weaving_text("schematic.weaving_area", summary=weaving_label))}</text>
+      <line x1="88" y1="{road_mid}" x2="{width - 88}" y2="{road_mid}"
+            stroke="#245b86" stroke-width="3" marker-end="url(#weavingArrow)"></line>
+      <path d="M 114 {entry_y} C 190 {entry_y}, 190 {road_mid}, 266 {road_mid}"
+            fill="none" stroke="#7c3aed" stroke-width="3" marker-end="url(#rampArrow)"></path>
+      <path d="M 454 {road_mid} C 530 {road_mid}, 530 {exit_y}, 606 {exit_y}"
+            fill="none" stroke="#7c3aed" stroke-width="3" marker-end="url(#rampArrow)"></path>
+      <text x="90" y="{entry_label_y}" font-family="Arial, sans-serif" font-size="12" fill="#4c1d95">
+        {_svg_text(_weaving_text("schematic.entry", side=_weaving_text(f"side.{entry_side}")))}
+      </text>
+      <text x="506" y="{exit_label_y}" font-family="Arial, sans-serif" font-size="12" fill="#4c1d95">
+        {_svg_text(_weaving_text("schematic.exit", side=_weaving_text(f"side.{exit_side}")))}
+      </text>
+      <text x="64" y="{height - 36}" font-family="Arial, sans-serif" font-size="12" fill="#374151">
+        {_svg_text(_weaving_text("schematic.option_lanes", lanes=option_label))}; {_svg_text(_weaving_text("schematic.lc_values", values=lc_label))}
+      </text>
+      <text x="64" y="{height - 18}" font-family="Arial, sans-serif" font-size="12" fill="#374151">
+        {_svg_text(_weaving_text("schematic.legend"))}
+      </text>
+    </svg>
+    """
+    st.html(svg)
+
+
+def render_manual_weaving_calculator() -> None:
+    """Render the compact, public-facade-only HCM 7.0 weaving worksheet."""
+
+    pending = st.session_state.pop("manual_weaving_pending_project", None)
+    if pending is not None:
+        _restore_manual_weaving_project(pending)
+    load_message = st.session_state.pop("manual_weaving_project_load_message", None)
+    if load_message:
+        st.success(load_message)
+    render_page_header(_weaving_text("title"), _weaving_text("subtitle"))
+    status_placeholder = st.empty()
+    input_column, result_column = render_calculator_shell()
+    with input_column:
+        render_project_load_section(_render_manual_weaving_load_controls)
+        render_section_label(_weaving_text("setup"))
+        st.caption(_weaving_text("method_caption"))
+        unit_label = st.radio(
+            _weaving_text("unit_system"),
+            ["Metric", "Imperial"],
+            horizontal=True,
+            format_func=lambda item: _weaving_text(f"unit.{item.lower()}"),
+            key="manual_weaving_unit_label",
+        )
+        preset_id = st.selectbox(
+            _weaving_text("validation_preset"),
+            list(weaving_preset_options()),
+            format_func=_weaving_preset_label,
+            key="manual_weaving_preset_id",
+        )
+    unit_system = unit_label.lower()
+    context = (preset_id, unit_system)
+    if st.session_state.get("manual_weaving_preset_context") != context:
+        clear_manual_weaving_state(st.session_state)
+        st.session_state["manual_weaving_preset_context"] = context
+    ui = st.session_state.get("manual_weaving_loaded_displayed") or weaving_preset_ui_inputs(preset_id, unit_system)
+    metric = unit_system == "metric"
+    length_unit, speed_unit, width_unit = ("m", "km/h", "m") if metric else ("ft", "mph", "ft")
+    density_unit = "interchanges/km" if metric else "interchanges/mi"
+    with input_column:
+        with st.form(f"weaving_form_{preset_id}_{unit_system}"):
+            render_section_label(_weaving_text("configuration_geometry"))
+            geometry = st.columns(2)
+            configuration = geometry[0].selectbox(_weaving_text("configuration"), ["one_sided", "two_sided"], index=["one_sided", "two_sided"].index(ui["configuration"]), format_func=lambda value: _weaving_text(f"config.{value}"))
+            case_name = geometry[1].text_input(_weaving_text("case_name"), value=ui["case_name"], key=f"manual_weaving_input_name_{preset_id}_{unit_system}")
+            segment_length = geometry[0].number_input(_weaving_text("segment_length", unit=length_unit), min_value=0.1, value=float(ui["segment_length"]), key=f"manual_weaving_input_length_{preset_id}_{unit_system}")
+            number_of_lanes = geometry[1].selectbox(_weaving_text("total_lanes"), [3, 4], index=[3, 4].index(ui["number_of_lanes"]))
+            nwl_options = [2, 3] if configuration == "one_sided" else [0]
+            number_of_weaving_lanes = geometry[0].selectbox(_weaving_text("weaving_lanes"), nwl_options, index=nwl_options.index(ui["number_of_weaving_lanes"]) if ui["number_of_weaving_lanes"] in nwl_options else 0)
+            entry_side = geometry[1].selectbox(_weaving_text("entry_side"), ["right", "left"], index=["right", "left"].index(ui["entry_side"]), format_func=lambda value: _weaving_text(f"side.{value}"))
+            exit_options = [entry_side] if configuration == "one_sided" else [side for side in ("right", "left") if side != entry_side]
+            exit_side = geometry[0].selectbox(_weaving_text("exit_side"), exit_options, index=0, format_func=lambda value: _weaving_text(f"side.{value}"))
+            st.caption(_weaving_text("movement_caption"))
+            if configuration == "one_sided":
+                lc_rf = geometry[1].selectbox("LC_RF", [0, 1, 2], index=[0, 1, 2].index(ui["lc_rf"] if ui["lc_rf"] is not None else 0))
+                lc_fr = geometry[0].selectbox("LC_FR", [0, 1, 2], index=[0, 1, 2].index(ui["lc_fr"] if ui["lc_fr"] is not None else 0))
+                lc_rr = None
+                geometry[1].caption(_weaving_text("lc_rr_inactive"))
+            else:
+                lc_rf = lc_fr = None
+                lc_rr = geometry[1].selectbox("LC_RR", [2, 3, 4], index=[2, 3, 4].index(ui["lc_rr"] if ui["lc_rr"] in {2, 3, 4} else 2))
+            render_section_label(_weaving_text("traffic_demand"))
+            traffic = st.columns(2)
+            volume_ff = traffic[0].number_input("FF (veh/h)", min_value=0.0, value=float(ui["volume_ff_veh_h"]))
+            volume_fr = traffic[1].number_input("FR (veh/h)", min_value=0.0, value=float(ui["volume_fr_veh_h"]))
+            volume_rf = traffic[0].number_input("RF (veh/h)", min_value=0.0, value=float(ui["volume_rf_veh_h"]))
+            volume_rr = traffic[1].number_input("RR (veh/h)", min_value=0.0, value=float(ui["volume_rr_veh_h"]))
+            peak_hour_factor = traffic[0].number_input("Peak-hour factor (PHF)", min_value=0.01, max_value=1.0, value=float(ui["peak_hour_factor"]))
+            interchange_density = traffic[1].number_input(_weaving_text("interchange_density", unit=density_unit), min_value=0.0, value=float(ui["interchange_density"]))
+            render_section_label(_weaving_text("ffs_heavy"))
+            ffs = st.columns(2)
+            ffs_source = ffs[0].selectbox(_weaving_text("ffs_source"), ["measured", "estimated"], index=0 if ui["ffs_source"] == "measured" else 1, format_func=lambda value: _weaving_text(f"ffs.{value}"))
+            if ffs_source == "measured":
+                free_flow_speed = ffs[1].number_input(_weaving_text("measured_ffs", unit=speed_unit), min_value=1.0, value=float(ui["free_flow_speed"] or 60.0))
+                base_free_flow_speed = lane_width = right_side_lateral_clearance = total_ramp_density = None
+            else:
+                free_flow_speed = None
+                base_free_flow_speed = ffs[1].number_input(_weaving_text("base_ffs", unit=speed_unit), min_value=1.0, value=float(ui["base_free_flow_speed"] or 60.0))
+                lane_width = ffs[0].number_input(_weaving_text("lane_width", unit=width_unit), min_value=0.1, value=float(ui["lane_width"] or 3.6))
+                right_side_lateral_clearance = ffs[1].number_input(_weaving_text("right_lateral_clearance", unit=width_unit), min_value=0.0, value=float(ui["right_side_lateral_clearance"] or 1.8))
+                total_ramp_density = ffs[0].number_input(_weaving_text("total_ramp_density", unit=density_unit.replace("interchanges", "ramps")), min_value=0.0, value=float(ui["total_ramp_density"] or 0.0))
+            heavy_vehicle_percent = ffs[0].number_input(_weaving_text("heavy_vehicles"), min_value=0.0, max_value=100.0, value=float(ui["heavy_vehicle_percent"]))
+            terrain_type = ffs[1].selectbox(_weaving_text("terrain"), ["level", "rolling"], index=["level", "rolling"].index(ui["terrain_type"]), format_func=lambda value: _weaving_text(f"terrain.{value}"))
+            render_section_label(_weaving_text("advanced_geometry"))
+            evidence = st.columns(2)
+            option_fr = evidence[0].checkbox(_weaving_text("option_fr"), value=bool(ui["option_fr"]))
+            option_rf = evidence[1].checkbox(_weaving_text("option_rf"), value=bool(ui["option_rf"]))
+            option_rr = evidence[0].checkbox(_weaving_text("option_rr"), value=bool(ui["option_rr"]))
+            reachable_ff = evidence[1].text_input(_weaving_text("reachable_ff"), value=ui["reachable_ff"])
+            reachable_fr = evidence[0].text_input(_weaving_text("reachable_fr"), value=ui["reachable_fr"])
+            reachable_rf = evidence[1].text_input(_weaving_text("reachable_rf"), value=ui["reachable_rf"])
+            reachable_rr = evidence[0].text_input(_weaving_text("reachable_rr"), value=ui["reachable_rr"])
+            nwl_basis = evidence[1].text_input(_weaving_text("nwl_basis"), value=ui["nwl_basis"])
+            lane_change_basis = evidence[0].text_input(_weaving_text("lane_change_basis"), value=ui["lane_change_basis"])
+            _render_weaving_schematic(
+                configuration=configuration,
+                number_of_lanes=number_of_lanes,
+                number_of_weaving_lanes=number_of_weaving_lanes,
+                entry_side=entry_side,
+                exit_side=exit_side,
+                option_fr=option_fr,
+                option_rf=option_rf,
+                option_rr=option_rr,
+                lc_rf=lc_rf,
+                lc_fr=lc_fr,
+                lc_rr=lc_rr,
+            )
+            st.caption(_weaving_text("schematic_caption"))
+            run_weaving = st.form_submit_button(_weaving_text("run"), type="primary", width="stretch")
+        displayed_inputs = {
+            "case_name": case_name, "configuration": configuration, "segment_length": segment_length, "number_of_lanes": number_of_lanes, "number_of_weaving_lanes": number_of_weaving_lanes,
+            "entry_side": entry_side, "exit_side": exit_side, "option_fr": option_fr, "option_rf": option_rf, "option_rr": option_rr,
+            "reachable_ff": reachable_ff, "reachable_fr": reachable_fr, "reachable_rf": reachable_rf, "reachable_rr": reachable_rr,
+            "nwl_basis": nwl_basis, "lane_change_basis": lane_change_basis, "lc_rf": lc_rf, "lc_fr": lc_fr, "lc_rr": lc_rr,
+            "volume_ff_veh_h": volume_ff, "volume_fr_veh_h": volume_fr, "volume_rf_veh_h": volume_rf, "volume_rr_veh_h": volume_rr,
+            "peak_hour_factor": peak_hour_factor, "interchange_density": interchange_density, "ffs_source": ffs_source,
+            "free_flow_speed": free_flow_speed, "base_free_flow_speed": base_free_flow_speed, "lane_width": lane_width,
+            "right_side_lateral_clearance": right_side_lateral_clearance, "total_ramp_density": total_ramp_density,
+            "heavy_vehicle_percent": heavy_vehicle_percent, "terrain_type": terrain_type,
+        }
+        try:
+            submitted_inputs = weaving_ui_inputs_to_engine(displayed_inputs, unit_system)
+        except (HCMCalcError, ValueError) as exc:
+            submitted_inputs = {"invalid": str(exc)}
+        workflow_inputs = {"preset_id": preset_id, "normalized_engine_inputs": submitted_inputs}
+        current = render_calculation_status("manual_weaving", workflow_inputs, status_placeholder)
+        if run_weaving:
+            st.session_state.pop("manual_weaving_error", None)
+            st.session_state.pop("manual_weaving_result", None)
+            try:
+                engine_inputs = weaving_ui_inputs_to_engine(displayed_inputs, unit_system)
+                result = run_manual_weaving(engine_inputs)
+                st.session_state["manual_weaving_result"] = result_to_dict(result)
+                st.session_state["manual_weaving_audit"] = build_manual_weaving_audit_record(preset_id, engine_inputs, unit_system=unit_system, displayed_inputs=displayed_inputs, result=result)
+                mark_calculated(st.session_state, "manual_weaving", workflow_inputs)
+                current = render_calculation_status("manual_weaving", workflow_inputs, status_placeholder)
+            except (HCMCalcError, ValueError) as exc:
+                st.session_state["manual_weaving_error"] = str(exc)
+    with result_column:
+        render_validation_basis_and_limitations(
+            validation_basis=_weaving_text("validation_basis"),
+            supported_scope=_weaving_text("supported_scope"),
+            not_supported=_weaving_text("not_supported"),
+        )
+        error = st.session_state.get("manual_weaving_error")
+        result_data = st.session_state.get("manual_weaving_result")
+        audit = st.session_state.get("manual_weaving_audit")
+        if error:
+            st.error(error)
+        elif not result_data:
+            st.caption(PRERUN_RESULTS_PLACEHOLDER)
+        elif not current:
+            st.info(_weaving_text("stale_info"))
+            with st.expander(AUDIT_EXPANDER_LABEL):
+                st.json(audit)
+        else:
+            outputs = result_data["outputs"]
+            display = weaving_display_outputs(outputs, unit_system)
+            if outputs["support_status"] == "hcm_handoff_required":
+                st.warning(_weaving_text("handoff_warning"))
+                st.metric(_weaving_text("entered_lmax"), f"{outputs['input_summary']['segment_length_ft']:.0f} ft / {outputs['maximum_weaving_length_ft']:.0f} ft")
+            else:
+                los = outputs.get("level_of_service") or _weaving_text("not_assigned")
+                st.metric(_weaving_text("los"), los)
+                if outputs["capacity_status"] == "demand_exceeds_capacity":
+                    st.warning(_weaving_text("above_capacity_warning"))
+                st.metric(_weaving_text("mean_speed"), translate("status.not_predicted", _ui_locale()) if display["mean_speed"]["value"] is None else f"{display['mean_speed']['value']:.1f} {display['mean_speed']['unit']}")
+                st.metric(_weaving_text("density"), translate("status.not_predicted", _ui_locale()) if display["density"]["value"] is None else f"{display['density']['value']:.1f} {display['density']['unit']}")
+                st.metric(_weaving_text("governing_capacity"), f"{display['capacity']['value']:.0f} veh/h")
+                st.metric(_weaving_text("vc"), _weaving_text("not_evaluated") if outputs.get("demand_capacity_ratio") is None else f"{outputs['demand_capacity_ratio']:.3f}")
+            with st.expander(CALCULATION_DETAILS_LABEL):
+                st.json(outputs)
+            with st.expander(AUDIT_EXPANDER_LABEL):
+                st.json(audit)
+            render_export_report_section("manual_freeway_weaving_segment_v1", result_data, unit_system, inputs=displayed_inputs, audit_record=audit, template_id=preset_id)
+        try:
+            project_json = create_manual_weaving_project_json(preset_id, unit_system, displayed_inputs, result=result_data if current else None, audit_record=audit if current else None, locale=_ui_locale())
+            st.download_button(_weaving_text("save_project"), project_json, file_name="hcm-7-0-weaving-project.json", mime="application/json", width="stretch")
+        except ProjectFileError:
+            st.caption(_weaving_text("project_save_unavailable"))
+
+
+def _render_manual_weaving_load_controls() -> None:
+    uploaded = st.file_uploader(_weaving_text("project_file"), type=["json"], key="manual_weaving_project_file_uploader")
+    if uploaded is not None and st.button(_weaving_text("load_project"), key="manual_weaving_project_load"):
+        try:
+            st.session_state["manual_weaving_pending_project"] = load_manual_weaving_project_json(uploaded.getvalue())
+            st.rerun()
+        except ProjectFileError as exc:
+            st.error(str(exc))
+
+
+def _restore_manual_weaving_project(project: dict[str, Any]) -> None:
+    _restore_project_locale(project)
+    unit_system = project["unit_system"]
+    displayed = project["displayed_ui_inputs"]
+    st.session_state["manual_weaving_loaded_displayed"] = displayed
+    st.session_state["manual_weaving_unit_label"] = unit_system.title()
+    st.session_state["manual_weaving_preset_id"] = project.get("preset_id", "blank_custom")
+    st.session_state["manual_weaving_preset_context"] = (project.get("preset_id", "blank_custom"), unit_system)
+    if project.get("load_status") == "result_current":
+        st.session_state["manual_weaving_result"] = project.get("calculation_result")
+        st.session_state["manual_weaving_audit"] = project.get("audit")
+        normalized = project["normalized_engine_inputs"]
+        mark_calculated(st.session_state, "manual_weaving", {"preset_id": project.get("preset_id", "blank_custom"), "normalized_engine_inputs": normalized})
+    st.session_state["manual_weaving_project_load_message"] = project_load_message(project, _ui_locale())
 
 
 def render_manual_freeway_calculator() -> None:
@@ -2666,7 +2994,7 @@ def main() -> None:
     header_left, header_right = st.columns([1.4, 1.0], gap="large")
     with header_left:
         st.markdown(
-            f"**{translate('app.title', _ui_locale())}** - Two-Lane Highway, Multilane Highway, and Basic Freeway"
+            f"**{translate('app.title', _ui_locale())}** - Two-Lane Highway, Multilane Highway, Basic Freeway, and Weaving Segment"
         )
     with header_right:
         st.selectbox(
@@ -2692,6 +3020,7 @@ def main() -> None:
                     "Two-Lane Facility": "nav.two_lane_facility",
                     "Multilane Segment": "nav.multilane_segment",
                     "Basic Freeway Segment": "nav.basic_freeway_segment",
+                    "Weaving Segment": "nav.weaving_segment",
                     "Supported Workflows": "nav.supported_workflows",
                 }[value], locale
             ),
@@ -2710,6 +3039,8 @@ def main() -> None:
         render_manual_multilane_calculator()
     elif mode == "manual_basic_freeway":
         render_manual_freeway_calculator()
+    elif mode == "manual_weaving":
+        render_manual_weaving_calculator()
     elif mode == "supported_workflows":
         render_supported_workflows_page()
     else:
