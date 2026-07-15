@@ -10,8 +10,10 @@ This repository is an auditable HCM calculator scaffold. Treat engineering corre
 - pytest test suite
 - Calculation logic independent from UI
 - Planned optional Streamlit local UI
-- Initial method target: HCM 7th Edition Chapter 15 Two-Lane Highway motorized vehicle analysis
-- Future method target: Multilane Highway LOS
+- Implemented bounded methods: HCM 7th Edition Chapter 15 Two-Lane Highway,
+  Chapter 12 Multilane Highway Segment, and Chapter 12 Basic Freeway Segment
+- Planned work: HCM Version 7.0 Chapter 13 Freeway Weaving Segment; Phase 13.1
+  is documentation and evidence only, not implemented functionality
 
 ## Constraints
 
