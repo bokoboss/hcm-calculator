@@ -32,7 +32,10 @@ gates are not complete.
 - Initial pip: 25.0.1
 - Qualification venv pip after upgrade: 26.1.2
 - Streamlit: 1.59.2
-- Browser automation: blocked; Node/npm/npx not installed.
+- Browser automation: Python Playwright 1.61.0 using installed system Chrome.
+- Browser executable:
+  `C:\Program Files\Google\Chrome\Application\chrome.exe`
+- Browser version: `150.0.7871.125`
 
 ## Wheel Evidence
 
@@ -65,14 +68,14 @@ Package-content inspection confirmed exclusion of:
 ## Installed Package Provenance
 
 Installed environment:
-`C:\Users\kittipat_t\AppData\Local\Temp\hcmcalc-phase15-3-wheel-current`
+`C:\Users\kittipat_t\AppData\Local\Temp\hcmcalc-phase15-3-wheel-browser`
 
 Provenance from working directory `C:\Users\kittipat_t`:
 
 - `hcmcalc.__file__`:
-  `C:\Users\kittipat_t\AppData\Local\Temp\hcmcalc-phase15-3-wheel-current\Lib\site-packages\hcmcalc\__init__.py`
+  `C:\Users\kittipat_t\AppData\Local\Temp\hcmcalc-phase15-3-wheel-browser\Lib\site-packages\hcmcalc\__init__.py`
 - Streamlit app module:
-  `C:\Users\kittipat_t\AppData\Local\Temp\hcmcalc-phase15-3-wheel-current\Lib\site-packages\hcmcalc\ui\streamlit_app.py`
+  `C:\Users\kittipat_t\AppData\Local\Temp\hcmcalc-phase15-3-wheel-browser\Lib\site-packages\hcmcalc\ui\streamlit_app.py`
 - Two-Lane schematic:
   `...\site-packages\hcmcalc\ui\assets\two_lane\passing_constrained.png`
 - Weaving diagram:
@@ -111,10 +114,37 @@ Result:
 The matrix file is
 `docs/ui/phase_15_3_browser_qualification_matrix.md`.
 
-Result: incomplete. AppTest and installed route-open smoke evidence exists, but
-desktop/768 px real-browser review, overflow review, console review, and
-screenshot/evidence logs are not complete because Node/npm/npx is unavailable
-for the required Playwright CLI workflow.
+Result: incomplete. AppTest and installed route-open smoke evidence exists, and
+partial real-browser evidence was collected with Python Playwright plus system
+Chrome.
+
+Real-browser evidence collected:
+
+- Evidence log:
+  `output/playwright/phase15_3_release_qualification/browser_evidence.jsonl`
+- Screenshots:
+  `output/playwright/phase15_3_release_qualification/screenshots/`
+- Rows recorded: 44.
+- Passing rows: 37.
+- Failed/incomplete rows: 7.
+- 1280 px rows: 36.
+- 768 px rows: 8.
+- English rows: 36.
+- Thai rows: 8.
+- Imperial calculator rows: 7.
+- Horizontal overflow findings: none in recorded rows.
+- Console status: 43 clean rows, 1 severe row during an export sequence.
+
+Remaining browser blockers:
+
+- Thai Weaving direct calculation row failed to find the calculate button and
+  needs requalification.
+- Direct real-browser project upload/download qualification is not complete.
+- Direct real-browser export qualification is not complete for every
+  calculator.
+- Explicit real-browser stale, invalid, unsupported, warning-only,
+  capacity-failure, and handoff state probes remain incomplete.
+- Diverge export console severity requires follow-up.
 
 ## Project Qualification
 
@@ -128,8 +158,10 @@ load/save checks are completed.
 
 Automated export/report tests and AppTests passed for CSV, Excel, Markdown, and
 report JSON exposure on current results, plus stale-result export blocking.
-Full release export qualification remains incomplete until representative
-generated artifact content is inspected from the installed browser workflow.
+Browser export automation captured and inspected Facility CSV, Excel, Markdown,
+and report JSON files only. Other calculator export rows were attempted but did
+not produce reliable downloadable artifacts, so full release export
+qualification remains incomplete.
 
 ## Launcher Qualification
 
@@ -142,9 +174,10 @@ completed in this pass.
 
 Automated and code-level review confirmed typed textual result states,
 diagram captions/alternatives in the implemented UI paths, specific button
-labels, and table headings in AppTest-covered surfaces. Full release-level
-keyboard, focus, narrow viewport, and color-only review remains incomplete
-until real-browser testing is available.
+labels, and table headings in AppTest-covered surfaces. Partial real-browser
+sampling confirmed navigation and primary controls render at 1280 px and
+768 px without horizontal overflow in recorded rows. Full keyboard/focus and
+state-specific accessibility review remains incomplete.
 
 ## Defects Found And Fixed
 
@@ -160,9 +193,11 @@ Regression tests added:
 
 ## Unresolved Findings
 
-- Real-browser matrix blocked by missing Node/npm/npx.
-- CI not run/monitored in this local pass.
-- PR not opened in this pass.
+- Real-browser matrix is partially collected with Python Playwright, but
+  remains incomplete.
+- Project and export browser qualification remain incomplete.
+- Launcher execution remains incomplete.
+- Final version bump to `0.8.0` remains blocked.
 - Merge and Issue #115 closure are blocked.
 
 ## Compatibility Statement
