@@ -122,6 +122,8 @@ Real-browser evidence collected:
 
 - Evidence log:
   `output/playwright/phase15_3_release_qualification/browser_evidence.jsonl`
+- Remaining-gates evidence log:
+  `output/playwright/phase15_3_release_qualification/remaining_browser_evidence.jsonl`
 - Screenshots:
   `output/playwright/phase15_3_release_qualification/screenshots/`
 - Rows recorded: 44.
@@ -135,15 +137,37 @@ Real-browser evidence collected:
 - Horizontal overflow findings: none in recorded rows.
 - Console status: 43 clean rows, 1 severe row during an export sequence.
 
+Continuation evidence collected on 2026-07-20:
+
+- Unique remaining-gate rows recorded: 50.
+- Passing remaining-gate rows: 28.
+- Failed/incomplete remaining-gate rows: 22.
+- Thai Weaving one-sided stable rows passed at 1280 px and 768 px.
+- Browser project downloads passed for all seven calculators and produced
+  uncommitted JSON files under
+  `output/playwright/phase15_3_release_qualification/projects/remaining/`.
+- Browser project upload/load rows remain incomplete because the harness used
+  the wrong workflow-specific load button labels.
+- Browser state rows passed for Multilane stable, Basic Freeway stable/stale
+  and capacity failure, Merge stable/warning/capacity/stale, Diverge
+  stable/capacity/stale, Two-Lane Segment stale, Weaving handoff, and focused
+  accessibility samples for Two-Lane Segment, Weaving, Merge, and Diverge.
+- The Diverge capacity export row did not reproduce a severe browser console
+  error; the prior severe export-row observation is not yet fully classified
+  because the full export/download gate is still incomplete.
+
 Remaining browser blockers:
 
-- Thai Weaving direct calculation row failed to find the calculate button and
-  needs requalification.
-- Direct real-browser project upload/download qualification is not complete.
+- Thai Weaving one-sided direct calculation rows passed, but two-sided,
+  capacity-failure, and handoff rows need corrected selectors/text assertions
+  before the Thai Weaving gate can close.
+- Direct real-browser project downloads passed for all calculators, but
+  project upload/load/error qualification is not complete.
 - Direct real-browser export qualification is not complete for every
   calculator.
 - Explicit real-browser stale, invalid, unsupported, warning-only,
-  capacity-failure, and handoff state probes remain incomplete.
+  capacity-failure, and handoff state probes are partially complete and remain
+  incomplete overall.
 - Diverge export console severity requires follow-up.
 
 ## Project Qualification
@@ -152,7 +176,9 @@ Automated project I/O and AppTest coverage passed for current-result restore,
 wrong-type rejection, malformed project handling, stale-result protection, and
 locale restoration across the implemented visible calculators. Full release
 project compatibility remains incomplete until direct installed-browser project
-load/save checks are completed.
+upload/load/error checks are completed. A second browser pass successfully
+downloaded project JSON for all seven calculators, but upload/load rows did not
+complete because the automation used incorrect workflow-specific load labels.
 
 ## Export Qualification
 
@@ -168,7 +194,9 @@ qualification remains incomplete.
 `setup_app.bat`, `setup_app.ps1`, `run_app.bat`, and `run_app.ps1` were
 reviewed. They preserve the documented source-checkout local workflow and do
 not create an executable installer. Automated launcher execution was not
-completed in this pass.
+completed in this pass; shell policy blocked the attempted background launcher
+process checks. Do not claim wheel-only launcher support because the scripts
+depend on repository files.
 
 ## Accessibility Review
 
@@ -177,7 +205,11 @@ diagram captions/alternatives in the implemented UI paths, specific button
 labels, and table headings in AppTest-covered surfaces. Partial real-browser
 sampling confirmed navigation and primary controls render at 1280 px and
 768 px without horizontal overflow in recorded rows. Full keyboard/focus and
-state-specific accessibility review remains incomplete.
+state-specific accessibility review remains incomplete. A focused browser
+sample passed for Two-Lane Segment, Weaving, Merge, and Diverge; Facility and
+Supported Workflows need corrected expectations because Facility uses a
+workflow-specific calculate label and Supported Workflows has no calculate
+action by design.
 
 ## Defects Found And Fixed
 
@@ -195,7 +227,10 @@ Regression tests added:
 
 - Real-browser matrix is partially collected with Python Playwright, but
   remains incomplete.
-- Project and export browser qualification remain incomplete.
+- Project browser downloads passed; upload/load/error qualification remains
+  incomplete.
+- Export browser qualification remains incomplete beyond prior Facility
+  evidence and selected state-export attempts.
 - Launcher execution remains incomplete.
 - Final version bump to `0.8.0` remains blocked.
 - Merge and Issue #115 closure are blocked.
@@ -209,7 +244,8 @@ resolve them from the installed package.
 
 ## Release Recommendation
 
-Do not merge or close Issue #115 yet. Continue Phase 15.3 after browser
-automation is available, complete the exhaustive real-browser matrix, rerun the
-clean wheel-installed gate, open the PR with `Refs #115`, and only use
-`Closes #115` after all gates pass.
+Do not merge or close Issue #115 yet. Continue Phase 15.3 by correcting the
+remaining browser automation selectors, completing project upload/load,
+all-calculator exports, launcher execution, and accessibility review, then
+rerun the clean wheel-installed gate. Keep PR #118 as draft with `Refs #115`
+until all gates pass, and only use `Closes #115` after completion.
