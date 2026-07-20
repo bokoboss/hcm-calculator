@@ -1,0 +1,273 @@
+metadata:
+  fixture_version: 0.5.0
+  purpose: HCM Chapter 26 Two-Lane Highway validation input structure
+  status: validation_fixture
+  note: Inputs are scoped to Example Problems 1 through 4 only.
+
+cases:
+  - id: TLH-CH15-001
+    facility_type: two_lane_highway
+    method: hcm7_ch15_two_lane_motorized
+    source:
+      edition: HCM 7th Edition
+      methodology_chapter: Chapter 15
+      validation_chapter: Chapter 26
+      example_problem: Two-Lane Highway Example Problem 1
+      segment_description: level, straight Passing Constrained segment
+    inputs:
+      case_id: TLH-CH15-001
+      segment_length_mi: 0.75
+      segment_type: passing_constrained
+      analysis_direction_volume_veh_h: 752.0
+      peak_hour_factor: 0.94
+      posted_speed_mph: 50.0
+      heavy_vehicle_percent: 5.0
+      grade_percent: 0.0
+      horizontal_alignment: straight
+      lane_width_ft: 12.0
+      shoulder_width_ft: 6.0
+      access_point_density_per_mi: 0.0
+      upstream_passing_lane: false
+    validation_status: implemented_example_only
+
+  - id: TLH-CH15-002
+    facility_type: two_lane_highway
+    method: hcm7_ch15_two_lane_motorized
+    source:
+      edition: HCM 7th Edition
+      methodology_chapter: Chapter 15
+      validation_chapter: Chapter 26
+      example_problem: Two-Lane Highway Example Problem 2
+      segment_description: Passing Constrained segment with horizontal curves
+    inputs:
+      case_id: TLH-CH15-002
+      segment_length_mi: 0.75
+      segment_type: passing_constrained
+      analysis_direction_volume_veh_h: 752.0
+      peak_hour_factor: 0.94
+      posted_speed_mph: 50.0
+      heavy_vehicle_percent: 5.0
+      grade_percent: 0.0
+      horizontal_alignment: horizontal_curves
+      lane_width_ft: 12.0
+      shoulder_width_ft: 6.0
+      access_point_density_per_mi: 0.0
+      upstream_passing_lane: false
+      horizontal_alignment_subsegments:
+        - type: tangent
+          length_ft: 280.0
+        - type: horizontal_curve
+          length_ft: 432.0
+          superelevation_percent: 3.0
+          radius_ft: 450.0
+          central_angle_deg: 55.0
+          horizontal_class: 3
+        - type: tangent
+          length_ft: 260.0
+        - type: horizontal_curve
+          length_ft: 366.5
+          superelevation_percent: 2.0
+          radius_ft: 300.0
+          central_angle_deg: 70.0
+          horizontal_class: 4
+        - type: tangent
+          length_ft: 250.0
+        - type: horizontal_curve
+          length_ft: 216.0
+          superelevation_percent: 5.0
+          radius_ft: 275.0
+          central_angle_deg: 45.0
+          horizontal_class: 5
+        - type: tangent
+          length_ft: 275.6
+        - type: horizontal_curve
+          length_ft: 458.0
+          superelevation_percent: 0.0
+          radius_ft: 750.0
+          central_angle_deg: 35.0
+          horizontal_class: 2
+        - type: tangent
+          length_ft: 285.0
+        - type: horizontal_curve
+          length_ft: 767.9
+          superelevation_percent: 4.0
+          radius_ft: 1100.0
+          central_angle_deg: 40.0
+          horizontal_class: 1
+        - type: tangent
+          length_ft: 369.0
+    validation_status: implemented_example_only
+
+  - id: TLH-CH15-003
+    facility_type: two_lane_highway
+    method: hcm7_ch15_two_lane_motorized
+    source:
+      edition: HCM 7th Edition
+      methodology_chapter: Chapter 15
+      validation_chapter: Chapter 26
+      example_problem: Two-Lane Highway Example Problem 3
+      segment_description: five-segment facility analysis in level terrain
+    inputs:
+      case_id: TLH-CH15-003
+      facility_length_mi: 5.5
+      upstream_passing_lane: false
+      segments:
+        - segment_id: 1
+          segment_type: passing_constrained
+          segment_length_mi: 0.75
+          posted_speed_mph: 55.0
+          analysis_direction_volume_veh_h: 850.0
+          peak_hour_factor: 0.94
+          heavy_vehicle_percent: 8.0
+          grade_percent: 0.0
+          horizontal_alignment: straight
+          lane_width_ft: 12.0
+          shoulder_width_ft: 6.0
+          access_point_density_per_mi: 0.0
+        - segment_id: 2
+          segment_type: passing_lane
+          segment_length_mi: 1.5
+          posted_speed_mph: 55.0
+          analysis_direction_volume_veh_h: 825.0
+          peak_hour_factor: 0.95
+          heavy_vehicle_percent: 8.0
+          grade_percent: 0.0
+          horizontal_alignment: straight
+          lane_width_ft: 12.0
+          shoulder_width_ft: 6.0
+          access_point_density_per_mi: 0.0
+        - segment_id: 3
+          segment_type: passing_constrained
+          segment_length_mi: 1.0
+          posted_speed_mph: 55.0
+          analysis_direction_volume_veh_h: 820.0
+          peak_hour_factor: 0.95
+          heavy_vehicle_percent: 8.0
+          grade_percent: 0.0
+          horizontal_alignment: straight
+          lane_width_ft: 12.0
+          shoulder_width_ft: 6.0
+          access_point_density_per_mi: 0.0
+        - segment_id: 4
+          segment_type: passing_zone
+          segment_length_mi: 0.5
+          posted_speed_mph: 55.0
+          analysis_direction_volume_veh_h: 800.0
+          opposing_direction_volume_veh_h: 500.0
+          peak_hour_factor: 0.94
+          heavy_vehicle_percent: 7.5
+          grade_percent: 0.0
+          horizontal_alignment: straight
+          lane_width_ft: 12.0
+          shoulder_width_ft: 6.0
+          access_point_density_per_mi: 0.0
+        - segment_id: 5
+          segment_type: passing_constrained
+          segment_length_mi: 1.75
+          posted_speed_mph: 55.0
+          analysis_direction_volume_veh_h: 795.0
+          peak_hour_factor: 0.935
+          heavy_vehicle_percent: 8.0
+          grade_percent: 0.0
+          horizontal_alignment: straight
+          lane_width_ft: 12.0
+          shoulder_width_ft: 6.0
+          access_point_density_per_mi: 0.0
+    validation_status: implemented_example_only
+
+  - id: TLH-CH15-004
+    facility_type: two_lane_highway
+    method: hcm7_ch15_two_lane_motorized
+    source:
+      edition: HCM 7th Edition
+      methodology_chapter: Chapter 15
+      validation_chapter: Chapter 26
+      example_problem: Two-Lane Highway Example Problem 4
+      segment_description: six-segment mountainous terrain facility analysis
+    inputs:
+      case_id: TLH-CH15-004
+      facility_length_mi: 5.1
+      upstream_passing_lane: false
+      segments:
+        - segment_id: 1
+          segment_type: passing_constrained
+          segment_length_mi: 1.3
+          posted_speed_mph: 55.0
+          analysis_direction_volume_veh_h: 1100.0
+          peak_hour_factor: 0.90
+          heavy_vehicle_percent: 8.0
+          grade_percent: 4.0
+          horizontal_alignment: horizontal_curves
+          lane_width_ft: 12.0
+          shoulder_width_ft: 6.0
+          access_point_density_per_mi: 0.0
+          horizontal_alignment_subsegments:
+            - {type: tangent, length_ft: 5964.0}
+            - {type: horizontal_curve, length_ft: 900.0, superelevation_percent: 2.0, radius_ft: 350.0, horizontal_class: 4}
+        - segment_id: 2
+          segment_type: passing_constrained
+          segment_length_mi: 1.0
+          posted_speed_mph: 55.0
+          analysis_direction_volume_veh_h: 1100.0
+          peak_hour_factor: 0.90
+          heavy_vehicle_percent: 8.0
+          grade_percent: 6.0
+          horizontal_alignment: horizontal_curves
+          lane_width_ft: 12.0
+          shoulder_width_ft: 6.0
+          access_point_density_per_mi: 0.0
+          horizontal_alignment_subsegments:
+            - {type: tangent, length_ft: 1000.0}
+            - {type: horizontal_curve, length_ft: 4280.0, superelevation_percent: 2.0, radius_ft: 500.0, horizontal_class: 3}
+        - segment_id: 3
+          segment_type: passing_constrained
+          segment_length_mi: 0.5
+          posted_speed_mph: 55.0
+          analysis_direction_volume_veh_h: 1100.0
+          peak_hour_factor: 0.90
+          heavy_vehicle_percent: 8.0
+          grade_percent: 6.0
+          horizontal_alignment: straight
+          lane_width_ft: 12.0
+          shoulder_width_ft: 6.0
+          access_point_density_per_mi: 0.0
+        - segment_id: 4
+          segment_type: passing_constrained
+          segment_length_mi: 1.3
+          posted_speed_mph: 55.0
+          analysis_direction_volume_veh_h: 1100.0
+          peak_hour_factor: 0.90
+          heavy_vehicle_percent: 8.0
+          grade_percent: 4.0
+          horizontal_alignment: horizontal_curves
+          lane_width_ft: 12.0
+          shoulder_width_ft: 6.0
+          access_point_density_per_mi: 0.0
+          horizontal_alignment_subsegments:
+            - {type: tangent, length_ft: 3864.0}
+            - {type: horizontal_curve, length_ft: 3000.0, superelevation_percent: 2.0, radius_ft: 850.0, horizontal_class: 2}
+        - segment_id: 5
+          segment_type: passing_lane
+          segment_length_mi: 0.5
+          posted_speed_mph: 55.0
+          analysis_direction_volume_veh_h: 1100.0
+          peak_hour_factor: 0.90
+          heavy_vehicle_percent: 8.0
+          grade_percent: -3.0
+          horizontal_alignment: straight
+          lane_width_ft: 12.0
+          shoulder_width_ft: 6.0
+          access_point_density_per_mi: 0.0
+        - segment_id: 6
+          segment_type: passing_constrained
+          segment_length_mi: 0.5
+          posted_speed_mph: 55.0
+          analysis_direction_volume_veh_h: 1100.0
+          peak_hour_factor: 0.90
+          heavy_vehicle_percent: 8.0
+          grade_percent: -3.0
+          horizontal_alignment: straight
+          lane_width_ft: 12.0
+          shoulder_width_ft: 6.0
+          access_point_density_per_mi: 0.0
+    validation_status: implemented_example_only

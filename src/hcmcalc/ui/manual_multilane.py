@@ -3,17 +3,16 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from pathlib import Path
 from typing import Any
 
-from hcmcalc.cli import find_case, load_input_file
+from hcmcalc.cli import find_case
 from hcmcalc.multilane import MultilaneHighwayLOSMethod
 from hcmcalc.ui.input_contracts import reject_unknown_keys, require_finite_number
+from hcmcalc.ui.runtime_resources import load_packaged_yaml
 from hcmcalc.ui.units import FEET_TO_METERS, MILES_TO_KILOMETERS
 
 
-ROOT = Path(__file__).resolve().parents[3]
-FIXTURE_PATH = ROOT / "references" / "multilane_example_inputs.yaml"
+FIXTURE_FILENAME = "multilane_example_inputs.yaml"
 TEMPLATE_LABELS = {
     "MLH-CH26-004-EB": "Chapter 26 Example 4 - Eastbound starting values",
     "MLH-CH26-004-WB": "Chapter 26 Example 4 - Westbound starting values",
@@ -72,7 +71,7 @@ def load_multilane_template(case_id: str) -> dict[str, Any]:
 
     if case_id not in TEMPLATE_LABELS:
         raise ValueError(f"Unsupported Multilane template: {case_id}.")
-    case = find_case(load_input_file(FIXTURE_PATH), case_id)
+    case = find_case(load_packaged_yaml(FIXTURE_FILENAME), case_id)
     return {
         "case_id": case_id,
         "template_label": TEMPLATE_LABELS[case_id],

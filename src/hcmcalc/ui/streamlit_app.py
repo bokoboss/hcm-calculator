@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Any
 
 import streamlit as st
 
-from hcmcalc.cli import find_case, load_input_file, result_to_dict, run_case
+from hcmcalc.cli import find_case, result_to_dict, run_case
 from hcmcalc.core import HCMCalcError, MethodNotImplementedError, UnsupportedScopeError
 from hcmcalc.ui.audit import build_manual_calculation_audit_record
 from hcmcalc.ui.curve_editor import (
@@ -112,6 +111,7 @@ from hcmcalc.ui.reporting import (
     export_report,
     report_filename,
 )
+from hcmcalc.ui.runtime_resources import load_packaged_yaml
 from hcmcalc.ui.schematics import get_segment_schematic_path
 from hcmcalc.ui.supported_workflows import (
     APP_MODE_LABELS,
@@ -149,8 +149,7 @@ from hcmcalc.ui.workflow_state import (
 )
 
 
-ROOT = Path(__file__).resolve().parents[3]
-FIXTURE_PATH = ROOT / "references" / "example_inputs.yaml"
+FIXTURE_FILENAME = "example_inputs.yaml"
 SEGMENT_TYPE_LABELS = {
     "passing_constrained": "Passing constrained",
     "passing_zone": "Passing zone",
@@ -434,7 +433,7 @@ def render_validated_case_viewer() -> None:
     )
 
     try:
-        fixture = load_input_file(FIXTURE_PATH)
+        fixture = load_packaged_yaml(FIXTURE_FILENAME)
         available_case_ids = [
             case_id
             for case_id in IMPLEMENTED_CASE_IDS
@@ -447,9 +446,9 @@ def render_validated_case_viewer() -> None:
     with st.sidebar:
         st.header("Validated case")
         st.caption("Fixture file")
-        st.markdown(f"`{FIXTURE_PATH.name}`")
+        st.markdown(f"`{FIXTURE_FILENAME}`")
         with st.expander("Show full fixture path", expanded=False):
-            st.code(str(FIXTURE_PATH), language=None)
+            st.code(f"packaged:hcmcalc.ui/data/{FIXTURE_FILENAME}", language=None)
         selected_case_id = st.selectbox("Case ID", available_case_ids)
         run_selected = st.button("Run selected case", type="primary")
 

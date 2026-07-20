@@ -6,18 +6,16 @@ from copy import deepcopy
 from pathlib import Path
 from typing import Any, Literal
 
-import yaml
-
 from hcmcalc.core import HCMCalcError
 from hcmcalc.ramp_influence import DivergeSegmentMethod, MergeSegmentMethod
 from hcmcalc.ui.input_contracts import reject_unknown_keys, require_finite_number
+from hcmcalc.ui.runtime_resources import load_packaged_yaml
 from hcmcalc.ui.units import FEET_TO_METERS, MILES_TO_KILOMETERS
 
 
 RampWorkflow = Literal["merge", "diverge"]
 
-ROOT = Path(__file__).resolve().parents[3]
-FIXTURE_PATH = ROOT / "references" / "merge_diverge_example_inputs.yaml"
+FIXTURE_FILENAME = "merge_diverge_example_inputs.yaml"
 ASSET_ROOT = Path(__file__).resolve().parent / "assets" / "ramp_influence"
 METHOD_VERSION = "hcm_7_0"
 MERGE_METHOD_FAMILY = "merge_segment"
@@ -113,8 +111,7 @@ def load_ramp_preset(workflow: RampWorkflow, preset_id: str) -> dict[str, Any]:
     if preset_id not in labels:
         raise ValueError(f"Unsupported {workflow} preset: {preset_id}.")
     fixture_id = _default_case_id(workflow) if preset_id == "blank_custom" else preset_id
-    with FIXTURE_PATH.open(encoding="utf-8") as handle:
-        fixture = yaml.safe_load(handle)
+    fixture = load_packaged_yaml(FIXTURE_FILENAME)
     for case in fixture["examples"]:
         if case["id"] == fixture_id and case["method_family"] == method_family(workflow):
             return {

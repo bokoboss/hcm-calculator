@@ -1,14 +1,13 @@
-"""Repository-relative paths for UI schematic assets."""
+"""Packaged paths for UI schematic assets."""
 
 from __future__ import annotations
 
+from importlib.resources import files
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[3]
-SEGMENT_SCHEMATIC_DIRECTORY = (
-    ROOT / "assets" / "schematics" / "two_lane" / "left_hand"
-)
+ASSET_PACKAGE = "hcmcalc.ui"
+ASSET_DIRECTORY = ("assets", "two_lane")
 SEGMENT_SCHEMATIC_FILENAMES = {
     "passing_constrained": "passing_constrained.png",
     "passing_zone": "passing_zone.png",
@@ -23,5 +22,7 @@ def get_segment_schematic_path(segment_type: str) -> Path | None:
     if filename is None:
         return None
 
-    schematic_path = SEGMENT_SCHEMATIC_DIRECTORY / filename
-    return schematic_path if schematic_path.is_file() else None
+    resource = files(ASSET_PACKAGE).joinpath(*ASSET_DIRECTORY, filename)
+    if not resource.is_file():
+        return None
+    return Path(resource)

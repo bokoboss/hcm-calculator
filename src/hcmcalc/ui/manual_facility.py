@@ -6,19 +6,18 @@ from copy import deepcopy
 from dataclasses import asdict
 from datetime import datetime, timezone
 from math import isfinite
-from pathlib import Path
 from typing import Any
 
 from hcmcalc import __version__
-from hcmcalc.cli import find_case, load_input_file
+from hcmcalc.cli import find_case
 from hcmcalc.core import CalculationResult, HCMCalcError, MethodNotImplementedError
 from hcmcalc.methods.two_lane_highway_ch15 import TwoLaneHighwayChapter15Method
 from hcmcalc.methods.two_lane_highway_models import PASSING_LANE_ROLE_SEGMENT
+from hcmcalc.ui.runtime_resources import load_packaged_yaml
 from hcmcalc.ui.units import MILES_TO_KILOMETERS
 
 
-ROOT = Path(__file__).resolve().parents[3]
-FIXTURE_PATH = ROOT / "references" / "example_inputs.yaml"
+FIXTURE_FILENAME = "example_inputs.yaml"
 MANUAL_FACILITY_CALCULATION_TYPE = "manual_two_lane_facility_v1"
 
 FACILITY_TEMPLATES = {
@@ -211,7 +210,7 @@ def load_facility_template(
     """Load an Example 3/4-backed template in user-facing units."""
 
     template = _template_definition(template_id)
-    case = find_case(load_input_file(FIXTURE_PATH), str(template["case_id"]))
+    case = find_case(load_packaged_yaml(FIXTURE_FILENAME), str(template["case_id"]))
     engine_inputs = deepcopy(case["inputs"])
     rows = _engine_segments_to_user_rows(engine_inputs["segments"], unit_system)
     return {
