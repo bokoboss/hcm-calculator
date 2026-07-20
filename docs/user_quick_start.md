@@ -59,10 +59,17 @@ language; legacy files retain the active application language. Under **Export /
 Report**, choose same-as-UI, English, or Thai. JSON remains machine-readable
 with stable keys and values.
 
+Use the sidebar groups to choose a workflow:
+
+- **Roadways:** Two-Lane Segment, Two-Lane Facility, Multilane Segment.
+- **Freeways:** Basic Freeway Segment, Weaving Segment, Merge Segment, Diverge
+  Segment.
+- **Reference:** Supported Workflows.
+
 Each calculator follows the same compact pattern: choose the calculator, enter
 the applicable setup/roadway/traffic/heavy-vehicle inputs, select any supported
-advanced adjustments, click **Run calculation**, then review the result and
-audit details.
+advanced adjustments, click **Calculate** or **Recalculate**, then review the
+result and audit details.
 
 - A result is exportable only while it is marked **Calculated**. If an active
   input or mode changes, it becomes stale and must be recalculated.
@@ -74,6 +81,10 @@ audit details.
 - **Export / Report** produces CSV, Excel, Markdown, and report JSON from the
   calculated engine result. `Not predicted` values, including above-capacity
   speed and density where applicable, are not converted to zero.
+- Switching Metric/Imperial units reloads the visible worksheet values and
+  clears the current result for that workflow. Recalculate before exporting.
+- Project JSON keys, method identifiers, HCM references, units, fingerprints,
+  and export field names remain language-neutral even when the UI is Thai.
 - **Weaving Segment** is HCM 7.0 only. Use the reference presets as starting
   values or enter a custom isolated freeway weaving case, review the conceptual
   schematic and explicit geometry evidence, then run the calculation. HCM 7.1,

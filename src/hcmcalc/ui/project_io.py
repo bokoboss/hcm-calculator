@@ -693,6 +693,28 @@ def load_manual_ramp_project_json(data: str | bytes, workflow: str) -> dict[str,
     if not isinstance(displayed_inputs, dict):
         raise ProjectFileError("Malformed input payload: displayed_ui_inputs must be an object.")
     saved_inputs = payload.get("normalized_engine_inputs")
+    if isinstance(saved_inputs, dict):
+        if saved_inputs.get("adjacent_ramp_context", "isolated") != "isolated":
+            raise ProjectFileError("Only isolated ramp context is supported.")
+        if saved_inputs.get("ramp_side", "right") != "right":
+            raise ProjectFileError("Only right-side ramps are supported.")
+        try:
+            saved_ramp_lanes = int(saved_inputs.get("ramp_lanes", 1))
+        except (TypeError, ValueError) as exc:
+            raise ProjectFileError("Only one-lane ramps are supported.") from exc
+        if saved_ramp_lanes != 1:
+            raise ProjectFileError("Only one-lane ramps are supported.")
+        if workflow == "merge" and (
+            bool(saved_inputs.get("lane_addition", False))
+            or bool(saved_inputs.get("major_merge", False))
+        ):
+            raise ProjectFileError("Unsupported merge geometry.")
+        if workflow == "diverge" and (
+            bool(saved_inputs.get("lane_drop", False))
+            or bool(saved_inputs.get("option_lane", False))
+            or bool(saved_inputs.get("major_diverge", False))
+        ):
+            raise ProjectFileError("Unsupported diverge geometry.")
     normalized_inputs = _build_ramp_inputs(workflow, unit_system, displayed_inputs)
     if normalized_inputs.get("method_version") != RAMP_INFLUENCE_METHOD_VERSION:
         raise ProjectFileError("HCM 7.1 projects are not calculable.")

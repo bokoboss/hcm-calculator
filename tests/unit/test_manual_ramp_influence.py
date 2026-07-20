@@ -143,12 +143,89 @@ def test_ramp_exports_preserve_null_capacity_failure(workflow: str) -> None:
     assert "None" not in export_report(report, "markdown")
 
 
+def test_merge_warning_only_export_is_not_capacity_failure() -> None:
+    ui = ramp_preset_ui_inputs("merge", "blank_custom", "imperial")
+    ui.update(
+        freeway_lanes=2,
+        freeway_demand_veh_h=3600.0,
+        ramp_demand_veh_h=600.0,
+        freeway_peak_hour_factor=0.95,
+        ramp_peak_hour_factor=0.95,
+        free_flow_speed=65.0,
+        ramp_ffs=40.0,
+        auxiliary_lane_length=600.0,
+    )
+    engine = ramp_ui_inputs_to_engine("merge", ui, "imperial")
+    result = result_to_dict(run_manual_ramp("merge", engine))
+    outputs = result["outputs"]
+
+    assert outputs["maximum_desirable_influence_flow_exceeded"] is True
+    assert outputs["capacity_status"] == "within_capacity"
+    assert outputs["level_of_service"] != "F"
+    assert outputs["density_pc_mi_ln"] is not None
+    assert outputs["ramp_influence_speed_mph"] is not None
+
+    report = build_report(
+        MANUAL_MERGE_PROJECT_TYPE,
+        result,
+        "imperial",
+        inputs=ui,
+        audit_record={"normalized_engine_inputs": engine},
+        template_id="blank_custom",
+    )
+    exported = json.loads(export_report(report, "json"))
+    summary = {row["label"]: row["value"] for row in exported["results_summary"]}
+
+    assert summary["Capacity status"] == "within_capacity"
+    assert summary["Maximum desirable flow exceeded"] is True
+    assert summary["Level of service"] != "F"
+
+
+def test_diverge_warning_only_export_is_not_capacity_failure() -> None:
+    ui = ramp_preset_ui_inputs("diverge", "blank_custom", "imperial")
+    ui.update(
+        freeway_lanes=2,
+        freeway_demand_veh_h=4000.0,
+        ramp_demand_veh_h=200.0,
+        freeway_peak_hour_factor=0.95,
+        ramp_peak_hour_factor=0.95,
+        free_flow_speed=65.0,
+        ramp_ffs=40.0,
+        auxiliary_lane_length=600.0,
+    )
+    engine = ramp_ui_inputs_to_engine("diverge", ui, "imperial")
+    result = result_to_dict(run_manual_ramp("diverge", engine))
+    outputs = result["outputs"]
+
+    assert outputs["maximum_desirable_influence_flow_exceeded"] is True
+    assert outputs["capacity_status"] == "within_capacity"
+    assert outputs["level_of_service"] != "F"
+    assert outputs["density_pc_mi_ln"] is not None
+    assert outputs["ramp_influence_speed_mph"] is not None
+
+    report = build_report(
+        MANUAL_DIVERGE_PROJECT_TYPE,
+        result,
+        "imperial",
+        inputs=ui,
+        audit_record={"normalized_engine_inputs": engine},
+        template_id="blank_custom",
+    )
+    exported = json.loads(export_report(report, "json"))
+    summary = {row["label"]: row["value"] for row in exported["results_summary"]}
+
+    assert summary["Capacity status"] == "within_capacity"
+    assert summary["Maximum desirable flow exceeded"] is True
+    assert summary["Level of service"] != "F"
+
+
 def test_ramp_navigation_localization_and_diagrams() -> None:
     assert "Merge Segment" in APP_MODE_LABELS
     assert "Diverge Segment" in APP_MODE_LABELS
     assert resolve_app_view("Merge Segment") == "manual_merge"
     assert resolve_app_view("Diverge Segment") == "manual_diverge"
     assert translate("nav.merge_segment", "th") != "Nav merge segment"
+    assert translate("ramp.diverge.title", "th") == "ช่วงแยกกระแส"
     assert translate("ramp.capacity_failure", "th") != "Ramp capacity failure"
     assert not validate_catalogs()
     assert diagram_path("merge").is_file()

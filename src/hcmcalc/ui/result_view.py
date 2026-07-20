@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from hcmcalc.ui.workflow_state import ResultPresentationState
+
 
 LOS_COLORS = {
     "A": ("#17643a", "#e8f4ec"),
@@ -130,3 +132,16 @@ def render_result_summary_panel(
         st.caption(note)
     for warning in warnings or []:
         st.warning(warning)
+
+
+def render_result_state_panel(state: ResultPresentationState, message: str) -> None:
+    """Render a state panel using native, accessible Streamlit alerts."""
+
+    import streamlit as st
+
+    if state in {ResultPresentationState.INVALID_INPUT, ResultPresentationState.INTERNAL_ERROR}:
+        st.error(message)
+    elif state in {ResultPresentationState.STALE_RESULT, ResultPresentationState.CAPACITY_FAILURE, ResultPresentationState.HCM_STOPPING_OR_HANDOFF, ResultPresentationState.UNSUPPORTED_SCOPE}:
+        st.warning(message)
+    else:
+        st.info(message)

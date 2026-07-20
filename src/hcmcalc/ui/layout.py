@@ -62,25 +62,29 @@ def render_validation_basis_and_limitations(
         st.caption(not_supported)
 
 
-def render_project_load_section(render_controls: Any) -> None:
+def render_project_load_section(render_controls: Any, label: str | None = None) -> None:
     """Render a compact project load section around existing load controls."""
 
-    with st.expander(PROJECT_LOAD_LABEL, expanded=False):
+    with st.expander(label or PROJECT_LOAD_LABEL, expanded=False):
         render_controls()
 
 
-def render_project_output_section(caption: str, render_controls: Any) -> None:
+def render_project_output_section(
+    caption: str, render_controls: Any, label: str | None = None
+) -> None:
     """Render a compact project output section around existing save controls."""
 
-    st.markdown(f"**{PROJECT_OUTPUT_LABEL}**")
+    st.markdown(f"**{label or PROJECT_OUTPUT_LABEL}**")
     st.caption(caption)
     render_controls()
 
 
-def render_export_report_section_container(render_controls: Any) -> None:
+def render_export_report_section_container(
+    render_controls: Any, label: str | None = None
+) -> None:
     """Render the standard collapsed export/report section."""
 
-    with st.expander(EXPORT_REPORT_LABEL, expanded=False):
+    with st.expander(label or EXPORT_REPORT_LABEL, expanded=False):
         render_controls()
 
 

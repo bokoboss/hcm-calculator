@@ -8,14 +8,17 @@ Use one clear action, one current-result identity, visible units, and equivalent
 
 ## Navigation
 
-Replace the flat eight-option radio with a sidebar **Calculator** grouped selector in this order:
+Phase 15.2 replaces the flat eight-option radio with a sidebar grouped selector
+using stable internal workflow identifiers, not localized labels. The groups are:
 
-1. Two-lane highway: **Two-Lane Segment / ช่วงถนนสองช่องจราจร**, **Two-Lane Facility / สิ่งอำนวยความสะดวกถนนสองช่องจราจร**.
-2. Freeway: **Basic Freeway Segment / ช่วงทางด่วนพื้นฐาน**, **Weaving Segment / ช่วงสานการจราจร**, **Merge Segment / ช่วงรวมกระแส**, **Diverge Segment / ช่วงแยกกระแส**.
-3. Multilane highway: **Multilane Segment / ช่วงถนนหลายช่องจราจร**.
-4. Information: **Supported Workflows / ขั้นตอนการทำงานที่รองรับ**.
+1. Roadways: **Two-Lane Segment / ช่วงถนนสองช่องจราจร**, **Two-Lane Facility / สิ่งอำนวยความสะดวกถนนสองช่องจราจร**, **Multilane Segment / ช่วงถนนหลายช่องจราจร**.
+2. Freeways: **Basic Freeway Segment / ช่วงทางด่วนพื้นฐาน**, **Weaving Segment / ช่วงสานการจราจร**, **Merge Segment / ช่วงรวมกระแส**, **Diverge Segment / ช่วงแยกกระแส**.
+3. Reference: **Supported Workflows / ขอบเขตงานที่รองรับ**.
 
-Use a short category heading plus selectbox, not tabs: the choices are growing and labels are long in Thai. Keep the selected workflow in a namespaced session key. Internal validation examples remain query-parameter-only. Migration affects `supported_workflows.py`, the route widget, and AppTests that currently assume `radio[0]`; it does not affect method contracts.
+Use a short category heading plus selectbox, not tabs: the choices are growing
+and labels are long in Thai. Keep the selected workflow in a namespaced session
+key. Internal validation examples remain query-parameter-only and do not appear
+in public navigation. Navigation changes do not affect method contracts.
 
 ## Mandatory worksheet sequence
 
@@ -76,10 +79,22 @@ Never use a generic red error for LOS F or a stopping condition, and never displ
 
 ## Shared secondary areas
 
-Project load belongs directly below starting values; save belongs after current results; downloads are a collapsed Export/report section below save. Calculation details precede audit/intermediate values, which precede validation/limitations. Reports are deliberately language-neutral until Phase 15.2 defines a localized export contract; filenames, JSON keys, schemas, HCM identifiers, equations, and conventional units remain stable.
+Project load belongs directly below starting values; save belongs after current
+results; downloads are a collapsed Export/report section below save. Calculation
+details precede audit/intermediate values, which precede validation/limitations.
+Report presentation can follow the selected UI/export language, but filenames,
+JSON keys, project schemas, fingerprints, method identifiers, HCM references,
+equations, conventional units, and engine provenance strings remain
+language-neutral and stable.
 
 ## Accessibility, responsiveness, and state
 
 Every control has a unique programmatic label, required/optional indication, keyboard-reachable order matching visual order, and contextual help that does not rely on color. Headings follow the worksheet sequence; custom result HTML must meet contrast and have text status. Diagrams need concise text alternatives. Captions must remain at least 12 px equivalent and Thai must wrap rather than clip.
 
-Use workflow-scoped keys: `workflow.<id>.<area>.<field>`. Store `ui.locale` and display unit separately from canonical inputs; a display-unit-only change must not stale a result. Prefix result, preset, load, diagram, and fingerprint state by workflow, clear only that workflow on preset/load change, and never reuse generic widget keys.
+Use workflow-scoped keys: `workflow.<id>.<area>.<field>`. Store `ui.locale` and
+display unit separately from canonical inputs. Unit-system switches reload the
+visible worksheet values for the selected workflow and clear that workflow's
+stored result, audit, and fingerprint before a new current result can be
+exported; localized display labels must never enter calculation state. Prefix
+result, preset, load, diagram, and fingerprint state by workflow, clear only
+that workflow on preset/load change, and never reuse generic widget keys.

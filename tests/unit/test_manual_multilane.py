@@ -148,22 +148,27 @@ def test_metric_and_imperial_modes_produce_equivalent_engine_results(
     assert imperial_result == metric_result
 
 
-def test_unit_or_template_switch_preserves_multilane_result_for_audit() -> None:
+def test_unit_or_template_switch_clears_stored_multilane_result() -> None:
     state = {
         "manual_multilane_input_length_MLH-CH26-004-EB_metric": 2.0,
         "manual_multilane_result": {"outputs": {}},
         "manual_multilane_error": "old error",
         "manual_multilane_audit": {"unit_system": "metric"},
         "manual_multilane_template_context": ("MLH-CH26-004-EB", "metric"),
+        "calculation_workflow_state": {
+            "manual_multilane": {"fingerprint": "old"},
+            "other_workflow": {"fingerprint": "kept"},
+        },
         "unrelated": "preserved",
     }
 
     clear_manual_multilane_state(state)
 
     assert state == {
-        "manual_multilane_result": {"outputs": {}},
-        "manual_multilane_audit": {"unit_system": "metric"},
         "manual_multilane_template_context": ("MLH-CH26-004-EB", "metric"),
+        "calculation_workflow_state": {
+            "other_workflow": {"fingerprint": "kept"},
+        },
         "unrelated": "preserved",
     }
 
