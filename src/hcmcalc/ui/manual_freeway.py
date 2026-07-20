@@ -51,8 +51,19 @@ def clear_manual_freeway_state(state: dict[str, Any]) -> None:
     """Clear result and worksheet widget state after preset or unit changes."""
 
     for key in tuple(state):
-        if key.startswith("manual_freeway_input_") or key == "manual_freeway_error":
+        if (
+            key.startswith("manual_freeway_input_")
+            or key
+            in {
+                "manual_freeway_error",
+                "manual_freeway_result",
+                "manual_freeway_audit",
+            }
+        ):
             state.pop(key, None)
+    calculation_state = state.get("calculation_workflow_state")
+    if isinstance(calculation_state, dict):
+        calculation_state.pop("manual_freeway", None)
 
 
 def load_freeway_preset(case_id: str) -> dict[str, Any]:

@@ -5,6 +5,7 @@ from __future__ import annotations
 from copy import deepcopy
 from dataclasses import asdict
 from datetime import datetime, timezone
+from math import isfinite
 from pathlib import Path
 from typing import Any
 
@@ -88,6 +89,120 @@ def clear_manual_facility_result_state(state: Any) -> None:
 
     for key in ("manual_facility_error",):
         state.pop(key, None)
+
+
+def validate_manual_facility_table(rows: list[dict[str, Any]] | Any) -> dict[str, Any]:
+    """Return a compact UI validation summary without running the method."""
+
+    rows = _records(rows)
+    if not rows:
+        return {
+            "status": "missing_required",
+            "blocking": True,
+            "messages": ["Facility requires at least one segment row."],
+        }
+
+    messages: list[str] = []
+    segment_ids: set[int] = set()
+    required = {
+        "segment_id",
+        "segment_type",
+        "segment_length",
+        "posted_speed",
+        "analysis_direction_volume_veh_h",
+        "peak_hour_factor",
+        "heavy_vehicle_percent",
+        "grade_percent",
+        "horizontal_alignment",
+        "lane_width",
+        "shoulder_width",
+        "access_point_density",
+        "passing_lane_role",
+    }
+    numeric_positive = {"segment_length", "posted_speed", "lane_width"}
+    numeric_nonnegative = {
+        "analysis_direction_volume_veh_h",
+        "heavy_vehicle_percent",
+        "grade_percent",
+        "shoulder_width",
+        "access_point_density",
+    }
+    allowed_segment_types = {"passing_constrained", "passing_zone", "passing_lane"}
+    allowed_roles = {"none", "passing_lane", "downstream_affected"}
+    allowed_alignment = {"straight", "horizontal_curves"}
+    allowed_terrain = {"level", "mountainous"}
+
+    for index, row in enumerate(rows, start=1):
+        segment_label = row.get("segment_id", index)
+        missing = sorted(field for field in required if _is_blank(row.get(field)))
+        if missing:
+            messages.append(
+                f"Segment {segment_label}: missing required field(s): {', '.join(missing)}."
+            )
+        try:
+            segment_id = int(row.get("segment_id"))
+        except (TypeError, ValueError):
+            messages.append(f"Segment row {index}: segment_id must be an integer.")
+        else:
+            if segment_id in segment_ids:
+                messages.append(f"Segment {segment_id}: duplicate segment_id.")
+            segment_ids.add(segment_id)
+            if segment_id <= 0:
+                messages.append(f"Segment {segment_id}: segment_id must be positive.")
+
+        segment_type = str(row.get("segment_type", "")).strip()
+        role = str(row.get("passing_lane_role", "")).strip()
+        alignment = str(row.get("horizontal_alignment", "")).strip()
+        terrain = str(row.get("terrain_type", "")).strip()
+        if segment_type and segment_type not in allowed_segment_types:
+            messages.append(f"Segment {segment_label}: unsupported segment_type {segment_type}.")
+        if role and role not in allowed_roles:
+            messages.append(f"Segment {segment_label}: unsupported passing_lane_role {role}.")
+        if alignment and alignment not in allowed_alignment:
+            messages.append(f"Segment {segment_label}: unsupported horizontal_alignment {alignment}.")
+        if terrain and terrain not in allowed_terrain:
+            messages.append(f"Segment {segment_label}: unsupported terrain_type {terrain}.")
+        if segment_type == "passing_lane" and role != "passing_lane":
+            messages.append(
+                f"Segment {segment_label}: Passing Lane segment requires passing_lane_role=passing_lane."
+            )
+        if segment_type != "passing_lane" and role == "passing_lane":
+            messages.append(
+                f"Segment {segment_label}: only a Passing Lane segment may use passing_lane_role=passing_lane."
+            )
+        if role == "downstream_affected" and index == 1:
+            messages.append(
+                f"Segment {segment_label}: downstream_affected requires an upstream Passing Lane segment."
+            )
+        if segment_type == "passing_zone" and _is_blank(row.get("opposing_direction_volume_veh_h")):
+            messages.append(
+                f"Segment {segment_label}: passing_zone requires opposing_direction_volume_veh_h."
+            )
+
+        for field in numeric_positive:
+            _validate_numeric_field(messages, row, segment_label, field, positive=True)
+        for field in numeric_nonnegative:
+            _validate_numeric_field(messages, row, segment_label, field, positive=False)
+        phf = _parse_float(row.get("peak_hour_factor"))
+        if phf is None or not 0.0 < phf <= 1.0:
+            messages.append(
+                f"Segment {segment_label}: peak_hour_factor must be greater than 0 and at most 1."
+            )
+
+    if messages:
+        status = (
+            "missing_required"
+            if any("missing required" in message for message in messages)
+            else "unsupported_scope"
+            if any("unsupported" in message or "Passing Lane" in message for message in messages)
+            else "invalid_numeric"
+        )
+        return {"status": status, "blocking": True, "messages": messages}
+    return {
+        "status": "valid_table",
+        "blocking": False,
+        "messages": ["Segment table has the required fields for calculation."],
+    }
 
 
 def load_facility_template(
@@ -380,6 +495,35 @@ def _records(rows: Any) -> list[dict[str, Any]]:
     if not isinstance(rows, list):
         raise HCMCalcError("Facility segment table must contain a list of rows.")
     return [dict(row) if isinstance(row, dict) else row for row in rows]
+
+
+def _is_blank(value: Any) -> bool:
+    return value is None or (isinstance(value, str) and not value.strip())
+
+
+def _parse_float(value: Any) -> float | None:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if isfinite(parsed) else None
+
+
+def _validate_numeric_field(
+    messages: list[str],
+    row: dict[str, Any],
+    segment_label: Any,
+    field: str,
+    *,
+    positive: bool,
+) -> None:
+    value = _parse_float(row.get(field))
+    if value is None:
+        messages.append(f"Segment {segment_label}: {field} must be numeric.")
+    elif positive and value <= 0.0:
+        messages.append(f"Segment {segment_label}: {field} must be greater than 0.")
+    elif not positive and value < 0.0:
+        messages.append(f"Segment {segment_label}: {field} must be 0 or greater.")
 
 
 def _segment_warning(segment: dict[str, Any]) -> str:

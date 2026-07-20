@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, MutableMapping, Sequence
 from hashlib import sha256
 import json
+from enum import StrEnum
 from typing import Any
 
 
@@ -14,6 +15,51 @@ CALCULATED = "Calculated"
 STALE = "Input changed — recalculate required"
 
 _STATE_KEY = "calculation_workflow_state"
+
+
+class ResultPresentationState(StrEnum):
+    """Streamlit-independent states used to present a calculator outcome."""
+
+    PRERUN = "prerun"
+    VALID_CURRENT_RESULT = "valid_current_result"
+    VALID_CURRENT_RESULT_WITH_WARNING = "valid_current_result_with_warning"
+    CAPACITY_FAILURE = "capacity_failure"
+    HCM_STOPPING_OR_HANDOFF = "hcm_stopping_or_handoff"
+    STALE_RESULT = "stale_result"
+    INVALID_INPUT = "invalid_input"
+    UNSUPPORTED_SCOPE = "unsupported_scope"
+    INTERNAL_ERROR = "internal_error"
+
+
+def resolve_result_presentation_state(
+    *,
+    freshness: str,
+    has_result: bool = False,
+    warnings: Sequence[str] = (),
+    capacity_failure: bool = False,
+    stopping_or_handoff: bool = False,
+    unsupported_scope: bool = False,
+    internal_error: bool = False,
+) -> ResultPresentationState:
+    """Classify UI presentation without altering engine result contracts."""
+
+    if internal_error:
+        return ResultPresentationState.INTERNAL_ERROR
+    if unsupported_scope:
+        return ResultPresentationState.UNSUPPORTED_SCOPE
+    if stopping_or_handoff:
+        return ResultPresentationState.HCM_STOPPING_OR_HANDOFF
+    if freshness == MISSING_REQUIRED_INPUT:
+        return ResultPresentationState.INVALID_INPUT
+    if freshness == STALE:
+        return ResultPresentationState.STALE_RESULT
+    if capacity_failure:
+        return ResultPresentationState.CAPACITY_FAILURE
+    if has_result and warnings:
+        return ResultPresentationState.VALID_CURRENT_RESULT_WITH_WARNING
+    if has_result:
+        return ResultPresentationState.VALID_CURRENT_RESULT
+    return ResultPresentationState.PRERUN
 
 
 def normalized_input_fingerprint(inputs: Mapping[str, Any]) -> str:

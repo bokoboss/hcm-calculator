@@ -35,9 +35,54 @@ APP_MODE_TO_VIEW = {
     "Merge Segment": "manual_merge",
     "Diverge Segment": "manual_diverge",
 }
+APP_VIEW_TO_MODE = {view: mode for mode, view in APP_MODE_TO_VIEW.items()}
+APP_VIEW_TO_NAV_KEY = {
+    "manual_single_segment": "nav.two_lane_segment",
+    "manual_facility": "nav.two_lane_facility",
+    "manual_multilane": "nav.multilane_segment",
+    "manual_basic_freeway": "nav.basic_freeway_segment",
+    "manual_weaving": "nav.weaving_segment",
+    "manual_merge": "nav.merge_segment",
+    "manual_diverge": "nav.diverge_segment",
+    "supported_workflows": "nav.supported_workflows",
+}
+
+NAVIGATION_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("roadways", ("Two-Lane Segment", "Two-Lane Facility", "Multilane Segment")),
+    ("freeways", ("Basic Freeway Segment", "Weaving Segment", "Merge Segment", "Diverge Segment")),
+    ("reference", ("Supported Workflows",)),
+)
+NAVIGATION_GROUP_VIEWS: tuple[tuple[str, tuple[str, ...]], ...] = tuple(
+    (group, tuple(APP_MODE_TO_VIEW[mode] for mode in modes))
+    for group, modes in NAVIGATION_GROUPS
+)
 
 INTERNAL_VALIDATION_QUERY_PARAM = "qa_view"
 INTERNAL_VALIDATION_QUERY_VALUE = "validated_examples"
+SUPPORTED_PAGE_WORKFLOW_GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("roadways", ("manual_single_segment", "manual_facility", "manual_multilane")),
+    ("freeways", ("manual_basic_freeway", "manual_weaving", "manual_merge", "manual_diverge")),
+)
+SUPPORTED_PAGE_CAPABILITIES: tuple[str, ...] = (
+    "project_save_load",
+    "stale_result_protection",
+    "metric_imperial",
+    "english_thai_ui",
+    "audit_trail",
+    "csv",
+    "excel",
+    "markdown",
+    "report_json",
+    "calculation_project_json",
+)
+SUPPORTED_PAGE_LIMITATIONS: tuple[str, ...] = (
+    "qualified_boundaries",
+    "hcm_7_1",
+    "freeway_geometry",
+    "facility_corridor",
+    "queues_delay_spillback",
+    "reliability_managed_work_zone",
+)
 
 
 def resolve_app_view(mode_label: str, query_params: Any | None = None) -> str:

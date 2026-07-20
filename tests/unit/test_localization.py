@@ -102,6 +102,7 @@ def test_streamlit_locale_switch_is_presentation_only() -> None:
     app.selectbox[0].set_value("th").run(timeout=30)
     assert not app.exception
     assert app.selectbox[0].label == "ภาษา"
-    assert app.radio[0].label == "โหมดเครื่องคำนวณ"
+    assert app.selectbox[1].label == "กลุ่มเครื่องคำนวณ"
+    assert app.selectbox[2].label == "เครื่องคำนวณ"
     app.selectbox[0].set_value("en").run(timeout=30)
     assert not app.exception

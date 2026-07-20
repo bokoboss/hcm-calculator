@@ -4,7 +4,21 @@
 
 `hcmcalc.ui.i18n` is the single presentation localization mechanism and correctly keeps calculation modules independent. `validate_catalogs()` checks key parity, blank values, and named placeholders. Its English fallback is safe from crashes but leaks English to Thai users; Phase 15.2 must add a test that every rendered UI string originates in a catalog or is explicitly marked language-neutral. Do not localize JSON keys, schemas, HCM equation references, method identifiers, or standard engineering units.
 
-Visible English-only/hardcoded surfaces include app constants (`SCOPE_NOTICE`, `LIMITATIONS_FOOTER`, default/template labels, segment-type labels), validated-case viewer, Supported Workflows page headings/body, shared layout labels, report/export prose, exception strings, and parts of diagrams/captions. Merge/diverge catalog entries were added as English fallbacks in the Thai dictionary for `nav.merge_segment`, `nav.diverge_segment`, `ramp.merge.title`, `ramp.diverge.title`, and project-file wording; these are fallback leakage, not completed Thai translation. Reports are presently English language-neutral artifacts and need an explicit product decision before translation.
+Phase 15.2 visible routes now use semantic English/Thai catalog keys for their
+worksheet, result-state, project, diagram/schematic where present, Supported
+Workflows reference, and export presentation surfaces while retaining technical
+identifiers, schemas, method IDs, units, canonical table cell values, and engine
+provenance values. Remaining English-only/hardcoded surfaces are limited to
+legacy/internal reference material such as the validated-case query route,
+exception detail strings, and intentionally language-neutral diagram/report
+fields. Merge uses the reviewed Thai title `ช่วงรวมกระแส`; Diverge uses the
+approved Thai title `ช่วงแยกกระแส`; Two-Lane Facility uses the approved Thai
+title recorded in the terminology table.
+HCM, LOS, FFS, PHF, LA/LD, file format names, and serialized keys remain
+language-neutral. Reports support localized presentation templates, but
+serialized schema keys remain language-neutral by design.
+The Supported Workflows information page now uses semantic English/Thai catalog
+keys and stable workflow identifiers for grouped navigation.
 
 ## Terminology decisions
 
@@ -37,8 +51,8 @@ Visible English-only/hardcoded surfaces include app constants (`SCOPE_NOTICE`, `
 
 ## Phase 15.2 backlog
 
-1. Move all visible constants into semantic keys; retain one catalog and named placeholders.
-2. Replace Thai English fallback entries with reviewed text above; test exact key-set and placeholders.
+1. Keep any future visible constants on semantic keys; retain one catalog and named placeholders. Two-Lane Segment, Two-Lane Facility, Multilane, Basic Freeway, Weaving, Merge, Diverge, and Supported Workflows are migrated.
+2. Replace remaining Thai English fallback entries with reviewed text above; test exact key-set and placeholders.
 3. Audit diagrams and captions for Thai wrapping, alt text, and conceptual-reference disclaimer.
 4. Map engine/project exceptions to localized presentation messages while retaining technical detail in audit output.
 5. Decide whether exports are localized; if yes, localize templates only, never serialized schema keys.

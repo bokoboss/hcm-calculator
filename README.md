@@ -13,12 +13,12 @@ remain unsupported pending Phase 5.
 
 Auditable Python calculator for bounded Highway Capacity Manual (HCM) workflows.
 
-The current v0.1 calculator-first MVP provides single-page, auditable
-worksheets for supported Two-Lane Highway, Basic Freeway Segment, and
-Multilane Segment workflows, plus a qualified HCM 7.0 Freeway Weaving Segment
-workflow. It does **not** implement general HCM facility
-analysis. Validation examples remain regression and reference evidence, and
-are intentionally hidden from product navigation.
+The current calculator-first app provides single-page, auditable worksheets for
+supported Two-Lane Segment, Two-Lane Facility, Multilane Segment, Basic Freeway
+Segment, Weaving Segment, Merge Segment, and Diverge Segment workflows, plus a
+localized Supported Workflows reference page. Validation examples remain
+regression and reference evidence, and are intentionally hidden from product
+navigation.
 
 ## Goals
 
@@ -61,9 +61,15 @@ Implemented:
 - Chapter 26 second-case inventory documenting that no additional compatible
   Multilane Highway motorized-vehicle validation case is available in the
   supplied example-problem reference
-- Streamlit Manual Single Segment Calculator, Manual Facility Calculator v0.1,
-  Manual Multilane Highway Segment v0.1, and Manual Basic Freeway Segment
-  Calculator v0.1 with a shared result summary panel
+- Streamlit single-page app with grouped navigation: Roadways, Freeways, and
+  Reference.
+- Seven calculator modes: Two-Lane Segment, Two-Lane Facility, Multilane
+  Segment, Basic Freeway Segment, Weaving Segment, Merge Segment, and Diverge
+  Segment.
+- Localized Supported Workflows reference page.
+- Shared English/Thai UI, typed result-state presentation, stale-result export
+  blocking, project save/load, and report-export surfaces for migrated visible
+  modes.
 - Manual Multilane Save/Load and CSV, Excel, Markdown, and Report JSON export
   integration using `project_type = manual_multilane_v0`
 - Manual Basic Freeway Segment Save/Load and CSV, Excel, Markdown, and Report
@@ -194,9 +200,10 @@ Run the single-page calculator from the repository root:
 streamlit run src/hcmcalc/ui/streamlit_app.py
 ```
 
-The single-page app provides six modes:
+The single-page app groups eight visible modes under Roadways, Freeways, and
+Reference:
 
-- **Manual Single Segment Calculator** accepts one straight or horizontal-curve
+- **Two-Lane Segment** accepts one straight or horizontal-curve
   Two-Lane Highway segment using Metric inputs by default or optional Imperial
   inputs. Horizontal-curve support uses the currently validated Example Problem
   2 structured-subsegment calculation path. Horizontal curve mode includes a
@@ -208,9 +215,7 @@ The single-page app provides six modes:
   engine result in the downloadable JSON. After a successful calculation, an
   **Export / Report** section provides CSV, Excel `.xlsx`, Markdown, and
   report-friendly JSON downloads.
-- **Validation Examples** remain fixture-backed regression and QA evidence;
-  they are intentionally not a product-navigation workflow.
-- **Manual Facility Calculator v0.1** is a limited template-backed facility
+- **Two-Lane Facility** is a limited template-backed facility
   workflow anchored to validated Example Problems 3 and 4. It provides a
   guarded segment table, facility and segment results, warnings, assumptions,
   audit details, CSV/Excel/Markdown/report JSON exports, downloadable result
@@ -218,7 +223,7 @@ The single-page app provides six modes:
   Save/Load JSON using `project_type = manual_facility_v0`. Segment sequence, type,
   terrain/curve context, passing-lane placement, and downstream adjustment
   context remain controlled by the selected template.
-- **Manual Multilane Highway Segment v0.1** is a bounded worksheet for
+- **Multilane Segment** is a bounded worksheet for
   one-direction Multilane Highway Segment analysis within the implemented HCM
   scope. Chapter 26 Example Problem 4 EB and WB remain optional defaults and
   regression evidence. It converts Metric inputs to engine-native Imperial
@@ -232,7 +237,7 @@ The single-page app provides six modes:
   in the selected unit system and normalized engine-native Imperial inputs.
   Reports display the selected unit system and label engine-native Imperial
   values explicitly where included.
-- **Manual Basic Freeway Segment Calculator** is a calculator-first worksheet
+- **Basic Freeway Segment** is a calculator-first worksheet
   worksheet for one-direction, one-segment uninterrupted-flow Basic Freeway
   Segment analysis within the implemented HCM7 Chapter 12 scope. It exposes
   Setup, Roadway / Geometry, Traffic, Advanced / Optional, Results, Details,
@@ -253,10 +258,9 @@ The single-page app provides six modes:
   engine-native Imperial inputs, limitations, warnings, assumptions, and any
   matching current result. Export/reporting preserves the same bounded Basic
   Basic Freeway Segment scope only.
-- **Supported Workflows** summarizes current Two-Lane Highway, Multilane
-  Highway, Basic Freeway, Save/Load, Export / Report, and validation-reference
-  scope in the app. Limitations are visible but kept secondary to the calculator
-  workflow.
+- **Weaving Segment** is a qualified HCM 7.0 isolated freeway weaving worksheet
+  with one-sided/two-sided geometry evidence, explicit handoff and
+  above-capacity states, project save/load, and current-result exports.
 - **Merge Segment** and **Diverge Segment** are visible calculator modes beside
   Basic Freeway and Weaving. They use separate project identities
   `manual_freeway_merge_segment_v1` and
@@ -265,8 +269,13 @@ The single-page app provides six modes:
   current-result-only exports. Switching display units or language does not
   change the canonical engineering case; changing calculation inputs marks the
   stored result stale and blocks exports until recalculation.
+- **Supported Workflows** summarizes supported calculators, product
+  capabilities, exports, and current method limitations in English and Thai.
+  It is a Reference mode, not a calculator.
+- **Validation Examples** remain fixture-backed regression and QA evidence;
+  they are intentionally not a product-navigation workflow.
 
-Across all four calculator workflows, a stored result is exportable only while
+Across all calculator workflows, a stored result is exportable only while
 it matches the effective normalized inputs, method identifier, and method
 contract. Changing an active input or mode makes the result stale and requires
 recalculation. Hidden inactive inputs are non-operative. Project loading
@@ -277,6 +286,10 @@ rendered from the stored engine result and preserve null/not-predicted values.
 The engine and CLI validation behavior remains based on the existing validated
 fixtures. Result JSON adds explicit method-contract metadata; engineering
 inputs and qualified numerical outputs are unchanged.
+Project schemas, fingerprints, engine contracts, and export field names remain
+compatible and language-neutral. Unit-system switches reload the visible
+worksheet values and clear that workflow's stored result/audit/fingerprint so
+localized labels cannot enter calculation state.
 
 ## Two-Lane Highway Phase 5 supported envelope
 

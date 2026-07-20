@@ -10,6 +10,7 @@ from hcmcalc.ui.manual_facility import (
     facility_template_options,
     load_facility_template,
     run_manual_facility,
+    validate_manual_facility_table,
 )
 
 
@@ -151,3 +152,27 @@ def test_facility_audit_contains_template_inputs_outputs_and_limitations() -> No
     assert audit["unsupported_behavior_notes"]
     assert audit["generated_at"]
     assert audit["app_version"]
+
+
+def test_facility_table_validation_identifies_row_and_field_without_calculating() -> None:
+    template = load_facility_template("level_example_3", "imperial")
+    rows = deepcopy(template["segments"])
+    rows[0]["segment_length"] = 0.0
+
+    summary = validate_manual_facility_table(rows)
+
+    assert summary["status"] == "invalid_numeric"
+    assert summary["blocking"] is True
+    assert any("Segment 1: segment_length" in message for message in summary["messages"])
+
+
+def test_facility_table_validation_identifies_unsupported_role_combination() -> None:
+    template = load_facility_template("level_example_3", "imperial")
+    rows = deepcopy(template["segments"])
+    rows[0]["segment_type"] = "passing_lane"
+    rows[0]["passing_lane_role"] = "none"
+
+    summary = validate_manual_facility_table(rows)
+
+    assert summary["status"] == "unsupported_scope"
+    assert any("Passing Lane segment" in message for message in summary["messages"])

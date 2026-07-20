@@ -52,8 +52,19 @@ def clear_manual_multilane_state(state: dict[str, Any]) -> None:
     """Clear result and worksheet widget state after template or unit changes."""
 
     for key in tuple(state):
-        if key.startswith("manual_multilane_input_") or key == "manual_multilane_error":
+        if (
+            key.startswith("manual_multilane_input_")
+            or key
+            in {
+                "manual_multilane_error",
+                "manual_multilane_result",
+                "manual_multilane_audit",
+            }
+        ):
             state.pop(key, None)
+    calculation_state = state.get("calculation_workflow_state")
+    if isinstance(calculation_state, dict):
+        calculation_state.pop("manual_multilane", None)
 
 
 def load_multilane_template(case_id: str) -> dict[str, Any]:

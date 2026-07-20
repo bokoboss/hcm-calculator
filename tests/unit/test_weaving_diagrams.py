@@ -100,7 +100,8 @@ def test_streamlit_weaving_reference_image_renders_on_public_page() -> None:
         str(Path(__file__).parents[2] / "src" / "hcmcalc" / "ui" / "streamlit_app.py")
     )
     app.run(timeout=30)
-    app.radio[0].set_value("Weaving Segment").run(timeout=30)
+    app.selectbox[1].set_value("freeways").run(timeout=30)
+    app.selectbox[2].set_value("manual_weaving").run(timeout=30)
 
     markdown_values = [item.value for item in app.markdown]
     caption_values = [item.value for item in app.caption]

@@ -8,6 +8,8 @@ from hcmcalc.ui.workflow_state import (
     mark_calculated,
     normalized_input_fingerprint,
     workflow_status,
+    ResultPresentationState,
+    resolve_result_presentation_state,
 )
 
 
@@ -50,3 +52,11 @@ def test_calculation_fingerprint_includes_method_and_contract() -> None:
     assert baseline == calculation_input_fingerprint(
         "multilane", "phase_8", {"demand_volume_veh_h": 900.0}
     )
+
+
+def test_result_presentation_states_distinguish_engine_failure_from_ui_errors() -> None:
+    assert resolve_result_presentation_state(freshness=READY) == ResultPresentationState.PRERUN
+    assert resolve_result_presentation_state(freshness=STALE, has_result=True) == ResultPresentationState.STALE_RESULT
+    assert resolve_result_presentation_state(freshness=CALCULATED, has_result=True, capacity_failure=True) == ResultPresentationState.CAPACITY_FAILURE
+    assert resolve_result_presentation_state(freshness=CALCULATED, stopping_or_handoff=True) == ResultPresentationState.HCM_STOPPING_OR_HANDOFF
+    assert resolve_result_presentation_state(freshness=MISSING_REQUIRED_INPUT) == ResultPresentationState.INVALID_INPUT
