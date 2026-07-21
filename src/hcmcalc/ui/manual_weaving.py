@@ -8,18 +8,17 @@ and audit assembly.  All numerical analysis is delegated to the public versioned
 from __future__ import annotations
 
 from copy import deepcopy
-from pathlib import Path
 from typing import Any
 
-from hcmcalc.cli import find_case, load_input_file
+from hcmcalc.cli import find_case
 from hcmcalc.core import HCMCalcError
 from hcmcalc.ui.input_contracts import reject_unknown_keys, require_finite_number
+from hcmcalc.ui.runtime_resources import load_packaged_yaml
 from hcmcalc.ui.units import FEET_TO_METERS, MILES_TO_KILOMETERS
 from hcmcalc.weaving import WeavingSegmentMethod
 
 
-ROOT = Path(__file__).resolve().parents[3]
-FIXTURE_PATH = ROOT / "references" / "weaving_example_inputs.yaml"
+FIXTURE_FILENAME = "weaving_example_inputs.yaml"
 WEAVING_METHOD_VERSION = "hcm_7_0"
 WEAVING_METHOD_IDENTIFIER = "weaving_segment"
 WEAVING_CALCULATION_CONTRACT = "hcm_7_0_weaving_segment_operational_v1"
@@ -68,7 +67,7 @@ def load_weaving_preset(preset_id: str) -> dict[str, Any]:
     if preset_id not in PRESET_LABELS:
         raise ValueError(f"Unsupported weaving preset: {preset_id}.")
     case_id = "WVG-CH27-001" if preset_id == "blank_custom" else preset_id
-    case = find_case(load_input_file(FIXTURE_PATH), case_id)
+    case = find_case(load_packaged_yaml(FIXTURE_FILENAME), case_id)
     return {
         "preset_id": preset_id,
         "preset_label": PRESET_LABELS[preset_id],

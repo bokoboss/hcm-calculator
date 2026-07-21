@@ -3,18 +3,17 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from pathlib import Path
 from typing import Any
 
-from hcmcalc.cli import find_case, load_input_file
+from hcmcalc.cli import find_case
 from hcmcalc.freeway import BasicFreewaySegmentMethod
 from hcmcalc.freeway.validation import DRIVER_POPULATION_FACTORS
 from hcmcalc.ui.input_contracts import reject_unknown_keys, require_finite_number
+from hcmcalc.ui.runtime_resources import load_packaged_yaml
 from hcmcalc.ui.units import MILES_TO_KILOMETERS
 
 
-ROOT = Path(__file__).resolve().parents[3]
-FIXTURE_PATH = ROOT / "references" / "freeway_example_inputs.yaml"
+FIXTURE_FILENAME = "freeway_example_inputs.yaml"
 PRESET_LABELS = {
     "BF-CH26-001": "Chapter 26 Example 1 starting values",
 }
@@ -71,7 +70,7 @@ def load_freeway_preset(case_id: str) -> dict[str, Any]:
 
     if case_id not in PRESET_LABELS:
         raise ValueError(f"Unsupported Basic Freeway preset: {case_id}.")
-    case = find_case(load_input_file(FIXTURE_PATH), case_id)
+    case = find_case(load_packaged_yaml(FIXTURE_FILENAME), case_id)
     return {
         "case_id": case_id,
         "preset_label": PRESET_LABELS[case_id],
