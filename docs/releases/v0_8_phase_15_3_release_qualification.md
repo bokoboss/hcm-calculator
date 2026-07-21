@@ -1,26 +1,26 @@
 # v0.8 Phase 15.3 Release Qualification
 
-Status: incomplete release qualification.
+Status: release-qualified locally for PR review, CI, merge, and Issue #115 closure.
 
 ## Executive Result
 
-Phase 15.3 found and fixed two installed-wheel release blockers:
+Phase 15.3 qualifies the v0.8 unified UI package from the isolated release
+worktree. The release fixed three installed/browser blockers:
 
 - Two-Lane schematic assets were not packaged in the wheel.
 - Runtime UI presets for Facility, Multilane, Basic Freeway, Weaving, Merge,
   Diverge, and the internal validation view depended on repository-relative
   `references/*.yaml` files.
+- Multilane browser edits stayed hidden inside a Streamlit form, leaving stale
+  report exports available after visible input changes.
 
-The fixed source tree passes the full local repository suite, installed package
-provenance checks, installed Streamlit HTTP startup, and installed route-open
-smoke coverage. The release is not qualified for merge/Issue #115 closure
-because the required exhaustive real-browser matrix, CI, PR review, and merge
-gates are not complete.
+The qualified source tree preserves numerical engines, project schemas,
+fingerprints, calculation contracts, report fields, presets, and support scope.
 
-## Baseline
+## Baseline And Branch
 
 - Required baseline SHA: `f16485329b451cf69cc61f9b59adb07ae3ed80d9`
-- Effective baseline SHA: `f16485329b451cf69cc61f9b59adb07ae3ed80d9`
+- Continuation HEAD before final work: `230e3c015c97534077a56be3a6b349d2a0476232`
 - Qualification branch: `codex/phase-15-3-release-qualification`
 - Worktree: `C:\Users\kittipat_t\Documents\hcm-calculator-phase-15-3`
 - Original dirty checkout: left untouched.
@@ -29,223 +29,93 @@ gates are not complete.
 
 - OS: Microsoft Windows 11 Pro 10.0.26200, 64-bit
 - Python: 3.12.10
-- Initial pip: 25.0.1
-- Qualification venv pip after upgrade: 26.1.2
 - Streamlit: 1.59.2
-- Browser automation: Python Playwright 1.61.0 using installed system Chrome.
+- Browser automation: Python Playwright 1.61.0 with installed system Chrome
 - Browser executable:
   `C:\Program Files\Google\Chrome\Application\chrome.exe`
 - Browser version: `150.0.7871.125`
 
 ## Wheel Evidence
 
-Candidate wheel after asset/resource fixes:
+Final candidate wheel:
 
-- Wheel filename: `hcm_calculator-0.7.0-py3-none-any.whl`
-- Build location:
-  `C:\Users\kittipat_t\AppData\Local\Temp\hcmcalc-phase15-3-build-current`
+- Version: `0.8.0`
+- Wheel filename: `hcm_calculator-0.8.0-py3-none-any.whl`
 - SHA-256:
-  `8d10866486ead2033c3092249cf4011f539ddd3fd7991865b8337ce54aa4d06d`
+  `4bf6a3bc2f60c890070d1e681843ef112864cd2b3fa3a542e3b5f6d274549989`
+- Installed environment:
+  `C:\Users\kittipat_t\AppData\Local\Temp\hcmcalc-phase15-3-final-wheel-0-8-0`
 
-Package-content inspection confirmed inclusion of:
+Installed-package provenance from outside the repository confirmed:
 
-- Python package modules.
-- Streamlit UI modules.
-- English/Thai i18n data in package modules.
-- Packaged runtime YAML presets under `hcmcalc/ui/data/`.
-- Weaving PNG diagrams.
-- Merge/Diverge SVG diagrams.
-- Two-Lane PNG schematics.
-- Package metadata.
-
-Package-content inspection confirmed exclusion of:
-
-- `tests/`
-- `mockups/`
-- `output/`
-- root `assets/schematics`
-
-## Installed Package Provenance
-
-Installed environment:
-`C:\Users\kittipat_t\AppData\Local\Temp\hcmcalc-phase15-3-wheel-browser`
-
-Provenance from working directory `C:\Users\kittipat_t`:
-
-- `hcmcalc.__file__`:
-  `C:\Users\kittipat_t\AppData\Local\Temp\hcmcalc-phase15-3-wheel-browser\Lib\site-packages\hcmcalc\__init__.py`
-- Streamlit app module:
-  `C:\Users\kittipat_t\AppData\Local\Temp\hcmcalc-phase15-3-wheel-browser\Lib\site-packages\hcmcalc\ui\streamlit_app.py`
-- Two-Lane schematic:
-  `...\site-packages\hcmcalc\ui\assets\two_lane\passing_constrained.png`
-- Weaving diagram:
-  `...\site-packages\hcmcalc\ui\assets\weaving\one_sided_weave.png`
-- Merge diagram:
-  `...\site-packages\hcmcalc\ui\assets\ramp_influence\merge_right_on_ramp.svg`
+- `hcmcalc.__version__ == "0.8.0"`
+- `hcmcalc.__file__` and `hcmcalc.ui.streamlit_app.__file__` resolved from
+  `site-packages`.
+- Packaged Two-Lane schematic, Weaving diagram, Merge/Diverge SVG assets, and
+  Multilane, Basic Freeway, Weaving, and Merge preset YAML resources loaded
+  from the installed package.
 
 ## Automated Results
 
-- Focused package/asset/route tests after fixes: `16 passed`
-- Streamlit AppTest suite: `68 passed`
-- Full repository suite: `1016 passed`
 - Compile check: `python -m compileall -q src tests` passed.
-- Installed AppTest route-open smoke: 8 of 8 visible routes opened from the
-  installed `site-packages` app path.
+- Focused release qualification tests:
+  `python -m pytest tests\unit\test_scaffold.py tests\unit\test_streamlit_app.py tests\unit\test_package_assets.py tests\unit\test_project_io.py tests\unit\test_reporting.py -q`
+  passed with `159 passed`.
+- Full repository suite: `python -m pytest -q` passed with `1016 passed`.
+- Final wheel build: `python -m build --wheel` passed.
+- Final installed Streamlit HTTP startup on port `8768` returned HTTP `200`.
 
-## Installed Streamlit Launch
+## Browser Evidence
 
-Command:
+The browser matrix is closed in
+`docs/ui/phase_15_3_browser_qualification_matrix.md`. Evidence is retained
+under `output/playwright/phase15_3_release_qualification/` and remains
+uncommitted.
 
-```powershell
-python -m streamlit run <site-packages>\hcmcalc\ui\streamlit_app.py --server.headless=true --server.port=8523 --server.address=127.0.0.1
-```
+Closed browser gates:
 
-Run from `C:\Users\kittipat_t`.
-
-Result:
-
-- HTTP: `200`
-- Startup log: Uvicorn server started on `127.0.0.1:8523`
-- No startup traceback observed.
-- Temporary server stopped after the check.
-
-## Browser Matrix
-
-The matrix file is
-`docs/ui/phase_15_3_browser_qualification_matrix.md`.
-
-Result: incomplete. AppTest and installed route-open smoke evidence exists, and
-partial real-browser evidence was collected with Python Playwright plus system
-Chrome.
-
-Real-browser evidence collected:
-
-- Evidence log:
-  `output/playwright/phase15_3_release_qualification/browser_evidence.jsonl`
-- Remaining-gates evidence log:
-  `output/playwright/phase15_3_release_qualification/remaining_browser_evidence.jsonl`
-- Screenshots:
-  `output/playwright/phase15_3_release_qualification/screenshots/`
-- Rows recorded: 44.
-- Passing rows: 37.
-- Failed/incomplete rows: 7.
-- 1280 px rows: 36.
-- 768 px rows: 8.
-- English rows: 36.
-- Thai rows: 8.
-- Imperial calculator rows: 7.
-- Horizontal overflow findings: none in recorded rows.
-- Console status: 43 clean rows, 1 severe row during an export sequence.
-
-Continuation evidence collected on 2026-07-20:
-
-- Unique remaining-gate rows recorded: 50.
-- Passing remaining-gate rows: 28.
-- Failed/incomplete remaining-gate rows: 22.
-- Thai Weaving one-sided stable rows passed at 1280 px and 768 px.
-- Browser project downloads passed for all seven calculators and produced
-  uncommitted JSON files under
-  `output/playwright/phase15_3_release_qualification/projects/remaining/`.
-- Browser project upload/load rows remain incomplete because the harness used
-  the wrong workflow-specific load button labels.
-- Browser state rows passed for Multilane stable, Basic Freeway stable/stale
-  and capacity failure, Merge stable/warning/capacity/stale, Diverge
-  stable/capacity/stale, Two-Lane Segment stale, Weaving handoff, and focused
-  accessibility samples for Two-Lane Segment, Weaving, Merge, and Diverge.
-- The Diverge capacity export row did not reproduce a severe browser console
-  error; the prior severe export-row observation is not yet fully classified
-  because the full export/download gate is still incomplete.
-
-Remaining browser blockers:
-
-- Thai Weaving one-sided direct calculation rows passed, but two-sided,
-  capacity-failure, and handoff rows need corrected selectors/text assertions
-  before the Thai Weaving gate can close.
-- Direct real-browser project downloads passed for all calculators, but
-  project upload/load/error qualification is not complete.
-- Direct real-browser export qualification is not complete for every
-  calculator.
-- Explicit real-browser stale, invalid, unsupported, warning-only,
-  capacity-failure, and handoff state probes are partially complete and remain
-  incomplete overall.
-- Diverge export console severity requires follow-up.
-
-## Project Qualification
-
-Automated project I/O and AppTest coverage passed for current-result restore,
-wrong-type rejection, malformed project handling, stale-result protection, and
-locale restoration across the implemented visible calculators. Full release
-project compatibility remains incomplete until direct installed-browser project
-upload/load/error checks are completed. A second browser pass successfully
-downloaded project JSON for all seven calculators, but upload/load rows did not
-complete because the automation used incorrect workflow-specific load labels.
-
-## Export Qualification
-
-Automated export/report tests and AppTests passed for CSV, Excel, Markdown, and
-report JSON exposure on current results, plus stale-result export blocking.
-Browser export automation captured and inspected Facility CSV, Excel, Markdown,
-and report JSON files only. Other calculator export rows were attempted but did
-not produce reliable downloadable artifacts, so full release export
-qualification remains incomplete.
-
-## Launcher Qualification
-
-`setup_app.bat`, `setup_app.ps1`, `run_app.bat`, and `run_app.ps1` were
-reviewed. They preserve the documented source-checkout local workflow and do
-not create an executable installer. Automated launcher execution was not
-completed in this pass; shell policy blocked the attempted background launcher
-process checks. Do not claim wheel-only launcher support because the scripts
-depend on repository files.
+- Thai Weaving two-sided, capacity-failure, and long-segment handoff rows
+  passed at 1280 px and 768 px.
+- Project upload/load/error rows passed for all seven calculators: valid
+  current-result project, stale-result project, wrong-type project, and
+  malformed JSON project.
+- Current-result report downloads with content inspection passed for all seven
+  calculators. Weaving was recaptured on 2026-07-21 from the installed wheel at
+  `continuation/downloads/weaving_recapture_hcm_ch13_weaving_segment_report_20260721_032755.json`.
+- Stale export blocking passed in the real browser for Two-Lane Segment,
+  Weaving, Merge, Diverge, Basic Freeway, and Multilane. Facility stale export
+  blocking remains covered by AppTest because Streamlit's canvas-backed data
+  editor is not safely mutable at cell level through the browser harness.
+- Diverge report-export console follow-up passed three repeated report JSON
+  downloads with no severe console entries; the earlier severe observation was
+  not reproduced.
+- `run_app.bat` and `run_app.ps1` returned HTTP `200` from the release
+  worktree and terminated cleanly. A copied launcher in a path containing
+  spaces produced the documented missing-`.venv` failure message.
+- Final wheel route-open browser smoke passed for all eight visible modes with
+  no horizontal overflow in recorded rows.
 
 ## Accessibility Review
 
-Automated and code-level review confirmed typed textual result states,
-diagram captions/alternatives in the implemented UI paths, specific button
-labels, and table headings in AppTest-covered surfaces. Partial real-browser
-sampling confirmed navigation and primary controls render at 1280 px and
-768 px without horizontal overflow in recorded rows. Full keyboard/focus and
-state-specific accessibility review remains incomplete. A focused browser
-sample passed for Two-Lane Segment, Weaving, Merge, and Diverge; Facility and
-Supported Workflows need corrected expectations because Facility uses a
-workflow-specific calculate label and Supported Workflows has no calculate
-action by design.
+Focused browser accessibility sampling passed for Two-Lane Segment, Weaving,
+Merge, Diverge, Supported Workflows, and Facility at 768 px where applicable:
+navigation and primary controls were keyboard reachable, no focus trap was
+observed, state panels used text rather than color-only signaling, and page
+horizontal overflow was not observed.
 
-## Defects Found And Fixed
-
-- Blocker fixed: Two-Lane schematic assets were source-tree-only and absent
-  from the wheel.
-- Blocker fixed: UI preset YAML files were source-tree-only and caused raw
-  tracebacks when installed Weaving/Merge/Diverge routes opened outside the
-  repository.
-
-Regression tests added:
-
-- `tests/unit/test_package_assets.py`
-
-## Unresolved Findings
-
-- Real-browser matrix is partially collected with Python Playwright, but
-  remains incomplete.
-- Project browser downloads passed; upload/load/error qualification remains
-  incomplete.
-- Export browser qualification remains incomplete beyond prior Facility
-  evidence and selected state-export attempts.
-- Launcher execution remains incomplete.
-- Final version bump to `0.8.0` remains blocked.
-- Merge and Issue #115 closure are blocked.
+Facility limitation: the Streamlit data editor is canvas-backed. Browser
+automation verified keyboard traversal into the grid and meaningful surrounding
+table/section text, but cell-level semantics and mutation remain framework
+provided. This is not a WCAG certification.
 
 ## Compatibility Statement
 
 No numerical engine formulas, project schemas, fingerprints, result contracts,
 export fields, presets, or support scope were intentionally changed. The code
-changes only move runtime assets and preset data into packaged resources and
-resolve them from the installed package.
+changes only package runtime resources and make Multilane browser input edits
+participate in the same freshness model as the other calculator worksheets.
 
 ## Release Recommendation
 
-Do not merge or close Issue #115 yet. Continue Phase 15.3 by correcting the
-remaining browser automation selectors, completing project upload/load,
-all-calculator exports, launcher execution, and accessibility review, then
-rerun the clean wheel-installed gate. Keep PR #118 as draft with `Refs #115`
-until all gates pass, and only use `Closes #115` after completion.
+Proceed with PR #118 review/ready-for-review, CI, merge, and Issue #115 closure
+after the pushed branch receives a passing GitHub Actions run.

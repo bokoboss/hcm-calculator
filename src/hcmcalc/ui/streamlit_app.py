@@ -1248,7 +1248,7 @@ def render_manual_multilane_calculator() -> None:
             key=ffs_source_key,
             help=_multilane_text("ffs_source_help"),
         )
-        with st.form(f"multilane_form_{template_id}"):
+        with st.container():
             render_section_label(_multilane_text("geometry"))
             roadway_columns = st.columns(2)
             number_of_lanes = roadway_columns[0].number_input(
@@ -1389,7 +1389,7 @@ def render_manual_multilane_calculator() -> None:
                     )
             render_section_label(_multilane_text("advanced"))
             st.caption(_multilane_text("driver_population_caption"))
-            run_multilane = st.form_submit_button(
+            run_multilane = st.button(
                 _multilane_text("calculate"), type="primary", width="stretch"
             )
 
