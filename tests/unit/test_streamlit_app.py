@@ -1,4 +1,5 @@
 import json
+import math
 import os
 from pathlib import Path
 
@@ -720,6 +721,39 @@ def test_two_lane_facility_streamlit_stable_english_result_and_exports() -> None
     assert any(button.label == "Download Excel" for button in app.download_button)
     assert any(button.label == "Download Markdown" for button in app.download_button)
     assert any(button.label == "Download Report JSON" for button in app.download_button)
+    audit_rows = app.session_state["manual_facility_audit"]["facility_inputs"]["segments"]
+    assert all(
+        row["opposing_direction_volume_veh_h"] is None
+        for row in audit_rows
+        if row["segment_type"] != "passing_zone"
+    )
+    json.dumps(app.session_state["manual_facility_audit"], allow_nan=False)
+
+
+def test_two_lane_facility_default_app_calculates_with_inactive_opposing_nan() -> None:
+    app = _open_facility_app()
+    editor_key = _facility_editor_key(app)
+    app.session_state[editor_key] = {
+        "edited_rows": {
+            0: {"opposing_direction_volume_veh_h": math.nan},
+            1: {"opposing_direction_volume_veh_h": math.nan},
+            2: {"opposing_direction_volume_veh_h": math.nan},
+        },
+        "added_rows": [],
+        "deleted_rows": [],
+    }
+
+    app.button[1].click().run()
+
+    assert not app.exception
+    assert "Weighted average speed" in {metric.label for metric in app.metric}
+    audit_rows = app.session_state["manual_facility_audit"]["facility_inputs"]["segments"]
+    json.dumps(audit_rows, allow_nan=False)
+    assert all(
+        row["opposing_direction_volume_veh_h"] is None
+        for row in audit_rows
+        if row["segment_type"] != "passing_zone"
+    )
 
 
 def test_two_lane_facility_thai_result_has_localized_visible_surfaces() -> None:

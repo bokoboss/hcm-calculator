@@ -173,10 +173,16 @@ def validate_manual_facility_table(rows: list[dict[str, Any]] | Any) -> dict[str
             messages.append(
                 f"Segment {segment_label}: downstream_affected requires an upstream Passing Lane segment."
             )
-        if segment_type == "passing_zone" and _is_blank(row.get("opposing_direction_volume_veh_h")):
-            messages.append(
-                f"Segment {segment_label}: passing_zone requires opposing_direction_volume_veh_h."
-            )
+        if segment_type == "passing_zone":
+            opposing_volume = row.get("opposing_direction_volume_veh_h")
+            if _is_blank(opposing_volume):
+                messages.append(
+                    f"Segment {segment_label}: passing_zone requires opposing_direction_volume_veh_h."
+                )
+            elif _parse_float(opposing_volume) is None:
+                messages.append(
+                    f"Segment {segment_label}: opposing_direction_volume_veh_h must be finite numeric."
+                )
 
         for field in numeric_positive:
             _validate_numeric_field(messages, row, segment_label, field, positive=True)
@@ -239,6 +245,27 @@ def run_manual_facility(
     return TwoLaneHighwayChapter15Method().calculate_facility(engine_inputs)
 
 
+def canonicalize_manual_facility_rows(rows: list[dict[str, Any]] | Any) -> list[dict[str, Any]]:
+    """Return facility rows with inactive optional numeric cells neutralized."""
+
+    canonical_rows: list[dict[str, Any]] = []
+    for row in _records(rows):
+        if not isinstance(row, dict):
+            canonical_rows.append(row)
+            continue
+        canonical = dict(row)
+        segment_type = str(canonical.get("segment_type", "")).strip()
+        opposing_volume = canonical.get("opposing_direction_volume_veh_h")
+        if segment_type != "passing_zone":
+            canonical["opposing_direction_volume_veh_h"] = None
+        elif _parse_float(opposing_volume) is not None:
+            canonical["opposing_direction_volume_veh_h"] = float(opposing_volume)
+        elif _is_blank(opposing_volume):
+            canonical["opposing_direction_volume_veh_h"] = None
+        canonical_rows.append(canonical)
+    return canonical_rows
+
+
 def build_manual_facility_inputs(
     template_id: str,
     rows: list[dict[str, Any]],
@@ -252,7 +279,7 @@ def build_manual_facility_inputs(
 
     template = _template_definition(template_id)
     unit_system = _normalize_unit_system(unit_system)
-    rows = _records(rows)
+    rows = canonicalize_manual_facility_rows(rows)
     if not rows:
         raise HCMCalcError("Facility requires at least one segment row.")
     normalized_segments: list[dict[str, Any]] = []
@@ -279,8 +306,14 @@ def build_manual_facility_inputs(
             }
         except (TypeError, ValueError) as exc:
             raise HCMCalcError(f"Facility segment {row.get('segment_id', index)} has invalid numeric input.") from exc
-        if row.get("opposing_direction_volume_veh_h") not in (None, ""):
-            normalized["opposing_direction_volume_veh_h"] = float(row["opposing_direction_volume_veh_h"])
+        opposing_volume = row.get("opposing_direction_volume_veh_h")
+        if row["segment_type"] == "passing_zone":
+            parsed_opposing_volume = _parse_float(opposing_volume)
+            if parsed_opposing_volume is None:
+                raise HCMCalcError(
+                    f"Facility segment {row.get('segment_id', index)} opposing_direction_volume_veh_h must be finite numeric for passing_zone."
+                )
+            normalized["opposing_direction_volume_veh_h"] = parsed_opposing_volume
         normalized_segments.append(normalized)
     return {
         "facility_id": template_id,
@@ -341,7 +374,7 @@ def build_manual_facility_audit_record(
     """Build a JSON-ready audit record for a facility submission."""
 
     template = _template_definition(template_id)
-    rows = _records(rows)
+    rows = canonicalize_manual_facility_rows(rows)
     try:
         normalized_inputs = build_manual_facility_inputs(template_id, rows, unit_system)
     except HCMCalcError:
@@ -497,7 +530,12 @@ def _records(rows: Any) -> list[dict[str, Any]]:
 
 
 def _is_blank(value: Any) -> bool:
-    return value is None or (isinstance(value, str) and not value.strip())
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return True
+    try:
+        return not isfinite(float(value))
+    except (TypeError, ValueError):
+        return False
 
 
 def _parse_float(value: Any) -> float | None:

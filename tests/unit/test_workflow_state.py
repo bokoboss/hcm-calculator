@@ -1,3 +1,6 @@
+import math
+
+from hcmcalc.ui.manual_facility import canonicalize_manual_facility_rows
 from hcmcalc.ui.workflow_state import (
     CALCULATED,
     MISSING_REQUIRED_INPUT,
@@ -19,6 +22,58 @@ def test_fingerprint_is_deterministic_and_does_not_mutate_inputs() -> None:
 
     assert normalized_input_fingerprint(inputs) == normalized_input_fingerprint(equivalent)
     assert inputs == {"speed": 55.0, "segments": [{"id": 1, "length": 1.5}]}
+
+
+def test_facility_fingerprint_ignores_inactive_opposing_nan_after_canonicalization() -> None:
+    rows_with_nan = canonicalize_manual_facility_rows(
+        [
+            {
+                "segment_id": 1,
+                "segment_type": "passing_constrained",
+                "opposing_direction_volume_veh_h": math.nan,
+            },
+            {
+                "segment_id": 2,
+                "segment_type": "passing_zone",
+                "opposing_direction_volume_veh_h": 500.0,
+            },
+        ]
+    )
+    rows_without_nan = canonicalize_manual_facility_rows(
+        [
+            {
+                "segment_id": 1,
+                "segment_type": "passing_constrained",
+                "opposing_direction_volume_veh_h": None,
+            },
+            {
+                "segment_id": 2,
+                "segment_type": "passing_zone",
+                "opposing_direction_volume_veh_h": 500.0,
+            },
+        ]
+    )
+    changed_active = canonicalize_manual_facility_rows(
+        [
+            {
+                "segment_id": 1,
+                "segment_type": "passing_constrained",
+                "opposing_direction_volume_veh_h": math.nan,
+            },
+            {
+                "segment_id": 2,
+                "segment_type": "passing_zone",
+                "opposing_direction_volume_veh_h": 575.0,
+            },
+        ]
+    )
+
+    assert normalized_input_fingerprint(rows_with_nan) == normalized_input_fingerprint(
+        rows_without_nan
+    )
+    assert normalized_input_fingerprint(rows_with_nan) != normalized_input_fingerprint(
+        changed_active
+    )
 
 
 def test_workflow_status_transitions_are_session_scoped() -> None:
