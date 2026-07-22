@@ -12,6 +12,7 @@ from hcmcalc.ui.curve_editor import validate_curve_setup
 from hcmcalc.ui.manual_facility import (
     FACILITY_TEMPLATES,
     build_manual_facility_inputs,
+    canonicalize_manual_facility_rows,
     load_facility_template,
 )
 from hcmcalc.ui.manual_freeway import (
@@ -210,7 +211,7 @@ def create_manual_facility_project_payload(
     """Create a JSON-ready guarded manual facility project payload."""
 
     template = load_facility_template(template_id, unit_system)
-    segment_rows = _json_ready(segment_rows)
+    segment_rows = _json_ready(canonicalize_manual_facility_rows(segment_rows))
     normalized_inputs = build_manual_facility_inputs(
         template_id, segment_rows, unit_system
     )
@@ -288,6 +289,7 @@ def load_manual_facility_project_json(data: str | bytes) -> dict[str, Any]:
         raise ProjectFileError("Missing required field: segment_rows.")
     if not isinstance(payload["segment_rows"], list):
         raise ProjectFileError("Malformed segment rows: expected a list.")
+    payload["segment_rows"] = canonicalize_manual_facility_rows(payload["segment_rows"])
     try:
         normalized_inputs = build_manual_facility_inputs(
             payload["template_id"], payload["segment_rows"], payload["unit_system"]

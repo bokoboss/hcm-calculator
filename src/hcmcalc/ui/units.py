@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from math import isfinite
 from typing import Any
 
 from hcmcalc.core import HCMCalcError
@@ -279,16 +280,30 @@ def _convert_horizontal_subsegments(
             {
                 "type": subsegment.get("type"),
                 "length_ft": _optional_scaled_value(subsegment.get("length"), factor),
-                "superelevation_percent": subsegment.get("superelevation_percent"),
+                "superelevation_percent": _optional_finite_value(
+                    subsegment.get("superelevation_percent")
+                ),
                 "radius_ft": _optional_scaled_value(subsegment.get("radius"), factor),
-                "central_angle_deg": subsegment.get("central_angle_deg"),
-                "horizontal_class": subsegment.get("horizontal_class"),
+                "central_angle_deg": _optional_finite_value(
+                    subsegment.get("central_angle_deg")
+                ),
+                "horizontal_class": _optional_finite_value(
+                    subsegment.get("horizontal_class")
+                ),
             }
         )
     return converted
 
 
 def _optional_scaled_value(value: Any, factor: float) -> float | None:
+    numeric = _optional_finite_value(value)
+    if numeric is None:
+        return None
+    return numeric * factor
+
+
+def _optional_finite_value(value: Any) -> float | None:
     if value is None:
         return None
-    return float(value) * factor
+    numeric = float(value)
+    return numeric if isfinite(numeric) else None

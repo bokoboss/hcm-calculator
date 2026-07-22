@@ -1,4 +1,5 @@
 import json
+import math
 
 import pytest
 
@@ -306,6 +307,42 @@ def test_manual_facility_project_payload_contains_auditable_context() -> None:
     assert payload["normalized_facility_inputs"]["segments"]
     assert payload["unsupported_behavior_notes"]
     assert payload["app_version"]
+
+
+def test_manual_facility_project_save_canonicalizes_inactive_nan_opposing_volume() -> None:
+    template = load_facility_template("level_example_3", "metric")
+    rows = [dict(row) for row in template["segments"]]
+    rows[0]["opposing_direction_volume_veh_h"] = math.nan
+
+    project_json = create_manual_facility_project_json(
+        template["template_id"], template["unit_system"], rows
+    )
+    payload = json.loads(project_json)
+
+    json.dumps(payload, allow_nan=False)
+    assert payload["segment_rows"][0]["opposing_direction_volume_veh_h"] is None
+    assert payload["editable_facility_inputs"]["segments"][0][
+        "opposing_direction_volume_veh_h"
+    ] is None
+    assert "opposing_direction_volume_veh_h" not in payload[
+        "normalized_facility_inputs"
+    ]["segments"][0]
+
+
+def test_manual_facility_project_load_canonicalizes_legacy_inactive_nan() -> None:
+    template = load_facility_template("level_example_3", "metric")
+    payload = create_manual_facility_project_payload(
+        template["template_id"], template["unit_system"], template["segments"]
+    )
+    payload["segment_rows"][0]["opposing_direction_volume_veh_h"] = math.nan
+
+    loaded = load_manual_facility_project_json(json.dumps(payload))
+
+    json.dumps(loaded["segment_rows"], allow_nan=False)
+    assert loaded["segment_rows"][0]["opposing_direction_volume_veh_h"] is None
+    assert "opposing_direction_volume_veh_h" not in loaded[
+        "normalized_facility_inputs"
+    ]["segments"][0]
 
 
 def test_facility_loader_discards_stale_stored_result() -> None:

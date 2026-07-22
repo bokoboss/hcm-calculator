@@ -1,4 +1,5 @@
 import json
+import math
 from io import BytesIO
 from pathlib import Path
 
@@ -259,6 +260,31 @@ def test_facility_csv_contains_segment_result_rows() -> None:
     assert "Segment Results" in csv_text
     assert "Segment ID,Segment type,Length (mi)" in csv_text
     assert csv_text.count("passing_constrained") >= 1
+
+
+def test_facility_report_exports_do_not_emit_inactive_opposing_nan() -> None:
+    template = load_facility_template("level_example_3", "metric")
+    rows = [dict(row) for row in template["segments"]]
+    rows[0]["opposing_direction_volume_veh_h"] = math.nan
+    result = run_manual_facility(template["template_id"], rows, template["unit_system"])
+    audit = build_manual_facility_audit_record(
+        template["template_id"], rows, template["unit_system"], result=result
+    )
+    report = build_report(
+        "manual_two_lane_facility_v1",
+        result_to_dict(result),
+        template["unit_system"],
+        inputs=audit["facility_inputs"]["segments"],
+        audit_record=audit,
+        template_id=template["template_id"],
+    )
+
+    exported_json = export_report(report, "json")
+    exported_csv = export_report(report, "csv")
+
+    json.dumps(json.loads(exported_json), allow_nan=False)
+    assert "nan" not in exported_json.lower()
+    assert "nan" not in exported_csv.lower()
 
 
 def test_multilane_metric_and_imperial_exports_use_selected_display_units() -> None:

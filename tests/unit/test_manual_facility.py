@@ -1,4 +1,5 @@
 from copy import deepcopy
+import math
 
 import pytest
 
@@ -6,6 +7,7 @@ from hcmcalc.core import HCMCalcError
 from hcmcalc.ui.manual_facility import (
     build_manual_facility_audit_record,
     build_manual_facility_inputs,
+    canonicalize_manual_facility_rows,
     facility_segment_result_rows,
     facility_template_options,
     load_facility_template,
@@ -176,3 +178,65 @@ def test_facility_table_validation_identifies_unsupported_role_combination() -> 
 
     assert summary["status"] == "unsupported_scope"
     assert any("Passing Lane segment" in message for message in summary["messages"])
+
+
+def test_inactive_opposing_volume_nan_is_canonicalized_out_of_facility_inputs() -> None:
+    template = load_facility_template("level_example_3", "metric")
+    rows = deepcopy(template["segments"])
+    for row in rows:
+        if row["segment_type"] != "passing_zone":
+            row["opposing_direction_volume_veh_h"] = math.nan
+
+    canonical_rows = canonicalize_manual_facility_rows(rows)
+    engine_inputs = build_manual_facility_inputs(
+        template["template_id"], rows, template["unit_system"]
+    )
+    audit = build_manual_facility_audit_record(
+        template["template_id"], rows, template["unit_system"]
+    )
+
+    assert all(
+        row["opposing_direction_volume_veh_h"] is None
+        for row in canonical_rows
+        if row["segment_type"] != "passing_zone"
+    )
+    assert all(
+        "opposing_direction_volume_veh_h" not in segment
+        for segment in engine_inputs["segments"]
+        if segment["segment_type"] != "passing_zone"
+    )
+    assert all(
+        row["opposing_direction_volume_veh_h"] is None
+        for row in audit["facility_inputs"]["segments"]
+        if row["segment_type"] != "passing_zone"
+    )
+
+
+def test_passing_zone_opposing_volume_remains_active_and_finite() -> None:
+    template = load_facility_template("level_example_3", "imperial")
+    rows = deepcopy(template["segments"])
+    rows[3]["opposing_direction_volume_veh_h"] = 575.0
+
+    canonical_rows = canonicalize_manual_facility_rows(rows)
+    engine_inputs = build_manual_facility_inputs(
+        template["template_id"], rows, template["unit_system"]
+    )
+
+    assert canonical_rows[3]["opposing_direction_volume_veh_h"] == 575.0
+    assert engine_inputs["segments"][3]["opposing_direction_volume_veh_h"] == 575.0
+
+
+def test_passing_zone_nonfinite_opposing_volume_is_rejected_with_field_message() -> None:
+    template = load_facility_template("level_example_3", "imperial")
+    rows = deepcopy(template["segments"])
+    rows[3]["opposing_direction_volume_veh_h"] = math.nan
+
+    summary = validate_manual_facility_table(rows)
+
+    assert summary["blocking"] is True
+    assert any(
+        "Segment 4: passing_zone requires opposing_direction_volume_veh_h." == message
+        for message in summary["messages"]
+    )
+    with pytest.raises(HCMCalcError, match="opposing_direction_volume_veh_h"):
+        run_manual_facility(template["template_id"], rows, template["unit_system"])
