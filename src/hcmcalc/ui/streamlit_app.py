@@ -17,6 +17,7 @@ from hcmcalc.ui.curve_editor import (
 )
 from hcmcalc.ui.manual_facility import (
     build_manual_facility_audit_record,
+    canonicalize_manual_facility_rows,
     clear_manual_facility_result_state,
     facility_segment_result_rows,
     facility_template_options,
@@ -3319,6 +3320,7 @@ def render_manual_facility_calculator() -> None:
                 "horizontal_alignment_subsegments": None,
             },
         )
+        canonical_edited_rows = canonicalize_manual_facility_rows(edited_rows)
         render_section_label(_facility_text("table_guidance"))
         validation_summary = validate_manual_facility_table(edited_rows)
         validation_message = _facility_text(f"validation.{validation_summary['status']}")
@@ -3347,7 +3349,7 @@ def render_manual_facility_calculator() -> None:
         facility_workflow_inputs = {
             "template_id": template_id,
             "unit_system": unit_system,
-            "segment_rows": edited_rows,
+            "segment_rows": canonical_edited_rows,
         }
         facility_is_current = render_calculation_status(
             "manual_facility", facility_workflow_inputs, status_placeholder
@@ -3355,18 +3357,18 @@ def render_manual_facility_calculator() -> None:
     if calculate:
         clear_manual_facility_result_state(st.session_state)
         try:
-            result = run_manual_facility(template_id, edited_rows, unit_system)
+            result = run_manual_facility(template_id, canonical_edited_rows, unit_system)
             st.session_state["manual_facility_result"] = result_to_dict(result)
             st.session_state["manual_facility_result_context"] = (
                 template_id,
                 unit_system,
             )
             st.session_state["manual_facility_result_rows"] = facility_segment_result_rows(
-                result, edited_rows
+                result, canonical_edited_rows
             )
             st.session_state["manual_facility_audit"] = (
                 build_manual_facility_audit_record(
-                    template_id, edited_rows, unit_system, result=result
+                    template_id, canonical_edited_rows, unit_system, result=result
                 )
             )
             mark_calculated(
@@ -3387,7 +3389,7 @@ def render_manual_facility_calculator() -> None:
             )
             st.session_state["manual_facility_audit"] = (
                 build_manual_facility_audit_record(
-                    template_id, edited_rows, unit_system, error=exc
+                    template_id, canonical_edited_rows, unit_system, error=exc
                 )
             )
         except Exception as exc:  # pragma: no cover - defensive UI boundary
@@ -3405,7 +3407,7 @@ def render_manual_facility_calculator() -> None:
             st.caption(_facility_text("not_supported"))
         st.markdown(f"**{_facility_text('results')}**")
         render_manual_facility_result_panel(
-            template_id, unit_system, edited_rows, template, facility_is_current
+            template_id, unit_system, canonical_edited_rows, template, facility_is_current
         )
 
 
@@ -3712,6 +3714,7 @@ def _render_manual_facility_project_file_controls(
     """Render guarded facility project save controls."""
 
     stored_audit = st.session_state.get("manual_facility_audit")
+    segment_rows = canonicalize_manual_facility_rows(segment_rows)
     calculation_matches_inputs = (
         isinstance(stored_audit, dict)
         and stored_audit.get("template_id") == template_id
