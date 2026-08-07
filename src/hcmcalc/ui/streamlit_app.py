@@ -1195,6 +1195,22 @@ def render_manual_multilane_calculator() -> None:
         st.success(load_message)
 
     render_page_header(_multilane_text("title"), _multilane_text("subtitle"))
+    st.markdown(
+        """
+        <style>
+        div.st-key-manual_multilane_calculate button[data-testid="stBaseButton-primary"] {
+            background-color: #245b86 !important;
+            border-color: #245b86 !important;
+            color: #ffffff !important;
+        }
+        div.st-key-manual_multilane_calculate button[data-testid="stBaseButton-primary"]:hover {
+            background-color: #1d4a6e !important;
+            border-color: #1d4a6e !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
     status_placeholder = st.empty()
     input_column, result_column = render_calculator_shell()
     template_options = multilane_template_options(include_blank=True)
@@ -1504,11 +1520,12 @@ def render_manual_multilane_calculator() -> None:
             "manual_multilane", multilane_workflow_inputs, status_placeholder
         )
         prior_result_exists = st.session_state.get("manual_multilane_result") is not None
-        run_multilane = st.button(
-            _multilane_text("recalculate" if prior_result_exists else "calculate"),
-            type="primary",
-            width="stretch",
-        )
+        with st.container(key="manual_multilane_calculate"):
+            run_multilane = st.button(
+                _multilane_text("recalculate" if prior_result_exists else "calculate"),
+                type="primary",
+                width="stretch",
+            )
 
         def render_multilane_project_download() -> None:
             stored_audit = st.session_state.get("manual_multilane_audit")

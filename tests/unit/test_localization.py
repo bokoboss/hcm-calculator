@@ -60,6 +60,13 @@ def test_multilane_task_copy_is_bilingual_and_adapter_values_are_canonical() -> 
         for locale in SUPPORTED_LOCALES:
             assert translate(key, locale) != key
 
+    english_scope = translate("multilane.composition_scope", "en")
+    thai_scope = translate("multilane.composition_scope", "th")
+    assert "within the heavy-vehicle portion of total traffic" in english_scope
+    assert "not another percentage of total traffic" in english_scope
+    assert "ภายในกลุ่มยานพาหนะหนักของปริมาณจราจรรวม" in thai_scope
+    assert "ไม่ใช่สัดส่วนอีกค่าหนึ่งของปริมาณจราจรรวม" in thai_scope
+
     template = load_multilane_template("MLH-CH26-004-EB")["inputs"]
     values = multilane_template_ui_inputs("MLH-CH26-004-EB", "imperial")
     values.update(
