@@ -13,17 +13,32 @@ from hcmcalc.ui.units import FEET_TO_METERS, MILES_TO_KILOMETERS
 
 
 FIXTURE_FILENAME = "multilane_example_inputs.yaml"
+BLANK_CASE_ID = "blank_custom"
+BLANK_CASE_LABEL = "Blank case"
 TEMPLATE_LABELS = {
+    BLANK_CASE_ID: BLANK_CASE_LABEL,
     "MLH-CH26-004-EB": "Chapter 26 Example 4 - Eastbound starting values",
     "MLH-CH26-004-WB": "Chapter 26 Example 4 - Westbound starting values",
 }
 SUPPORTED_UNIT_SYSTEMS = {"metric", "imperial"}
+HEAVY_VEHICLE_ADJUSTMENT_METHODS = {
+    "general_terrain",
+    "specific_grade",
+    "external_pce",
+}
+DEFAULT_TRUCK_MIX = "default_30_sut_70_tt"
+SUPPORTED_TRUCK_MIXES = (
+    "default_30_sut_70_tt",
+    "equal_50_sut_50_tt",
+    "majority_70_sut_30_tt",
+)
 MULTILANE_UI_INPUT_KEYS = {
     "number_of_lanes", "segment_length", "ffs_source", "free_flow_speed",
     "posted_speed_limit", "lane_width", "roadside_lateral_clearance",
     "left_side_lateral_clearance", "access_point_density", "median_type",
     "demand_volume_veh_h", "peak_hour_factor", "heavy_vehicle_percent",
     "grade_percent", "terrain_type", "truck_mix", "pce_mode",
+    "heavy_vehicle_adjustment_method",
     "passenger_car_equivalent",
 }
 MANUAL_MULTILANE_CALCULATION_TYPE = "manual_multilane_v1"
@@ -41,10 +56,17 @@ MANUAL_MULTILANE_LIMITATIONS = [
 ]
 
 
-def multilane_template_options() -> dict[str, str]:
-    """Return the two validated Multilane starter templates."""
+def multilane_template_options(*, include_blank: bool = False) -> dict[str, str]:
+    """Return validated Multilane starter templates, optionally including blank."""
 
-    return dict(TEMPLATE_LABELS)
+    options = {
+        case_id: label
+        for case_id, label in TEMPLATE_LABELS.items()
+        if case_id != BLANK_CASE_ID
+    }
+    if include_blank:
+        options[BLANK_CASE_ID] = BLANK_CASE_LABEL
+    return options
 
 
 def clear_manual_multilane_state(state: dict[str, Any]) -> None:
@@ -71,6 +93,20 @@ def load_multilane_template(case_id: str) -> dict[str, Any]:
 
     if case_id not in TEMPLATE_LABELS:
         raise ValueError(f"Unsupported Multilane template: {case_id}.")
+    if case_id == BLANK_CASE_ID:
+        # Blank is a UI starter, not a new methodology fixture.  Keep the
+        # validated example's static facility contract as the engine base while
+        # leaving all user-entered values empty at the UI boundary.
+        case = find_case(load_packaged_yaml(FIXTURE_FILENAME), "MLH-CH26-004-EB")
+        inputs = deepcopy(case["inputs"])
+        inputs["case_id"] = BLANK_CASE_ID
+        return {
+            "case_id": case_id,
+            "template_label": BLANK_CASE_LABEL,
+            "description": "Blank Multilane worksheet.",
+            "validation_status": "ui_starter_only",
+            "inputs": inputs,
+        }
     case = find_case(load_packaged_yaml(FIXTURE_FILENAME), case_id)
     return {
         "case_id": case_id,
@@ -78,6 +114,29 @@ def load_multilane_template(case_id: str) -> dict[str, Any]:
         "description": case["description"],
         "validation_status": case["validation_status"],
         "inputs": deepcopy(case["inputs"]),
+    }
+
+
+def multilane_blank_ui_inputs() -> dict[str, Any]:
+    """Return empty task inputs for the blank worksheet starter."""
+
+    return {
+        "number_of_lanes": None,
+        "segment_length": None,
+        "demand_volume_veh_h": None,
+        "peak_hour_factor": None,
+        "heavy_vehicle_percent": None,
+        "ffs_source": "estimated",
+        "posted_speed_limit": None,
+        "lane_width": None,
+        "roadside_lateral_clearance": None,
+        "median_type": "twltl",
+        "access_point_density": None,
+        "heavy_vehicle_adjustment_method": "general_terrain",
+        "terrain_type": "level",
+        "grade_percent": None,
+        "truck_mix": DEFAULT_TRUCK_MIX,
+        "passenger_car_equivalent": None,
     }
 
 
@@ -165,6 +224,13 @@ def multilane_ui_inputs_to_engine(
     reject_unknown_keys(values, MULTILANE_UI_INPUT_KEYS, "Multilane UI")
     metric = _normalize_unit_system(unit_system) == "metric"
     ffs_source = values.get("ffs_source", template_inputs.get("ffs_source", "estimated"))
+    adjustment_method = values.get("heavy_vehicle_adjustment_method")
+    legacy_ui_contract = adjustment_method is None
+    if adjustment_method is not None and adjustment_method not in HEAVY_VEHICLE_ADJUSTMENT_METHODS:
+        raise ValueError(
+            "heavy_vehicle_adjustment_method must be general_terrain, "
+            "specific_grade, or external_pce."
+        )
     pce_mode = values.get(
         "pce_mode",
         "external" if values.get("passenger_car_equivalent") is not None else "internal",
@@ -175,9 +241,11 @@ def multilane_ui_inputs_to_engine(
         raise ValueError("pce_mode must be internal or external.")
     for name in (
         "number_of_lanes", "segment_length", "demand_volume_veh_h",
-        "peak_hour_factor", "heavy_vehicle_percent", "grade_percent",
+        "peak_hour_factor", "heavy_vehicle_percent",
     ):
-        require_finite_number(name, values[name])
+        require_finite_number(name, values.get(name))
+    if legacy_ui_contract or adjustment_method == "specific_grade":
+        require_finite_number("grade_percent", values.get("grade_percent"))
     if ffs_source == "estimated":
         for name in (
             "posted_speed_limit", "lane_width", "roadside_lateral_clearance",
@@ -188,7 +256,9 @@ def multilane_ui_inputs_to_engine(
             require_finite_number("left_side_lateral_clearance", values.get("left_side_lateral_clearance"))
     else:
         require_finite_number("free_flow_speed", values.get("free_flow_speed"))
-    if pce_mode == "external":
+    if legacy_ui_contract and pce_mode == "external":
+        require_finite_number("passenger_car_equivalent", values.get("passenger_car_equivalent"))
+    if adjustment_method == "external_pce":
         require_finite_number("passenger_car_equivalent", values.get("passenger_car_equivalent"))
     engine_inputs = {
         **template_inputs,
@@ -221,7 +291,11 @@ def multilane_ui_inputs_to_engine(
         "demand_volume_veh_h": float(values["demand_volume_veh_h"]),
         "peak_hour_factor": float(values["peak_hour_factor"]),
         "heavy_vehicle_percent": float(values["heavy_vehicle_percent"]),
-        "grade_percent": float(values["grade_percent"]),
+        "grade_percent": (
+            float(values["grade_percent"])
+            if legacy_ui_contract or adjustment_method == "specific_grade"
+            else 0.0
+        ),
     }
     engine_inputs["ffs_source"] = ffs_source
     engine_inputs["free_flow_speed_mph"] = (
@@ -243,22 +317,54 @@ def multilane_ui_inputs_to_engine(
         if ffs_source == "estimated" and values.get("median_type") == "divided"
         else None
     )
-    engine_inputs["passenger_car_equivalent"] = (
-        float(values["passenger_car_equivalent"]) if pce_mode == "external" else None
-    )
-    # These inputs affect only the internal lookup.  Freeze inactive values to
-    # deterministic defaults so hidden widgets cannot change calculation identity.
-    if pce_mode == "external":
-        engine_inputs["terrain_type"] = "specific_grade"
-        engine_inputs["truck_mix"] = "default_30_sut_70_tt"
+    if legacy_ui_contract:
+        engine_inputs["passenger_car_equivalent"] = (
+            float(values["passenger_car_equivalent"]) if pce_mode == "external" else None
+        )
+        # Preserve the v0.8 display contract for existing projects and callers.
+        if pce_mode == "external":
+            engine_inputs["terrain_type"] = "specific_grade"
+            engine_inputs["truck_mix"] = DEFAULT_TRUCK_MIX
+        else:
+            engine_inputs["terrain_type"] = values.get(
+                "terrain_type", template_inputs.get("terrain_type", "specific_grade")
+            )
+            engine_inputs["truck_mix"] = values.get(
+                "truck_mix", template_inputs.get("truck_mix", DEFAULT_TRUCK_MIX)
+            )
     else:
-        engine_inputs["terrain_type"] = values.get(
-            "terrain_type", template_inputs.get("terrain_type", "specific_grade")
-        )
-        engine_inputs["truck_mix"] = values.get(
-            "truck_mix", template_inputs.get("truck_mix", "default_30_sut_70_tt")
-        )
+        # The task-oriented UI has one method choice.  Emit the old engine
+        # fields and deterministic neutral values for inactive branches.
+        if adjustment_method == "general_terrain":
+            terrain_type = values.get("terrain_type")
+            if terrain_type not in {"level", "rolling"}:
+                raise ValueError("terrain_type must be level or rolling for general_terrain.")
+            engine_inputs["terrain_type"] = terrain_type
+            engine_inputs["truck_mix"] = DEFAULT_TRUCK_MIX
+            engine_inputs["passenger_car_equivalent"] = None
+        elif adjustment_method == "specific_grade":
+            engine_inputs["terrain_type"] = "specific_grade"
+            engine_inputs["truck_mix"] = values.get("truck_mix", DEFAULT_TRUCK_MIX)
+            engine_inputs["passenger_car_equivalent"] = None
+        else:
+            engine_inputs["terrain_type"] = "specific_grade"
+            engine_inputs["truck_mix"] = DEFAULT_TRUCK_MIX
+            engine_inputs["passenger_car_equivalent"] = float(
+                values["passenger_car_equivalent"]
+            )
     return engine_inputs
+
+
+def heavy_vehicle_adjustment_method_from_ui_inputs(values: dict[str, Any]) -> str:
+    """Return the canonical task method for new or legacy UI values."""
+
+    if values.get("heavy_vehicle_adjustment_method") in HEAVY_VEHICLE_ADJUSTMENT_METHODS:
+        return str(values["heavy_vehicle_adjustment_method"])
+    if values.get("pce_mode") == "external":
+        return "external_pce"
+    if values.get("terrain_type") == "specific_grade":
+        return "specific_grade"
+    return "general_terrain"
 
 
 def multilane_display_outputs(

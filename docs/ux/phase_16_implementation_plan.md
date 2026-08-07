@@ -1,7 +1,8 @@
 # Phase 16 Implementation Plan
 
-Baseline: `fd5172ec3e4abdb161f268507c29c74b4848047c`
-Phase 16.1 status: audit and specification only
+Baseline: `72d9de8841db8e158077372bf60df93a9f5bcdab`
+Phase 16.1 status: completed and merged in PR #120
+Phase 16.2 status: implementation and local qualification complete; PR/CI/merge pending
 
 ## Simpler-Alternative Review
 
@@ -124,9 +125,16 @@ Exit criteria:
 - Project load/save remains compatible.
 - No other workflow behavior changes.
 
+Phase 16.2 local qualification result:
+
+- Full suite: 1048 tests passed.
+- System Chrome browser matrix: 25/25 rows passed, including English/Thai at 1280 px, compact 768 px, capacity failure/correction, project restore, report export, and no horizontal overflow.
+- One cross-locale segmented-control state defect was found in real-browser testing, fixed with canonical pre-widget normalization, and covered by AppTest.
+- No engine, schema, fingerprint, result-contract, preset, or export-field changes were required.
+
 ## Phase 16.3: Pilot Usability And Regression Qualification
 
-Goal: qualify the Multilane pilot before rollout.
+Goal: complete human-centered qualification of the now-implemented Multilane pilot before any cross-workflow rollout.
 
 Scope:
 
@@ -134,12 +142,16 @@ Scope:
 - Manual review of English and Thai copy fit at 768 px.
 - Verify stale input, capacity failure, project load, malformed project rejection, current result export, and audit detail access.
 - Review screenshots against Phase 16.1 acceptance criteria.
+- Run moderated or representative traffic-engineer review of Heavy Vehicle % versus SUT/TT terminology.
+- Perform a focused accessibility audit of the progressive-disclosure and result-action hierarchy.
+- Decide which patterns generalize to Basic Freeway, Merge, and Diverge without copying unsupported methodology assumptions.
 
 Exit criteria:
 
 - No critical or high UX regression remains in Multilane.
 - Existing test suite passes.
 - Documentation and release notes identify no numerical-method change.
+- A separate rollout proposal identifies the patterns that generalize and the patterns that remain Multilane-specific.
 
 ## Phase 16.4: Basic Freeway, Merge, And Diverge Rollout
 

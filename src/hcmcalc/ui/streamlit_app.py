@@ -36,9 +36,12 @@ from hcmcalc.ui.manual_freeway import (
     run_manual_freeway,
 )
 from hcmcalc.ui.manual_multilane import (
+    BLANK_CASE_ID,
     build_manual_multilane_audit_record,
     clear_manual_multilane_state,
+    heavy_vehicle_adjustment_method_from_ui_inputs,
     load_multilane_template,
+    multilane_blank_ui_inputs,
     multilane_display_outputs,
     multilane_template_options,
     multilane_template_ui_inputs,
@@ -243,6 +246,19 @@ def _localized_option_to_value(
         if text in labels or any(label and label in text for label in labels):
             return option
     return text
+
+
+def _prepare_localized_widget_state(
+    key: str,
+    key_prefix: str,
+    options: tuple[str, ...],
+    fallback: str,
+) -> None:
+    """Keep formatted segmented-control state canonical across locale reruns."""
+
+    current = st.session_state.get(key, fallback)
+    normalized = _localized_option_to_value(current, key_prefix, options)
+    st.session_state[key] = normalized if normalized in options else fallback
 
 
 def _multilane_template_id(value: str, template_options: dict[str, str]) -> str:
@@ -1178,41 +1194,45 @@ def render_manual_multilane_calculator() -> None:
     if load_message is not None:
         st.success(load_message)
 
-    render_page_header(
-        _multilane_text("title"),
-        _multilane_text("subtitle"),
-    )
+    render_page_header(_multilane_text("title"), _multilane_text("subtitle"))
     status_placeholder = st.empty()
     input_column, result_column = render_calculator_shell()
-    template_options = multilane_template_options()
+    template_options = multilane_template_options(include_blank=True)
+
     with input_column:
-        with st.expander(_multilane_text("project_load"), expanded=False):
-            _render_manual_multilane_load_controls()
-        render_section_label(_multilane_text("setup"))
-        st.caption(_multilane_text("scope"))
-        st.session_state.setdefault("manual_multilane_unit_label", "metric")
+        render_section_label(_multilane_text("start"))
+        template_id = st.selectbox(
+            _multilane_text("template_or_blank"),
+            list(template_options),
+            format_func=lambda value, locale=_ui_locale(): translate(
+                f"multilane.preset.{value}", locale
+            ),
+            key=f"multilane_template_id_{_ui_locale()}",
+        )
+        template_id = _multilane_template_id(str(template_id), template_options)
+        unit_options = ("metric", "imperial")
+        _prepare_localized_widget_state(
+            "manual_multilane_unit_label",
+            "multilane.unit",
+            unit_options,
+            "metric",
+        )
         unit_label = st.segmented_control(
             _multilane_text("unit_system"),
-            ["metric", "imperial"],
+            list(unit_options),
             format_func=lambda value, locale=_ui_locale(): translate(
                 f"multilane.unit.{value}", locale
             ),
             key="manual_multilane_unit_label",
         )
-        st.caption(_multilane_text("unit_caption"))
-        with st.expander(_multilane_text("starting_values"), expanded=False):
-            st.caption(_multilane_text("starting_values_caption"))
-            template_id = st.selectbox(
-                _multilane_text("defaults"),
-                list(template_options),
-                format_func=lambda value, locale=_ui_locale(): translate(
-                    f"multilane.preset.{value}", locale
-                ),
-                key=f"multilane_template_id_{_ui_locale()}",
-            )
-            template_id = _multilane_template_id(str(template_id), template_options)
-            st.caption(_multilane_text("defaults_caption"))
-    unit_system = unit_label
+        unit_system = _localized_option_to_value(
+            unit_label, "multilane.unit", unit_options
+        )
+        if unit_system not in unit_options:
+            unit_system = str(st.session_state.get("manual_multilane_unit_label", "metric"))
+        with st.expander(_multilane_text("project_load"), expanded=False):
+            _render_manual_multilane_load_controls()
+
     template_context = (template_id, unit_system)
     if st.session_state.get("manual_multilane_template_context") != template_context:
         clear_manual_multilane_state(st.session_state)
@@ -1229,18 +1249,65 @@ def render_manual_multilane_calculator() -> None:
         return
 
     inputs = template["inputs"]
-    ui_inputs = multilane_template_ui_inputs(template_id, unit_system)
+    ui_inputs = (
+        multilane_blank_ui_inputs()
+        if template_id == BLANK_CASE_ID
+        else multilane_template_ui_inputs(template_id, unit_system)
+    )
     metric = unit_system == "metric"
     length_unit = "km" if metric else "ft"
     speed_unit = "km/h" if metric else "mph"
     width_unit = "m" if metric else "ft"
     access_unit = "points/km" if metric else "per mi"
+
     with input_column:
-        ffs_source_key = f"manual_multilane_input_ffs_source_{template_id}_{unit_system}"
-        st.session_state.setdefault(
-            ffs_source_key, str(ui_inputs.get("ffs_source", "estimated"))
+        render_section_label(_multilane_text("traffic_segment"))
+        traffic_columns = st.columns(2)
+        number_of_lanes = traffic_columns[0].number_input(
+            _multilane_text("number_of_lanes"),
+            min_value=2,
+            max_value=8,
+            step=1,
+            value=ui_inputs.get("number_of_lanes"),
+            key=f"manual_multilane_input_lanes_{template_id}_{unit_system}",
         )
-        ffs_source = st.segmented_control(
+        segment_length = traffic_columns[1].number_input(
+            _multilane_text("segment_length", unit=length_unit),
+            min_value=0.001,
+            value=ui_inputs.get("segment_length"),
+            key=f"manual_multilane_input_length_{template_id}_{unit_system}",
+        )
+        demand_volume_veh_h = traffic_columns[0].number_input(
+            _multilane_text("demand_volume"),
+            min_value=1.0,
+            value=ui_inputs.get("demand_volume_veh_h"),
+            key=f"manual_multilane_input_demand_{template_id}_{unit_system}",
+        )
+        peak_hour_factor = traffic_columns[1].number_input(
+            _multilane_text("peak_hour_factor"),
+            min_value=0.01,
+            max_value=1.0,
+            value=ui_inputs.get("peak_hour_factor"),
+            key=f"manual_multilane_input_phf_{template_id}_{unit_system}",
+        )
+        heavy_vehicle_percent = traffic_columns[0].number_input(
+            _multilane_text("heavy_vehicles"),
+            min_value=0.0,
+            max_value=100.0,
+            value=ui_inputs.get("heavy_vehicle_percent"),
+            key=f"manual_multilane_input_heavy_{template_id}_{unit_system}",
+            help=_multilane_text("heavy_vehicles_help"),
+        )
+
+        render_section_label(_multilane_text("free_flow_speed_section"))
+        ffs_source_key = f"manual_multilane_input_ffs_source_{template_id}_{unit_system}"
+        _prepare_localized_widget_state(
+            ffs_source_key,
+            "multilane.ffs",
+            ("estimated", "measured"),
+            str(ui_inputs.get("ffs_source", "estimated")),
+        )
+        ffs_source_raw = st.segmented_control(
             _multilane_text("ffs_source"),
             ["estimated", "measured"],
             format_func=lambda value, locale=_ui_locale(): translate(
@@ -1249,179 +1316,177 @@ def render_manual_multilane_calculator() -> None:
             key=ffs_source_key,
             help=_multilane_text("ffs_source_help"),
         )
-        with st.container():
-            render_section_label(_multilane_text("geometry"))
-            roadway_columns = st.columns(2)
-            number_of_lanes = roadway_columns[0].number_input(
-                _multilane_text("number_of_lanes"),
-                min_value=2,
-                max_value=8,
-                step=1,
-                value=int(ui_inputs["number_of_lanes"]),
-                key=f"manual_multilane_input_lanes_{template_id}_{unit_system}",
-            )
-            segment_length = roadway_columns[1].number_input(
-                _multilane_text("segment_length", unit=length_unit),
-                min_value=0.001,
-                value=float(ui_inputs["segment_length"]),
-                key=f"manual_multilane_input_length_{template_id}_{unit_system}",
-            )
-            free_flow_speed = None
-            if ffs_source == "measured":
-                free_flow_speed = roadway_columns[0].number_input(
-                    _multilane_text("measured_ffs", unit=speed_unit),
-                    min_value=1.0,
-                    value=float(ui_inputs.get("free_flow_speed") or ui_inputs["posted_speed_limit"]),
-                    key=f"manual_multilane_input_measured_ffs_{template_id}_{unit_system}",
-                    help=_multilane_text("measured_ffs_help"),
-                )
-                posted_speed_limit = lane_width = roadside_lateral_clearance = None
-                access_point_density = median_type = left_side_lateral_clearance = None
-            else:
-                posted_speed_limit = roadway_columns[0].number_input(
-                    _multilane_text("posted_speed", unit=speed_unit), min_value=1.0,
-                    value=float(ui_inputs["posted_speed_limit"]),
-                    key=f"manual_multilane_input_speed_{template_id}_{unit_system}",
-                    help=_multilane_text("posted_speed_help"),
-                )
-                lane_width = roadway_columns[1].number_input(
-                    _multilane_text("lane_width", unit=width_unit), min_value=0.1,
-                    value=float(ui_inputs["lane_width"]),
-                    key=f"manual_multilane_input_lane_width_{template_id}_{unit_system}",
-                )
-                roadside_lateral_clearance = roadway_columns[0].number_input(
-                    _multilane_text("right_clearance", unit=width_unit), min_value=0.0,
-                    value=float(ui_inputs["roadside_lateral_clearance"]),
-                    key=f"manual_multilane_input_clearance_{template_id}_{unit_system}",
-                    help=_multilane_text("right_clearance_help"),
-                )
-                median_type = roadway_columns[1].selectbox(
-                    _multilane_text("median_type"), ["twltl", "undivided", "divided"],
-                    index=["twltl", "undivided", "divided"].index(ui_inputs.get("median_type", "twltl")),
-                    format_func=lambda value, locale=_ui_locale(): translate(
-                        f"multilane.median.{value}", locale
-                    ),
-                    key=f"manual_multilane_input_median_{template_id}_{unit_system}",
-                    help=_multilane_text("median_help"),
-                )
-                left_side_lateral_clearance = None
-                if median_type == "divided":
-                    left_side_lateral_clearance = roadway_columns[0].number_input(
-                        _multilane_text("left_clearance", unit=width_unit), min_value=0.0,
-                        value=float(ui_inputs.get("left_side_lateral_clearance", 6.0)),
-                        key=f"manual_multilane_input_left_clearance_{template_id}_{unit_system}",
-                        help=_multilane_text("left_clearance_help"),
-                    )
-                access_point_density = roadway_columns[1].number_input(
-                    _multilane_text("access_density", unit=access_unit), min_value=0.0,
-                    value=float(ui_inputs["access_point_density"]),
-                    key=f"manual_multilane_input_access_{template_id}_{unit_system}",
-                )
-
-            render_section_label(_multilane_text("demand"))
-            traffic_columns = st.columns(2)
-            demand_volume_veh_h = traffic_columns[0].number_input(
-                _multilane_text("demand_volume"),
+        ffs_source = _localized_option_to_value(
+            ffs_source_raw, "multilane.ffs", ("estimated", "measured")
+        )
+        if ffs_source not in {"estimated", "measured"}:
+            ffs_source = str(st.session_state.get(ffs_source_key, "estimated"))
+        free_flow_speed = None
+        posted_speed_limit = lane_width = roadside_lateral_clearance = None
+        access_point_density = median_type = left_side_lateral_clearance = None
+        if ffs_source == "measured":
+            free_flow_speed = st.number_input(
+                _multilane_text("measured_ffs", unit=speed_unit),
                 min_value=1.0,
-                value=float(ui_inputs["demand_volume_veh_h"]),
-                key=f"manual_multilane_input_demand_{template_id}_{unit_system}",
+                value=ui_inputs.get("free_flow_speed"),
+                key=f"manual_multilane_input_measured_ffs_{template_id}_{unit_system}",
+                help=_multilane_text("measured_ffs_help"),
             )
-            peak_hour_factor = traffic_columns[1].number_input(
-                _multilane_text("peak_hour_factor"),
-                min_value=0.01,
-                max_value=1.0,
-                value=float(ui_inputs["peak_hour_factor"]),
-                key=f"manual_multilane_input_phf_{template_id}_{unit_system}",
+        else:
+            ffs_columns = st.columns(2)
+            posted_speed_limit = ffs_columns[0].number_input(
+                _multilane_text("posted_speed", unit=speed_unit),
+                min_value=1.0,
+                value=ui_inputs.get("posted_speed_limit"),
+                key=f"manual_multilane_input_speed_{template_id}_{unit_system}",
+                help=_multilane_text("posted_speed_help"),
             )
-            heavy_vehicle_percent = traffic_columns[0].number_input(
-                _multilane_text("heavy_vehicles"),
+            lane_width = ffs_columns[1].number_input(
+                _multilane_text("lane_width", unit=width_unit),
+                min_value=0.1,
+                value=ui_inputs.get("lane_width"),
+                key=f"manual_multilane_input_lane_width_{template_id}_{unit_system}",
+            )
+            roadside_lateral_clearance = ffs_columns[0].number_input(
+                _multilane_text("right_clearance", unit=width_unit),
                 min_value=0.0,
-                max_value=100.0,
-                value=float(ui_inputs["heavy_vehicle_percent"]),
-                key=f"manual_multilane_input_heavy_{template_id}_{unit_system}",
+                value=ui_inputs.get("roadside_lateral_clearance"),
+                key=f"manual_multilane_input_clearance_{template_id}_{unit_system}",
+                help=_multilane_text("right_clearance_help"),
             )
-            grade_percent = traffic_columns[1].number_input(
-                _multilane_text("grade"),
-                value=float(ui_inputs["grade_percent"]),
-                key=f"manual_multilane_input_grade_{template_id}_{unit_system}",
-            )
-            render_section_label(_multilane_text("heavy_pce"))
-            pce_mode_key = f"manual_multilane_input_pce_mode_{template_id}_{unit_system}"
-            st.session_state.setdefault(
-                pce_mode_key, str(ui_inputs.get("pce_mode", "internal"))
-            )
-            pce_mode = st.segmented_control(
-                _multilane_text("pce_source"), ["internal", "external"],
+            median_options = ["twltl", "undivided", "divided"]
+            median_type = ffs_columns[1].selectbox(
+                _multilane_text("median_type"),
+                median_options,
+                index=median_options.index(ui_inputs.get("median_type", "twltl")),
                 format_func=lambda value, locale=_ui_locale(): translate(
-                    f"multilane.pce.{value}", locale
+                    f"multilane.median.{value}", locale
                 ),
-                key=pce_mode_key,
-                help=_multilane_text("pce_source_help"),
+                key=f"manual_multilane_input_median_{template_id}_{unit_system}",
+                help=_multilane_text("median_help"),
             )
-            passenger_car_equivalent = None
-            terrain_type = truck_mix = None
-            if pce_mode == "external":
-                passenger_car_equivalent = traffic_columns[1].number_input(
-                    _multilane_text("external_pce"),
-                    min_value=0.01,
-                    value=float(ui_inputs.get("passenger_car_equivalent") or 2.24),
-                    key=f"manual_multilane_input_pce_{template_id}_{unit_system}",
-                    help=_multilane_text("external_pce_help"),
+            if median_type == "divided":
+                left_side_lateral_clearance = ffs_columns[0].number_input(
+                    _multilane_text("left_clearance", unit=width_unit),
+                    min_value=0.0,
+                    value=ui_inputs.get("left_side_lateral_clearance"),
+                    key=f"manual_multilane_input_left_clearance_{template_id}_{unit_system}",
+                    help=_multilane_text("left_clearance_help"),
                 )
-            else:
-                terrain_type = traffic_columns[0].selectbox(
-                    _multilane_text("terrain"), ["level", "rolling", "specific_grade"],
-                    index=["level", "rolling", "specific_grade"].index(ui_inputs.get("terrain_type", "specific_grade")),
-                    format_func=lambda value, locale=_ui_locale(): translate(
-                        f"multilane.terrain.{value}", locale
-                    ),
-                    key=f"manual_multilane_input_terrain_{template_id}_{unit_system}",
-                )
-                if terrain_type == "specific_grade":
-                    mixes = ["default_30_sut_70_tt", "equal_50_sut_50_tt", "majority_70_sut_30_tt"]
-                    truck_mix = traffic_columns[1].selectbox(
-                        _multilane_text("truck_mix"), mixes,
-                        index=mixes.index(ui_inputs.get("truck_mix", mixes[0])),
-                        format_func=lambda value, locale=_ui_locale(): translate(
-                            f"multilane.truck_mix.{value}", locale
-                        ),
-                        key=f"manual_multilane_input_truck_mix_{template_id}_{unit_system}",
-                        help=_multilane_text("truck_mix_help"),
-                    )
-            render_section_label(_multilane_text("advanced"))
-            st.caption(_multilane_text("driver_population_caption"))
-            run_multilane = st.button(
-                _multilane_text("calculate"), type="primary", width="stretch"
+            access_point_density = ffs_columns[1].number_input(
+                _multilane_text("access_density", unit=access_unit),
+                min_value=0.0,
+                value=ui_inputs.get("access_point_density"),
+                key=f"manual_multilane_input_access_{template_id}_{unit_system}",
             )
+
+        render_section_label(_multilane_text("heavy_vehicle_adjustment"))
+        heavy_method_key = f"manual_multilane_input_heavy_method_{template_id}_{unit_system}"
+        _prepare_localized_widget_state(
+            heavy_method_key,
+            "multilane.heavy_method",
+            ("general_terrain", "specific_grade", "external_pce"),
+            heavy_vehicle_adjustment_method_from_ui_inputs(ui_inputs),
+        )
+        heavy_method_raw = st.segmented_control(
+            _multilane_text("heavy_vehicle_method"),
+            ["general_terrain", "specific_grade", "external_pce"],
+            format_func=lambda value, locale=_ui_locale(): translate(
+                f"multilane.heavy_method.{value}", locale
+            ),
+            key=heavy_method_key,
+            help=_multilane_text("heavy_vehicle_method_help"),
+        )
+        heavy_method = _localized_option_to_value(
+            heavy_method_raw,
+            "multilane.heavy_method",
+            ("general_terrain", "specific_grade", "external_pce"),
+        )
+        grade_percent = None
+        terrain_type = None
+        truck_mix = None
+        passenger_car_equivalent = None
+        if heavy_method == "general_terrain":
+            terrain_options = ["level", "rolling"]
+            terrain_type = st.selectbox(
+                _multilane_text("general_terrain"),
+                terrain_options,
+                index=terrain_options.index(
+                    ui_inputs.get("terrain_type")
+                    if ui_inputs.get("terrain_type") in terrain_options
+                    else "level"
+                ),
+                format_func=lambda value, locale=_ui_locale(): translate(
+                    f"multilane.terrain.{value}", locale
+                ),
+                key=f"manual_multilane_input_terrain_{template_id}_{unit_system}",
+                help=_multilane_text("general_terrain_help"),
+            )
+        elif heavy_method == "specific_grade":
+            grade_percent = st.number_input(
+                _multilane_text("grade"),
+                value=ui_inputs.get("grade_percent"),
+                key=f"manual_multilane_input_grade_{template_id}_{unit_system}",
+                help=_multilane_text("grade_help", unit=length_unit),
+            )
+            st.caption(_multilane_text("grade_length_help", unit=length_unit))
+            mixes = [
+                "default_30_sut_70_tt",
+                "equal_50_sut_50_tt",
+                "majority_70_sut_30_tt",
+            ]
+            truck_mix = st.selectbox(
+                _multilane_text("heavy_vehicle_composition"),
+                mixes,
+                index=mixes.index(ui_inputs.get("truck_mix", mixes[0])),
+                format_func=lambda value, locale=_ui_locale(): translate(
+                    f"multilane.truck_mix.{value}", locale
+                ),
+                key=f"manual_multilane_input_truck_mix_{template_id}_{unit_system}",
+                help=_multilane_text("composition_help"),
+            )
+            st.caption(_multilane_text("composition_scope"))
+        else:
+            passenger_car_equivalent = st.number_input(
+                _multilane_text("external_pce"),
+                min_value=0.01,
+                value=ui_inputs.get("passenger_car_equivalent"),
+                key=f"manual_multilane_input_pce_{template_id}_{unit_system}",
+                help=_multilane_text("external_pce_help"),
+            )
+            st.caption(_multilane_text("external_pce_scope"))
 
         displayed_inputs = {
-            "number_of_lanes": int(number_of_lanes),
+            "number_of_lanes": number_of_lanes,
             "segment_length": segment_length,
             "demand_volume_veh_h": demand_volume_veh_h,
             "peak_hour_factor": peak_hour_factor,
             "heavy_vehicle_percent": heavy_vehicle_percent,
-            "grade_percent": grade_percent,
             "ffs_source": ffs_source,
-            "pce_mode": pce_mode,
+            "heavy_vehicle_adjustment_method": heavy_method,
         }
         if ffs_source == "measured":
             displayed_inputs["free_flow_speed"] = free_flow_speed
         else:
-            displayed_inputs.update({
-                "posted_speed_limit": posted_speed_limit,
-                "lane_width": lane_width,
-                "roadside_lateral_clearance": roadside_lateral_clearance,
-                "median_type": median_type,
-                "access_point_density": access_point_density,
-            })
+            displayed_inputs.update(
+                {
+                    "posted_speed_limit": posted_speed_limit,
+                    "lane_width": lane_width,
+                    "roadside_lateral_clearance": roadside_lateral_clearance,
+                    "median_type": median_type,
+                    "access_point_density": access_point_density,
+                }
+            )
             if left_side_lateral_clearance is not None:
                 displayed_inputs["left_side_lateral_clearance"] = left_side_lateral_clearance
-        if passenger_car_equivalent is not None:
-            displayed_inputs["passenger_car_equivalent"] = passenger_car_equivalent
-        if terrain_type is not None:
+        if heavy_method == "general_terrain":
             displayed_inputs["terrain_type"] = terrain_type
-        if truck_mix is not None:
+        elif heavy_method == "specific_grade":
+            displayed_inputs["grade_percent"] = grade_percent
             displayed_inputs["truck_mix"] = truck_mix
+        else:
+            displayed_inputs["passenger_car_equivalent"] = passenger_car_equivalent
+
         conversion_error: Exception | None = None
         try:
             submitted_inputs = multilane_ui_inputs_to_engine(
@@ -1438,13 +1503,18 @@ def render_manual_multilane_calculator() -> None:
         multilane_is_current = render_calculation_status(
             "manual_multilane", multilane_workflow_inputs, status_placeholder
         )
+        prior_result_exists = st.session_state.get("manual_multilane_result") is not None
+        run_multilane = st.button(
+            _multilane_text("recalculate" if prior_result_exists else "calculate"),
+            type="primary",
+            width="stretch",
+        )
+
         def render_multilane_project_download() -> None:
             stored_audit = st.session_state.get("manual_multilane_audit")
             calculation_matches_inputs = (
                 multilane_is_current
-                and
-                isinstance(stored_audit, dict)
-                and stored_audit.get("displayed_inputs") == displayed_inputs
+                and isinstance(stored_audit, dict)
                 and stored_audit.get("submitted_inputs") == submitted_inputs
                 and stored_audit.get("unit_system") == unit_system
                 and stored_audit.get("template_id") == template_id
@@ -1564,10 +1634,7 @@ def render_manual_multilane_calculator() -> None:
                 ResultPresentationState.INVALID_INPUT: "invalid",
                 ResultPresentationState.INTERNAL_ERROR: "internal_error",
             }[error_state]
-            render_result_state_panel(
-                error_state,
-                _multilane_text(message_key),
-            )
+            render_result_state_panel(error_state, _multilane_text(message_key))
             detail = error.get("message") if isinstance(error, dict) else str(error)
             st.caption(_multilane_text("error_details", error=detail))
             with st.expander(_multilane_text("audit"), expanded=False):
@@ -1578,12 +1645,10 @@ def render_manual_multilane_calculator() -> None:
                 label=_multilane_text("project_output"),
             )
             return
+
         result_data = st.session_state.get("manual_multilane_result")
         if result_data is None:
-            render_result_state_panel(
-                ResultPresentationState.PRERUN,
-                _multilane_text("prerun"),
-            )
+            render_result_state_panel(ResultPresentationState.PRERUN, _multilane_text("prerun"))
             render_project_output_section(
                 _multilane_text("project_caption"),
                 render_multilane_project_download,
@@ -1601,9 +1666,7 @@ def render_manual_multilane_calculator() -> None:
             == "demand_exceeds_capacity",
         )
         if presentation_state == ResultPresentationState.STALE_RESULT:
-            render_result_state_panel(
-                presentation_state, _multilane_text("stale")
-            )
+            render_result_state_panel(presentation_state, _multilane_text("stale"))
             render_project_output_section(
                 _multilane_text("project_caption"),
                 render_multilane_project_download,
@@ -1619,6 +1682,7 @@ def render_manual_multilane_calculator() -> None:
             else unit_system
         )
         display = multilane_display_outputs(outputs, result_unit_system)
+
         def predicted(metric: dict[str, Any], precision: str = ".1f") -> str:
             value = metric["value"]
             return (
@@ -1626,6 +1690,7 @@ def render_manual_multilane_calculator() -> None:
                 if value is not None
                 else _multilane_text("not_predicted")
             )
+
         render_result_summary_panel(
             primary_label=translate("result.level_of_service", _ui_locale()),
             primary_value=str(outputs["level_of_service"]),
@@ -1634,22 +1699,16 @@ def render_manual_multilane_calculator() -> None:
             hero_supporting_value=predicted(display["density"]),
             secondary_metrics=[
                 {
-                    "label": _multilane_text("speed_used_for_density"),
+                    "label": _multilane_text("demand_capacity"),
+                    "value": f"{outputs['demand_capacity_ratio']:.3f}",
+                },
+                {
+                    "label": _multilane_text("mean_speed"),
                     "value": predicted(display["speed_used_for_density"]),
                 },
                 {
-                    "label": translate("result.demand_flow_rate", _ui_locale()),
-                    "value": (
-                        f"{display['demand_flow_rate']['value']:.0f} "
-                        f"{display['demand_flow_rate']['unit']}"
-                    ),
-                },
-                {
                     "label": translate("result.capacity", _ui_locale()),
-                    "value": (
-                        f"{display['capacity']['value']:.0f} "
-                        f"{display['capacity']['unit']}"
-                    ),
+                    "value": f"{display['capacity']['value']:.0f} {display['capacity']['unit']}",
                 },
                 {
                     "label": _multilane_text("capacity_check"),
@@ -1657,64 +1716,83 @@ def render_manual_multilane_calculator() -> None:
                         f"capacity_status.{outputs['capacity_check']}"
                     ),
                 },
-                {"label": _multilane_text("ffs_source_label"), "value": outputs["ffs_source"]},
+                {
+                    "label": translate("result.demand_flow_rate", _ui_locale()),
+                    "value": f"{display['demand_flow_rate']['value']:.0f} {display['demand_flow_rate']['unit']}",
+                },
                 {
                     "label": _multilane_text("adjusted_ffs"),
-                    "value": (
-                        f"{display['adjusted_free_flow_speed']['value']:.1f} "
-                        f"{display['adjusted_free_flow_speed']['unit']}"
-                    ),
-                },
-                {
-                    "label": _multilane_text("base_ffs"),
-                    "value": (
-                        f"{display['base_free_flow_speed']['value']:.1f} "
-                        f"{display['base_free_flow_speed']['unit']}"
-                    ),
-                },
-                {
-                    "label": _multilane_text("heavy_vehicle_factor"),
-                    "value": f"{outputs['heavy_vehicle_adjustment_factor']:.3f}",
-                },
-                {
-                    "label": _multilane_text("demand_capacity"),
-                    "value": f"{outputs['demand_capacity_ratio']:.3f}",
+                    "value": f"{display['adjusted_free_flow_speed']['value']:.1f} {display['adjusted_free_flow_speed']['unit']}",
                 },
                 {
                     "label": _multilane_text("pce"),
                     "value": f"{outputs['passenger_car_equivalent']:.2f} ({outputs['pce_source']})",
                 },
+                {
+                    "label": _multilane_text("heavy_vehicle_factor"),
+                    "value": f"{outputs['heavy_vehicle_adjustment_factor']:.3f}",
+                },
             ],
         )
         if presentation_state == ResultPresentationState.CAPACITY_FAILURE:
-            render_result_state_panel(
-                presentation_state, _multilane_text("capacity_failure")
-            )
+            render_result_state_panel(presentation_state, _multilane_text("capacity_failure"))
         elif presentation_state == ResultPresentationState.VALID_CURRENT_RESULT_WITH_WARNING:
-            render_result_state_panel(
-                presentation_state, _multilane_text("warning")
-            )
+            render_result_state_panel(presentation_state, _multilane_text("warning"))
 
-        with st.expander(_multilane_text("calculation_details"), expanded=False):
+        render_section_label(_multilane_text("result_actions"))
+        render_project_output_section(
+            _multilane_text("project_caption"),
+            render_multilane_project_download,
+            label=_multilane_text("project_output"),
+        )
+        if multilane_is_current:
+            render_export_report_section(
+                "manual_multilane_v0",
+                result_data,
+                result_unit_system,
+                inputs=(
+                    audit.get("displayed_inputs", displayed_inputs)
+                    if isinstance(audit, dict)
+                    else displayed_inputs
+                ),
+                audit_record=audit,
+                template_id=template_id,
+                label=_multilane_text("export_report"),
+            )
+        else:
+            st.caption(_multilane_text("export_stale"))
+
+        with st.expander(_multilane_text("details_audit"), expanded=False):
+            st.markdown(f"**{_multilane_text('calculation_details')}**")
             st.markdown(f"**{_multilane_text('ffs_audit')}**")
-            st.json({
-                "ffs_source": outputs["ffs_source"],
-                "base_free_flow_speed_mph": outputs["base_free_flow_speed_mph"],
-                "lane_width_adjustment_mph": outputs["lane_width_adjustment_mph"],
-                "total_lateral_clearance_adjustment_mph": outputs["total_lateral_clearance_adjustment_mph"],
-                "median_type_adjustment_mph": outputs["median_type_adjustment_mph"],
-                "access_point_adjustment_mph": outputs["access_point_adjustment_mph"],
-                "adjusted_free_flow_speed_mph": outputs["adjusted_free_flow_speed_mph"],
-            })
+            st.json(
+                {
+                    "ffs_source": outputs["ffs_source"],
+                    "base_free_flow_speed_mph": outputs["base_free_flow_speed_mph"],
+                    "lane_width_adjustment_mph": outputs["lane_width_adjustment_mph"],
+                    "total_lateral_clearance_adjustment_mph": outputs[
+                        "total_lateral_clearance_adjustment_mph"
+                    ],
+                    "median_type_adjustment_mph": outputs["median_type_adjustment_mph"],
+                    "access_point_adjustment_mph": outputs["access_point_adjustment_mph"],
+                    "adjusted_free_flow_speed_mph": outputs["adjusted_free_flow_speed_mph"],
+                }
+            )
             st.markdown(f"**{_multilane_text('pce_audit')}**")
-            st.json({
-                key: outputs.get(key)
-                for key in (
-                    "passenger_car_equivalent", "pce_source", "pce_lookup_path",
-                    "effective_grade_for_pce_percent", "effective_grade_length_mi_for_pce",
-                    "truck_composition", "heavy_vehicle_adjustment_factor",
-                )
-            })
+            st.json(
+                {
+                    key: outputs.get(key)
+                    for key in (
+                        "passenger_car_equivalent",
+                        "pce_source",
+                        "pce_lookup_path",
+                        "effective_grade_for_pce_percent",
+                        "effective_grade_length_mi_for_pce",
+                        "truck_composition",
+                        "heavy_vehicle_adjustment_factor",
+                    )
+                }
+            )
             render_list(
                 translate("common.assumptions", _ui_locale()),
                 result_data["assumptions"],
@@ -1730,14 +1808,17 @@ def render_manual_multilane_calculator() -> None:
                 outputs["unsupported_scope_notes"],
                 _multilane_text("no_unsupported_scope_notes"),
             )
-        with st.expander(_multilane_text("audit"), expanded=False):
+            st.markdown(f"**{_multilane_text('audit')}**")
             st.json(audit)
             st.dataframe(
-                result_data["intermediate_values"],
+                [
+                    {**value, "value": str(value["value"])}
+                    for value in result_data["intermediate_values"]
+                ],
                 hide_index=True,
                 width="stretch",
             )
-        with st.expander(_multilane_text("full_json")):
+            st.markdown(f"**{_multilane_text('full_json')}**")
             st.json(
                 {
                     "calculation_type": "manual_multilane_v0",
@@ -1747,20 +1828,6 @@ def render_manual_multilane_calculator() -> None:
                     "audit_record": audit,
                 }
             )
-        render_project_output_section(
-            _multilane_text("project_caption"),
-            render_multilane_project_download,
-            label=_multilane_text("project_output"),
-        )
-        if multilane_is_current:
-            render_export_report_section(
-                "manual_multilane_v0", result_data, result_unit_system,
-                inputs=(audit.get("displayed_inputs", displayed_inputs) if isinstance(audit, dict) else displayed_inputs),
-                audit_record=audit, template_id=template_id,
-                label=_multilane_text("export_report"),
-            )
-        else:
-            st.caption(_multilane_text("export_stale"))
 
 
 def _render_weaving_configuration_reference(
@@ -3088,6 +3155,9 @@ def _restore_manual_multilane_project(project: dict[str, Any]) -> None:
     st.session_state[
         f"manual_multilane_input_pce_mode_{template_id}_{unit_system}"
     ] = "external" if displayed.get("pce_mode") == "external" else "internal"
+    st.session_state[
+        f"manual_multilane_input_heavy_method_{template_id}_{unit_system}"
+    ] = heavy_vehicle_adjustment_method_from_ui_inputs(displayed)
     widget_fields = {
         "lanes": "number_of_lanes",
         "length": "segment_length",
@@ -4599,8 +4669,12 @@ def render_export_report_downloads(
     export_choice = st.selectbox(
         translate("export.language", _ui_locale()),
         ("same_ui", "en", "th"),
-        format_func=lambda value: translate(f"export.{value.replace('same_ui', 'same_as_ui')}", _ui_locale()),
-        key=f"{calculation_type}_export_locale",
+        format_func=lambda value, locale=_ui_locale(): translate(
+            f"export.{value.replace('same_ui', 'same_as_ui')}", locale
+        ),
+        # The option values stay canonical; the locale suffix prevents a
+        # localized formatter from reusing a prior-language widget value.
+        key=f"{calculation_type}_export_locale_{_ui_locale()}",
     )
     export_locale = _ui_locale() if export_choice == "same_ui" else export_choice
     try:

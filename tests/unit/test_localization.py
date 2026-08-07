@@ -27,6 +27,11 @@ from hcmcalc.ui.project_io import (
     load_manual_freeway_project_json,
     project_presentation_locale,
 )
+from hcmcalc.ui.manual_multilane import (
+    load_multilane_template,
+    multilane_template_ui_inputs,
+    multilane_ui_inputs_to_engine,
+)
 from hcmcalc.ui.reporting import build_report, export_report
 from hcmcalc.ui.workflow_state import calculation_input_fingerprint
 
@@ -38,6 +43,43 @@ def _freeway_result() -> dict[str, object]:
 def test_catalogs_have_exact_key_and_placeholder_parity() -> None:
     assert SUPPORTED_LOCALES == ("en", "th")
     assert validate_catalogs() == []
+
+
+def test_multilane_task_copy_is_bilingual_and_adapter_values_are_canonical() -> None:
+    keys = (
+        "multilane.start",
+        "multilane.traffic_segment",
+        "multilane.free_flow_speed_section",
+        "multilane.heavy_vehicle_adjustment",
+        "multilane.heavy_vehicle_method_help",
+        "multilane.composition_scope",
+        "multilane.recalculate",
+        "multilane.details_audit",
+    )
+    for key in keys:
+        for locale in SUPPORTED_LOCALES:
+            assert translate(key, locale) != key
+
+    template = load_multilane_template("MLH-CH26-004-EB")["inputs"]
+    values = multilane_template_ui_inputs("MLH-CH26-004-EB", "imperial")
+    values.update(
+        {
+            "heavy_vehicle_adjustment_method": "external_pce",
+            "passenger_car_equivalent": 2.5,
+        }
+    )
+    engine_inputs = multilane_ui_inputs_to_engine(values, template, "imperial")
+    assert engine_inputs["terrain_type"] == "specific_grade"
+    assert engine_inputs["passenger_car_equivalent"] == 2.5
+
+    localized_method = translate("multilane.heavy_method.external_pce", "th")
+    assert localized_method != "external_pce"
+    with pytest.raises(ValueError, match="heavy_vehicle_adjustment_method"):
+        multilane_ui_inputs_to_engine(
+            values | {"heavy_vehicle_adjustment_method": localized_method},
+            template,
+            "imperial",
+        )
 
 
 def test_lookup_is_deterministic_and_english_is_the_fallback() -> None:
