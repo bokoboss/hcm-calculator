@@ -4,6 +4,7 @@ Baseline: `72d9de8841db8e158077372bf60df93a9f5bcdab`
 Phase 16.1 status: completed and merged in PR #120
 Phase 16.2 status: implementation and local qualification complete; PR/CI/merge pending
 Phase 16.3 status: Conditional Pass for the Multilane pilot; targeted copy and contrast remediation complete; PR/CI/rollout tracking pending
+Phase 16.4 status: Conditional Pass after local qualification; PR/CI/merge pending
 
 ## Simpler-Alternative Review
 
@@ -189,6 +190,16 @@ Exit criteria:
 
 - No schema or engine changes unless separately scrutinized and validated.
 - Browser evidence confirms desktop/narrow and English/Thai usability.
+
+Phase 16.4 local qualification result:
+
+- Decision: **CONDITIONAL PASS** for the isolated Basic Freeway, Merge, and Diverge rollout. No Blocker or Major finding remains; PR review, CI, and merge are pending.
+- Working baseline: `origin/main` at `54610233ee1ad5fadb34485b60b9fd9ce10b6e0c`; branch `codex/phase-16-4-freeway-ramp-ux-rollout`.
+- Target AppTest: 80 passed. Pure adapter/project/localization regression: 104 passed. Full repository suite: 1,055 passed. `compileall` and localization catalog parity passed.
+- Browser qualification: 43/43 system-Chrome rows passed across 17 Basic Freeway, 13 Merge, and 13 Diverge rows; English/Thai; Metric/Imperial; 1280/768 CSS-pixel widths; branch, result, stale, capacity, project, and export scenarios. No console-error or horizontal-overflow rows.
+- Compatibility: no engine, adapter, normalized schema, method identifier, project contract, result field, export, or workflow-state changes. Weaving, Two-Lane Segment, and Two-Lane Facility remain out of scope and untouched.
+- Remaining limitations: representative system-Chrome qualification is not formal WCAG, axe, screen-reader, or cross-browser certification; 768 px coverage is narrow desktop/tablet width rather than small-phone coverage.
+- Detailed evidence: `docs/ux/phase_16_4_freeway_ramp_ux_rollout.md` and temporary `output/playwright/phase16_4_freeway_ramp_ux_rollout/`.
 
 ## Phase 16.5: Weaving And Two-Lane Rollout
 
