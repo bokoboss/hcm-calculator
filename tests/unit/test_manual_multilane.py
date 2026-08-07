@@ -5,9 +5,12 @@ import pytest
 from hcmcalc.cli import result_to_dict
 from hcmcalc.core import UnsupportedScopeError
 from hcmcalc.ui.manual_multilane import (
+    BLANK_CASE_ID,
     build_manual_multilane_audit_record,
     clear_manual_multilane_state,
+    heavy_vehicle_adjustment_method_from_ui_inputs,
     load_multilane_template,
+    multilane_blank_ui_inputs,
     multilane_display_outputs,
     multilane_engine_inputs_to_ui,
     multilane_template_options,
@@ -29,6 +32,34 @@ def test_multilane_template_options_expose_only_example_4_directions() -> None:
         "MLH-CH26-004-EB": "Chapter 26 Example 4 - Eastbound starting values",
         "MLH-CH26-004-WB": "Chapter 26 Example 4 - Westbound starting values",
     }
+
+
+def test_multilane_task_starter_exposes_examples_and_blank_case() -> None:
+    options = multilane_template_options(include_blank=True)
+
+    assert tuple(options) == (
+        "MLH-CH26-004-EB",
+        "MLH-CH26-004-WB",
+        BLANK_CASE_ID,
+    )
+    assert options[BLANK_CASE_ID] == "Blank case"
+    assert multilane_blank_ui_inputs()["heavy_vehicle_adjustment_method"] == "general_terrain"
+
+
+@pytest.mark.parametrize(
+    ("values", "expected"),
+    [
+        ({"pce_mode": "internal", "terrain_type": "level"}, "general_terrain"),
+        ({"pce_mode": "internal", "terrain_type": "rolling"}, "general_terrain"),
+        ({"pce_mode": "internal", "terrain_type": "specific_grade"}, "specific_grade"),
+        ({"pce_mode": "external", "terrain_type": "specific_grade"}, "external_pce"),
+        ({"heavy_vehicle_adjustment_method": "external_pce"}, "external_pce"),
+    ],
+)
+def test_heavy_vehicle_method_adapter_uses_language_neutral_values(
+    values: dict[str, str], expected: str
+) -> None:
+    assert heavy_vehicle_adjustment_method_from_ui_inputs(values) == expected
 
 
 @pytest.mark.parametrize(
@@ -267,3 +298,154 @@ def test_multilane_normalization_rejects_non_finite_or_boolean_ui_numbers(
         ValueError, match="demand_volume_veh_h must be a finite numeric value"
     ):
         multilane_ui_inputs_to_engine(displayed, template["inputs"], "imperial")
+
+
+def _equivalent_legacy_and_task_values(
+    method: str,
+    *,
+    truck_mix: str = "default_30_sut_70_tt",
+    demand_volume: float = 1500.0,
+    ffs_source: str = "estimated",
+) -> tuple[dict[str, object], dict[str, object]]:
+    base = multilane_template_ui_inputs("MLH-CH26-004-EB", "imperial")
+    base.update(
+        {
+            "demand_volume_veh_h": demand_volume,
+            "ffs_source": ffs_source,
+            "grade_percent": 3.0,
+        }
+    )
+    if ffs_source == "measured":
+        base["free_flow_speed"] = 55.0
+    legacy = deepcopy(base)
+    task = {
+        key: base[key]
+        for key in (
+            "number_of_lanes",
+            "segment_length",
+            "demand_volume_veh_h",
+            "peak_hour_factor",
+            "heavy_vehicle_percent",
+            "ffs_source",
+        )
+        if key in base
+    }
+    task["heavy_vehicle_adjustment_method"] = method
+    if ffs_source == "measured":
+        task["free_flow_speed"] = base["free_flow_speed"]
+    else:
+        task.update(
+            {
+                key: base[key]
+                for key in (
+                    "posted_speed_limit",
+                    "lane_width",
+                    "roadside_lateral_clearance",
+                    "median_type",
+                    "access_point_density",
+                )
+            }
+        )
+    if method == "general_terrain":
+        legacy.update({"terrain_type": "level", "grade_percent": 0.0})
+        task["terrain_type"] = "level"
+    elif method == "specific_grade":
+        legacy.update({"terrain_type": "specific_grade", "truck_mix": truck_mix})
+        task.update({"grade_percent": 3.0, "truck_mix": truck_mix})
+    else:
+        legacy.update(
+            {
+                "pce_mode": "external",
+                "passenger_car_equivalent": 2.5,
+                "grade_percent": 0.0,
+            }
+        )
+        task["passenger_car_equivalent"] = 2.5
+    return legacy, task
+
+
+@pytest.mark.parametrize(
+    ("method", "truck_mix"),
+    [
+        ("general_terrain", "default_30_sut_70_tt"),
+        ("specific_grade", "default_30_sut_70_tt"),
+        ("specific_grade", "equal_50_sut_50_tt"),
+        ("specific_grade", "majority_70_sut_30_tt"),
+        ("external_pce", "default_30_sut_70_tt"),
+    ],
+)
+def test_task_method_mapping_preserves_legacy_engine_inputs_and_results(
+    method: str, truck_mix: str
+) -> None:
+    template = load_multilane_template("MLH-CH26-004-EB")["inputs"]
+    legacy, task = _equivalent_legacy_and_task_values(method, truck_mix=truck_mix)
+
+    legacy_engine = multilane_ui_inputs_to_engine(legacy, template, "imperial")
+    task_engine = multilane_ui_inputs_to_engine(task, template, "imperial")
+
+    assert task_engine == legacy_engine
+    assert result_to_dict(run_manual_multilane(task_engine)) == result_to_dict(
+        run_manual_multilane(legacy_engine)
+    )
+
+
+def test_task_general_terrain_mapping_preserves_rolling_engine_path() -> None:
+    template = load_multilane_template("MLH-CH26-004-EB")["inputs"]
+    base = multilane_template_ui_inputs("MLH-CH26-004-EB", "imperial")
+    legacy = base | {
+        "pce_mode": "internal",
+        "terrain_type": "rolling",
+        "grade_percent": 0.0,
+        "truck_mix": "default_30_sut_70_tt",
+    }
+    task = base | {
+        "heavy_vehicle_adjustment_method": "general_terrain",
+        "terrain_type": "rolling",
+    }
+
+    legacy_engine = multilane_ui_inputs_to_engine(legacy, template, "imperial")
+    task_engine = multilane_ui_inputs_to_engine(task, template, "imperial")
+
+    assert task_engine == legacy_engine
+    assert result_to_dict(run_manual_multilane(task_engine)) == result_to_dict(
+        run_manual_multilane(legacy_engine)
+    )
+
+
+def test_task_method_mapping_preserves_measured_and_capacity_failure_cases() -> None:
+    template = load_multilane_template("MLH-CH26-004-EB")["inputs"]
+    for method, demand in (("specific_grade", 1500.0), ("external_pce", 10000.0)):
+        legacy, task = _equivalent_legacy_and_task_values(
+            method,
+            demand_volume=demand,
+            ffs_source="measured",
+        )
+        legacy_engine = multilane_ui_inputs_to_engine(legacy, template, "imperial")
+        task_engine = multilane_ui_inputs_to_engine(task, template, "imperial")
+        assert task_engine == legacy_engine
+        assert result_to_dict(run_manual_multilane(task_engine)) == result_to_dict(
+            run_manual_multilane(legacy_engine)
+        )
+
+
+def test_task_method_hidden_fields_are_neutral_for_validation_and_fingerprint() -> None:
+    template = load_multilane_template("MLH-CH26-004-EB")["inputs"]
+    _, external = _equivalent_legacy_and_task_values("external_pce")
+    baseline = multilane_ui_inputs_to_engine(external, template, "imperial")
+    hidden_changed = external | {
+        "grade_percent": float("nan"),
+        "terrain_type": "not-an-engine-terrain",
+        "truck_mix": "not-an-engine-truck-mix",
+        "free_flow_speed": float("nan"),
+    }
+    assert multilane_ui_inputs_to_engine(hidden_changed, template, "imperial") == baseline
+    assert normalized_input_fingerprint(baseline) == normalized_input_fingerprint(
+        multilane_ui_inputs_to_engine(hidden_changed, template, "imperial")
+    )
+
+    active_change = external | {"passenger_car_equivalent": 2.6}
+    changed_engine = multilane_ui_inputs_to_engine(active_change, template, "imperial")
+    assert normalized_input_fingerprint(changed_engine) != normalized_input_fingerprint(baseline)
+    state: dict[str, object] = {}
+    mark_calculated(state, "manual_multilane", baseline)
+    assert workflow_status(state, "manual_multilane", changed_engine) == STALE

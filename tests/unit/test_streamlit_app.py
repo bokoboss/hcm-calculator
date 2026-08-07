@@ -470,6 +470,10 @@ def _open_multilane_app(locale: str = "en"):
     return app
 
 
+def _multilane_element(elements, label: str):
+    return next(element for element in elements if element.label == label)
+
+
 def _open_freeway_app(locale: str = "en"):
     AppTest = _apptest()
     app = AppTest.from_file("src/hcmcalc/ui/streamlit_app.py", default_timeout=20)
@@ -941,7 +945,7 @@ def test_multilane_streamlit_result_panel_uses_canonical_capacity_display_key() 
 
     assert not app.exception
     metrics = {metric.label: metric.value for metric in app.metric}
-    assert metrics["Speed used for density"] == "79.7 km/h"
+    assert metrics["Mean speed"] == "79.7 km/h"
     assert metrics["Demand flow rate"] == "895 pc/h/ln"
     assert metrics["Capacity"] == "1990 pc/h/ln"
     assert metrics["Capacity status"] == "Within capacity"
@@ -949,7 +953,11 @@ def test_multilane_streamlit_result_panel_uses_canonical_capacity_display_key() 
     assert any("LOS C" in markdown.value for markdown in app.markdown)
     assert any("Density <strong>11.2 pc/km/ln</strong>" in markdown.value for markdown in app.markdown)
 
-    app.number_input[6].set_value(1600.0)
+    next(
+        control
+        for control in app.number_input
+        if control.label == "Demand volume (veh/h)"
+    ).set_value(1600.0)
     app.run()
 
     assert not app.exception
@@ -957,7 +965,7 @@ def test_multilane_streamlit_result_panel_uses_canonical_capacity_display_key() 
     assert not {metric.label for metric in app.metric}
     assert all(button.label != "Download CSV" for button in app.download_button)
 
-    app.button[1].click().run()
+    next(button for button in app.button if button.label == "Recalculate").click().run()
 
     assert not app.exception
     metrics = {metric.label: metric.value for metric in app.metric}
@@ -973,14 +981,18 @@ def test_multilane_streamlit_result_panel_uses_canonical_capacity_display_key() 
 
 def test_multilane_streamlit_above_capacity_preserves_not_predicted_outputs() -> None:
     app = _open_multilane_app()
-    app.number_input[6].set_value(10000.0)
+    next(
+        control
+        for control in app.number_input
+        if control.label == "Demand volume (veh/h)"
+    ).set_value(10000.0)
     app.run()
 
     app.button[1].click().run()
 
     assert not app.exception
     metrics = {metric.label: metric.value for metric in app.metric}
-    assert metrics["Speed used for density"] == "Not predicted"
+    assert metrics["Mean speed"] == "Not predicted"
     assert metrics["Demand flow rate"] == "5969 pc/h/ln"
     assert metrics["Capacity"] == "1990 pc/h/ln"
     assert metrics["Capacity status"] == "Demand exceeds capacity"
@@ -1004,7 +1016,7 @@ def test_multilane_thai_stable_result_has_localized_key_surfaces() -> None:
 
     assert not app.exception
     metric_labels = {metric.label for metric in app.metric}
-    assert translate("multilane.speed_used_for_density", "th") in metric_labels
+    assert translate("multilane.mean_speed", "th") in metric_labels
     assert translate("result.demand_flow_rate", "th") in metric_labels
     assert translate("result.capacity", "th") in metric_labels
     assert translate("multilane.capacity_check", "th") in metric_labels
@@ -1029,9 +1041,199 @@ def test_multilane_thai_stable_result_has_localized_key_surfaces() -> None:
         assert english not in visible_labels
 
 
+def test_multilane_task_sections_disclose_only_active_branches_and_recalculate() -> None:
+    app = _open_multilane_app()
+
+    visible_numbers = {control.label for control in app.number_input}
+    visible_selects = {control.label for control in app.selectbox}
+    assert "Measured free-flow speed (km/h)" not in visible_numbers
+    assert "Grade (%)" in visible_numbers
+    assert "Heavy-vehicle composition (SUT/TT)" in visible_selects
+    assert "Passenger-car equivalent (PCE)" not in visible_numbers
+
+    app.button[1].click().run()
+    assert not app.exception
+    assert {metric.label for metric in app.metric} >= {
+        "Demand / capacity",
+        "Mean speed",
+        "Capacity",
+    }
+    assert any(button.label == "Download CSV" for button in app.download_button)
+
+    _multilane_element(
+        app.number_input, "Demand volume (veh/h)"
+    ).set_value(1600.0).run()
+    assert not {metric.label for metric in app.metric}
+    assert all(button.label != "Download CSV" for button in app.download_button)
+    assert any(button.label == "Recalculate" for button in app.button)
+
+    measured = _open_multilane_app()
+    _multilane_element(
+        measured.segmented_control, "Free-flow speed source"
+    ).set_value("measured").run()
+    assert "Measured free-flow speed (km/h)" in {
+        control.label for control in measured.number_input
+    }
+    assert "Posted speed limit (km/h)" not in {
+        control.label for control in measured.number_input
+    }
+    _multilane_element(
+        measured.number_input, "Measured free-flow speed (km/h)"
+    ).set_value(88.5).run()
+    next(button for button in measured.button if button.label == "Calculate").click().run()
+    assert {metric.label for metric in measured.metric} >= {"Mean speed", "Capacity"}
+
+    general = _open_multilane_app()
+    _multilane_element(
+        general.segmented_control, "Heavy-vehicle adjustment method"
+    ).set_value("general_terrain").run()
+    assert "General terrain" in {control.label for control in general.selectbox}
+    assert "Grade (%)" not in {control.label for control in general.number_input}
+    assert "Heavy-vehicle composition (SUT/TT)" not in {
+        control.label for control in general.selectbox
+    }
+    assert "Passenger-car equivalent (PCE)" not in {
+        control.label for control in general.number_input
+    }
+    _multilane_element(general.selectbox, "General terrain").set_value("rolling").run()
+    next(button for button in general.button if button.label == "Calculate").click().run()
+    assert any("(internal_hcm7_exhibit_12_25)" in metric.value for metric in general.metric if metric.label == "PCE")
+
+    specific = _open_multilane_app()
+    _multilane_element(
+        specific.segmented_control, "Heavy-vehicle adjustment method"
+    ).set_value("specific_grade").run()
+    assert "Grade (%)" in {control.label for control in specific.number_input}
+    assert any(
+        "For other observed truck compositions, use External PCE." in caption.value
+        for caption in specific.caption
+    )
+    _multilane_element(specific.selectbox, "Heavy-vehicle composition (SUT/TT)").set_value(
+        "majority_70_sut_30_tt"
+    ).run()
+    next(button for button in specific.button if button.label == "Calculate").click().run()
+    assert {metric.label for metric in specific.metric} >= {"Mean speed", "Demand / capacity"}
+
+    external = _open_multilane_app()
+    _multilane_element(
+        external.segmented_control, "Heavy-vehicle adjustment method"
+    ).set_value("external_pce").run()
+    assert "Passenger-car equivalent (PCE)" in {
+        control.label for control in external.number_input
+    }
+    assert "Grade (%)" not in {control.label for control in external.number_input}
+    assert "Heavy-vehicle composition (SUT/TT)" not in {
+        control.label for control in external.selectbox
+    }
+    assert "General terrain" not in {control.label for control in external.selectbox}
+    _multilane_element(
+        external.number_input, "Passenger-car equivalent (PCE)"
+    ).set_value(2.5).run()
+    next(button for button in external.button if button.label == "Calculate").click().run()
+    assert any("external_user_supplied_override" in metric.value for metric in external.metric if metric.label == "PCE")
+
+
+def test_multilane_blank_template_restore_and_unit_branch_are_isolated() -> None:
+    app = _open_multilane_app()
+    template = _multilane_element(app.selectbox, "Template / Blank case")
+    template.set_value("blank_custom").run()
+    assert not app.exception
+    assert _multilane_element(app.number_input, "Lanes in analysis direction").value is None
+    assert not {metric.label for metric in app.metric}
+
+    _multilane_element(app.selectbox, "Template / Blank case").set_value(
+        "MLH-CH26-004-EB"
+    ).run()
+    assert _multilane_element(app.number_input, "Lanes in analysis direction").value == 2
+    _multilane_element(app.segmented_control, "Unit system").set_value("imperial").run()
+    assert any("Segment length (ft)" == control.label for control in app.number_input)
+    assert not {metric.label for metric in app.metric}
+
+
+def test_multilane_thai_task_branches_and_stale_action_are_localized() -> None:
+    app = _open_multilane_app("th")
+    _multilane_element(
+        app.segmented_control, translate("multilane.heavy_vehicle_method", "th")
+    ).set_value("specific_grade").run()
+    assert any(
+        translate("multilane.composition_scope", "th") in caption.value
+        for caption in app.caption
+    )
+    _multilane_element(
+        app.selectbox, translate("multilane.heavy_vehicle_composition", "th")
+    ).set_value("equal_50_sut_50_tt").run()
+    next(button for button in app.button if button.label == translate("multilane.calculate", "th")).click().run()
+    assert translate("multilane.mean_speed", "th") in {metric.label for metric in app.metric}
+    assert any(
+        button.label == translate("multilane.save_project", "th")
+        for button in app.download_button
+    )
+
+    _multilane_element(
+        app.segmented_control, translate("multilane.heavy_vehicle_method", "th")
+    ).set_value("external_pce").run()
+    _multilane_element(
+        app.number_input, translate("multilane.external_pce", "th")
+    ).set_value(2.5).run()
+    next(button for button in app.button if button.label == translate("multilane.recalculate", "th")).click().run()
+    assert any(
+        "external_user_supplied_override" in metric.value
+        for metric in app.metric
+        if metric.label == translate("multilane.pce", "th")
+    )
+    _multilane_element(
+        app.number_input, translate("multilane.demand_volume", "th")
+    ).set_value(1600.0).run()
+    assert not {metric.label for metric in app.metric}
+    assert any(
+        button.label == translate("multilane.recalculate", "th")
+        for button in app.button
+    )
+    assert all(
+        button.label != "Download CSV" for button in app.download_button
+    )
+
+
+def test_multilane_locale_switch_after_result_preserves_widget_state() -> None:
+    app = _open_multilane_app("en")
+    next(
+        button
+        for button in app.button
+        if button.label == translate("multilane.calculate", "en")
+    ).click().run()
+    app.selectbox[0].set_value("th").run()
+
+    assert not app.exception
+    assert translate("multilane.mean_speed", "th") in {metric.label for metric in app.metric}
+
+    _multilane_element(
+        app.number_input, translate("multilane.heavy_vehicles", "th")
+    ).set_value(7.0).run()
+    assert not app.exception
+    assert any(
+        translate("multilane.stale", "th") in alert.value
+        for alert in app.warning
+    )
+    assert any(
+        button.label == translate("multilane.recalculate", "th")
+        for button in app.button
+    )
+
+    next(
+        button
+        for button in app.button
+        if button.label == translate("multilane.recalculate", "th")
+    ).click().run()
+    assert not app.exception
+
+
 def test_multilane_unsupported_scope_uses_typed_state_without_traceback() -> None:
     app = _open_multilane_app()
-    app.number_input[0].set_value(4).run()
+    next(
+        control
+        for control in app.number_input
+        if control.label == translate("multilane.number_of_lanes", "en")
+    ).set_value(4).run()
 
     app.button[1].click().run()
 

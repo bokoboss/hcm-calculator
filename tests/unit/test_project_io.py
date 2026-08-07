@@ -11,6 +11,7 @@ from hcmcalc.ui.manual_facility import (
     run_manual_facility,
 )
 from hcmcalc.ui.manual_multilane import (
+    BLANK_CASE_ID,
     build_manual_multilane_audit_record,
     load_multilane_template,
     multilane_ui_inputs_to_engine,
@@ -860,3 +861,91 @@ def test_freeway_load_discards_legacy_above_capacity_speed_and_density() -> None
 
     assert loaded["calculation_result"] is None
     assert loaded["display_result"] is None
+
+
+def _task_multilane_project_inputs(
+    method: str, *, ffs_source: str = "estimated"
+) -> dict[str, object]:
+    base = multilane_template_ui_inputs("MLH-CH26-004-EB", "imperial")
+    displayed = {
+        key: base[key]
+        for key in (
+            "number_of_lanes",
+            "segment_length",
+            "demand_volume_veh_h",
+            "peak_hour_factor",
+            "heavy_vehicle_percent",
+        )
+    }
+    displayed["ffs_source"] = ffs_source
+    displayed["heavy_vehicle_adjustment_method"] = method
+    if ffs_source == "measured":
+        displayed["free_flow_speed"] = 55.0
+    else:
+        displayed.update(
+            {
+                key: base[key]
+                for key in (
+                    "posted_speed_limit",
+                    "lane_width",
+                    "roadside_lateral_clearance",
+                    "median_type",
+                    "access_point_density",
+                )
+            }
+        )
+    if method == "general_terrain":
+        displayed["terrain_type"] = "rolling"
+    elif method == "specific_grade":
+        displayed.update(
+            {
+                "grade_percent": 3.0,
+                "truck_mix": "equal_50_sut_50_tt",
+            }
+        )
+    else:
+        displayed["passenger_car_equivalent"] = 2.5
+    return displayed
+
+
+@pytest.mark.parametrize(
+    ("template_id", "method", "ffs_source"),
+    [
+        ("MLH-CH26-004-EB", "general_terrain", "estimated"),
+        ("MLH-CH26-004-EB", "specific_grade", "estimated"),
+        ("MLH-CH26-004-EB", "external_pce", "estimated"),
+        ("MLH-CH26-004-EB", "specific_grade", "measured"),
+        (BLANK_CASE_ID, "general_terrain", "estimated"),
+    ],
+)
+def test_task_oriented_multilane_projects_round_trip_without_schema_migration(
+    template_id: str, method: str, ffs_source: str
+) -> None:
+    displayed = _task_multilane_project_inputs(method, ffs_source=ffs_source)
+    template = load_multilane_template(template_id)
+    normalized = multilane_ui_inputs_to_engine(displayed, template["inputs"], "imperial")
+    result = run_manual_multilane(normalized)
+    audit = build_manual_multilane_audit_record(
+        template_id,
+        normalized,
+        unit_system="imperial",
+        displayed_inputs=displayed,
+        result=result,
+    )
+
+    loaded = load_manual_multilane_project_json(
+        create_manual_multilane_project_json(
+            template_id,
+            "imperial",
+            displayed,
+            result=result_to_dict(result),
+            audit_record=audit,
+        )
+    )
+
+    assert loaded["schema_version"] == PROJECT_SCHEMA_VERSION
+    assert loaded["project_type"] == MANUAL_MULTILANE_PROJECT_TYPE
+    assert loaded["displayed_ui_inputs"]["heavy_vehicle_adjustment_method"] == method
+    assert loaded["normalized_engine_inputs"] == normalized
+    assert loaded["load_status"] == "result_current"
+    assert loaded["calculation_result"] == result_to_dict(result)
