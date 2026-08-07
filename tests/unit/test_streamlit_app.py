@@ -1315,6 +1315,19 @@ def test_freeway_streamlit_stable_english_result_and_exports() -> None:
 def test_freeway_thai_result_has_localized_visible_surfaces() -> None:
     app = _open_freeway_app("th")
 
+    assert any(
+        translate("freeway.start", "th") in markdown.value
+        for markdown in app.markdown
+    )
+    assert any(
+        translate("freeway.traffic_segment", "th") in markdown.value
+        for markdown in app.markdown
+    )
+    assert any(
+        control.label == translate("freeway.heavy_vehicle_method", "th")
+        for control in app.segmented_control
+    )
+
     app.button[1].click().run()
 
     assert not app.exception
@@ -1378,8 +1391,106 @@ def test_freeway_estimated_ffs_mode_exposes_ramp_density_as_ffs_variable() -> No
     assert metrics["FFS source"] == "estimated"
 
 
+def test_freeway_task_heavy_adjustment_branches_preserve_engine_equivalence() -> None:
+    app = _open_freeway_app()
+    preset = load_freeway_preset("BF-CH26-001")
+
+    heavy_method = next(
+        control
+        for control in app.segmented_control
+        if control.label == "Heavy-vehicle adjustment method"
+    )
+    assert any(button.label == "Calculate" for button in app.button)
+
+    heavy_method.set_value("general_terrain").run()
+    assert "Grade (%)" not in {control.label for control in app.number_input}
+    assert "Heavy-vehicle composition (SUT/TT)" not in {
+        control.label for control in app.selectbox
+    }
+    next(control for control in app.selectbox if control.label == "Terrain").set_value(
+        "rolling"
+    ).run()
+    next(button for button in app.button if button.label == "Calculate").click().run()
+    general_actual = app.session_state["manual_freeway_audit"]["submitted_inputs"]
+    general_displayed = freeway_preset_ui_inputs("BF-CH26-001", "metric") | {
+        "terrain_type": "rolling",
+        "pce_mode": "internal",
+        "grade_percent": None,
+        "truck_mix": "default_30_sut_70_tt",
+        "passenger_car_equivalent": None,
+        "passenger_car_equivalent_provenance": None,
+    }
+    general_expected = freeway_ui_inputs_to_engine(
+        general_displayed, preset["inputs"], "metric"
+    )
+    assert general_actual == general_expected
+    assert app.session_state["manual_freeway_result"] == result_to_dict(
+        run_manual_freeway(general_expected)
+    )
+
+    heavy_method = next(
+        control
+        for control in app.segmented_control
+        if control.label == "Heavy-vehicle adjustment method"
+    )
+    heavy_method.set_value("specific_grade").run()
+    next(control for control in app.number_input if control.label == "Grade (%)").set_value(
+        2.0
+    ).run()
+    next(button for button in app.button if button.label == "Recalculate").click().run()
+    specific_actual = app.session_state["manual_freeway_audit"]["submitted_inputs"]
+    specific_displayed = freeway_preset_ui_inputs("BF-CH26-001", "metric") | {
+        "terrain_type": "specific_grade",
+        "pce_mode": "internal",
+        "grade_percent": 2.0,
+        "truck_mix": "default_30_sut_70_tt",
+        "passenger_car_equivalent": None,
+        "passenger_car_equivalent_provenance": None,
+    }
+    specific_expected = freeway_ui_inputs_to_engine(
+        specific_displayed, preset["inputs"], "metric"
+    )
+    assert specific_actual == specific_expected
+    assert app.session_state["manual_freeway_result"] == result_to_dict(
+        run_manual_freeway(specific_expected)
+    )
+
+    heavy_method = next(
+        control
+        for control in app.segmented_control
+        if control.label == "Heavy-vehicle adjustment method"
+    )
+    heavy_method.set_value("external").run()
+    next(control for control in app.number_input if control.label == "External PCE").set_value(
+        2.3
+    ).run()
+    next(
+        control
+        for control in app.text_input
+        if control.label == "External PCE provenance"
+    ).set_value("approved agency study").run()
+    next(button for button in app.button if button.label == "Recalculate").click().run()
+    external_actual = app.session_state["manual_freeway_audit"]["submitted_inputs"]
+    external_displayed = freeway_preset_ui_inputs("BF-CH26-001", "metric") | {
+        "terrain_type": "level",
+        "pce_mode": "external",
+        "grade_percent": None,
+        "truck_mix": "default_30_sut_70_tt",
+        "passenger_car_equivalent": 2.3,
+        "passenger_car_equivalent_provenance": "approved agency study",
+    }
+    external_expected = freeway_ui_inputs_to_engine(
+        external_displayed, preset["inputs"], "metric"
+    )
+    assert external_actual == external_expected
+    assert app.session_state["manual_freeway_result"] == result_to_dict(
+        run_manual_freeway(external_expected)
+    )
+
+
 def test_freeway_stale_state_hides_metrics_and_blocks_report_exports() -> None:
     app = _open_freeway_app()
+    assert any(button.label == "Calculate" for button in app.button)
     app.button[1].click().run()
 
     app.number_input[2].set_value(2100.0).run()
@@ -1388,6 +1499,7 @@ def test_freeway_stale_state_hides_metrics_and_blocks_report_exports() -> None:
     assert any(translate("freeway.stale", "en") in warning.value for warning in app.warning)
     assert not {metric.label for metric in app.metric}
     assert all(button.label != "Download CSV" for button in app.download_button)
+    assert any(button.label == "Recalculate" for button in app.button)
 
     app.button[1].click().run()
     assert {metric.label: metric.value for metric in app.metric}["Capacity"] == "2308 pc/h/ln"
@@ -1479,6 +1591,82 @@ def test_freeway_project_load_current_and_malformed_project_smoke() -> None:
     )
 
 
+def test_freeway_project_restore_reopens_measured_external_branches() -> None:
+    preset = load_freeway_preset("BF-CH26-001")
+    displayed = freeway_preset_ui_inputs("BF-CH26-001", "metric") | {
+        "ffs_source": "measured",
+        "free_flow_speed": 95.0,
+        "base_free_flow_speed": None,
+        "lane_width": None,
+        "right_side_lateral_clearance": None,
+        "total_ramp_density": None,
+        "pce_mode": "external",
+        "terrain_type": "level",
+        "grade_percent": None,
+        "truck_mix": "default_30_sut_70_tt",
+        "passenger_car_equivalent": 2.3,
+        "passenger_car_equivalent_provenance": "approved agency study",
+    }
+    normalized = freeway_ui_inputs_to_engine(displayed, preset["inputs"], "metric")
+    result = run_manual_freeway(normalized)
+    project_json = create_manual_freeway_project_json(
+        "BF-CH26-001",
+        "metric",
+        displayed,
+        result=result_to_dict(result),
+        audit_record=build_manual_freeway_audit_record(
+            "BF-CH26-001",
+            normalized,
+            unit_system="metric",
+            displayed_inputs=displayed,
+            result=result,
+        ),
+        locale="en",
+    )
+
+    app = _open_freeway_app()
+    app.file_uploader[0].upload(
+        "measured-external-freeway.json",
+        project_json.encode("utf-8"),
+        "application/json",
+    ).run()
+    app.button[0].click().run()
+
+    assert not app.exception
+    assert next(
+        control
+        for control in app.segmented_control
+        if control.label == "Free-flow speed method"
+    ).value == "measured"
+    assert next(
+        control
+        for control in app.segmented_control
+        if control.label == "Heavy-vehicle adjustment method"
+    ).value == "external"
+    assert "Measured FFS (km/h)" in {control.label for control in app.number_input}
+    assert "External PCE" in {control.label for control in app.number_input}
+    assert "Base FFS (km/h)" not in {control.label for control in app.number_input}
+    assert "Grade (%)" not in {control.label for control in app.number_input}
+
+
+def test_freeway_locale_switch_after_result_preserves_widget_state() -> None:
+    app = _open_freeway_app()
+    next(button for button in app.button if button.label == "Calculate").click().run()
+    app.selectbox[0].set_value("th").run()
+
+    assert not app.exception
+    assert translate("freeway.speed_used_for_density", "th") in {
+        metric.label for metric in app.metric
+    }
+    heavy_label = translate("freeway.heavy_vehicles", "th")
+    next(control for control in app.number_input if control.label == heavy_label).set_value(7.0).run()
+    assert any(translate("freeway.stale", "th") in warning.value for warning in app.warning)
+    assert any(
+        button.label == translate("freeway.recalculate", "th")
+        for button in app.button
+    )
+
+
 def test_freeway_navigation_isolation_from_multilane() -> None:
     app = _open_freeway_app()
     app.button[1].click().run()
@@ -1502,10 +1690,16 @@ def test_merge_streamlit_stable_english_result_and_exports() -> None:
 
     assert translate("ramp.merge.title", "en") in str(app)
     assert any("Merge Segment configuration diagram" in markdown.value for markdown in app.markdown)
+    assert any(button.label == "Calculate" for button in app.button)
+    assert not any(button.label == "Run HCM 7.0 calculation" for button in app.button)
 
     app.button[0].click().run()
 
     assert not app.exception
+    assert any(
+        translate("ramp.result_actions", "en") in markdown.value
+        for markdown in app.markdown
+    )
     metrics = {metric.label: metric.value for metric in app.metric}
     assert metrics["Ramp influence speed"] == "85.3 km/h"
     assert metrics["Downstream combined flow"] == "3541 pc/h"
@@ -1526,6 +1720,10 @@ def test_merge_thai_stable_result_has_localized_visible_surfaces() -> None:
     app.button[0].click().run()
 
     assert not app.exception
+    assert any(
+        translate("ramp.result_actions", "th") in markdown.value
+        for markdown in app.markdown
+    )
     assert translate("ramp.merge.title", "th") in str(app)
     metric_labels = {metric.label for metric in app.metric}
     assert translate("ramp.ramp_influence_speed", "th") in metric_labels
@@ -1598,6 +1796,7 @@ def test_merge_stale_state_hides_metrics_and_blocks_report_exports() -> None:
     assert any(translate("ramp.stale_info", "en") in warning.value for warning in app.warning)
     assert not {metric.label for metric in app.metric}
     assert all(button.label != "Download CSV" for button in app.download_button)
+    assert any(button.label == "Recalculate" for button in app.button)
 
     app.button[0].click().run()
     assert {metric.label: metric.value for metric in app.metric}["Downstream combined flow"] == "3617 pc/h"
@@ -1718,10 +1917,16 @@ def test_diverge_streamlit_stable_english_result_and_exports() -> None:
     assert any("Diverge Segment configuration diagram" in markdown.value for markdown in app.markdown)
     assert any("LD 79.2 m" in caption.value for caption in app.caption)
     assert any("upstream freeway demand - off-ramp demand" in caption.value for caption in app.caption)
+    assert any(button.label == "Calculate" for button in app.button)
+    assert not any(button.label == "Run HCM 7.0 calculation" for button in app.button)
 
     app.button[0].click().run()
 
     assert not app.exception
+    assert any(
+        translate("ramp.result_actions", "en") in markdown.value
+        for markdown in app.markdown
+    )
     metrics = {metric.label: metric.value for metric in app.metric}
     assert metrics["Ramp influence speed"] == "81.6 km/h"
     assert metrics["Continuing freeway flow"] == "6181 pc/h"
@@ -1742,6 +1947,10 @@ def test_diverge_thai_stable_result_has_localized_visible_surfaces() -> None:
     app.button[0].click().run()
 
     assert not app.exception
+    assert any(
+        translate("ramp.result_actions", "th") in markdown.value
+        for markdown in app.markdown
+    )
     assert translate("ramp.diverge.title", "th") in str(app)
     metric_labels = {metric.label for metric in app.metric}
     assert translate("ramp.ramp_influence_speed", "th") in metric_labels
@@ -1833,6 +2042,7 @@ def test_diverge_stale_state_hides_metrics_and_blocks_report_exports() -> None:
     assert any(translate("ramp.stale_info", "en") in warning.value for warning in app.warning)
     assert not {metric.label for metric in app.metric}
     assert all(button.label != "Download CSV" for button in app.download_button)
+    assert any(button.label == "Recalculate" for button in app.button)
 
     app.button[0].click().run()
     assert {metric.label: metric.value for metric in app.metric}["Continuing freeway flow"] == "6122 pc/h"
@@ -1946,6 +2156,77 @@ def test_diverge_project_load_current_hcm71_adjacent_wrong_type_and_malformed_sm
         in error.value
         for error in malformed.error
     )
+
+
+@pytest.mark.parametrize("workflow", ("merge", "diverge"))
+def test_ramp_project_restore_reopens_estimated_ffs_branch(workflow: str) -> None:
+    displayed = ramp_preset_ui_inputs(workflow, "blank_custom", "metric") | {
+        "ffs_source": "estimated",
+        "free_flow_speed": None,
+        "base_free_flow_speed": 110.0,
+        "lane_width": 3.6,
+        "right_side_lateral_clearance": 0.6,
+        "total_ramp_density": 1.0,
+    }
+    normalized = ramp_ui_inputs_to_engine(workflow, displayed, "metric")
+    result = run_manual_ramp(workflow, normalized)
+    project_json = create_manual_ramp_project_json(
+        workflow,
+        "blank_custom",
+        "metric",
+        displayed,
+        result=result_to_dict(result),
+        audit_record=build_manual_ramp_audit_record(
+            workflow,
+            "blank_custom",
+            normalized,
+            unit_system="metric",
+            displayed_inputs=displayed,
+            result=result,
+        ),
+        locale="en",
+    )
+
+    app = _open_merge_app() if workflow == "merge" else _open_diverge_app()
+    app.file_uploader[0].upload(
+        f"{workflow}-estimated-project.json",
+        project_json.encode("utf-8"),
+        "application/json",
+    ).run()
+    app.button[0].click().run()
+
+    assert not app.exception
+    assert next(
+        control
+        for control in app.selectbox
+        if control.label == "Freeway FFS source"
+    ).value == "estimated"
+    number_labels = {control.label for control in app.number_input}
+    assert "Base freeway FFS (km/h)" in number_labels
+    assert "Measured freeway FFS (km/h)" not in number_labels
+    assert "Total ramp density (ramps/km)" in number_labels
+
+
+@pytest.mark.parametrize("workflow", ("merge", "diverge"))
+def test_ramp_locale_switch_preserves_ffs_and_terrain_widget_state(workflow: str) -> None:
+    app = _open_merge_app() if workflow == "merge" else _open_diverge_app()
+    ffs_source = next(control for control in app.selectbox if control.label == "Freeway FFS source")
+    ffs_source.set_value("estimated").run()
+    terrain = next(control for control in app.selectbox if control.label == "Terrain")
+    terrain.set_value("rolling").run()
+    app.selectbox[0].set_value("th").run()
+
+    assert not app.exception
+    assert next(
+        control
+        for control in app.selectbox
+        if control.label == translate("ramp.ffs_source", "th")
+    ).value == "estimated"
+    assert next(
+        control
+        for control in app.selectbox
+        if control.label == translate("ramp.terrain", "th")
+    ).value == "rolling"
 
 
 def test_diverge_navigation_isolation_from_merge_and_basic_freeway() -> None:

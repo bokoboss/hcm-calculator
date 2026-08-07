@@ -561,17 +561,17 @@ def render_manual_ramp_calculator(workflow: str) -> None:
     status_placeholder = st.empty()
     input_column, result_column = render_calculator_shell()
     with input_column:
-        render_project_load_section(
-            lambda: _render_manual_ramp_load_controls(workflow),
-            label=_ramp_text("project_load"),
-        )
-        render_section_label(_ramp_text("setup"))
+        render_section_label(_ramp_text("start"))
         st.caption(_ramp_text("method_caption"))
-        st.caption(_ramp_text("fixed_scope"))
-        st.session_state.setdefault(f"manual_{workflow}_unit_label", "Metric")
+        _prepare_localized_widget_state(
+            f"manual_{workflow}_unit_label",
+            "ramp.unit",
+            ("metric", "imperial"),
+            "metric",
+        )
         unit_label = st.segmented_control(
             _ramp_text("unit_system"),
-            ["Metric", "Imperial"],
+            ["metric", "imperial"],
             format_func=lambda item, locale=locale: _ramp_text_for_locale(locale, f"unit.{item.lower()}"),
             key=f"manual_{workflow}_unit_label",
         )
@@ -587,7 +587,15 @@ def render_manual_ramp_calculator(workflow: str) -> None:
             key=f"manual_{workflow}_preset_id_{locale}",
         )
         st.session_state[f"manual_{workflow}_preset_id"] = preset_id
-    unit_system = unit_label.lower()
+        render_project_load_section(
+            lambda: _render_manual_ramp_load_controls(workflow),
+            label=_ramp_text("project_load"),
+        )
+    unit_system = _localized_option_to_value(
+        unit_label, "ramp.unit", ("metric", "imperial")
+    )
+    if unit_system not in {"metric", "imperial"}:
+        unit_system = str(st.session_state.get(f"manual_{workflow}_unit_label", "metric"))
     context = (preset_id, unit_system)
     if st.session_state.get(f"manual_{workflow}_preset_context") != context:
         clear_manual_ramp_state(st.session_state, workflow)
@@ -600,6 +608,7 @@ def render_manual_ramp_calculator(workflow: str) -> None:
     ramp_density_unit = "ramps/km" if metric else "ramps/mi"
     with input_column:
         render_section_label(_ramp_text("geometry"))
+        st.caption(_ramp_text("fixed_scope"))
         st.caption(_ramp_text("freeway_component"))
         geometry = st.columns(2)
         case_name = geometry[0].text_input(
@@ -644,12 +653,19 @@ def render_manual_ramp_calculator(workflow: str) -> None:
         )
         render_section_label(_ramp_text("ffs"))
         ffs = st.columns(2)
+        ffs_source_key = f"manual_{workflow}_input_ffs_source_{preset_id}_{unit_system}"
+        _prepare_localized_widget_state(
+            ffs_source_key,
+            "ramp.ffs",
+            ("measured", "estimated"),
+            str(ui["ffs_source"]),
+        )
         ffs_source = ffs[0].selectbox(
             _ramp_text("ffs_source"),
             ["measured", "estimated"],
             index=0 if ui["ffs_source"] == "measured" else 1,
             format_func=lambda value, locale=locale: _ramp_text_for_locale(locale, f"ffs.{value}"),
-            key=f"manual_{workflow}_input_ffs_source_{preset_id}_{unit_system}_{locale}",
+            key=ffs_source_key,
             help=_ramp_text("freeway_ffs_help"),
         )
         if ffs_source == "measured":
@@ -723,12 +739,19 @@ def render_manual_ramp_calculator(workflow: str) -> None:
             value=float(ui["ramp_heavy_vehicle_percent"]),
             key=f"manual_{workflow}_input_ramp_hv_{preset_id}_{unit_system}",
         )
+        terrain_key = f"manual_{workflow}_input_terrain_{preset_id}_{unit_system}"
+        _prepare_localized_widget_state(
+            terrain_key,
+            "ramp.terrain",
+            ("level", "rolling"),
+            str(ui["terrain_type"]),
+        )
         terrain_type = phf[0].selectbox(
             _ramp_text("terrain"),
             ["level", "rolling"],
             index=["level", "rolling"].index(ui["terrain_type"]),
             format_func=lambda value, locale=locale: _ramp_text_for_locale(locale, f"terrain.{value}"),
-            key=f"manual_{workflow}_input_terrain_{preset_id}_{unit_system}_{locale}",
+            key=terrain_key,
         )
         render_section_label(_ramp_text("evidence"))
         st.caption(_ramp_text("evidence_summary"))
@@ -751,7 +774,13 @@ def render_manual_ramp_calculator(workflow: str) -> None:
             auxiliary_lane_length=float(auxiliary_lane_length),
             length_unit=length_unit,
         )
-        run_ramp = st.button(_ramp_text("run"), type="primary", width="stretch", key=f"manual_{workflow}_run")
+        prior_result_exists = st.session_state.get(f"manual_{workflow}_result") is not None
+        run_ramp = st.button(
+            _ramp_text("recalculate" if prior_result_exists else "calculate"),
+            type="primary",
+            width="stretch",
+            key=f"manual_{workflow}_run",
+        )
         displayed_inputs = {
             "case_name": case_name,
             "freeway_lanes": freeway_lanes,
@@ -938,6 +967,10 @@ def render_manual_ramp_calculator(workflow: str) -> None:
                         "value": _ramp_display_metric(display["all_lanes_speed"]),
                     },
                     {
+                        "label": _ramp_text("vc"),
+                        "value": _ramp_ratio_metric(outputs.get(vc_key)),
+                    },
+                    {
                         "label": _ramp_text("freeway_flow"),
                         "value": _ramp_flow_metric(outputs.get("freeway_flow_pc_h")),
                     },
@@ -956,10 +989,6 @@ def render_manual_ramp_calculator(workflow: str) -> None:
                     {
                         "label": _ramp_text("governing_capacity"),
                         "value": _ramp_flow_metric(display["governing_capacity"]["value"]),
-                    },
-                    {
-                        "label": _ramp_text("vc"),
-                        "value": _ramp_ratio_metric(outputs.get(vc_key)),
                     },
                     {
                         "label": _ramp_text("capacity_status"),
@@ -986,6 +1015,23 @@ def render_manual_ramp_calculator(workflow: str) -> None:
                         maximum=outputs.get(max_key),
                     ),
                 )
+            render_section_label(_ramp_text("result_actions"))
+            render_manual_ramp_project_file_controls(
+                workflow, preset_id, unit_system, displayed_inputs, result_data, audit
+            )
+            render_export_report_section(
+                ramp_project_type(workflow),
+                result_data,
+                result_unit_system,
+                inputs=(
+                    audit.get("displayed_inputs", displayed_inputs)
+                    if isinstance(audit, dict)
+                    else displayed_inputs
+                ),
+                audit_record=audit,
+                template_id=preset_id,
+                label=_ramp_text("export_report"),
+            )
             with st.expander(_ramp_text("calculation_details"), expanded=False):
                 st.markdown(f"**{_ramp_text('flow_audit')}**")
                 st.json({
@@ -1038,18 +1084,6 @@ def render_manual_ramp_calculator(workflow: str) -> None:
                         "audit_record": audit,
                     }
                 )
-            render_manual_ramp_project_file_controls(
-                workflow, preset_id, unit_system, displayed_inputs, result_data, audit
-            )
-            render_export_report_section(
-                ramp_project_type(workflow),
-                result_data,
-                result_unit_system,
-                inputs=(audit.get("displayed_inputs", displayed_inputs) if isinstance(audit, dict) else displayed_inputs),
-                audit_record=audit,
-                template_id=preset_id,
-                label=_ramp_text("export_report"),
-            )
 
 
 def _render_manual_ramp_diagram(
@@ -2389,11 +2423,14 @@ def render_manual_freeway_calculator() -> None:
     input_column, result_column = render_calculator_shell()
     preset_options = freeway_preset_options()
     with input_column:
-        with st.expander(_freeway_text("project_load"), expanded=False):
-            _render_manual_freeway_load_controls()
-        render_section_label(_freeway_text("setup"))
+        render_section_label(_freeway_text("start"))
         st.caption(_freeway_text("scope"))
-        st.session_state.setdefault("manual_freeway_unit_label", "metric")
+        _prepare_localized_widget_state(
+            "manual_freeway_unit_label",
+            "freeway.unit",
+            ("metric", "imperial"),
+            "metric",
+        )
         unit_label = st.segmented_control(
             _freeway_text("unit_system"),
             ["metric", "imperial"],
@@ -2414,6 +2451,8 @@ def render_manual_freeway_calculator() -> None:
                 key=f"freeway_preset_id_{_ui_locale()}",
             )
             st.caption(_freeway_text("defaults_caption"))
+        with st.expander(_freeway_text("project_load"), expanded=False):
+            _render_manual_freeway_load_controls()
     unit_system = _localized_option_to_value(
         unit_label, "freeway.unit", ("metric", "imperial")
     )
@@ -2442,7 +2481,7 @@ def render_manual_freeway_calculator() -> None:
     width_unit = "m" if metric else "ft"
     ramp_density_unit = "ramps/km" if metric else "ramps/mi"
     with input_column:
-        render_section_label(_freeway_text("geometry"))
+        render_section_label(_freeway_text("traffic_segment"))
         roadway_columns = st.columns(2)
         number_of_lanes = roadway_columns[0].number_input(
             _freeway_text("number_of_lanes"),
@@ -2458,7 +2497,6 @@ def render_manual_freeway_calculator() -> None:
             key=f"manual_freeway_input_length_{preset_id}_{unit_system}",
         )
 
-        render_section_label(_freeway_text("demand"))
         traffic_columns = st.columns(2)
         demand_volume_veh_h = traffic_columns[0].number_input(
             _freeway_text("demand_volume"),
@@ -2476,7 +2514,12 @@ def render_manual_freeway_calculator() -> None:
 
         render_section_label(_freeway_text("ffs"))
         ffs_source_key = f"manual_freeway_input_ffs_source_{preset_id}_{unit_system}"
-        st.session_state.setdefault(ffs_source_key, str(ui_inputs.get("ffs_source", "estimated")))
+        _prepare_localized_widget_state(
+            ffs_source_key,
+            "freeway.ffs_source",
+            ("estimated", "measured"),
+            str(ui_inputs.get("ffs_source", "estimated")),
+        )
         ffs_source = st.segmented_control(
             _freeway_text("ffs_source"),
             ["estimated", "measured"],
@@ -2540,60 +2583,85 @@ def render_manual_freeway_calculator() -> None:
             max_value=100.0,
             value=float(ui_inputs["heavy_vehicle_percent"]),
             key=f"manual_freeway_input_heavy_{preset_id}_{unit_system}",
+            help=_freeway_text("heavy_vehicles_help"),
         )
-        pce_mode_key = f"manual_freeway_input_pce_mode_{preset_id}_{unit_system}"
-        st.session_state.setdefault(pce_mode_key, str(ui_inputs.get("pce_mode", "internal")))
-        pce_mode = heavy_columns[1].segmented_control(
-            _freeway_text("pce_source"),
-            ["internal", "external"],
+        heavy_method_key = f"manual_freeway_input_heavy_method_{preset_id}_{unit_system}"
+        default_heavy_method = (
+            "external"
+            if ui_inputs.get("pce_mode") == "external"
+            else "specific_grade"
+            if ui_inputs.get("terrain_type") == "specific_grade"
+            else "general_terrain"
+        )
+        _prepare_localized_widget_state(
+            heavy_method_key,
+            "freeway.heavy_method",
+            ("general_terrain", "specific_grade", "external"),
+            default_heavy_method,
+        )
+        heavy_method = heavy_columns[1].segmented_control(
+            _freeway_text("heavy_vehicle_method"),
+            ["general_terrain", "specific_grade", "external"],
             format_func=lambda value, locale=_ui_locale(): translate(
-                f"freeway.pce.{value}", locale
+                "freeway.heavy_method.external_pce" if value == "external"
+                else f"freeway.heavy_method.{value}",
+                locale,
             ),
-            key=pce_mode_key,
-            help=_freeway_text("pce_source_help"),
+            key=heavy_method_key,
         )
-        pce_mode = _localized_option_to_value(
-            pce_mode, "freeway.pce", ("internal", "external")
+        heavy_method = _localized_option_to_value(
+            heavy_method,
+            "freeway.heavy_method",
+            ("general_terrain", "specific_grade", "external"),
         )
+        if heavy_method not in {"general_terrain", "specific_grade", "external"}:
+            heavy_method = str(st.session_state.get(heavy_method_key, default_heavy_method))
+        pce_mode = "external" if heavy_method == "external" else "internal"
         passenger_car_equivalent = None
         passenger_car_equivalent_provenance = None
-        if pce_mode == "internal":
+        if heavy_method == "general_terrain":
+            st.caption(_freeway_text("general_terrain_help"))
             terrain_type = heavy_columns[0].selectbox(
-                _freeway_text("terrain"),
-                ["level", "rolling", "specific_grade"],
-                index=["level", "rolling", "specific_grade"].index(
-                    ui_inputs.get("terrain_type", "level")
+                _freeway_text("general_terrain"),
+                ["level", "rolling"],
+                index=["level", "rolling"].index(
+                    ui_inputs.get("terrain_type")
+                    if ui_inputs.get("terrain_type") in {"level", "rolling"}
+                    else "level"
                 ),
                 format_func=lambda value, locale=_ui_locale(): translate(
                     f"freeway.terrain.{value}", locale
                 ),
                 key=f"manual_freeway_input_terrain_{preset_id}_{unit_system}",
-                help=_freeway_text("terrain_help"),
+                help=_freeway_text("general_terrain_help"),
             )
-            if terrain_type == "specific_grade":
-                grade_percent = heavy_columns[1].number_input(
-                    _freeway_text("grade"),
-                    value=float(ui_inputs.get("grade_percent") or 0.0),
-                    key=f"manual_freeway_input_grade_{preset_id}_{unit_system}",
-                )
-                mixes = [
-                    "default_30_sut_70_tt",
-                    "equal_50_sut_50_tt",
-                    "majority_70_sut_30_tt",
-                ]
-                truck_mix = heavy_columns[0].selectbox(
-                    _freeway_text("truck_mix"),
-                    mixes,
-                    index=mixes.index(ui_inputs.get("truck_mix", mixes[0])),
-                    format_func=lambda value, locale=_ui_locale(): translate(
-                        f"freeway.truck_mix.{value}", locale
-                    ),
-                    key=f"manual_freeway_input_truck_mix_{preset_id}_{unit_system}",
-                )
-            else:
-                grade_percent = None
-                truck_mix = "default_30_sut_70_tt"
+            grade_percent = None
+            truck_mix = "default_30_sut_70_tt"
+        elif heavy_method == "specific_grade":
+            st.caption(_freeway_text("specific_grade_help"))
+            terrain_type = "specific_grade"
+            grade_percent = heavy_columns[0].number_input(
+                _freeway_text("grade"),
+                value=float(ui_inputs.get("grade_percent") or 0.0),
+                key=f"manual_freeway_input_grade_{preset_id}_{unit_system}",
+            )
+            mixes = [
+                "default_30_sut_70_tt",
+                "equal_50_sut_50_tt",
+                "majority_70_sut_30_tt",
+            ]
+            truck_mix = heavy_columns[1].selectbox(
+                _freeway_text("truck_mix"),
+                mixes,
+                index=mixes.index(ui_inputs.get("truck_mix", mixes[0])),
+                format_func=lambda value, locale=_ui_locale(): translate(
+                    f"freeway.truck_mix.{value}", locale
+                ),
+                key=f"manual_freeway_input_truck_mix_{preset_id}_{unit_system}",
+                help=_freeway_text("composition_scope"),
+            )
         else:
+            st.caption(_freeway_text("external_pce_scope"))
             terrain_type = "level"
             grade_percent = None
             truck_mix = "default_30_sut_70_tt"
@@ -2676,8 +2744,12 @@ def render_manual_freeway_calculator() -> None:
                 capacity_adjustment_factor_source = "chapter_26_driver_population"
                 advanced_columns[1].caption(_freeway_text("driver_population_factor_caption"))
 
+        prior_result_exists = st.session_state.get("manual_freeway_result") is not None
         run_freeway = st.button(
-            _freeway_text("calculate"), type="primary", width="stretch"
+            _freeway_text("recalculate" if prior_result_exists else "calculate"),
+            type="primary",
+            width="stretch",
+            key="manual_freeway_calculate",
         )
 
         displayed_inputs = {
@@ -2911,6 +2983,10 @@ def render_manual_freeway_calculator() -> None:
             hero_supporting_value=predicted(display["density"]),
             secondary_metrics=[
                 {
+                    "label": _freeway_text("demand_capacity"),
+                    "value": f"{outputs['demand_capacity_ratio']:.3f}",
+                },
+                {
                     "label": _freeway_text("speed_used_for_density"),
                     "value": predicted(display["speed_used_for_density"]),
                 },
@@ -2954,10 +3030,6 @@ def render_manual_freeway_calculator() -> None:
                     "value": f"{outputs['heavy_vehicle_adjustment_factor']:.3f}",
                 },
                 {
-                    "label": _freeway_text("demand_capacity"),
-                    "value": f"{outputs['demand_capacity_ratio']:.3f}",
-                },
-                {
                     "label": _freeway_text("pce"),
                     "value": f"{outputs['passenger_car_equivalent']:.2f} ({outputs['pce_source']})",
                 },
@@ -2969,6 +3041,29 @@ def render_manual_freeway_calculator() -> None:
             )
         elif presentation_state == ResultPresentationState.VALID_CURRENT_RESULT_WITH_WARNING:
             render_result_state_panel(presentation_state, _freeway_text("warning"))
+
+        render_section_label(_freeway_text("result_actions"))
+        render_project_output_section(
+            _freeway_text("project_caption"),
+            render_freeway_project_download,
+            label=_freeway_text("project_output"),
+        )
+        if freeway_is_current:
+            render_export_report_section(
+                "manual_basic_freeway_v0",
+                result_data,
+                result_unit_system,
+                inputs=(
+                    audit.get("displayed_inputs", displayed_inputs)
+                    if isinstance(audit, dict)
+                    else displayed_inputs
+                ),
+                audit_record=audit,
+                template_id=preset_id,
+                label=_freeway_text("export_report"),
+            )
+        else:
+            st.caption(_freeway_text("export_stale"))
 
         with st.expander(_freeway_text("calculation_details"), expanded=False):
             st.markdown(f"**{_freeway_text('ffs_audit')}**")
@@ -3021,22 +3116,6 @@ def render_manual_freeway_calculator() -> None:
                     "audit_record": audit,
                 }
             )
-        render_project_output_section(
-            _freeway_text("project_caption"),
-            render_freeway_project_download,
-            label=_freeway_text("project_output"),
-        )
-        if freeway_is_current:
-            render_export_report_section(
-                "manual_basic_freeway_v0", result_data, result_unit_system,
-                inputs=(audit.get("displayed_inputs", displayed_inputs) if isinstance(audit, dict) else displayed_inputs),
-                audit_record=audit, template_id=preset_id,
-                label=_freeway_text("export_report"),
-            )
-        else:
-            st.caption(_freeway_text("export_stale"))
-
-
 def _render_manual_freeway_load_controls() -> None:
     """Render bounded Manual Basic Freeway project loading controls."""
 
@@ -3103,6 +3182,15 @@ def _restore_manual_freeway_project(project: dict[str, Any]) -> None:
     st.session_state[
         f"manual_freeway_input_ffs_source_{preset_id}_{unit_system}"
     ] = displayed.get("ffs_source", "estimated")
+    st.session_state[
+        f"manual_freeway_input_heavy_method_{preset_id}_{unit_system}"
+    ] = (
+        "external"
+        if displayed.get("pce_mode") == "external"
+        else "specific_grade"
+        if displayed.get("terrain_type") == "specific_grade"
+        else "general_terrain"
+    )
     if displayed.get("free_flow_speed") is not None:
         st.session_state[
             f"manual_freeway_input_free_flow_speed_{preset_id}_{unit_system}"
