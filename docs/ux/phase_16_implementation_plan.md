@@ -3,6 +3,7 @@
 Baseline: `72d9de8841db8e158077372bf60df93a9f5bcdab`
 Phase 16.1 status: completed and merged in PR #120
 Phase 16.2 status: implementation and local qualification complete; PR/CI/merge pending
+Phase 16.3 status: Conditional Pass for the Multilane pilot; targeted copy and contrast remediation complete; PR/CI/rollout tracking pending
 
 ## Simpler-Alternative Review
 
@@ -153,9 +154,26 @@ Exit criteria:
 - Documentation and release notes identify no numerical-method change.
 - A separate rollout proposal identifies the patterns that generalize and the patterns that remain Multilane-specific.
 
+Phase 16.3 qualification result:
+
+- Decision: **CONDITIONAL PASS** for controlled Multilane pilot rollout. No unresolved Blocker or Major finding remains.
+- Final system-Chrome qualification: 27/27 Metric rows and 27/27 Imperial rows passed across English/Thai, 1280/768 px, branch, stale, capacity, project/report, and keyboard scenarios; no console/page errors or horizontal overflow.
+- Targeted remediation: visible bilingual SUT/TT scope clarification and Multilane-only primary-button contrast treatment. No HCM engine, schema, fingerprint, result, export, or other workflow changes.
+- Remaining Minor limitations: narrow post-action scroll position can leave result metrics above the current viewport; long Median type values can ellipsize in the narrow two-column grid. Record both for Phase 16.4.
+- Formal screen-reader/assistive-technology, automated axe/WCAG, cross-browser, and moderated participant work remains follow-up; this phase is a representative operator qualification, not a conformance claim.
+- Detailed evidence: `docs/ux/phase_16_3_multilane_usability_accessibility_qualification.md`.
+
 ## Phase 16.4: Basic Freeway, Merge, And Diverge Rollout
 
 Goal: apply proven task-section and stale/export hierarchy patterns to workflows closest to Multilane.
+
+Phase 16.4 boundary from Phase 16.3:
+
+- Start with a Basic Freeway presentation pilot; qualify Merge and Diverge as separate follow-on workflow slices rather than broad app-wide restyling.
+- Reuse only presentation patterns proven here: ordered single-page sections, active-branch disclosure, stale/Recalculate hierarchy, current-result-only exports, project/report separation, native labelled controls, bilingual scope copy, and scoped contrast treatment.
+- Re-derive every method label, support boundary, lookup explanation, and failure message from that workflow’s own HCM contract and Chapter 26 evidence.
+- Do not copy Multilane SUT/TT choices, External PCE rules, lookup-domain assumptions, equations, or engine contracts.
+- Require each workflow to pass its own compatibility gate, method-level tests, EN/TH system-Chrome matrix at 1280/768 px, keyboard review, and formal accessibility follow-up before rollout.
 
 Scope:
 
