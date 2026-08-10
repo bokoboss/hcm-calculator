@@ -5,6 +5,7 @@ Phase 16.1 status: completed and merged in PR #120
 Phase 16.2 status: implementation and local qualification complete; PR/CI/merge pending
 Phase 16.3 status: Conditional Pass for the Multilane pilot; targeted copy and contrast remediation complete; PR/CI/rollout tracking pending
 Phase 16.4 status: Conditional Pass after local qualification; PR/CI/merge pending
+Phase 16.5 status: local implementation, full tests, and qualification complete; final review, PR/CI, and merge gates pending
 
 ## Simpler-Alternative Review
 
@@ -210,34 +211,49 @@ Scope:
 - Weaving:
   - Tie diagrams directly to geometry branch selection.
   - Keep lane-change parameters visible only when configuration requires them.
-  - Clarify handoff conditions at geometry decision points.
+  - Clarify capacity failure versus HCM stopping/handoff at geometry decision points.
+  - Preserve one/two-sided semantics, FFS source behavior, and advanced evidence inputs.
 - Two-Lane Segment:
   - Preserve effective current curve and passing-lane disclosure.
-  - Reduce inactive captions where a collapsed branch label is enough.
+  - Use Start, basics, directional traffic, geometry, and method-branch task order.
+- Two-Lane Facility:
+  - Keep the editor table central.
+  - Clarify segment sequence, directional grouping, Passing Zone applicability, and row validation.
+  - Preserve inactive opposing-value canonicalization and Issue #121 protection.
 
 Exit criteria:
 
-- Weaving handoff and unsupported scope remain method-contract explanations.
+- Weaving handoff, capacity failure, and unsupported scope remain method-contract explanations.
 - Two-Lane Segment remains fast for HCM specialists and clearer for occasional users.
+- Facility editing remains table-first and guarded by row validation.
+- Project, fingerprint, result, export, localization, unit, and stale-state contracts remain compatible.
 
-## Phase 16.6: Facility And App-Wide Release Qualification
+Phase 16.5 local qualification result:
 
-Goal: complete app-wide consistency and release qualification.
+- Implementation and local browser qualification: **PASS**.
+- System-Chrome matrix: `58/58` rows passed: Weaving `19/19`, Two-Lane Segment `17/17`, Two-Lane Facility `19/19`, plus `3/3` shared Start/project-load smokes.
+- Coverage included English/Thai, 1280/768 px, Metric/Imperial, method branches, stale/Recalculate, capacity/handoff, project restore, and report/export controls.
+- No console/page errors or horizontal overflow were recorded.
+- No HCM formula, method, lookup, schema, fingerprint, result-field, or export-field changes were made.
+- Detailed evidence: `docs/ux/phase_16_5_weaving_two_lane_ux_rollout.md` and temporary `output/playwright/phase16_5_weaving_two_lane_ux_rollout/`.
+- Full repository suite: `1066 passed in 209.47s`.
+- Release classification: **CONDITIONAL PASS** pending final review, PR/CI, and merge gates.
+
+## Phase 16.6: App-Wide Release Qualification
+
+Goal: complete app-wide consistency and release qualification after the specialized Weaving and Two-Lane rollout.
 
 Scope:
 
-- Two-Lane Facility:
-  - Improve template-first orientation.
-  - Clarify segment sequence rules before table editing.
-  - Preserve guarded facility support boundaries.
-- App-wide:
-  - Review navigation, Supported Workflows, result hierarchy, stale states, project/export placement, localization, and accessibility at 768 px.
-  - Update release notes and qualification matrix.
+- Review navigation, Supported Workflows, result hierarchy, stale states, project/export placement, localization, and accessibility at 768 px across all implemented workflows.
+- Add formal keyboard-only, assistive-technology, and cross-browser qualification where available.
+- Update release notes and the app-wide qualification matrix.
+- Keep methodology, scope, and workflow-specific assumptions under separate scrutinize review before any implementation expansion.
 
 Validation:
 
-- Full test suite.
-- Browser qualification matrix.
+- Full test suite and release packaging checks.
+- App-wide browser qualification matrix.
 - Documentation review that no method scope was implied beyond implemented support.
 
 ## Risk Register

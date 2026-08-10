@@ -1898,6 +1898,76 @@ TH.update(
     }
 )
 
+EN.update(
+    {
+        "weaving.start": "Start",
+        "weaving.start_caption": "Choose units and a validated starting case first. Load project remains available below as a secondary action.",
+        "weaving.configuration_caption": "Choose one-sided or two-sided geometry before entering lane-change values. The diagram follows this active choice.",
+        "weaving.traffic_caption": "Enter FF, FR, RF, and RR demand together; the movement labels retain their engineering meaning.",
+        "weaving.ffs_caption": "Choose measured FFS or estimate FFS from the existing freeway geometry fields. Only the active branch is submitted.",
+        "weaving.advanced_geometry_caption": "Engineering evidence is retained for auditability and is collapsed until needed.",
+        "weaving.calculate": "Calculate",
+        "weaving.recalculate": "Recalculate",
+        "weaving.handoff_status": "HCM procedure stopped — handoff required",
+        "weaving.handoff_summary": "This is not a normal LOS result. Entered weaving length (LS) meets or exceeds computed maximum weaving length (LMAX), so Chapter 13 stops here. Analyze applicable merge/diverge and remaining basic-segment areas under their qualified procedures.",
+        "weaving.capacity_status": "Demand exceeds capacity",
+        "weaving.capacity_failure": "Capacity failure: demand exceeds capacity. LOS F is reported; speed and density are not predicted by the bounded procedure.",
+        "two_lane.setup": "Start",
+        "two_lane.start_caption": "Choose units and worksheet defaults first. Load project remains available as a secondary action.",
+        "two_lane.segment_basics": "Segment basics",
+        "two_lane.directional_traffic": "Directional traffic",
+        "two_lane.operating_conditions": "Operating condition and method branches",
+        "two_lane.method_adjustments": "Method-specific adjustments",
+        "two_lane.recalculate": "Recalculate",
+        "two_lane.calculate_caption": "Run the current active segment inputs.",
+        "facility.start_caption": "Choose a validated facility template and units first. Load project remains available as a secondary action.",
+        "facility.start": "Start",
+        "facility.segment_table": "Segment editor",
+        "facility.segment_table_caption": "Edit one row per segment. Columns are grouped as identity/type, directional traffic, and geometry. Opposing volume applies only to Passing Zone.",
+        "facility.table_guidance": "Applicability and row validation",
+        "facility.opposing_volume_scope": "Opposing volume applies only to Passing Zone. Other segment rows are canonicalized to blank/None before validation, fingerprints, project save, and calculation.",
+        "facility.directional_note": "Keep analysis-direction demand and opposing demand in the same traffic group; opposing demand is required only when Passing Zone is active.",
+        "facility.add_remove_note": "Use the table add/remove controls to change rows. Row order is the facility sequence; reordering is not supported in this workflow.",
+        "facility.result_actions": "Project and report actions",
+        "facility.export_report": "Export report",
+    }
+)
+
+TH.update(
+    {
+        "weaving.start": "เริ่มต้น",
+        "weaving.start_caption": "เลือกระบบหน่วยและชุดค่าเริ่มต้นที่ผ่านการรับรองก่อน การโหลดโครงการอยู่ด้านล่างเป็นการดำเนินการรอง",
+        "weaving.configuration_caption": "เลือกรูปแบบเรขาคณิตด้านเดียวหรือสองด้านก่อนป้อนค่าการเปลี่ยนช่องจราจร แผนภาพจะเปลี่ยนตามรูปแบบที่ใช้งาน",
+        "weaving.traffic_caption": "ป้อนปริมาณ FF, FR, RF และ RR ร่วมกัน โดยคงความหมายทางวิศวกรรมของชื่อการเคลื่อนที่",
+        "weaving.ffs_caption": "เลือก FFS ที่วัดได้ หรือประมาณ FFS จากฟิลด์เรขาคณิตทางด่วนที่มีอยู่ ระบบจะส่งเฉพาะสาขาที่ใช้งาน",
+        "weaving.advanced_geometry_caption": "เก็บหลักฐานทางวิศวกรรมไว้เพื่อการตรวจสอบ และซ่อนไว้จนกว่าจะต้องใช้",
+        "weaving.calculate": "คำนวณ",
+        "weaving.recalculate": "คำนวณใหม่",
+        "weaving.handoff_status": "วิธี HCM หยุด — ต้องส่งต่อการวิเคราะห์",
+        "weaving.handoff_summary": "นี่ไม่ใช่ผล LOS ปกติ เนื่องจากความยาวช่วงสาน (LS) ที่ป้อนมีค่าเท่ากับหรือมากกว่าความยาวสานสูงสุด (LMAX) ที่คำนวณได้ กระบวนการบทที่ 13 จึงหยุดที่จุดนี้ ให้ใช้วิธี merge/diverge และช่วงพื้นฐานที่เกี่ยวข้องตามขอบเขตที่รับรอง",
+        "weaving.capacity_status": "ปริมาณความต้องการเกินความจุ",
+        "weaving.capacity_failure": "ความล้มเหลวด้านความจุ: ปริมาณความต้องการเกินความจุ รายงาน LOS F แต่ไม่พยากรณ์ความเร็วและความหนาแน่นตามวิธีที่รองรับ",
+        "two_lane.setup": "เริ่มต้น",
+        "two_lane.start_caption": "เลือกระบบหน่วยและค่าเริ่มต้นของแผ่นงานก่อน การโหลดโครงการอยู่ด้านล่างเป็นการดำเนินการรอง",
+        "two_lane.segment_basics": "ข้อมูลพื้นฐานช่วงถนน",
+        "two_lane.directional_traffic": "การจราจรตามทิศทาง",
+        "two_lane.operating_conditions": "สภาพการใช้งานและสาขาเฉพาะวิธี",
+        "two_lane.method_adjustments": "ค่าปรับเฉพาะวิธี",
+        "two_lane.recalculate": "คำนวณใหม่",
+        "two_lane.calculate_caption": "คำนวณด้วยค่าช่วงถนนที่ใช้งานอยู่ในปัจจุบัน",
+        "facility.start_caption": "เลือกแม่แบบ facility และระบบหน่วยที่ผ่านการรับรองก่อน การโหลดโครงการอยู่ด้านล่างเป็นการดำเนินการรอง",
+        "facility.start": "เริ่มต้น",
+        "facility.segment_table": "ตัวแก้ไขช่วงถนน",
+        "facility.segment_table_caption": "แก้ไขหนึ่งแถวต่อหนึ่งช่วงถนน คอลัมน์จัดกลุ่มเป็นตัวตน/ประเภท การจราจรตามทิศทาง และเรขาคณิต ปริมาณทิศสวนทางใช้เฉพาะ Passing Zone",
+        "facility.table_guidance": "การใช้ฟิลด์และการตรวจสอบรายแถว",
+        "facility.opposing_volume_scope": "ปริมาณทิศสวนทางใช้เฉพาะ Passing Zone แถวประเภทอื่นจะถูกทำให้เป็นค่าว่าง/None ก่อนตรวจสอบ fingerprint บันทึกโครงการ และคำนวณ",
+        "facility.directional_note": "จัดปริมาณทิศวิเคราะห์และปริมาณทิศสวนทางไว้ในกลุ่มการจราจรเดียวกัน โดยต้องมีปริมาณทิศสวนทางเมื่อเปิด Passing Zone เท่านั้น",
+        "facility.add_remove_note": "ใช้ตัวควบคุมเพิ่ม/ลบแถวของตารางเพื่อเปลี่ยนจำนวนช่วงถนน ลำดับแถวคือลำดับ facility และยังไม่รองรับการจัดลำดับใหม่",
+        "facility.result_actions": "การดำเนินการโครงการและรายงาน",
+        "facility.export_report": "ส่งออกรายงาน",
+    }
+)
+
 CATALOGS: dict[str, Mapping[str, str]] = {"en": EN, "th": TH}
 
 

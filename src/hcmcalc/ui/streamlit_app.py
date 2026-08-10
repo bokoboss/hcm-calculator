@@ -2000,12 +2000,15 @@ def render_manual_weaving_calculator() -> None:
     status_placeholder = st.empty()
     input_column, result_column = render_calculator_shell()
     with input_column:
-        render_project_load_section(
-            _render_manual_weaving_load_controls,
-            label=_weaving_text("project_load"),
-        )
-        render_section_label(_weaving_text("starting_values"))
+        render_section_label(_weaving_text("start"))
+        st.caption(_weaving_text("start_caption"))
         render_starting_values_section()
+        _prepare_localized_widget_state(
+            "manual_weaving_unit_label",
+            "weaving.unit",
+            ("metric", "imperial"),
+            "metric",
+        )
         unit_value = st.segmented_control(
             _weaving_text("unit_system"),
             ("metric", "imperial"),
@@ -2026,6 +2029,10 @@ def render_manual_weaving_calculator() -> None:
             format_func=_weaving_preset_label,
             key="manual_weaving_preset_id",
         )
+        render_project_load_section(
+            _render_manual_weaving_load_controls,
+            label=_weaving_text("project_load"),
+        )
 
     context = (preset_id, unit_system)
     if st.session_state.get("manual_weaving_preset_context") != context:
@@ -2038,15 +2045,25 @@ def render_manual_weaving_calculator() -> None:
     with input_column:
         with st.container():
             render_section_label(_weaving_text("configuration_geometry"))
+            st.caption(_weaving_text("configuration_caption"))
             geometry = st.columns(2)
+            configuration_key = f"manual_weaving_input_configuration_{preset_id}_{unit_system}"
+            _prepare_localized_widget_state(
+                configuration_key,
+                "weaving.config",
+                ("one_sided", "two_sided"),
+                ui["configuration"] if ui["configuration"] in {"one_sided", "two_sided"} else "one_sided",
+            )
             configuration = geometry[0].segmented_control(
                 _weaving_text("configuration"),
                 ("one_sided", "two_sided"),
                 default=ui["configuration"] if ui["configuration"] in {"one_sided", "two_sided"} else "one_sided",
                 format_func=lambda value: _weaving_text(f"config.{value}"),
-                key=f"manual_weaving_input_configuration_{preset_id}_{unit_system}",
+                key=configuration_key,
             )
-            configuration = str(configuration or "one_sided")
+            configuration = _localized_option_to_value(
+                configuration or "one_sided", "weaving.config", ("one_sided", "two_sided")
+            )
             if st.session_state.get("manual_weaving_active_configuration") not in {None, configuration}:
                 st.session_state.pop("manual_weaving_result", None)
                 st.session_state.pop("manual_weaving_audit", None)
@@ -2087,15 +2104,26 @@ def render_manual_weaving_calculator() -> None:
             volume_rr = traffic[1].number_input(_weaving_text("volume_rr"), min_value=0.0, value=float(ui["volume_rr_veh_h"]))
             peak_hour_factor = traffic[0].number_input(_weaving_text("peak_hour_factor"), min_value=0.01, max_value=1.0, value=float(ui["peak_hour_factor"]))
             interchange_density = traffic[1].number_input(_weaving_text("interchange_density", unit=density_unit), min_value=0.0, value=float(ui["interchange_density"]))
+            st.caption(_weaving_text("traffic_caption"))
             render_section_label(_weaving_text("ffs_heavy"))
+            st.caption(_weaving_text("ffs_caption"))
             ffs = st.columns(2)
+            _prepare_localized_widget_state(
+                "manual_weaving_ffs_source",
+                "weaving.ffs",
+                ("measured", "estimated"),
+                ui["ffs_source"] if ui["ffs_source"] in {"measured", "estimated"} else "measured",
+            )
             ffs_source = ffs[0].segmented_control(
                 _weaving_text("ffs_source"),
                 ("measured", "estimated"),
                 default=ui["ffs_source"] if ui["ffs_source"] in {"measured", "estimated"} else "measured",
                 format_func=lambda value: _weaving_text(f"ffs.{value}"),
+                key="manual_weaving_ffs_source",
             )
-            ffs_source = str(ffs_source or "measured")
+            ffs_source = _localized_option_to_value(
+                ffs_source or "measured", "weaving.ffs", ("measured", "estimated")
+            )
             if ffs_source == "measured":
                 free_flow_speed = ffs[1].number_input(_weaving_text("measured_ffs", unit=speed_unit), min_value=1.0, value=float(ui["free_flow_speed"] or 60.0))
                 base_free_flow_speed = lane_width = right_side_lateral_clearance = total_ramp_density = None
@@ -2107,24 +2135,25 @@ def render_manual_weaving_calculator() -> None:
                 total_ramp_density = ffs[0].number_input(_weaving_text("total_ramp_density", unit=density_unit.replace("interchanges", "ramps")), min_value=0.0, value=float(ui["total_ramp_density"] or 0.0))
             heavy_vehicle_percent = ffs[0].number_input(_weaving_text("heavy_vehicles"), min_value=0.0, max_value=100.0, value=float(ui["heavy_vehicle_percent"]))
             terrain_type = ffs[1].selectbox(_weaving_text("terrain"), ["level", "rolling"], index=["level", "rolling"].index(ui["terrain_type"]), format_func=lambda value: _weaving_text(f"terrain.{value}"))
-            render_section_label(_weaving_text("advanced_geometry"))
-            evidence = st.columns(2)
-            if configuration == "one_sided":
-                option_fr = evidence[0].checkbox(_weaving_text("option_fr"), value=bool(ui["option_fr"]))
-                option_rf = evidence[1].checkbox(_weaving_text("option_rf"), value=bool(ui["option_rf"]))
-                option_rr = False
-            else:
-                option_fr = option_rf = False
-                option_rr = evidence[0].checkbox(_weaving_text("option_rr"), value=bool(ui["option_rr"]))
-            reachable_ff = evidence[1].text_input(_weaving_text("reachable_ff"), value=ui["reachable_ff"])
-            reachable_fr = evidence[0].text_input(_weaving_text("reachable_fr"), value=ui["reachable_fr"])
-            reachable_rf = evidence[1].text_input(_weaving_text("reachable_rf"), value=ui["reachable_rf"])
-            reachable_rr = evidence[0].text_input(_weaving_text("reachable_rr"), value=ui["reachable_rr"])
-            nwl_basis = evidence[1].text_input(_weaving_text("nwl_basis"), value=ui["nwl_basis"])
-            lane_change_basis = evidence[0].text_input(_weaving_text("lane_change_basis"), value=ui["lane_change_basis"])
+            with st.expander(_weaving_text("advanced_geometry"), expanded=False):
+                st.caption(_weaving_text("advanced_geometry_caption"))
+                evidence = st.columns(2)
+                if configuration == "one_sided":
+                    option_fr = evidence[0].checkbox(_weaving_text("option_fr"), value=bool(ui["option_fr"]))
+                    option_rf = evidence[1].checkbox(_weaving_text("option_rf"), value=bool(ui["option_rf"]))
+                    option_rr = False
+                else:
+                    option_fr = option_rf = False
+                    option_rr = evidence[0].checkbox(_weaving_text("option_rr"), value=bool(ui["option_rr"]))
+                reachable_ff = evidence[1].text_input(_weaving_text("reachable_ff"), value=ui["reachable_ff"])
+                reachable_fr = evidence[0].text_input(_weaving_text("reachable_fr"), value=ui["reachable_fr"])
+                reachable_rf = evidence[1].text_input(_weaving_text("reachable_rf"), value=ui["reachable_rf"])
+                reachable_rr = evidence[0].text_input(_weaving_text("reachable_rr"), value=ui["reachable_rr"])
+                nwl_basis = evidence[1].text_input(_weaving_text("nwl_basis"), value=ui["nwl_basis"])
+                lane_change_basis = evidence[0].text_input(_weaving_text("lane_change_basis"), value=ui["lane_change_basis"])
             has_previous_result = st.session_state.get("manual_weaving_result") is not None
             run_weaving = st.button(
-                _weaving_text("recalculate" if has_previous_result else "run"),
+                _weaving_text("recalculate" if has_previous_result else "calculate"),
                 type="primary",
                 width="stretch",
             )
@@ -2274,6 +2303,18 @@ def render_manual_weaving_calculator() -> None:
                 )
                 st.caption(_weaving_text("export_stale"))
             else:
+                if presentation_state == ResultPresentationState.HCM_STOPPING_OR_HANDOFF:
+                    render_result_state_panel(
+                        presentation_state, _weaving_text("handoff_summary")
+                    )
+                elif presentation_state == ResultPresentationState.CAPACITY_FAILURE:
+                    render_result_state_panel(
+                        presentation_state, _weaving_text("capacity_failure")
+                    )
+                elif presentation_state == ResultPresentationState.VALID_CURRENT_RESULT_WITH_WARNING:
+                    render_result_state_panel(
+                        presentation_state, _weaving_text("warning")
+                    )
                 result_unit_system = (
                     str(audit.get("unit_system", unit_system))
                     if isinstance(audit, dict)
@@ -2289,16 +2330,29 @@ def render_manual_weaving_calculator() -> None:
                     supporting_value = _weaving_result_metric(display["density"])
                 else:
                     primary_label = _weaving_text("operational_status")
-                    primary_value = _weaving_text("not_assigned")
+                    primary_value = _weaving_text("handoff_status")
                     primary_kind = "metric"
                     supporting_label = supporting_value = None
-                render_result_summary_panel(
-                    primary_label=primary_label,
-                    primary_value=primary_value,
-                    primary_kind=primary_kind,
-                    hero_supporting_label=supporting_label,
-                    hero_supporting_value=supporting_value,
-                    secondary_metrics=[
+                secondary_metrics = (
+                    [
+                        {
+                            "label": _weaving_text("entered_lmax"),
+                            "value": (
+                                f"{outputs['input_summary']['segment_length_ft']:.0f} ft / "
+                                f"{outputs['maximum_weaving_length_ft']:.0f} ft"
+                            ),
+                        },
+                        {
+                            "label": _weaving_text("demand_flow"),
+                            "value": f"{display['demand']['value']:.0f} {display['demand']['unit']}",
+                        },
+                        {
+                            "label": _weaving_text("vc"),
+                            "value": _weaving_text("not_evaluated"),
+                        },
+                    ]
+                    if presentation_state == ResultPresentationState.HCM_STOPPING_OR_HANDOFF
+                    else [
                         {
                             "label": _weaving_text("mean_speed"),
                             "value": _weaving_result_metric(display["mean_speed"]),
@@ -2325,18 +2379,35 @@ def render_manual_weaving_calculator() -> None:
                             if outputs.get("demand_capacity_ratio") is None
                             else f"{outputs['demand_capacity_ratio']:.3f}",
                         },
-                    ],
+                    ]
                 )
-                if presentation_state == ResultPresentationState.HCM_STOPPING_OR_HANDOFF:
-                    render_result_state_panel(presentation_state, _weaving_text("handoff_warning"))
-                    st.metric(
-                        _weaving_text("entered_lmax"),
-                        f"{outputs['input_summary']['segment_length_ft']:.0f} ft / {outputs['maximum_weaving_length_ft']:.0f} ft",
-                    )
-                elif presentation_state == ResultPresentationState.CAPACITY_FAILURE:
-                    render_result_state_panel(presentation_state, _weaving_text("capacity_failure"))
-                elif presentation_state == ResultPresentationState.VALID_CURRENT_RESULT_WITH_WARNING:
-                    render_result_state_panel(presentation_state, _weaving_text("warning"))
+                render_result_summary_panel(
+                    primary_label=primary_label,
+                    primary_value=primary_value,
+                    primary_kind=primary_kind,
+                    hero_supporting_label=supporting_label,
+                    hero_supporting_value=supporting_value,
+                    secondary_metrics=secondary_metrics,
+                )
+                render_project_output_section(
+                    _weaving_text("project_caption"),
+                    lambda: _weaving_project_download(
+                        preset_id=preset_id,
+                        unit_system=unit_system,
+                        displayed_inputs=displayed_inputs,
+                        current=True,
+                    ),
+                    label=_weaving_text("project_output"),
+                )
+                render_export_report_section(
+                    "manual_freeway_weaving_segment_v1",
+                    result_data,
+                    result_unit_system,
+                    inputs=displayed_inputs,
+                    audit_record=audit,
+                    template_id=preset_id,
+                    label=_weaving_text("export_report"),
+                )
                 with st.expander(_weaving_text("calculation_details"), expanded=False):
                     st.json(outputs)
                     render_list(
@@ -2357,25 +2428,6 @@ def render_manual_weaving_calculator() -> None:
                 with st.expander(_weaving_text("audit"), expanded=False):
                     st.json(audit)
                     st.dataframe(result_data["intermediate_values"], hide_index=True, width="stretch")
-                render_project_output_section(
-                    _weaving_text("project_caption"),
-                    lambda: _weaving_project_download(
-                        preset_id=preset_id,
-                        unit_system=unit_system,
-                        displayed_inputs=displayed_inputs,
-                        current=True,
-                    ),
-                    label=_weaving_text("project_output"),
-                )
-                render_export_report_section(
-                    "manual_freeway_weaving_segment_v1",
-                    result_data,
-                    result_unit_system,
-                    inputs=displayed_inputs,
-                    audit_record=audit,
-                    template_id=preset_id,
-                    label=_weaving_text("export_report"),
-                )
 
 
 def _render_manual_weaving_load_controls() -> None:
@@ -3329,11 +3381,8 @@ def render_manual_facility_calculator() -> None:
     input_column, result_column = render_calculator_shell()
     template_options = facility_template_options()
     with input_column:
-        render_project_load_section(
-            _render_manual_facility_load_controls,
-            label=_facility_text("project_load"),
-        )
-        render_section_label(_facility_text("starting_values"))
+        render_section_label(_facility_text("start"))
+        st.caption(_facility_text("start_caption"))
         template_id = st.selectbox(
             _facility_text("template"),
             list(template_options),
@@ -3369,6 +3418,10 @@ def render_manual_facility_calculator() -> None:
             unit_system = "metric"
             st.session_state["facility_unit_label"] = unit_system
         st.caption(_facility_text("setup_caption"))
+        render_project_load_section(
+            _render_manual_facility_load_controls,
+            label=_facility_text("project_load"),
+        )
         selection_context = (template_id, unit_system)
         if st.session_state.get("manual_facility_selection_context") != selection_context:
             clear_manual_facility_result_state(st.session_state)
@@ -3388,6 +3441,7 @@ def render_manual_facility_calculator() -> None:
 
         render_section_label(_facility_text("segment_table"))
         st.caption(_facility_text("segment_table_caption"))
+        st.caption(_facility_text("directional_note"))
         editor_version = st.session_state.get("manual_facility_editor_version", 0)
         editor_seed = st.session_state.pop(
             "manual_facility_segment_rows_seed", template["segments"]
@@ -3410,9 +3464,9 @@ def render_manual_facility_calculator() -> None:
                 "segment_length",
                 "posted_speed",
                 "analysis_direction_volume_veh_h",
-                "opposing_direction_volume_veh_h",
                 "peak_hour_factor",
                 "heavy_vehicle_percent",
+                "opposing_direction_volume_veh_h",
                 "terrain_type",
                 "grade_percent",
                 "horizontal_alignment",
@@ -3497,6 +3551,8 @@ def render_manual_facility_calculator() -> None:
         )
         canonical_edited_rows = canonicalize_manual_facility_rows(edited_rows)
         render_section_label(_facility_text("table_guidance"))
+        st.caption(_facility_text("opposing_volume_scope"))
+        st.caption(_facility_text("add_remove_note"))
         validation_summary = validate_manual_facility_table(edited_rows)
         validation_message = _facility_text(f"validation.{validation_summary['status']}")
         if validation_summary["blocking"]:
@@ -3724,6 +3780,24 @@ def render_manual_facility_result_panel(
             "key_warnings": _facility_text("col.key_warnings"),
         },
     )
+    render_section_label(_facility_text("result_actions"))
+    _render_manual_facility_project_file_controls(
+        template_id,
+        unit_system,
+        edited_rows,
+        translate(f"facility.template.{template_id}", _ui_locale()),
+    )
+    render_export_report_section(
+        "manual_two_lane_facility_v1",
+        result_data,
+        unit_system,
+        inputs=audit.get("facility_inputs", {}).get("segments", [])
+        if isinstance(audit, dict)
+        else [],
+        audit_record=audit,
+        template_id=template_id,
+        label=_facility_text("export_report"),
+    )
     with st.expander(_facility_text("calculation_details"), expanded=False):
         render_list(
             translate("common.warnings", _ui_locale()),
@@ -3760,22 +3834,6 @@ def render_manual_facility_result_panel(
             mime="application/json",
             width="stretch",
         )
-    _render_manual_facility_project_file_controls(
-        template_id,
-        unit_system,
-        edited_rows,
-        translate(f"facility.template.{template_id}", _ui_locale()),
-    )
-    render_export_report_section(
-        "manual_two_lane_facility_v1",
-        result_data,
-        unit_system,
-        inputs=audit.get("facility_inputs", {}).get("segments", [])
-        if isinstance(audit, dict)
-        else [],
-        audit_record=audit,
-        template_id=template_id,
-    )
 
 
 def _facility_segment_display_rows(
@@ -4009,11 +4067,8 @@ def render_manual_single_segment_calculator() -> None:
     worksheet_column, result_column = render_calculator_shell()
 
     with worksheet_column:
-        render_project_load_section(
-            _render_manual_project_load_controls,
-            label=_two_lane_text("project_load"),
-        )
         render_section_label(_two_lane_text("setup"))
+        st.caption(_two_lane_text("start_caption"))
         st.caption(_two_lane_text("scope"))
         st.session_state.setdefault("manual_unit_label", DEFAULT_UNIT_SYSTEM)
         unit_label = st.segmented_control(
@@ -4041,10 +4096,15 @@ def render_manual_single_segment_calculator() -> None:
         with st.expander(_two_lane_text("starting_values"), expanded=False):
             st.caption(_two_lane_text("starting_values_caption"))
             st.caption(_two_lane_text("starting_values_note"))
+        render_project_load_section(
+            _render_manual_project_load_controls,
+            label=_two_lane_text("project_load"),
+        )
 
         for name, default in defaults.items():
             st.session_state.setdefault(f"manual_{name}_{unit_system}", default)
 
+        render_section_label(_two_lane_text("segment_basics"))
         config_columns = st.columns(3)
         segment_type = config_columns[0].selectbox(
             _two_lane_text("segment_type"),
@@ -4078,182 +4138,193 @@ def render_manual_single_segment_calculator() -> None:
         )
 
         with st.container():
-            render_section_label(_two_lane_text("geometry"))
-            geometry_row_one = st.columns(3)
-            segment_length = geometry_row_one[0].number_input(
+            basics_row = st.columns(3)
+            segment_length = basics_row[0].number_input(
                 _two_lane_text("segment_length", unit=length_unit),
                 key=f"manual_segment_length_{unit_system}",
             )
-            posted_speed = geometry_row_one[1].number_input(
-                _two_lane_text("posted_speed", unit=speed_unit),
-                key=f"manual_posted_speed_{unit_system}",
-                help=_two_lane_text("posted_speed_help"),
-            )
-            lane_width = geometry_row_one[2].number_input(
-                _two_lane_text("lane_width", unit=width_unit),
-                key=f"manual_lane_width_{unit_system}",
-            )
-            geometry_row_two = st.columns(3)
-            shoulder_width = geometry_row_two[0].number_input(
-                _two_lane_text("shoulder_width", unit=width_unit),
-                key=f"manual_shoulder_width_{unit_system}",
-            )
-            access_density = geometry_row_two[1].number_input(
-                _two_lane_text("access_density", unit=access_unit),
-                key=f"manual_access_point_density_{unit_system}",
-            )
-            geometry_row_two[2].caption(_two_lane_text("method_caption"))
-
-            render_section_label(_two_lane_text("traffic"))
-            traffic_row_one = st.columns(3)
-            analysis_volume = traffic_row_one[0].number_input(
+            analysis_volume = basics_row[1].number_input(
                 _two_lane_text("analysis_volume"),
                 key=f"manual_analysis_direction_volume_{unit_system}",
             )
-            peak_hour_factor = traffic_row_one[1].number_input(
+            peak_hour_factor = basics_row[2].number_input(
                 _two_lane_text("peak_hour_factor"),
                 key=f"manual_peak_hour_factor_{unit_system}",
             )
-            heavy_vehicle_percent = traffic_row_one[2].number_input(
+
+            render_section_label(_two_lane_text("directional_traffic"))
+            traffic_row = st.columns(3)
+            heavy_vehicle_percent = traffic_row[0].number_input(
                 _two_lane_text("heavy_vehicles"),
                 key=f"manual_heavy_vehicle_percent_{unit_system}",
             )
-            traffic_row_two = st.columns(3)
             opposing_volume = None
             if segment_type == "passing_zone":
-                opposing_volume = traffic_row_two[0].number_input(
+                opposing_volume = traffic_row[1].number_input(
                     _two_lane_text("opposing_volume"),
                     help=_two_lane_text("opposing_volume_help"),
                     key=f"manual_opposing_direction_volume_{unit_system}",
                 )
             else:
-                traffic_row_two[0].caption(_two_lane_text("opposing_inactive"))
-            traffic_row_two[1].caption(_two_lane_text("directional_split_caption"))
-            traffic_row_two[2].caption(_two_lane_text("no_passing_caption"))
+                traffic_row[1].caption(_two_lane_text("opposing_inactive"))
+            traffic_row[2].caption(_two_lane_text("directional_split_caption"))
+            st.caption(_two_lane_text("no_passing_caption"))
 
-            render_section_label(_two_lane_text("ffs_adjustments"))
+            render_section_label(_two_lane_text("geometry"))
+            geometry_row_one = st.columns(3)
+            posted_speed = geometry_row_one[0].number_input(
+                _two_lane_text("posted_speed", unit=speed_unit),
+                key=f"manual_posted_speed_{unit_system}",
+                help=_two_lane_text("posted_speed_help"),
+            )
+            lane_width = geometry_row_one[1].number_input(
+                _two_lane_text("lane_width", unit=width_unit),
+                key=f"manual_lane_width_{unit_system}",
+            )
+            shoulder_width = geometry_row_one[2].number_input(
+                _two_lane_text("shoulder_width", unit=width_unit),
+                key=f"manual_shoulder_width_{unit_system}",
+            )
+            geometry_row_two = st.columns(3)
+            access_density = geometry_row_two[0].number_input(
+                _two_lane_text("access_density", unit=access_unit),
+                key=f"manual_access_point_density_{unit_system}",
+            )
+            geometry_row_two[1].caption(_two_lane_text("method_caption"))
+            geometry_row_two[2].caption(_two_lane_text("directional_split_caption"))
+
+            render_section_label(_two_lane_text("method_adjustments"))
             st.caption(_two_lane_text("ffs_caption"))
-
-            render_section_label(_two_lane_text("advanced"))
-            grade_columns = st.columns(2)
-            if terrain_type == "mountainous":
-                grade_percent = grade_columns[0].number_input(
-                    _two_lane_text("grade_percent"),
-                    key=f"manual_grade_percent_{unit_system}",
-                    help=_two_lane_text("grade_help"),
-                )
-                grade_columns[1].caption(
-                    _two_lane_text("grade_length_summary", length=segment_length, unit=length_unit)
-                )
-            else:
-                grade_percent = 0.0
-                grade_columns[0].caption(_two_lane_text("grade_inactive"))
 
             horizontal_subsegments: list[dict[str, Any]] = []
             curve_setup: dict[str, Any] | None = None
             generate_curve = False
-            if horizontal_alignment == "horizontal_curves":
-                st.caption(_two_lane_text("curve_active"))
-                setup_defaults = curve_setup_defaults(unit_system, segment_length)
-                for name, default in setup_defaults.items():
-                    st.session_state.setdefault(
-                        f"manual_curve_setup_{name}_{unit_system}", default
+            with st.expander(
+                _two_lane_text("operating_conditions"),
+                expanded=(
+                    terrain_type == "mountainous"
+                    or horizontal_alignment == "horizontal_curves"
+                    or segment_type == "passing_lane"
+                ),
+            ):
+                grade_columns = st.columns(2)
+                if terrain_type == "mountainous":
+                    grade_percent = grade_columns[0].number_input(
+                        _two_lane_text("grade_percent"),
+                        key=f"manual_grade_percent_{unit_system}",
+                        help=_two_lane_text("grade_help"),
                     )
-                curve_columns = st.columns(3)
-                total_curve_length = curve_columns[0].number_input(
-                    _two_lane_text("curve_length", unit=curve_length_unit),
-                    key=f"manual_curve_setup_total_curve_length_{unit_system}",
-                )
-                curve_radius = curve_columns[1].number_input(
-                    _two_lane_text("curve_radius", unit=curve_length_unit),
-                    key=f"manual_curve_setup_radius_{unit_system}",
-                )
-                superelevation = curve_columns[2].number_input(
-                    _two_lane_text("superelevation"),
-                    key=f"manual_curve_setup_superelevation_percent_{unit_system}",
-                )
-                curve_columns_two = st.columns(3)
-                central_angle = curve_columns_two[0].number_input(
-                    _two_lane_text("central_angle"),
-                    key=f"manual_curve_setup_central_angle_deg_{unit_system}",
-                )
-                horizontal_class = curve_columns_two[1].number_input(
-                    _two_lane_text("horizontal_class"),
-                    step=1,
-                    key=f"manual_curve_setup_horizontal_class_{unit_system}",
-                )
-                subsegment_count = curve_columns_two[2].number_input(
-                    _two_lane_text("subsegment_count"),
-                    step=1,
-                    key=f"manual_curve_setup_subsegment_count_{unit_system}",
-                )
-                curve_setup = {
-                    "total_curve_length": total_curve_length,
-                    "radius": curve_radius,
-                    "superelevation_percent": superelevation,
-                    "central_angle_deg": central_angle,
-                    "horizontal_class": horizontal_class,
-                    "subsegment_count": subsegment_count,
-                }
-                generate_curve = st.button(
-                    _two_lane_text("generate_curve"),
-                    width="stretch",
-                    key=f"manual_generate_curve_{unit_system}",
-                )
-                editor_version = st.session_state.get(
-                    f"manual_horizontal_subsegments_version_{unit_system}", 0
-                )
-                editor_data = st.session_state.pop(
-                    f"manual_horizontal_subsegments_seed_{unit_system}",
-                    initial_curve_subsegments(
-                        horizontal_alignment, unit_system, segment_length
-                    ),
-                )
-                st.caption(_two_lane_text("curve_editor_caption", unit=curve_length_unit))
-                horizontal_subsegments = st.data_editor(
-                    editor_data,
-                    key=(
-                        f"manual_horizontal_subsegments_{unit_system}_"
-                        f"{editor_version}"
-                    ),
-                    hide_index=True,
-                    num_rows="fixed",
-                    width="stretch",
-                    column_config={
-                        "type": st.column_config.SelectboxColumn(
-                            _two_lane_text("subsegment_type"),
-                            options=["tangent", "horizontal_curve"],
-                            required=True,
-                        ),
-                        "length": st.column_config.NumberColumn(
-                            _two_lane_text("subsegment_length", unit=curve_length_unit),
-                            required=True,
-                        ),
-                        "superelevation_percent": st.column_config.NumberColumn(
-                            _two_lane_text("superelevation")
-                        ),
-                        "radius": st.column_config.NumberColumn(
-                            _two_lane_text("radius", unit=curve_length_unit)
-                        ),
-                        "central_angle_deg": st.column_config.NumberColumn(
-                            _two_lane_text("central_angle")
-                        ),
-                        "horizontal_class": st.column_config.NumberColumn(
-                            _two_lane_text("horizontal_class"),
-                            step=1,
-                        ),
-                    },
-                )
-            else:
-                st.caption(_two_lane_text("curve_inactive"))
+                    grade_columns[1].caption(
+                        _two_lane_text("grade_length_summary", length=segment_length, unit=length_unit)
+                    )
+                else:
+                    grade_percent = 0.0
+                    grade_columns[0].caption(_two_lane_text("grade_inactive"))
 
-            if segment_type == "passing_lane":
-                st.caption(_two_lane_text("passing_lane_active"))
-            else:
-                st.caption(_two_lane_text("passing_lane_inactive"))
+                if horizontal_alignment == "horizontal_curves":
+                    st.caption(_two_lane_text("curve_active"))
+                    setup_defaults = curve_setup_defaults(unit_system, segment_length)
+                    for name, default in setup_defaults.items():
+                        st.session_state.setdefault(
+                            f"manual_curve_setup_{name}_{unit_system}", default
+                        )
+                    curve_columns = st.columns(3)
+                    total_curve_length = curve_columns[0].number_input(
+                        _two_lane_text("curve_length", unit=curve_length_unit),
+                        key=f"manual_curve_setup_total_curve_length_{unit_system}",
+                    )
+                    curve_radius = curve_columns[1].number_input(
+                        _two_lane_text("curve_radius", unit=curve_length_unit),
+                        key=f"manual_curve_setup_radius_{unit_system}",
+                    )
+                    superelevation = curve_columns[2].number_input(
+                        _two_lane_text("superelevation"),
+                        key=f"manual_curve_setup_superelevation_percent_{unit_system}",
+                    )
+                    curve_columns_two = st.columns(3)
+                    central_angle = curve_columns_two[0].number_input(
+                        _two_lane_text("central_angle"),
+                        key=f"manual_curve_setup_central_angle_deg_{unit_system}",
+                    )
+                    horizontal_class = curve_columns_two[1].number_input(
+                        _two_lane_text("horizontal_class"),
+                        step=1,
+                        key=f"manual_curve_setup_horizontal_class_{unit_system}",
+                    )
+                    subsegment_count = curve_columns_two[2].number_input(
+                        _two_lane_text("subsegment_count"),
+                        step=1,
+                        key=f"manual_curve_setup_subsegment_count_{unit_system}",
+                    )
+                    curve_setup = {
+                        "total_curve_length": total_curve_length,
+                        "radius": curve_radius,
+                        "superelevation_percent": superelevation,
+                        "central_angle_deg": central_angle,
+                        "horizontal_class": horizontal_class,
+                        "subsegment_count": subsegment_count,
+                    }
+                    generate_curve = st.button(
+                        _two_lane_text("generate_curve"),
+                        width="stretch",
+                        key=f"manual_generate_curve_{unit_system}",
+                    )
+                    editor_version = st.session_state.get(
+                        f"manual_horizontal_subsegments_version_{unit_system}", 0
+                    )
+                    editor_data = st.session_state.pop(
+                        f"manual_horizontal_subsegments_seed_{unit_system}",
+                        initial_curve_subsegments(
+                            horizontal_alignment, unit_system, segment_length
+                        ),
+                    )
+                    st.caption(_two_lane_text("curve_editor_caption", unit=curve_length_unit))
+                    horizontal_subsegments = st.data_editor(
+                        editor_data,
+                        key=(
+                            f"manual_horizontal_subsegments_{unit_system}_"
+                            f"{editor_version}"
+                        ),
+                        hide_index=True,
+                        num_rows="fixed",
+                        width="stretch",
+                        column_config={
+                            "type": st.column_config.SelectboxColumn(
+                                _two_lane_text("subsegment_type"),
+                                options=["tangent", "horizontal_curve"],
+                                required=True,
+                            ),
+                            "length": st.column_config.NumberColumn(
+                                _two_lane_text("subsegment_length", unit=curve_length_unit),
+                                required=True,
+                            ),
+                            "superelevation_percent": st.column_config.NumberColumn(
+                                _two_lane_text("superelevation")
+                            ),
+                            "radius": st.column_config.NumberColumn(
+                                _two_lane_text("radius", unit=curve_length_unit)
+                            ),
+                            "central_angle_deg": st.column_config.NumberColumn(
+                                _two_lane_text("central_angle")
+                            ),
+                            "horizontal_class": st.column_config.NumberColumn(
+                                _two_lane_text("horizontal_class"),
+                                step=1,
+                            ),
+                        },
+                    )
+                else:
+                    st.caption(_two_lane_text("curve_inactive"))
 
+                if segment_type == "passing_lane":
+                    st.caption(_two_lane_text("passing_lane_active"))
+                else:
+                    st.caption(_two_lane_text("passing_lane_inactive"))
+
+            st.caption(_two_lane_text("calculate_caption"))
+            has_previous_result = st.session_state.get("manual_segment_result") is not None
             run_manual = st.button(
-                _two_lane_text("calculate"),
+                _two_lane_text("recalculate" if has_previous_result else "calculate"),
                 type="primary",
                 width="stretch",
                 key=f"manual_segment_calculate_{unit_system}",
@@ -4446,6 +4517,7 @@ def render_manual_single_segment_calculator() -> None:
             result_unit_system,
             audit_record,
             is_current=segment_is_current,
+            render_details=False,
         )
         if presentation_state == ResultPresentationState.CAPACITY_FAILURE:
             render_result_state_panel(
@@ -4469,6 +4541,12 @@ def render_manual_single_segment_calculator() -> None:
             )
         else:
             st.caption(_two_lane_text("export_stale"))
+        render_manual_result_details(
+            stored_result,
+            result_unit_system,
+            audit_record,
+            is_current=segment_is_current,
+        )
 
 
 def _render_two_lane_schematic(
@@ -4655,6 +4733,7 @@ def render_manual_result(
     audit_record: dict[str, Any] | None = None,
     *,
     is_current: bool = True,
+    render_details: bool = True,
 ) -> None:
     """Render the manual result hierarchy with display-unit conversions."""
 
@@ -4694,6 +4773,26 @@ def render_manual_result(
         ],
     )
 
+    if render_details:
+        render_manual_result_details(
+            result_data,
+            unit_system,
+            audit_record,
+            is_current=is_current,
+        )
+
+
+def render_manual_result_details(
+    result_data: dict[str, Any],
+    unit_system: str,
+    audit_record: dict[str, Any] | None = None,
+    *,
+    is_current: bool = True,
+) -> None:
+    """Render subordinate Two-Lane details after project/report actions."""
+
+    outputs = result_data["outputs"]
+    metrics = display_outputs(outputs, unit_system)
     with st.expander(_two_lane_text("calculation_details"), expanded=False):
         st.markdown(f"**{translate('common.assumptions', _ui_locale())}**")
         for assumption in result_data["assumptions"]:
