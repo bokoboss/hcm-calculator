@@ -47,12 +47,12 @@ def resolve_result_presentation_state(
         return ResultPresentationState.INTERNAL_ERROR
     if unsupported_scope:
         return ResultPresentationState.UNSUPPORTED_SCOPE
-    if stopping_or_handoff:
-        return ResultPresentationState.HCM_STOPPING_OR_HANDOFF
     if freshness == MISSING_REQUIRED_INPUT:
         return ResultPresentationState.INVALID_INPUT
     if freshness == STALE:
         return ResultPresentationState.STALE_RESULT
+    if stopping_or_handoff:
+        return ResultPresentationState.HCM_STOPPING_OR_HANDOFF
     if capacity_failure:
         return ResultPresentationState.CAPACITY_FAILURE
     if has_result and warnings:

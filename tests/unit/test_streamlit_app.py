@@ -485,6 +485,17 @@ def _open_freeway_app(locale: str = "en"):
     return app
 
 
+def _open_weaving_app(locale: str = "en"):
+    AppTest = _apptest()
+    app = AppTest.from_file("src/hcmcalc/ui/streamlit_app.py", default_timeout=20)
+    app.run()
+    if locale != "en":
+        app.selectbox[0].set_value(locale).run()
+    app.selectbox[1].set_value("freeways").run()
+    app.selectbox[2].set_value("manual_weaving").run()
+    return app
+
+
 def _open_merge_app(locale: str = "en"):
     AppTest = _apptest()
     app = AppTest.from_file("src/hcmcalc/ui/streamlit_app.py", default_timeout=20)
@@ -702,6 +713,132 @@ def test_two_lane_segment_navigation_isolation_from_multilane() -> None:
     app.selectbox[2].set_value("manual_single_segment").run()
 
     assert "Average travel speed" in {metric.label for metric in app.metric}
+
+
+def test_two_lane_segment_task_sections_and_recalculate_action_render() -> None:
+    app = _open_two_lane_app()
+
+    visible = " ".join(
+        [
+            *(markdown.value for markdown in app.markdown),
+            *(caption.value for caption in app.caption),
+        ]
+    )
+    assert translate("two_lane.setup", "en") in visible
+    assert translate("two_lane.segment_basics", "en") in visible
+    assert translate("two_lane.directional_traffic", "en") in visible
+    assert translate("two_lane.method_adjustments", "en") in visible
+    assert app.button[1].label == translate("two_lane.calculate", "en")
+
+    app.button[1].click().run()
+    assert not app.exception
+    app.number_input[0].set_value(1.3).run()
+    assert app.button[1].label == translate("two_lane.recalculate", "en")
+
+
+def test_weaving_task_sections_progressive_branches_and_two_sided_result() -> None:
+    app = _open_weaving_app()
+    visible = " ".join(
+        [
+            *(markdown.value for markdown in app.markdown),
+            *(caption.value for caption in app.caption),
+        ]
+    )
+    assert translate("weaving.start", "en") in visible
+    assert translate("weaving.configuration_caption", "en") in visible
+    assert translate("weaving.advanced_geometry_caption", "en") in visible
+    assert app.button[0].label == translate("weaving.calculate", "en")
+
+    next(control for control in app.segmented_control if control.label == "Configuration").set_value(
+        "two_sided"
+    ).run()
+    assert any(control.label == "LC_RR" for control in app.selectbox)
+    assert all(control.label != "FR option lane" for control in app.checkbox)
+
+    app.button[0].click().run()
+    assert not app.exception
+    assert any("LOS E" in markdown.value for markdown in app.markdown)
+    assert "Mean speed" in {metric.label for metric in app.metric}
+    app.number_input[0].set_value(500.0).run()
+    assert app.button[0].label == translate("weaving.recalculate", "en")
+
+
+@pytest.mark.parametrize(
+    ("field_label", "value"),
+    [
+        ("FF freeway-to-freeway volume (veh/h)", 25000.0),
+        ("Segment length (m)", 2000.0),
+    ],
+)
+def test_weaving_capacity_and_handoff_states_are_explicit(
+    field_label: str, value: float
+) -> None:
+    app = _open_weaving_app()
+    next(control for control in app.number_input if control.label == field_label).set_value(
+        value
+    ).run()
+    app.button[0].click().run()
+
+    assert not app.exception
+    if field_label.startswith("FF "):
+        assert any("Capacity failure" in warning.value for warning in app.warning)
+        assert any("LOS F" in markdown.value for markdown in app.markdown)
+        assert {metric.label: metric.value for metric in app.metric}["Mean speed"] == (
+            "Not predicted"
+        )
+    else:
+        assert any("not a normal LOS result" in warning.value for warning in app.warning)
+        assert any(
+            metric.label == "Operational status"
+            and "handoff required" in metric.value
+            for metric in app.metric
+        )
+        assert "Level of service" not in {metric.label for metric in app.metric}
+        assert any(metric.label == "v/c" and metric.value == "Not evaluated" for metric in app.metric)
+
+
+def test_weaving_stale_handoff_result_hides_metrics_and_report_exports() -> None:
+    app = _open_weaving_app()
+    next(control for control in app.number_input if control.label == "Segment length (m)").set_value(
+        2000.0
+    ).run()
+    app.button[0].click().run()
+    assert any("not a normal LOS result" in warning.value for warning in app.warning)
+
+    next(control for control in app.number_input if control.label == "Segment length (m)").set_value(
+        500.0
+    ).run()
+
+    assert not app.exception
+    assert any("Input changed - recalculate required." in warning.value for warning in app.warning)
+    assert not {metric.label for metric in app.metric}
+    assert all(button.label != "Download CSV" for button in app.download_button)
+
+
+def test_two_lane_facility_task_editor_discloses_applicability_and_result_actions() -> None:
+    app = _open_facility_app()
+    visible = " ".join(
+        [
+            *(markdown.value for markdown in app.markdown),
+            *(caption.value for caption in app.caption),
+        ]
+    )
+    assert translate("facility.start", "en") in visible
+    assert translate("facility.segment_table", "en") in visible
+    assert translate("facility.opposing_volume_scope", "en") in visible
+    assert translate("facility.add_remove_note", "en") in visible
+
+    app.button[1].click().run()
+    assert not app.exception
+    assert any(
+        translate("facility.result_actions", "en") in markdown.value
+        for markdown in app.markdown
+    )
+    expander_labels = [expander.label for expander in app.expander]
+    assert expander_labels.index(translate("facility.export_report", "en")) < expander_labels.index(
+        translate("facility.calculation_details", "en")
+    )
+    assert any(button.label == "Download CSV" for button in app.download_button)
 
 
 def test_two_lane_facility_streamlit_stable_english_result_and_exports() -> None:

@@ -56,7 +56,7 @@ def clear_manual_weaving_state(state: dict[str, Any]) -> None:
     for key in tuple(state):
         if key.startswith("manual_weaving_input_") or key in {
             "manual_weaving_result", "manual_weaving_audit", "manual_weaving_error",
-            "manual_weaving_loaded_displayed",
+            "manual_weaving_loaded_displayed", "manual_weaving_ffs_source",
         }:
             state.pop(key, None)
 
