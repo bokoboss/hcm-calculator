@@ -256,6 +256,29 @@ Validation:
 - App-wide browser qualification matrix.
 - Documentation review that no method scope was implied beyond implemented support.
 
+Phase 16.6 qualification result (2026-08-10):
+
+- Decision: **PASS — Phase 16 closed; v0.9.0 release ready**. No Blocker or
+  Major product defect remains.
+- Source system-Chrome qualification: `126/126` rows passed across all seven
+  calculators and Supported Workflows, including English/Thai,
+  Metric/Imperial, 1280/768 px, stale/recalculate, project/load, export,
+  branch, resource, and overflow checks.
+- Clean installed-wheel qualification: `22/22` rows passed against the final
+  0.9.0 wheel, including all routes, all seven default calculations, packaged
+  resources, project round trips, Multilane Specific Grade, and current-result
+  CSV export.
+- Automated gates: `1066 passed`, focused contract suite `128 passed`,
+  `compileall` passed, and the 0.9.0 wheel built with all required resources.
+- No HCM formula, methodology, schema, fingerprint, result-field,
+  export-field, or persistence contract changes were introduced.
+- Detailed evidence and release decision:
+  `docs/releases/v0_9_phase_16_ux_release_qualification.md`.
+- User-facing summary: `docs/releases/v0_9_task_oriented_ux_release_notes.md`.
+- Remaining limitations are representative system-Chrome accessibility and
+  cross-browser coverage, narrow post-action result scroll position, and
+  narrow-grid Median ellipsis, as documented in the release qualification.
+
 ## Risk Register
 
 | Risk | Phase | Mitigation |
