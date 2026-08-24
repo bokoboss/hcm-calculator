@@ -1,14 +1,14 @@
 # HCM Calculator — Application Rebuild
 
-Status: **R0 planning-complete and architecture-accepted; implementation not yet started**
+Status: **R0 accepted and merged; R1 implementation authorized but not yet started**
 Date: 2026-08-24
-Planning branch: `planning/application-rebuild-r0`
-Planning PR: #129 — Application Rebuild R0: Product & Architecture Reset
+Accepted R0 commit: `6482808c06fd4bfc3f6d6ef246bd6efdc58c4e65`
+Accepted planning PR: #129 — Application Rebuild R0: Product & Architecture Reset
 Implementation tracking: #130 — Application Rebuild R1/R2: Foundation and representative prototypes
 
 ## Purpose
 
-This directory is the authoritative planning package for the engine-preserving HCM Calculator application rebuild.
+This directory is the authoritative architecture/specification package for the engine-preserving HCM Calculator application rebuild.
 
 The rebuild changes the product/application/frontend architecture while preserving the qualified Python HCM calculation engine, numerical contracts, auditability, project compatibility safeguards, and reporting behavior unless a separately reviewed engineering change explicitly says otherwise.
 
@@ -42,13 +42,23 @@ Existing qualified HCM engines
 
 ## Current status
 
-R0.2 through R0.10 are documented and the cross-document architecture acceptance review is complete.
+R0.2 through R0.10 and the final cross-document Architecture Acceptance Review are complete and merged to `main` through PR #129.
 
-R0 is **architecture/specification only**. No production frontend, engine, dependency, test, or CI code is changed by PR #129.
+R0 was documentation/architecture only. It did not change production frontend code, engine formulas, dependencies, tests, or CI behavior.
 
-The architecture review found no blocker requiring a change of product direction or technology architecture. It added binding clarifications for frontend-delivery availability, Project v2 state derivation, Recent Projects scope, release-like R1 integration, local API security, Project Overview hierarchy, context-aware toolbar behavior, and the Project v2 schema gate.
+The final review found no blocker requiring a change of product direction or technology architecture. Binding clarifications were added for:
 
-Implementation starts only after PR #129 is merged.
+- backend engineering availability vs rebuilt-frontend delivery availability;
+- fingerprint-derived current/stale state;
+- Project v2 persistence authority;
+- Recent Projects scope;
+- release-like R1 local serving;
+- local API security;
+- Analysis/Scenario hierarchy;
+- context-aware application actions;
+- the Project v2 schema gate.
+
+R1 Application Foundation is now the next authorized implementation step.
 
 ## Authority and conflict order
 
@@ -61,64 +71,21 @@ Implementation should resolve ambiguity in this order:
 5. Workflow/result/wireframe/design/product documents for their respective details.
 6. Earlier sequential status prose only as planning history.
 
-If any presentation specification conflicts with qualified engineering behavior on `main`, the qualified numerical/engineering contract wins until a separately reviewed engineering change says otherwise. Implementation must stop and record the conflict rather than silently changing the engine.
+If a presentation specification conflicts with qualified engineering behavior on `main`, the qualified numerical/engineering contract wins until a separately reviewed engineering change says otherwise. Implementation must stop and record the conflict rather than silently changing the engine.
 
 ## Recommended reading order
 
 1. [`r0_architecture_acceptance_review.md`](r0_architecture_acceptance_review.md)
-   - final architecture review and disposition;
-   - binding R1/R2 clarifications;
-   - frontend-delivery vs engine-support availability;
-   - Project v2 state/fingerprint authority;
-   - release-like runtime and local security gates.
-
 2. [`r0_product_architecture.md`](r0_product_architecture.md)
-   - product definition;
-   - Project / Analysis / Scenario / Result object model;
-   - navigation and application-shell direction;
-   - engine-preserving boundary;
-   - future-method extensibility.
-
 3. [`r0_decision_log.md`](r0_decision_log.md)
-   - architectural rationale and accepted ADRs;
-   - why the rebuild supersedes another Streamlit UX-polish phase;
-   - compatibility and acceptance principles.
-
 4. [`r0_workflow_architecture.md`](r0_workflow_architecture.md)
-   - common workflow/state model;
-   - target workflow for all seven currently supported analyses;
-   - reusable workflow components;
-   - validation and stale-result behavior.
-
 5. [`r0_result_architecture.md`](r0_result_architecture.md)
-   - Answer -> Engineering Performance -> Interpretation -> Evidence hierarchy;
-   - per-method result priorities;
-   - capacity failure, HCM handoff, warning, stale, and comparison semantics.
-
 6. [`r0_wireframes.md`](r0_wireframes.md)
-   - screen inventory and low-fidelity layouts;
-   - Project Overview, New Analysis, Multilane, Facility grid, Weaving, Merge/Diverge, stale, compare, export, methodology, and audit states;
-   - note that the acceptance review supersedes the early `Recent Projects` and flattened Project Overview examples where applicable.
-
 7. [`r0_design_system.md`](r0_design_system.md)
-   - professional engineering visual direction;
-   - compact density;
-   - shell geometry;
-   - field/unit/validation/focus/table/result interaction rules;
-   - accessibility and bilingual requirements.
-
 8. [`r0_technology_architecture.md`](r0_technology_architecture.md)
-   - React + TypeScript + Vite selection;
-   - FastAPI / Python application boundary;
-   - local/offline runtime model;
-   - API, registry, project-file, localization, test, CI, and migration architecture.
-
 9. [`r0_prototype_implementation_plan.md`](r0_prototype_implementation_plan.md)
-   - R1/R2 sequence;
-   - Multilane and Two-Lane Facility representative prototypes;
-   - Project/Scenario/Compare closure;
-   - Playwright, visual, compatibility, and numerical gates;
-   - implementation stop conditions.
+
+The acceptance review supersedes early wireframe examples where it explicitly clarifies behavior, including Recent Projects and flattened Analysis/Scenario rows.
 
 ## Implementation sequence
 
@@ -155,9 +122,9 @@ Do not mass-port all seven methods before R2 acceptance.
 11. A method is actionable in the rebuilt normal UI only when both engineering support and a compatible delivered frontend module exist.
 12. Project v2 cannot become release-stable before its dedicated schema/compatibility gate passes.
 
-## R1 additional acceptance clarifications
+## Strengthened Gate R1
 
-R1 must prove the selected runtime architecture, not only development servers:
+R1 must prove the selected runtime architecture, not only separate development servers:
 
 ```text
 frontend production build
@@ -175,13 +142,11 @@ The rebuilt New Analysis workflow must not expose dead-end method cards. Backend
 
 ### Multilane Segment
 
-Chosen to prove normal form workflow, conditional FFS and heavy-vehicle branches, units, capacity failure, result hierarchy, stale/recalculate lifecycle, localization, and legacy project import.
+Proves normal form workflow, conditional FFS and heavy-vehicle branches, units, capacity failure, result hierarchy, stale/recalculate lifecycle, localization, and legacy project import.
 
 ### Two-Lane Facility
 
-Chosen to prove the multi-segment engineering grid, row/cell validation, locked vs editable context, facility aggregation, facility answer vs segment evidence, and complex browser/table interaction.
-
-If the architecture works for both, broad migration has substantially stronger evidence than porting seven screens at once.
+Proves the multi-segment engineering grid, row/cell validation, locked vs editable context, facility aggregation, facility answer vs segment evidence, and complex browser/table interaction.
 
 ## Project v2 clarification
 
@@ -193,27 +158,25 @@ Serialized `presentation_state` is not authoritative. Current/stale/result prese
 
 ## Home / Project Overview clarification
 
-`Recent Projects` is not required in R1/R2 because the selected browser-local/file workflow does not yet define a reliable durable reopen permission/index. Do not add a database just to reproduce the early wireframe example.
+`Recent Projects` is not required in R1/R2 because the selected browser-local/file workflow does not yet define a reliable durable reopen permission/index. Do not add a database merely to reproduce the early wireframe example.
 
-Project Overview is analysis-first. Scenarios remain children of an Analysis and are expanded/opened within that Analysis rather than turning every scenario into a duplicate top-level Analysis row.
+Project Overview is analysis-first. Scenarios remain children of an Analysis and are expanded/opened within that Analysis rather than turning every Scenario into a duplicate top-level Analysis row.
 
 ## Superseded Phase 17 plan
 
 Issue #128 (`Phase 17: Release hardening and engineering acceptance`) is closed as superseded/not planned.
 
-The branch `codex/phase-17-planning` is intentionally retained temporarily as historical reference. It must not be merged or treated as rebuild implementation authority because its single-page Streamlit premise conflicts with the accepted Application Rebuild direction.
+The branch `codex/phase-17-planning` is retained as historical reference only. It must not be merged or treated as rebuild implementation authority because its single-page Streamlit premise conflicts with the accepted Application Rebuild direction.
 
-Useful release-hardening ideas may still be carried forward individually when compatible with this R0 package.
+## Next action — R1 Application Foundation
 
-## Next repository action
+Issue #130 is the R1/R2 parent.
 
-PR #129 is now eligible for final acceptance and merge.
+The next implementation work must:
 
-After merge:
-
-1. issue #130 becomes the R1/R2 implementation parent together with the merged R0 documents;
-2. create an isolated implementation branch/worktree such as `codex/application-rebuild-r1-foundation`;
-3. implement R1 Application Foundation only;
+1. start from current `main` containing accepted R0 commit `6482808c06fd4bfc3f6d6ef246bd6efdc58c4e65` or a later clean descendant;
+2. use an isolated implementation branch/worktree, suggested `codex/application-rebuild-r1-foundation`;
+3. implement **R1 Application Foundation only**;
 4. prove the strengthened Gate R1, including release-like single-origin local serving;
 5. push a reviewable R1 PR;
-6. do not begin Multilane R2A until R1 is accepted.
+6. return to GitHub review before beginning Multilane R2A.
