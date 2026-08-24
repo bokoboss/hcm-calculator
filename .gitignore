@@ -15,6 +15,14 @@ dist/
 build/
 *.egg-info/
 
+# Frontend dependency/build caches
+frontend/node_modules/
+frontend/.vite/
+frontend/.vite-temp/
+frontend/test-results/
+frontend/playwright-report/
+*.tsbuildinfo
+
 .DS_Store
 Thumbs.db
 
