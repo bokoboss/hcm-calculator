@@ -22,6 +22,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+  "httpx2>=2.12,<3",
   "pytest>=8.2"
 ]
 ui = [
