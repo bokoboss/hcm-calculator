@@ -5,7 +5,7 @@
 - Repository URL: https://github.com/bokoboss/hcm-calculator
 - Authoritative local path: `C:\Users\kittipat_t\Documents\hcm-calculator` (workflow adoption executed in an isolated sibling worktree)
 - Primary branch: `main`
-- Package metadata version: `0.7.0` (`pyproject.toml`); repository release qualification documents identify the current application release as `v0.9.0`, so version metadata drift is a known risk.
+- Package/application version: `0.9.0` (`pyproject.toml` at accepted baseline `0fb3b8f43a99d6a0a167bedf588dcd2e27993782`).
 
 ## Current accepted baseline
 - Accepted branch: `main`
@@ -91,7 +91,7 @@ Changes must not alter the following unless explicitly approved:
 - Release policy: preserve accepted HCM behavior and record qualification evidence, exact relevant SHAs, and package/runtime results.
 
 ## Current known limitations / risks
-- `main` currently passes the repository `Tests` workflow, but the Python package metadata (`0.7.0`) and v0.9.0 release documentation are inconsistent.
+- `main` currently passes the repository `Tests` workflow.
 - PR #133 is open and its checks were pending/merge state unstable at preflight; do not modify or resume it as part of workflow adoption.
 - The frontend/API rebuild is authorized by R0 but is not yet a completed architecture implementation.
 
