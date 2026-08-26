@@ -13,9 +13,11 @@ authors = [
   { name = "bokoboss" }
 ]
 dependencies = [
-  "fastapi>=0.115,<1",
+  # FastAPI and Pydantic generate the committed OpenAPI contract. Keep both
+  # exact so clean installs cannot silently change the API schema.
+  "fastapi==0.141.1",
   "openpyxl>=3.1",
-  "pydantic>=2.7",
+  "pydantic==2.13.4",
   "PyYAML>=6.0",
   "uvicorn>=0.30,<1"
 ]
