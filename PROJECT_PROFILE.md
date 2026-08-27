@@ -5,21 +5,21 @@
 - Repository URL: https://github.com/bokoboss/hcm-calculator
 - Authoritative local path: `C:\Users\kittipat_t\Documents\hcm-calculator` (workflow adoption executed in an isolated sibling worktree)
 - Primary branch: `main`
-- Package/application version: `0.9.0` (`pyproject.toml` at accepted baseline `0fb3b8f43a99d6a0a167bedf588dcd2e27993782`).
+- Package/application version: `0.9.0` (`pyproject.toml` at accepted Phase 1 baseline `cfcfe7af14d821dadc04c4f067322ef5d3760c1c`).
 
 ## Current accepted baseline
 - Accepted branch: `main`
-- Accepted HEAD SHA: `0fb3b8f43a99d6a0a167bedf588dcd2e27993782`
-- Accepted date: 2026-08-24
-- Current phase/milestone: R0 accepted and merged; R1 Application Foundation authorized but not accepted.
-- Last accepted PR / CI run: PR #129 merged at `6482808c06fd4bfc3f6d6ef246bd6efdc58c4e65`; GitHub Actions `Tests` run #241 for current `main` passed.
-- PR #133 (`codex/application-rebuild-r1-foundation`) is open and in progress; it is not an accepted baseline for this project.
+- Accepted HEAD SHA: `cfcfe7af14d821dadc04c4f067322ef5d3760c1c`
+- Accepted date: 2026-08-27
+- Current phase/milestone: **Phase 1 — Application Foundation accepted and merged; Phase 2 — Prototype & Architecture Validation authorized but not yet started.**
+- Last accepted implementation PR / CI run: PR #133 merged at `cfcfe7af14d821dadc04c4f067322ef5d3760c1c`; GitHub Actions R1 qualification run #249 passed all four jobs.
+- R1 accepted foundation includes the framework-independent application layer, thin FastAPI boundary, React/TypeScript/Vite shell, seven-method backend registry, contract-safe frontend delivery registry, bilingual shared primitives, OpenAPI drift protection, and release-like Python-served SPA/browser qualification.
 - Installed Engineering Development Workflow: v1.4.1 at exact source commit `3547ae260feacf8fc9a102b2abfdb13881e36dab`.
 
 ## Technology stack
 - Languages: Python 3.12+; accepted rebuild target adds TypeScript.
-- Frameworks: Pydantic and optional Streamlit today; React + Vite frontend and FastAPI boundary are the accepted rebuild target.
-- Package manager: `pip`/Hatchling for Python; frontend package manager is not yet established on `main`.
+- Frameworks: Pydantic and optional Streamlit remain; the accepted rebuild foundation now includes React + TypeScript + Vite and a FastAPI boundary on `main`.
+- Package manager: `pip`/Hatchling for Python; frontend uses `pnpm` with the committed lockfile/package-manager declaration.
 - Supported OS/runtime: local Python application; repository launcher and setup scripts provide Windows support; CI runs on Ubuntu with Python 3.12.
 
 ## Standard commands
@@ -50,7 +50,7 @@ python -m streamlit run src/hcmcalc/ui/streamlit_app.py
 - Accepted R0 architecture: React + TypeScript + Vite -> FastAPI -> framework-independent Python application layer -> existing qualified HCM engines.
 - Python is the calculation authority; TypeScript must not duplicate HCM formulas.
 - `docs/application_rebuild/r0_architecture_acceptance_review.md` is the highest-authority R0 document, followed by its README, implementation plan, technology architecture, and remaining R0 specifications.
-- Streamlit remains runnable during migration; R1 must prove release-like local same-origin serving of the compiled SPA and API.
+- Streamlit remains runnable during migration; Phase 1 has proven release-like local same-origin serving of the compiled SPA and API without a Node/Vite runtime server.
 
 ## Protected behavior
 Changes must not alter the following unless explicitly approved:
@@ -91,9 +91,12 @@ Changes must not alter the following unless explicitly approved:
 - Release policy: preserve accepted HCM behavior and record qualification evidence, exact relevant SHAs, and package/runtime results.
 
 ## Current known limitations / risks
-- `main` currently passes the repository `Tests` workflow.
-- PR #133 is open and its checks were pending/merge state unstable at preflight; do not modify or resume it as part of workflow adoption.
-- The frontend/API rebuild is authorized by R0 but is not yet a completed architecture implementation.
+- The rebuilt React/FastAPI application foundation is accepted, but no rebuilt HCM calculation workflow is delivered yet; all seven methods remain reference-only in the rebuilt UI until individually delivered and contract-qualified.
+- The qualified Streamlit application remains the active calculation surface during representative-prototype migration.
+- Project v2 durable persistence is not implemented or accepted; legacy v0.9 / schema 1.2 compatibility remains protected.
+- Do not mass-port all seven methods before representative prototype architecture is accepted.
 
 ## Current next objective
-- Complete R1 Application Foundation under the accepted R0 architecture through its own PR; keep workflow-adoption changes separate from PR #133.
+- Execute **Phase 2 — Prototype & Architecture Validation** as one managed phase with internal checkpoints: Multilane representative workflow, Two-Lane Facility grid workflow, Project/Scenario/Compare closure, then architecture acceptance.
+- Prefer one bounded Codex implementation cycle where architecture remains sound; stop only on genuine contract/architecture conflicts.
+- Do not begin Phase 3 full seven-method migration until Phase 2 is explicitly accepted.
