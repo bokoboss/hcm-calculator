@@ -1,10 +1,12 @@
 # HCM Calculator — Application Rebuild
 
-Status: **Phase 1 — Application Foundation accepted and merged; Phase 2 — Prototype & Architecture Validation authorized**
+Status: **Phase 2 — Prototype & Architecture Validation accepted and merged; Phase 3 — Full Migration & Release authorized**
 Date: 2026-08-27
 Accepted R0 commit: `6482808c06fd4bfc3f6d6ef246bd6efdc58c4e65`
 Accepted Phase 1 commit: `cfcfe7af14d821dadc04c4f067322ef5d3760c1c`
 Accepted Phase 1 PR / CI: #133 / R1 qualification run #249
+Accepted Phase 2 commit: `868c00616b6cb3b74308777c4753e1af80bb863e`
+Accepted Phase 2 PR / CI: #137 / qualification run #255
 Implementation tracking: #130 — historical R1/R2 parent; use the current three-phase roadmap below for management
 
 ## Purpose
@@ -59,7 +61,7 @@ The final review found no blocker requiring a change of product direction or tec
 - context-aware application actions;
 - the Project v2 schema gate.
 
-R1 Application Foundation has been accepted and merged through PR #133. The next authorized implementation step is Phase 2 — Prototype & Architecture Validation.
+R1 Application Foundation and Phase 2 Prototype & Architecture Validation have both been accepted and merged. The next authorized implementation step is Phase 3 — Full Migration & Release.
 
 ## Authority and conflict order
 
@@ -101,19 +103,14 @@ Phase 1 — Application Foundation
   -> accepted at cfcfe7af14d821dadc04c4f067322ef5d3760c1c
 
 Phase 2 — Prototype & Architecture Validation
-  -> internal checkpoint 2.1: Multilane Segment
-  -> internal checkpoint 2.2: Two-Lane Facility
-  -> internal checkpoint 2.3: Project / Scenario / Compare
-  -> internal checkpoint 2.4: Architecture Acceptance
+  -> accepted at 868c00616b6cb3b74308777c4753e1af80bb863e
 
 Phase 3 — Full Migration & Release
   -> remaining five current workflows
   -> parity / regression / runtime / packaging / default-UI transition
 ```
 
-Phase 2 should normally run as one bounded implementation cycle with internal self-gates. Stop for external re-planning only when a genuine architecture, engineering-contract, compatibility, or distribution stop condition is reached.
-
-Do not mass-port all seven methods before Phase 2 acceptance.
+Phase 2 is accepted. Phase 3 should use the proven Phase 2 application/API/frontend patterns to migrate the remaining five methods, then perform all-seven-method parity, UAT, packaging/runtime, default-UI transition, and release qualification. Stop for external re-planning only when a genuine engineering-contract, compatibility, or distribution stop condition is reached.
 
 ## Non-negotiable invariants
 
@@ -176,17 +173,18 @@ Issue #128 (`Phase 17: Release hardening and engineering acceptance`) is closed 
 
 The branch `codex/phase-17-planning` is retained as historical reference only. It must not be merged or treated as rebuild implementation authority because its single-page Streamlit premise conflicts with the accepted Application Rebuild direction.
 
-## Next action — Phase 2 Prototype & Architecture Validation
+## Next action — Phase 3 Full Migration & Release
 
-Phase 1 / R1 is complete and accepted at `cfcfe7af14d821dadc04c4f067322ef5d3760c1c`.
+Phase 2 is complete and accepted at `868c00616b6cb3b74308777c4753e1af80bb863e`.
 
 The next implementation work must:
 
-1. start from current clean `main` containing the accepted Phase 1 foundation and Engineering Development Workflow v1.4.1;
-2. use one isolated Phase 2 implementation branch/worktree;
-3. implement the representative Multilane Segment and Two-Lane Facility workflows on the accepted application foundation;
-4. complete Project / Analysis / Scenario / Compare behavior and the required persistence/compatibility work without weakening legacy schema 1.2 safeguards;
-5. preserve numerical equivalence, Python calculation authority, current/stale fingerprints, Streamlit compatibility, and contract-safe frontend delivery;
-6. run the internal Phase 2 checkpoints autonomously when no architecture stop condition is triggered;
-7. push one reviewable Phase 2 PR with engineering, API, frontend, browser, project-compatibility, and regression evidence;
-8. return to ChatGPT/GitHub acceptance before Phase 3 full migration.
+1. start from current clean `main` containing the accepted Phase 2 architecture and Engineering Development Workflow v1.4.1;
+2. use one isolated Phase 3 implementation branch/worktree;
+3. migrate Two-Lane Segment, Basic Freeway Segment, Weaving, Merge, and Diverge through the accepted application/API/frontend architecture without duplicating HCM formulas;
+4. integrate all five into Project v2, scenario lifecycle, compare eligibility where technically meaningful, exports/reports, localization, audit/evidence, and canonical actionability;
+5. preserve numerical equivalence, legacy schema 1.x import compatibility, fingerprint-derived current/stale state, capacity/handoff/null semantics, and the Streamlit compatibility path;
+6. qualify all seven rebuilt workflows in real browser journeys and deterministic visual/UAT references;
+7. prove release-like local runtime, wheel/package behavior, launcher/default-UI transition, and no Node/Vite runtime requirement for normal use;
+8. push one reviewable Phase 3 PR with full engineering, API, frontend, browser, migration, package, and release evidence;
+9. return to ChatGPT/GitHub final acceptance before changing/removing compatibility launch paths or declaring the application rebuild complete.
