@@ -83,3 +83,114 @@ def test_compiled_spa_is_served_without_shadowing_api(tmp_path: Path) -> None:
 
 def test_local_server_default_is_loopback() -> None:
     assert DEFAULT_HOST == "127.0.0.1"
+
+
+def test_phase2_multilane_api_separates_readiness_from_calculation() -> None:
+    client = TestClient(create_app())
+    starting = client.get(
+        "/api/v1/analyses/multilane_segment/starting-values",
+        params={"template_id": "MLH-CH26-004-EB", "unit_system": "imperial"},
+    ).json()
+    request = {
+        "template_id": "MLH-CH26-004-EB",
+        "unit_system": "imperial",
+        "displayed_inputs": starting["displayed_inputs"],
+    }
+    ready = client.post("/api/v1/analyses/multilane_segment/validate", json=request)
+    assert ready.status_code == 200
+    assert ready.json()["valid"] is True
+    calculated = client.post("/api/v1/analyses/multilane_segment/calculate", json=request)
+    assert calculated.status_code == 200
+    payload = calculated.json()
+    assert payload["result"]["outputs"]["level_of_service"] == "C"
+    assert payload["presentation"]["answer"]["value"] == "C"
+    assert payload["calculation_state"]["has_result"] is True
+    assert payload["audit"]["calculation_succeeded"] is True
+
+
+def test_phase2_facility_api_rejects_locked_context_and_returns_segment_evidence() -> None:
+    client = TestClient(create_app())
+    starting = client.get(
+        "/api/v1/analyses/two_lane_facility/starting-values",
+        params={"template_id": "level_example_3", "unit_system": "imperial"},
+    ).json()
+    rows = starting["segments"]
+    rows[0]["terrain_type"] = "mountainous"
+    locked = client.post(
+        "/api/v1/analyses/two_lane_facility/validate",
+        json={"template_id": "level_example_3", "unit_system": "imperial", "displayed_inputs": {"rows": rows}},
+    )
+    assert locked.status_code == 200
+    assert locked.json()["valid"] is False
+    assert locked.json()["validation_status"] == "unsupported_scope"
+
+    fresh = client.get(
+        "/api/v1/analyses/two_lane_facility/starting-values",
+        params={"template_id": "level_example_3", "unit_system": "imperial"},
+    ).json()
+    calculated = client.post(
+        "/api/v1/analyses/two_lane_facility/calculate",
+        json={"template_id": "level_example_3", "unit_system": "imperial", "displayed_inputs": {"rows": fresh["segments"]}},
+    )
+    assert calculated.status_code == 200
+    assert len(calculated.json()["presentation"]["segments"]) == 5
+
+
+def test_phase2_project_endpoint_saves_a_snapshot_and_has_no_presentation_authority() -> None:
+    client = TestClient(create_app())
+    starting = client.get(
+        "/api/v1/analyses/multilane_segment/starting-values",
+        params={"template_id": "MLH-CH26-004-EB", "unit_system": "imperial"},
+    ).json()
+    calculated = client.post(
+        "/api/v1/analyses/multilane_segment/calculate",
+        json={"template_id": "MLH-CH26-004-EB", "unit_system": "imperial", "displayed_inputs": starting["displayed_inputs"]},
+    ).json()
+    saved = client.post(
+        "/api/v1/projects/from-analysis",
+        json={"project_name": "API project", "analysis_snapshot": calculated},
+    )
+    assert saved.status_code == 200
+    project = saved.json()["project"]
+    assert project["schema_version"] == "2.0"
+    assert "presentation" not in project["analyses"][0]["scenarios"][0]["result"]
+    loaded = client.post("/api/v1/projects/validate", json={"project": project})
+    assert loaded.status_code == 200
+    assert loaded.json()["project"]["project_id"] == project["project_id"]
+
+
+def test_phase2_project_endpoint_updates_scenario_inputs_without_recalculation() -> None:
+    client = TestClient(create_app())
+    starting = client.get(
+        "/api/v1/analyses/multilane_segment/starting-values",
+        params={"template_id": "MLH-CH26-004-EB", "unit_system": "imperial"},
+    ).json()
+    original_request = {
+        "template_id": "MLH-CH26-004-EB",
+        "unit_system": "imperial",
+        "displayed_inputs": starting["displayed_inputs"],
+    }
+    original = client.post("/api/v1/analyses/multilane_segment/calculate", json=original_request).json()
+    project = client.post(
+        "/api/v1/projects/from-analysis",
+        json={"project_name": "API update project", "analysis_snapshot": original},
+    ).json()["project"]
+    changed_inputs = dict(starting["displayed_inputs"])
+    changed_inputs["demand_volume_veh_h"] = 1800
+    changed_request = {**original_request, "displayed_inputs": changed_inputs}
+    changed = client.post("/api/v1/analyses/multilane_segment/calculate", json=changed_request).json()
+    analysis = project["analyses"][0]
+    scenario = analysis["scenarios"][0]
+    updated = client.post(
+        "/api/v1/projects/update-scenario",
+        json={
+            "project": project,
+            "analysis_id": analysis["analysis_id"],
+            "scenario_id": scenario["scenario_id"],
+            "analysis_snapshot": changed,
+        },
+    )
+    assert updated.status_code == 200
+    updated_scenario = updated.json()["project"]["analyses"][0]["scenarios"][0]
+    assert updated_scenario["result"] is None
+    assert updated_scenario["result_status"] == "stale"

@@ -122,7 +122,6 @@ def validate_manual_facility_table(rows: list[dict[str, Any]] | Any) -> dict[str
     numeric_nonnegative = {
         "analysis_direction_volume_veh_h",
         "heavy_vehicle_percent",
-        "grade_percent",
         "shoulder_width",
         "access_point_density",
     }
@@ -188,6 +187,12 @@ def validate_manual_facility_table(rows: list[dict[str, Any]] | Any) -> dict[str
             _validate_numeric_field(messages, row, segment_label, field, positive=True)
         for field in numeric_nonnegative:
             _validate_numeric_field(messages, row, segment_label, field, positive=False)
+        # Grade is signed: the mountainous Chapter 26 Example 4 fixture
+        # includes both upgrade and downgrade segments.  The engine owns the
+        # applicable vertical-alignment guardrails; the table validator only
+        # requires a finite value here.
+        if _parse_float(row.get("grade_percent")) is None:
+            messages.append(f"Segment {segment_label}: grade_percent must be numeric.")
         phf = _parse_float(row.get("peak_hour_factor"))
         if phf is None or not 0.0 < phf <= 1.0:
             messages.append(

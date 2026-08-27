@@ -48,9 +48,11 @@ const module = (
 });
 
 describe('frontend delivery registry', () => {
-  it('registers migration status for all seven backend method IDs', () => {
+  it('registers the two qualified Phase 2 modules and keeps the remaining methods reference-only', () => {
     expect(Object.keys(frontendModuleRegistry)).toHaveLength(7);
-    expect(Object.values(frontendModuleRegistry).every((entry) => entry.status === 'not_delivered')).toBe(true);
+    expect(frontendModuleRegistry.multilane_segment).toMatchObject({ status: 'delivered', moduleContract: 'phase_8' });
+    expect(frontendModuleRegistry.two_lane_facility).toMatchObject({ status: 'delivered', moduleContract: 'phase_5_product_integration' });
+    expect(Object.values(frontendModuleRegistry).filter((entry) => entry.status === 'not_delivered')).toHaveLength(5);
   });
 
   it('uses one three-way predicate for actionability and route eligibility', () => {

@@ -241,15 +241,262 @@
         "title": "MethodsResponse",
         "type": "object"
       },
-      "ValidationError": {
+      "ProjectCompareRequest": {
+        "additionalProperties": false,
         "properties": {
-          "ctx": {
-            "title": "Context",
+          "analysis_id": {
+            "minLength": 1,
+            "title": "Analysis Id",
+            "type": "string"
+          },
+          "left_scenario_id": {
+            "minLength": 1,
+            "title": "Left Scenario Id",
+            "type": "string"
+          },
+          "project": {
+            "additionalProperties": true,
+            "title": "Project",
             "type": "object"
           },
-          "input": {
-            "title": "Input"
+          "right_scenario_id": {
+            "minLength": 1,
+            "title": "Right Scenario Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project",
+          "analysis_id",
+          "left_scenario_id",
+          "right_scenario_id"
+        ],
+        "title": "ProjectCompareRequest",
+        "type": "object"
+      },
+      "ProjectCompareResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "comparison": {
+            "additionalProperties": true,
+            "title": "Comparison",
+            "type": "object"
+          }
+        },
+        "required": [
+          "comparison"
+        ],
+        "title": "ProjectCompareResponse",
+        "type": "object"
+      },
+      "ProjectDocumentRequest": {
+        "additionalProperties": false,
+        "description": "Generic Project v2 document carried by a file-oriented client.",
+        "properties": {
+          "project": {
+            "additionalProperties": true,
+            "title": "Project",
+            "type": "object"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "title": "ProjectDocumentRequest",
+        "type": "object"
+      },
+      "ProjectDuplicateScenarioRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "analysis_id": {
+            "minLength": 1,
+            "title": "Analysis Id",
+            "type": "string"
           },
+          "project": {
+            "additionalProperties": true,
+            "title": "Project",
+            "type": "object"
+          },
+          "scenario_id": {
+            "minLength": 1,
+            "title": "Scenario Id",
+            "type": "string"
+          },
+          "scenario_name": {
+            "minLength": 1,
+            "title": "Scenario Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project",
+          "analysis_id",
+          "scenario_id",
+          "scenario_name"
+        ],
+        "title": "ProjectDuplicateScenarioRequest",
+        "type": "object"
+      },
+      "ProjectFromAnalysisRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "analysis_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Analysis Name"
+          },
+          "analysis_snapshot": {
+            "additionalProperties": true,
+            "title": "Analysis Snapshot",
+            "type": "object"
+          },
+          "project_name": {
+            "default": "Untitled HCM study",
+            "minLength": 1,
+            "title": "Project Name",
+            "type": "string"
+          },
+          "scenario_name": {
+            "default": "Base",
+            "minLength": 1,
+            "title": "Scenario Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "analysis_snapshot"
+        ],
+        "title": "ProjectFromAnalysisRequest",
+        "type": "object"
+      },
+      "ProjectRecordResultRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "analysis_id": {
+            "minLength": 1,
+            "title": "Analysis Id",
+            "type": "string"
+          },
+          "analysis_snapshot": {
+            "additionalProperties": true,
+            "title": "Analysis Snapshot",
+            "type": "object"
+          },
+          "project": {
+            "additionalProperties": true,
+            "title": "Project",
+            "type": "object"
+          },
+          "scenario_id": {
+            "minLength": 1,
+            "title": "Scenario Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project",
+          "analysis_id",
+          "scenario_id",
+          "analysis_snapshot"
+        ],
+        "title": "ProjectRecordResultRequest",
+        "type": "object"
+      },
+      "ProjectRenameScenarioRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "analysis_id": {
+            "minLength": 1,
+            "title": "Analysis Id",
+            "type": "string"
+          },
+          "project": {
+            "additionalProperties": true,
+            "title": "Project",
+            "type": "object"
+          },
+          "scenario_id": {
+            "minLength": 1,
+            "title": "Scenario Id",
+            "type": "string"
+          },
+          "scenario_name": {
+            "minLength": 1,
+            "title": "Scenario Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project",
+          "analysis_id",
+          "scenario_id",
+          "scenario_name"
+        ],
+        "title": "ProjectRenameScenarioRequest",
+        "type": "object"
+      },
+      "ProjectResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "migrated": {
+            "default": false,
+            "title": "Migrated",
+            "type": "boolean"
+          },
+          "project": {
+            "additionalProperties": true,
+            "title": "Project",
+            "type": "object"
+          }
+        },
+        "required": [
+          "project"
+        ],
+        "title": "ProjectResponse",
+        "type": "object"
+      },
+      "ProjectUpdateScenarioRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "analysis_id": {
+            "minLength": 1,
+            "title": "Analysis Id",
+            "type": "string"
+          },
+          "analysis_snapshot": {
+            "additionalProperties": true,
+            "title": "Analysis Snapshot",
+            "type": "object"
+          },
+          "project": {
+            "additionalProperties": true,
+            "title": "Project",
+            "type": "object"
+          },
+          "scenario_id": {
+            "minLength": 1,
+            "title": "Scenario Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project",
+          "analysis_id",
+          "scenario_id",
+          "analysis_snapshot"
+        ],
+        "title": "ProjectUpdateScenarioRequest",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
           "loc": {
             "items": {
               "anyOf": [
@@ -280,6 +527,564 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "ValidationIssue": {
+        "additionalProperties": false,
+        "description": "A field-level or workflow-level validation message.",
+        "properties": {
+          "code": {
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          },
+          "message": {
+            "minLength": 1,
+            "title": "Message",
+            "type": "string"
+          },
+          "message_key": {
+            "minLength": 1,
+            "title": "Message Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "message_key"
+        ],
+        "title": "ValidationIssue",
+        "type": "object"
+      },
+      "WorkflowCalculationResponse": {
+        "additionalProperties": false,
+        "description": "Auditable result envelope returned after explicit calculation.",
+        "properties": {
+          "audit": {
+            "additionalProperties": true,
+            "title": "Audit",
+            "type": "object"
+          },
+          "calculation_fingerprint": {
+            "title": "Calculation Fingerprint",
+            "type": "string"
+          },
+          "calculation_state": {
+            "additionalProperties": true,
+            "title": "Calculation State",
+            "type": "object"
+          },
+          "displayed_inputs": {
+            "additionalProperties": true,
+            "title": "Displayed Inputs",
+            "type": "object"
+          },
+          "engine_method_identifier": {
+            "title": "Engine Method Identifier",
+            "type": "string"
+          },
+          "generated_at": {
+            "title": "Generated At",
+            "type": "string"
+          },
+          "input_contract": {
+            "title": "Input Contract",
+            "type": "string"
+          },
+          "input_snapshot_fingerprint": {
+            "title": "Input Snapshot Fingerprint",
+            "type": "string"
+          },
+          "method": {
+            "additionalProperties": true,
+            "title": "Method",
+            "type": "object"
+          },
+          "method_id": {
+            "title": "Method Id",
+            "type": "string"
+          },
+          "method_identifier": {
+            "title": "Method Identifier",
+            "type": "string"
+          },
+          "method_version": {
+            "title": "Method Version",
+            "type": "string"
+          },
+          "normalized_inputs": {
+            "additionalProperties": true,
+            "title": "Normalized Inputs",
+            "type": "object"
+          },
+          "presentation": {
+            "additionalProperties": true,
+            "title": "Presentation",
+            "type": "object"
+          },
+          "project_type": {
+            "title": "Project Type",
+            "type": "string"
+          },
+          "result": {
+            "additionalProperties": true,
+            "title": "Result",
+            "type": "object"
+          },
+          "template_id": {
+            "title": "Template Id",
+            "type": "string"
+          },
+          "unit_system": {
+            "enum": [
+              "metric",
+              "imperial"
+            ],
+            "title": "Unit System",
+            "type": "string"
+          }
+        },
+        "required": [
+          "method_id",
+          "template_id",
+          "unit_system",
+          "displayed_inputs",
+          "normalized_inputs",
+          "calculation_fingerprint",
+          "input_snapshot_fingerprint",
+          "method_identifier",
+          "engine_method_identifier",
+          "method_version",
+          "input_contract",
+          "project_type",
+          "calculation_state",
+          "result",
+          "presentation",
+          "audit",
+          "method",
+          "generated_at"
+        ],
+        "title": "WorkflowCalculationResponse",
+        "type": "object"
+      },
+      "WorkflowExportRequest": {
+        "additionalProperties": false,
+        "description": "Export request carrying an already-calculated result identity.",
+        "properties": {
+          "calculation_fingerprint": {
+            "minLength": 1,
+            "title": "Calculation Fingerprint",
+            "type": "string"
+          },
+          "displayed_inputs": {
+            "additionalProperties": true,
+            "title": "Displayed Inputs",
+            "type": "object"
+          },
+          "export_format": {
+            "enum": [
+              "csv",
+              "xlsx",
+              "markdown",
+              "json"
+            ],
+            "title": "Export Format",
+            "type": "string"
+          },
+          "input_snapshot_fingerprint": {
+            "minLength": 1,
+            "title": "Input Snapshot Fingerprint",
+            "type": "string"
+          },
+          "result": {
+            "additionalProperties": true,
+            "title": "Result",
+            "type": "object"
+          },
+          "template_id": {
+            "minLength": 1,
+            "title": "Template Id",
+            "type": "string"
+          },
+          "unit_system": {
+            "enum": [
+              "metric",
+              "imperial"
+            ],
+            "title": "Unit System",
+            "type": "string"
+          }
+        },
+        "required": [
+          "template_id",
+          "unit_system",
+          "displayed_inputs",
+          "calculation_fingerprint",
+          "input_snapshot_fingerprint",
+          "result",
+          "export_format"
+        ],
+        "title": "WorkflowExportRequest",
+        "type": "object"
+      },
+      "WorkflowExportResponse": {
+        "additionalProperties": false,
+        "description": "A rendered export; ``content_base64`` is used for XLSX.",
+        "properties": {
+          "calculation_fingerprint": {
+            "title": "Calculation Fingerprint",
+            "type": "string"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "content_base64": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content Base64"
+          },
+          "export_format": {
+            "enum": [
+              "csv",
+              "xlsx",
+              "markdown",
+              "json"
+            ],
+            "title": "Export Format",
+            "type": "string"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "media_type": {
+            "title": "Media Type",
+            "type": "string"
+          },
+          "recalculated": {
+            "const": false,
+            "default": false,
+            "title": "Recalculated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "export_format",
+          "filename",
+          "media_type",
+          "calculation_fingerprint"
+        ],
+        "title": "WorkflowExportResponse",
+        "type": "object"
+      },
+      "WorkflowRequest": {
+        "additionalProperties": false,
+        "description": "Displayed worksheet values submitted for validation/calculation.",
+        "properties": {
+          "displayed_inputs": {
+            "additionalProperties": true,
+            "title": "Displayed Inputs",
+            "type": "object"
+          },
+          "template_id": {
+            "minLength": 1,
+            "title": "Template Id",
+            "type": "string"
+          },
+          "unit_system": {
+            "enum": [
+              "metric",
+              "imperial"
+            ],
+            "title": "Unit System",
+            "type": "string"
+          }
+        },
+        "required": [
+          "template_id",
+          "unit_system",
+          "displayed_inputs"
+        ],
+        "title": "WorkflowRequest",
+        "type": "object"
+      },
+      "WorkflowStartingValuesResponse": {
+        "additionalProperties": true,
+        "description": "Validated starting values for a selected template.",
+        "properties": {
+          "fields": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "method_id": {
+            "title": "Method Id",
+            "type": "string"
+          },
+          "template_id": {
+            "title": "Template Id",
+            "type": "string"
+          },
+          "template_label": {
+            "title": "Template Label",
+            "type": "string"
+          },
+          "unit_system": {
+            "enum": [
+              "metric",
+              "imperial"
+            ],
+            "title": "Unit System",
+            "type": "string"
+          }
+        },
+        "required": [
+          "method_id",
+          "template_id",
+          "template_label",
+          "unit_system",
+          "fields"
+        ],
+        "title": "WorkflowStartingValuesResponse",
+        "type": "object"
+      },
+      "WorkflowTemplatesResponse": {
+        "additionalProperties": false,
+        "description": "Template, branch, and field metadata for one delivered workflow.",
+        "properties": {
+          "branches": {
+            "additionalProperties": true,
+            "title": "Branches",
+            "type": "object"
+          },
+          "fields": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "method_id": {
+            "title": "Method Id",
+            "type": "string"
+          },
+          "scope_notes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scope Notes",
+            "type": "array"
+          },
+          "templates": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Templates",
+            "type": "array"
+          },
+          "unit_systems": {
+            "items": {
+              "enum": [
+                "metric",
+                "imperial"
+              ],
+              "type": "string"
+            },
+            "title": "Unit Systems",
+            "type": "array"
+          }
+        },
+        "required": [
+          "method_id",
+          "unit_systems",
+          "templates",
+          "fields"
+        ],
+        "title": "WorkflowTemplatesResponse",
+        "type": "object"
+      },
+      "WorkflowValidationResponse": {
+        "additionalProperties": false,
+        "description": "Readiness response; validation never executes an HCM calculation.",
+        "properties": {
+          "calculation_fingerprint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calculation Fingerprint"
+          },
+          "calculation_state": {
+            "additionalProperties": true,
+            "title": "Calculation State",
+            "type": "object"
+          },
+          "displayed_inputs": {
+            "additionalProperties": true,
+            "title": "Displayed Inputs",
+            "type": "object"
+          },
+          "engine_method_identifier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine Method Identifier"
+          },
+          "errors": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationIssue"
+            },
+            "title": "Errors",
+            "type": "array"
+          },
+          "input_contract": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Contract"
+          },
+          "input_snapshot_fingerprint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Snapshot Fingerprint"
+          },
+          "method_id": {
+            "title": "Method Id",
+            "type": "string"
+          },
+          "method_identifier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method Identifier"
+          },
+          "method_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method Version"
+          },
+          "normalized_inputs": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normalized Inputs"
+          },
+          "project_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Type"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "template_id": {
+            "title": "Template Id",
+            "type": "string"
+          },
+          "unit_system": {
+            "enum": [
+              "metric",
+              "imperial"
+            ],
+            "title": "Unit System",
+            "type": "string"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "boolean"
+          },
+          "validation_status": {
+            "title": "Validation Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "method_id",
+          "template_id",
+          "unit_system",
+          "valid",
+          "ready",
+          "validation_status",
+          "errors",
+          "displayed_inputs",
+          "calculation_state"
+        ],
+        "title": "WorkflowValidationResponse",
+        "type": "object"
       }
     }
   },
@@ -290,6 +1095,315 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/analyses/{method_id}/calculate": {
+      "post": {
+        "operationId": "calculate_workflow_api_v1_analyses__method_id__calculate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "method_id",
+            "required": true,
+            "schema": {
+              "title": "Method Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowCalculationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Calculate Workflow",
+        "tags": [
+          "analyses"
+        ]
+      }
+    },
+    "/api/v1/analyses/{method_id}/export": {
+      "post": {
+        "operationId": "export_workflow_api_v1_analyses__method_id__export_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "method_id",
+            "required": true,
+            "schema": {
+              "title": "Method Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowExportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowExportResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Workflow",
+        "tags": [
+          "analyses"
+        ]
+      }
+    },
+    "/api/v1/analyses/{method_id}/starting-values": {
+      "get": {
+        "operationId": "get_workflow_starting_values_api_v1_analyses__method_id__starting_values_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "method_id",
+            "required": true,
+            "schema": {
+              "title": "Method Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "title": "Template Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "unit_system",
+            "required": false,
+            "schema": {
+              "default": "metric",
+              "title": "Unit System",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowStartingValuesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Workflow Starting Values",
+        "tags": [
+          "analyses"
+        ]
+      }
+    },
+    "/api/v1/analyses/{method_id}/templates": {
+      "get": {
+        "operationId": "get_workflow_templates_api_v1_analyses__method_id__templates_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "method_id",
+            "required": true,
+            "schema": {
+              "title": "Method Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowTemplatesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Workflow Templates",
+        "tags": [
+          "analyses"
+        ]
+      }
+    },
+    "/api/v1/analyses/{method_id}/validate": {
+      "post": {
+        "operationId": "validate_workflow_api_v1_analyses__method_id__validate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "method_id",
+            "required": true,
+            "schema": {
+              "title": "Method Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkflowRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowValidationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Validate Workflow",
+        "tags": [
+          "analyses"
+        ]
+      }
+    },
     "/api/v1/health": {
       "get": {
         "description": "Report that the local application boundary is available.",
@@ -384,6 +1498,293 @@
         "summary": "Get Method",
         "tags": [
           "methods"
+        ]
+      }
+    },
+    "/api/v1/projects/compare": {
+      "post": {
+        "operationId": "project_compare_api_v1_projects_compare_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectCompareRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectCompareResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Project Compare",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/duplicate-scenario": {
+      "post": {
+        "operationId": "project_duplicate_scenario_api_v1_projects_duplicate_scenario_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectDuplicateScenarioRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Project Duplicate Scenario",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/from-analysis": {
+      "post": {
+        "operationId": "project_from_analysis_api_v1_projects_from_analysis_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectFromAnalysisRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Project From Analysis",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/record-result": {
+      "post": {
+        "operationId": "project_record_result_api_v1_projects_record_result_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectRecordResultRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Project Record Result",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/rename-scenario": {
+      "post": {
+        "operationId": "project_rename_scenario_api_v1_projects_rename_scenario_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectRenameScenarioRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Project Rename Scenario",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/update-scenario": {
+      "post": {
+        "operationId": "project_update_scenario_api_v1_projects_update_scenario_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectUpdateScenarioRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Project Update Scenario",
+        "tags": [
+          "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/validate": {
+      "post": {
+        "operationId": "validate_project_api_v1_projects_validate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectDocumentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Validate Project",
+        "tags": [
+          "projects"
         ]
       }
     }

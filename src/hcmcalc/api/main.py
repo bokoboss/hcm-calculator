@@ -14,6 +14,8 @@ from fastapi.staticfiles import StaticFiles
 from hcmcalc import __version__
 from hcmcalc.api.routes.health import router as health_router
 from hcmcalc.api.routes.methods import router as methods_router
+from hcmcalc.api.routes.analyses import router as analyses_router
+from hcmcalc.api.routes.projects import router as projects_router
 
 
 API_VERSION = "v1"
@@ -44,13 +46,15 @@ def create_app(
     )
     app.include_router(health_router)
     app.include_router(methods_router)
+    app.include_router(analyses_router)
+    app.include_router(projects_router)
 
     if origins:
         app.add_middleware(
             CORSMiddleware,
             allow_origins=list(origins),
             allow_credentials=False,
-            allow_methods=["GET"],
+            allow_methods=["GET", "POST"],
             allow_headers=["Accept", "Content-Type"],
         )
 
