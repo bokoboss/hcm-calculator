@@ -5,15 +5,16 @@
 - Repository URL: https://github.com/bokoboss/hcm-calculator
 - Authoritative local path: `C:\Users\kittipat_t\Documents\hcm-calculator` (workflow adoption executed in an isolated sibling worktree)
 - Primary branch: `main`
-- Package/application version: `0.9.0` (`pyproject.toml` at accepted Phase 1 baseline `cfcfe7af14d821dadc04c4f067322ef5d3760c1c`).
+- Package/application version: `0.9.0` (`pyproject.toml` at accepted Phase 2 baseline `868c00616b6cb3b74308777c4753e1af80bb863e`).
 
 ## Current accepted baseline
 - Accepted branch: `main`
-- Accepted HEAD SHA: `cfcfe7af14d821dadc04c4f067322ef5d3760c1c`
+- Accepted HEAD SHA: `868c00616b6cb3b74308777c4753e1af80bb863e`
 - Accepted date: 2026-08-27
-- Current phase/milestone: **Phase 1 — Application Foundation accepted and merged; Phase 2 — Prototype & Architecture Validation authorized but not yet started.**
-- Last accepted implementation PR / CI run: PR #133 merged at `cfcfe7af14d821dadc04c4f067322ef5d3760c1c`; GitHub Actions R1 qualification run #249 passed all four jobs.
-- R1 accepted foundation includes the framework-independent application layer, thin FastAPI boundary, React/TypeScript/Vite shell, seven-method backend registry, contract-safe frontend delivery registry, bilingual shared primitives, OpenAPI drift protection, and release-like Python-served SPA/browser qualification.
+- Current phase/milestone: **Phase 2 — Prototype & Architecture Validation accepted and merged; Phase 3 — Full Migration & Release authorized but not yet started.**
+- Last accepted implementation PR / CI run: PR #137 merged at `868c00616b6cb3b74308777c4753e1af80bb863e`; GitHub Actions qualification run #255 passed all four jobs.
+- Accepted Phase 2 adds production rebuilt Multilane and Two-Lane Facility workflows, Project v2 Project/Analysis/Scenario/Result persistence and comparison, legacy 1.0/1.1/1.2 migration, no-rerun exports, committed visual evidence, and browser-qualified bilingual representative workflows.
+- Final Phase 2 UI-capable qualification on the accepted head: Streamlit 1.62.0; `1116 passed, 0 skipped, 0 failed`; wheel/runtime smoke passed.
 - Installed Engineering Development Workflow: v1.4.1 at exact source commit `3547ae260feacf8fc9a102b2abfdb13881e36dab`.
 
 ## Technology stack
@@ -50,7 +51,7 @@ python -m streamlit run src/hcmcalc/ui/streamlit_app.py
 - Accepted R0 architecture: React + TypeScript + Vite -> FastAPI -> framework-independent Python application layer -> existing qualified HCM engines.
 - Python is the calculation authority; TypeScript must not duplicate HCM formulas.
 - `docs/application_rebuild/r0_architecture_acceptance_review.md` is the highest-authority R0 document, followed by its README, implementation plan, technology architecture, and remaining R0 specifications.
-- Streamlit remains runnable during migration; Phase 1 has proven release-like local same-origin serving of the compiled SPA and API without a Node/Vite runtime server.
+- Streamlit remains runnable during migration; Phase 2 has proven release-like local same-origin serving of the compiled SPA and API for real Multilane and Two-Lane Facility workflows without a Node/Vite runtime server.
 
 ## Protected behavior
 Changes must not alter the following unless explicitly approved:
@@ -91,12 +92,13 @@ Changes must not alter the following unless explicitly approved:
 - Release policy: preserve accepted HCM behavior and record qualification evidence, exact relevant SHAs, and package/runtime results.
 
 ## Current known limitations / risks
-- The rebuilt React/FastAPI application foundation is accepted, but no rebuilt HCM calculation workflow is delivered yet; all seven methods remain reference-only in the rebuilt UI until individually delivered and contract-qualified.
-- The qualified Streamlit application remains the active calculation surface during representative-prototype migration.
-- Project v2 durable persistence is not implemented or accepted; legacy v0.9 / schema 1.2 compatibility remains protected.
-- Do not mass-port all seven methods before representative prototype architecture is accepted.
+- Five current workflows remain reference-only in the rebuilt UI: Two-Lane Segment, Basic Freeway Segment, Weaving, Merge, and Diverge.
+- The qualified Streamlit application remains runnable and is still required as the compatibility path until Phase 3 default-UI/release qualification is accepted.
+- Project v2 is accepted for the rebuilt application; legacy schema 1.0/1.1/1.2 import compatibility remains protected.
+- Phase 3 must migrate the remaining methods without weakening numerical equivalence, current/stale fingerprints, capacity/handoff semantics, reports/exports, or offline/local runtime assumptions.
 
 ## Current next objective
-- Execute **Phase 2 — Prototype & Architecture Validation** as one managed phase with internal checkpoints: Multilane representative workflow, Two-Lane Facility grid workflow, Project/Scenario/Compare closure, then architecture acceptance.
-- Prefer one bounded Codex implementation cycle where architecture remains sound; stop only on genuine contract/architecture conflicts.
-- Do not begin Phase 3 full seven-method migration until Phase 2 is explicitly accepted.
+- Execute **Phase 3 — Full Migration & Release** as the final application-rebuild phase.
+- Migrate Two-Lane Segment, Basic Freeway Segment, Weaving, Merge, and Diverge through the accepted Phase 2 application/API/frontend patterns.
+- Complete all-seven-method parity, Project v2 integration, bilingual/browser/UAT qualification, packaging/runtime checks, default rebuilt-UI transition, release qualification, and milestone closure.
+- Do not remove the Streamlit compatibility path or change release/default launch behavior until the final Phase 3 acceptance gate passes.
