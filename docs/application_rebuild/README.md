@@ -1,10 +1,11 @@
 # HCM Calculator — Application Rebuild
 
-Status: **R0 accepted and merged; R1 implementation authorized but not yet started**
-Date: 2026-08-24
+Status: **Phase 1 — Application Foundation accepted and merged; Phase 2 — Prototype & Architecture Validation authorized**
+Date: 2026-08-27
 Accepted R0 commit: `6482808c06fd4bfc3f6d6ef246bd6efdc58c4e65`
-Accepted planning PR: #129 — Application Rebuild R0: Product & Architecture Reset
-Implementation tracking: #130 — Application Rebuild R1/R2: Foundation and representative prototypes
+Accepted Phase 1 commit: `cfcfe7af14d821dadc04c4f067322ef5d3760c1c`
+Accepted Phase 1 PR / CI: #133 / R1 qualification run #249
+Implementation tracking: #130 — historical R1/R2 parent; use the current three-phase roadmap below for management
 
 ## Purpose
 
@@ -58,7 +59,7 @@ The final review found no blocker requiring a change of product direction or tec
 - context-aware application actions;
 - the Project v2 schema gate.
 
-R1 Application Foundation is now the next authorized implementation step.
+R1 Application Foundation has been accepted and merged through PR #133. The next authorized implementation step is Phase 2 — Prototype & Architecture Validation.
 
 ## Authority and conflict order
 
@@ -89,23 +90,30 @@ The acceptance review supersedes early wireframe examples where it explicitly cl
 
 ## Implementation sequence
 
+The user-facing development roadmap is intentionally kept to three main phases. Older R1/R2A/R2B/R2C labels remain useful as internal engineering checkpoints, not separate management/approval phases.
+
 ```text
-R1 — Application Foundation
-  -> Gate R1
+Pre-development — R0 Product & Architecture Reset
+  -> accepted
 
-R2A — Multilane Segment representative prototype
-  -> Gate R2A
+Phase 1 — Application Foundation
+  -> maps to former R1
+  -> accepted at cfcfe7af14d821dadc04c4f067322ef5d3760c1c
 
-R2B — Two-Lane Facility representative prototype
-  -> Gate R2B
+Phase 2 — Prototype & Architecture Validation
+  -> internal checkpoint 2.1: Multilane Segment
+  -> internal checkpoint 2.2: Two-Lane Facility
+  -> internal checkpoint 2.3: Project / Scenario / Compare
+  -> internal checkpoint 2.4: Architecture Acceptance
 
-R2C — Project / Scenario / Compare closure
-  -> Gate R2
-
-R3 — Remaining current methods
+Phase 3 — Full Migration & Release
+  -> remaining five current workflows
+  -> parity / regression / runtime / packaging / default-UI transition
 ```
 
-Do not mass-port all seven methods before R2 acceptance.
+Phase 2 should normally run as one bounded implementation cycle with internal self-gates. Stop for external re-planning only when a genuine architecture, engineering-contract, compatibility, or distribution stop condition is reached.
+
+Do not mass-port all seven methods before Phase 2 acceptance.
 
 ## Non-negotiable invariants
 
@@ -168,15 +176,17 @@ Issue #128 (`Phase 17: Release hardening and engineering acceptance`) is closed 
 
 The branch `codex/phase-17-planning` is retained as historical reference only. It must not be merged or treated as rebuild implementation authority because its single-page Streamlit premise conflicts with the accepted Application Rebuild direction.
 
-## Next action — R1 Application Foundation
+## Next action — Phase 2 Prototype & Architecture Validation
 
-Issue #130 is the R1/R2 parent.
+Phase 1 / R1 is complete and accepted at `cfcfe7af14d821dadc04c4f067322ef5d3760c1c`.
 
 The next implementation work must:
 
-1. start from current `main` containing accepted R0 commit `6482808c06fd4bfc3f6d6ef246bd6efdc58c4e65` or a later clean descendant;
-2. use an isolated implementation branch/worktree, suggested `codex/application-rebuild-r1-foundation`;
-3. implement **R1 Application Foundation only**;
-4. prove the strengthened Gate R1, including release-like single-origin local serving;
-5. push a reviewable R1 PR;
-6. return to GitHub review before beginning Multilane R2A.
+1. start from current clean `main` containing the accepted Phase 1 foundation and Engineering Development Workflow v1.4.1;
+2. use one isolated Phase 2 implementation branch/worktree;
+3. implement the representative Multilane Segment and Two-Lane Facility workflows on the accepted application foundation;
+4. complete Project / Analysis / Scenario / Compare behavior and the required persistence/compatibility work without weakening legacy schema 1.2 safeguards;
+5. preserve numerical equivalence, Python calculation authority, current/stale fingerprints, Streamlit compatibility, and contract-safe frontend delivery;
+6. run the internal Phase 2 checkpoints autonomously when no architecture stop condition is triggered;
+7. push one reviewable Phase 2 PR with engineering, API, frontend, browser, project-compatibility, and regression evidence;
+8. return to ChatGPT/GitHub acceptance before Phase 3 full migration.
