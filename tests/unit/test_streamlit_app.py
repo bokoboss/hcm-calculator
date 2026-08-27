@@ -77,6 +77,9 @@ from hcmcalc.ui.supported_workflows import (
 from hcmcalc.ui.units import display_outputs
 
 
+STREAMLIT_APP_PATH = Path(__file__).resolve().parents[2] / "src" / "hcmcalc" / "ui" / "streamlit_app.py"
+
+
 def test_supported_segment_types_map_to_existing_schematics() -> None:
     expected_filenames = {
         "passing_constrained": "passing_constrained.png",
@@ -257,7 +260,7 @@ def test_app_mode_list_includes_supported_workflows() -> None:
 
 def test_grouped_navigation_can_open_each_public_workflow() -> None:
     AppTest = _apptest()
-    app = AppTest.from_file("src/hcmcalc/ui/streamlit_app.py", default_timeout=20)
+    app = AppTest.from_file(STREAMLIT_APP_PATH, default_timeout=20)
     app.run()
     for group, views in NAVIGATION_GROUP_VIEWS:
         app.selectbox[1].set_value(group).run()
@@ -272,7 +275,7 @@ def test_grouped_navigation_opens_each_public_workflow_in_thai() -> None:
     AppTest = _apptest()
     for group, views in NAVIGATION_GROUP_VIEWS:
         for view in views:
-            app = AppTest.from_file("src/hcmcalc/ui/streamlit_app.py", default_timeout=20)
+            app = AppTest.from_file(STREAMLIT_APP_PATH, default_timeout=20)
             app.run()
             app.selectbox[0].set_value("th").run()
             app.selectbox[1].set_value(group).run()
@@ -380,7 +383,7 @@ def test_supported_workflows_localized_page_metadata_is_complete() -> None:
 
 def test_supported_workflows_page_renders_english_and_thai() -> None:
     AppTest = _apptest()
-    app = AppTest.from_file("src/hcmcalc/ui/streamlit_app.py", default_timeout=20)
+    app = AppTest.from_file(STREAMLIT_APP_PATH, default_timeout=20)
     app.run()
     app.selectbox[1].set_value("reference").run()
     app.selectbox[2].set_value("supported_workflows").run()
@@ -431,7 +434,7 @@ def _apptest():
 
 def _open_two_lane_app(locale: str = "en"):
     AppTest = _apptest()
-    app = AppTest.from_file("src/hcmcalc/ui/streamlit_app.py", default_timeout=20)
+    app = AppTest.from_file(STREAMLIT_APP_PATH, default_timeout=20)
     app.run()
     if locale != "en":
         app.selectbox[0].set_value(locale).run()
@@ -442,7 +445,7 @@ def _open_two_lane_app(locale: str = "en"):
 
 def _open_facility_app(locale: str = "en"):
     AppTest = _apptest()
-    app = AppTest.from_file("src/hcmcalc/ui/streamlit_app.py", default_timeout=20)
+    app = AppTest.from_file(STREAMLIT_APP_PATH, default_timeout=20)
     app.run()
     if locale != "en":
         app.selectbox[0].set_value(locale).run()
@@ -461,7 +464,7 @@ def _facility_editor_key(app) -> str:
 
 def _open_multilane_app(locale: str = "en"):
     AppTest = _apptest()
-    app = AppTest.from_file("src/hcmcalc/ui/streamlit_app.py", default_timeout=20)
+    app = AppTest.from_file(STREAMLIT_APP_PATH, default_timeout=20)
     app.run()
     if locale != "en":
         app.selectbox[0].set_value(locale).run()
@@ -476,7 +479,7 @@ def _multilane_element(elements, label: str):
 
 def _open_freeway_app(locale: str = "en"):
     AppTest = _apptest()
-    app = AppTest.from_file("src/hcmcalc/ui/streamlit_app.py", default_timeout=20)
+    app = AppTest.from_file(STREAMLIT_APP_PATH, default_timeout=20)
     app.run()
     if locale != "en":
         app.selectbox[0].set_value(locale).run()
@@ -487,7 +490,7 @@ def _open_freeway_app(locale: str = "en"):
 
 def _open_weaving_app(locale: str = "en"):
     AppTest = _apptest()
-    app = AppTest.from_file("src/hcmcalc/ui/streamlit_app.py", default_timeout=20)
+    app = AppTest.from_file(STREAMLIT_APP_PATH, default_timeout=20)
     app.run()
     if locale != "en":
         app.selectbox[0].set_value(locale).run()
@@ -498,7 +501,7 @@ def _open_weaving_app(locale: str = "en"):
 
 def _open_merge_app(locale: str = "en"):
     AppTest = _apptest()
-    app = AppTest.from_file("src/hcmcalc/ui/streamlit_app.py", default_timeout=20)
+    app = AppTest.from_file(STREAMLIT_APP_PATH, default_timeout=20)
     app.run()
     if locale != "en":
         app.selectbox[0].set_value(locale).run()
@@ -509,7 +512,7 @@ def _open_merge_app(locale: str = "en"):
 
 def _open_diverge_app(locale: str = "en"):
     AppTest = _apptest()
-    app = AppTest.from_file("src/hcmcalc/ui/streamlit_app.py", default_timeout=20)
+    app = AppTest.from_file(STREAMLIT_APP_PATH, default_timeout=20)
     app.run()
     if locale != "en":
         app.selectbox[0].set_value(locale).run()

@@ -1,0 +1,391 @@
+{
+  "components": {
+    "schemas": {
+      "ApiError": {
+        "additionalProperties": false,
+        "description": "Stable structured error detail for API clients.",
+        "properties": {
+          "code": {
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "title": "Details",
+            "type": "object"
+          },
+          "message_key": {
+            "minLength": 1,
+            "title": "Message Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message_key"
+        ],
+        "title": "ApiError",
+        "type": "object"
+      },
+      "ApiErrorResponse": {
+        "additionalProperties": false,
+        "description": "Stable error envelope returned by the API boundary.",
+        "properties": {
+          "detail": {
+            "$ref": "#/components/schemas/ApiError"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "ApiErrorResponse",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "additionalProperties": false,
+        "description": "Minimal service health response.",
+        "properties": {
+          "api_version": {
+            "default": "v1",
+            "title": "Api Version",
+            "type": "string"
+          },
+          "application_version": {
+            "title": "Application Version",
+            "type": "string"
+          },
+          "service": {
+            "default": "hcmcalc-api",
+            "title": "Service",
+            "type": "string"
+          },
+          "status": {
+            "const": "ok",
+            "default": "ok",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "application_version"
+        ],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "MethodDefinitionResponse": {
+        "additionalProperties": false,
+        "description": "Public engineering metadata; no frontend delivery status is implied.\n\nThe persisted method/input identity is intentionally separate from the\nqualified engine method identity for legacy workflows whose result method\nname differs from their project/fingerprint identity.",
+        "properties": {
+          "availability": {
+            "minLength": 1,
+            "title": "Availability",
+            "type": "string"
+          },
+          "capabilities": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Capabilities",
+            "type": "array"
+          },
+          "chapter_reference": {
+            "minLength": 1,
+            "title": "Chapter Reference",
+            "type": "string"
+          },
+          "description_key": {
+            "minLength": 1,
+            "title": "Description Key",
+            "type": "string"
+          },
+          "engine_method_identifier": {
+            "minLength": 1,
+            "title": "Engine Method Identifier",
+            "type": "string"
+          },
+          "engineering_available": {
+            "default": true,
+            "title": "Engineering Available",
+            "type": "boolean"
+          },
+          "family": {
+            "minLength": 1,
+            "title": "Family",
+            "type": "string"
+          },
+          "hcm_chapter": {
+            "minLength": 1,
+            "title": "Hcm Chapter",
+            "type": "string"
+          },
+          "hcm_edition": {
+            "minLength": 1,
+            "title": "Hcm Edition",
+            "type": "string"
+          },
+          "input_contract": {
+            "minLength": 1,
+            "title": "Input Contract",
+            "type": "string"
+          },
+          "legacy_workflow": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legacy Workflow"
+          },
+          "method_id": {
+            "minLength": 1,
+            "title": "Method Id",
+            "type": "string"
+          },
+          "method_identifier": {
+            "minLength": 1,
+            "title": "Method Identifier",
+            "type": "string"
+          },
+          "method_version": {
+            "minLength": 1,
+            "title": "Method Version",
+            "type": "string"
+          },
+          "name_key": {
+            "minLength": 1,
+            "title": "Name Key",
+            "type": "string"
+          },
+          "project_type": {
+            "minLength": 1,
+            "title": "Project Type",
+            "type": "string"
+          },
+          "scope_summary_keys": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Scope Summary Keys",
+            "type": "array"
+          },
+          "supported_unit_systems": {
+            "items": {
+              "enum": [
+                "metric",
+                "imperial"
+              ],
+              "type": "string"
+            },
+            "title": "Supported Unit Systems",
+            "type": "array"
+          }
+        },
+        "required": [
+          "method_id",
+          "family",
+          "name_key",
+          "description_key",
+          "method_identifier",
+          "engine_method_identifier",
+          "method_version",
+          "input_contract",
+          "project_type",
+          "hcm_edition",
+          "hcm_chapter",
+          "chapter_reference",
+          "supported_unit_systems",
+          "availability",
+          "capabilities",
+          "scope_summary_keys"
+        ],
+        "title": "MethodDefinitionResponse",
+        "type": "object"
+      },
+      "MethodsResponse": {
+        "additionalProperties": false,
+        "description": "Stable envelope for method discovery.",
+        "properties": {
+          "methods": {
+            "items": {
+              "$ref": "#/components/schemas/MethodDefinitionResponse"
+            },
+            "title": "Methods",
+            "type": "array"
+          },
+          "registry_version": {
+            "default": "r1",
+            "title": "Registry Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "methods"
+        ],
+        "title": "MethodsResponse",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "description": "Local application boundary for the rebuilt HCM workspace.",
+    "title": "HCM Calculator API",
+    "version": "v1"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "description": "Report that the local application boundary is available.",
+        "operationId": "health_api_v1_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health",
+        "tags": [
+          "system"
+        ]
+      }
+    },
+    "/api/v1/methods": {
+      "get": {
+        "description": "List all current engineering methods for reference and frontend handshake.",
+        "operationId": "list_methods_api_v1_methods_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MethodsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Methods",
+        "tags": [
+          "methods"
+        ]
+      }
+    },
+    "/api/v1/methods/{method_id}": {
+      "get": {
+        "description": "Return one language-neutral engineering method definition.",
+        "operationId": "get_method_api_v1_methods__method_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "method_id",
+            "required": true,
+            "schema": {
+              "title": "Method Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MethodDefinitionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Method",
+        "tags": [
+          "methods"
+        ]
+      }
+    }
+  }
+}
