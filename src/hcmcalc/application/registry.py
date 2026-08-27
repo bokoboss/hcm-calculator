@@ -13,15 +13,24 @@ from typing import Any, Iterable
 
 @dataclass(frozen=True)
 class AnalysisDefinition:
-    """Stable engineering metadata for one analysis method."""
+    """Stable engineering metadata for one analysis method.
+
+    ``method_identifier`` and ``input_contract`` are the existing
+    application/persistence identities used by project fingerprints.  The
+    qualified engine/result identity is recorded separately because several
+    legacy adapters intentionally use a method family or workflow identity at
+    the persistence boundary.
+    """
 
     method_id: str
     family: str
     name_key: str
     description_key: str
     method_identifier: str
+    engine_method_identifier: str
     method_version: str
     input_contract: str
+    project_type: str
     hcm_edition: str
     hcm_chapter: str
     chapter_reference: str
@@ -46,8 +55,10 @@ class AnalysisDefinition:
             "name_key": self.name_key,
             "description_key": self.description_key,
             "method_identifier": self.method_identifier,
+            "engine_method_identifier": self.engine_method_identifier,
             "method_version": self.method_version,
             "input_contract": self.input_contract,
+            "project_type": self.project_type,
             "hcm_edition": self.hcm_edition,
             "hcm_chapter": self.hcm_chapter,
             "chapter_reference": self.chapter_reference,
@@ -68,9 +79,11 @@ _ANALYSIS_DEFINITIONS: tuple[AnalysisDefinition, ...] = (
         family="highways",
         name_key="method.two_lane_segment.name",
         description_key="method.two_lane_segment.description",
-        method_identifier="hcm7_ch15_two_lane_motorized",
+        method_identifier="hcm7_two_lane_highway_segment",
+        engine_method_identifier="hcm7_ch15_two_lane_motorized",
         method_version="hcm7.0",
-        input_contract="hcm7_ch15_two_lane_segment_v1",
+        input_contract="phase_5_product_integration",
+        project_type="manual_single_segment",
         hcm_edition="HCM 7.0",
         hcm_chapter="15",
         chapter_reference="HCM 7th Edition Chapter 15",
@@ -85,9 +98,11 @@ _ANALYSIS_DEFINITIONS: tuple[AnalysisDefinition, ...] = (
         family="highways",
         name_key="method.two_lane_facility.name",
         description_key="method.two_lane_facility.description",
-        method_identifier="hcm7_ch15_two_lane_facility",
+        method_identifier="hcm7_two_lane_highway_facility",
+        engine_method_identifier="hcm7_ch15_two_lane_motorized",
         method_version="hcm7.0",
-        input_contract="manual_two_lane_facility_v1",
+        input_contract="phase_5_product_integration",
+        project_type="manual_two_lane_facility_v1",
         hcm_edition="HCM 7.0",
         hcm_chapter="15",
         chapter_reference="HCM 7th Edition Chapter 15; Chapter 26 Examples 3–4",
@@ -103,8 +118,10 @@ _ANALYSIS_DEFINITIONS: tuple[AnalysisDefinition, ...] = (
         name_key="method.multilane_segment.name",
         description_key="method.multilane_segment.description",
         method_identifier="hcm7_multilane_los",
+        engine_method_identifier="hcm7_multilane_los",
         method_version="v0.1",
-        input_contract="multilane_basic_segment_v0_1",
+        input_contract="phase_8",
+        project_type="manual_multilane_v0",
         hcm_edition="HCM 7.0",
         hcm_chapter="12",
         chapter_reference="HCM 7th Edition Chapter 12; Chapter 26 Example 4",
@@ -120,8 +137,10 @@ _ANALYSIS_DEFINITIONS: tuple[AnalysisDefinition, ...] = (
         name_key="method.basic_freeway_segment.name",
         description_key="method.basic_freeway_segment.description",
         method_identifier="hcm7_basic_freeway_segment",
+        engine_method_identifier="hcm7_basic_freeway_segment",
         method_version="phase_9_engine",
-        input_contract="basic_freeway_segment_v0_1",
+        input_contract="phase_10_product_integration",
+        project_type="manual_basic_freeway_v0",
         hcm_edition="HCM 7.0",
         hcm_chapter="12",
         chapter_reference="HCM 7th Edition Chapter 12; Chapter 26 Example 1",
@@ -136,9 +155,11 @@ _ANALYSIS_DEFINITIONS: tuple[AnalysisDefinition, ...] = (
         family="freeways",
         name_key="method.weaving_segment.name",
         description_key="method.weaving_segment.description",
-        method_identifier="hcm7_v70_freeway_weaving_segment",
+        method_identifier="weaving_segment",
+        engine_method_identifier="hcm7_v70_freeway_weaving_segment",
         method_version="hcm_7_0",
         input_contract="hcm_7_0_weaving_segment_operational_v1",
+        project_type="manual_freeway_weaving_segment_v1",
         hcm_edition="HCM 7.0",
         hcm_chapter="13",
         chapter_reference="HCM 7.0 Chapter 13; Chapter 27 Examples 1–3",
@@ -153,9 +174,11 @@ _ANALYSIS_DEFINITIONS: tuple[AnalysisDefinition, ...] = (
         family="freeways",
         name_key="method.merge_segment.name",
         description_key="method.merge_segment.description",
-        method_identifier="hcm7_v70_freeway_merge_segment",
+        method_identifier="merge_segment",
+        engine_method_identifier="hcm7_v70_freeway_merge_segment",
         method_version="hcm_7_0",
         input_contract="hcm7_v70_chapter_14_isolated_right_side_one_lane_merge_operational",
+        project_type="manual_freeway_merge_segment_v1",
         hcm_edition="HCM 7.0",
         hcm_chapter="14",
         chapter_reference="HCM 7.0 Chapter 14; Chapter 28 merge cases",
@@ -170,9 +193,11 @@ _ANALYSIS_DEFINITIONS: tuple[AnalysisDefinition, ...] = (
         family="freeways",
         name_key="method.diverge_segment.name",
         description_key="method.diverge_segment.description",
-        method_identifier="hcm7_v70_freeway_diverge_segment",
+        method_identifier="diverge_segment",
+        engine_method_identifier="hcm7_v70_freeway_diverge_segment",
         method_version="hcm_7_0",
         input_contract="hcm7_v70_chapter_14_isolated_right_side_one_lane_diverge_operational",
+        project_type="manual_freeway_diverge_segment_v1",
         hcm_edition="HCM 7.0",
         hcm_chapter="14",
         chapter_reference="HCM 7.0 Chapter 14; Chapter 28 diverge cases",

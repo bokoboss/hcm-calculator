@@ -88,7 +88,7 @@
       },
       "MethodDefinitionResponse": {
         "additionalProperties": false,
-        "description": "Public engineering metadata; no frontend delivery status is implied.",
+        "description": "Public engineering metadata; no frontend delivery status is implied.\n\nThe persisted method/input identity is intentionally separate from the\nqualified engine method identity for legacy workflows whose result method\nname differs from their project/fingerprint identity.",
         "properties": {
           "availability": {
             "minLength": 1,
@@ -110,6 +110,11 @@
           "description_key": {
             "minLength": 1,
             "title": "Description Key",
+            "type": "string"
+          },
+          "engine_method_identifier": {
+            "minLength": 1,
+            "title": "Engine Method Identifier",
             "type": "string"
           },
           "engineering_available": {
@@ -168,6 +173,11 @@
             "title": "Name Key",
             "type": "string"
           },
+          "project_type": {
+            "minLength": 1,
+            "title": "Project Type",
+            "type": "string"
+          },
           "scope_summary_keys": {
             "items": {
               "type": "string"
@@ -193,8 +203,10 @@
           "name_key",
           "description_key",
           "method_identifier",
+          "engine_method_identifier",
           "method_version",
           "input_contract",
+          "project_type",
           "hcm_edition",
           "hcm_chapter",
           "chapter_reference",

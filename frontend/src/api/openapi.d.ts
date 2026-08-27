@@ -121,6 +121,10 @@ export interface components {
         /**
          * MethodDefinitionResponse
          * @description Public engineering metadata; no frontend delivery status is implied.
+         *
+         *     The persisted method/input identity is intentionally separate from the
+         *     qualified engine method identity for legacy workflows whose result method
+         *     name differs from their project/fingerprint identity.
          */
         MethodDefinitionResponse: {
             /** Availability */
@@ -131,6 +135,8 @@ export interface components {
             chapter_reference: string;
             /** Description Key */
             description_key: string;
+            /** Engine Method Identifier */
+            engine_method_identifier: string;
             /**
              * Engineering Available
              * @default true
@@ -154,6 +160,8 @@ export interface components {
             method_version: string;
             /** Name Key */
             name_key: string;
+            /** Project Type */
+            project_type: string;
             /** Scope Summary Keys */
             scope_summary_keys: string[];
             /** Supported Unit Systems */

@@ -1,4 +1,12 @@
-import { useId, useState, type ChangeEvent, type ReactElement, type ReactNode } from 'react';
+import {
+  cloneElement,
+  isValidElement,
+  useId,
+  useState,
+  type ChangeEvent,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
 import { useI18n } from '../i18n';
 
 export type PageId = 'home' | 'new-analysis' | 'reference';
@@ -120,9 +128,10 @@ export function AppShell({
   apiConnected: boolean;
   children: ReactNode;
 }): ReactElement {
+  const { t } = useI18n();
   return (
     <div className="app-shell" data-slot="app-shell">
-      <a className="skip-link" href="#main-content">Skip to main content</a>
+      <a className="skip-link" href="#main-content">{t('accessibility.skip_to_main')}</a>
       <AppHeader onNavigate={onNavigate} />
       <div className="app-shell-layout">
         <SidebarNavigation activePage={activePage} onNavigate={onNavigate} />
@@ -154,20 +163,22 @@ export function PageHeader({
 export function AnalysisHeader({
   title,
   method,
-  status = 'Current',
+  status,
 }: {
   title: string;
   method: string;
   status?: string;
 }): ReactElement {
+  const { t } = useI18n();
+  const displayedStatus = status ?? t('status.current');
   return (
     <div className="analysis-header" data-slot="analysis-header">
       <div>
-        <p className="eyebrow">ANALYSIS WORKSPACE</p>
+        <p className="eyebrow">{t('analysis.eyebrow')}</p>
         <h2>{title}</h2>
         <p className="muted">{method}</p>
       </div>
-      <StatusBadge tone="current">{status}</StatusBadge>
+      <StatusBadge tone="current">{displayedStatus}</StatusBadge>
     </div>
   );
 }
@@ -193,7 +204,18 @@ export function EngineeringSection({
   );
 }
 
+export interface FieldControlProps {
+  id: string;
+  'aria-describedby'?: string;
+  'aria-invalid'?: 'true';
+  'aria-required'?: 'true';
+  required?: boolean;
+}
+
+type FieldControl = ReactNode | ((props: FieldControlProps) => ReactNode);
+
 export function Field({
+  id,
   label,
   htmlFor,
   required = false,
@@ -201,23 +223,43 @@ export function Field({
   error,
   children,
 }: {
+  id?: string;
   label: string;
   htmlFor?: string;
   required?: boolean;
   hint?: string;
   error?: string;
-  children: ReactNode;
+  children: FieldControl;
 }): ReactElement {
-  const hintId = useId();
-  const errorId = useId();
+  const { t } = useI18n();
+  const generatedId = useId();
+  const controlId = id ?? htmlFor ?? `field-${generatedId.replaceAll(':', '')}`;
+  const hintId = hint ? `${controlId}-hint` : undefined;
+  const errorId = error ? `${controlId}-error` : undefined;
+  const describedBy = [hintId, errorId].filter(Boolean).join(' ') || undefined;
+  const controlProps: FieldControlProps = {
+    id: controlId,
+    'aria-describedby': describedBy,
+    'aria-invalid': error ? 'true' : undefined,
+    'aria-required': required ? 'true' : undefined,
+    required: required || undefined,
+  };
+  const control = typeof children === 'function'
+    ? children(controlProps)
+    : isValidElement(children)
+      ? cloneElement(
+        children as ReactElement<Record<string, unknown>>,
+        controlProps as unknown as Partial<Record<string, unknown>>,
+      )
+      : children;
   return (
     <div className={`field ${error ? 'field-invalid' : ''}`} data-slot="field">
-      <label htmlFor={htmlFor} className="field-label">
-        {label} {required ? <span className="required-mark">Required</span> : null}
+      <label htmlFor={controlId} className="field-label">
+        {label} {required ? <span className="required-mark">{t('form.required')}</span> : null}
       </label>
-      {children}
-      {hint ? <span className="field-hint" id={hintId}>{hint}</span> : null}
-      {error ? <span className="field-error" id={errorId} role="alert">{error}</span> : null}
+      {control}
+      {hint && hintId ? <span className="field-hint" id={hintId}>{hint}</span> : null}
+      {error && errorId ? <span className="field-error" id={errorId} role="alert">{error}</span> : null}
     </div>
   );
 }
@@ -232,6 +274,10 @@ export function InputWithUnit({
   disabled = false,
   invalid = false,
   describedBy,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
+  'aria-required': ariaRequired,
+  required = false,
 }: {
   id: string;
   unit: string;
@@ -242,6 +288,10 @@ export function InputWithUnit({
   disabled?: boolean;
   invalid?: boolean;
   describedBy?: string;
+  'aria-describedby'?: string;
+  'aria-invalid'?: boolean | 'false' | 'true';
+  'aria-required'?: boolean | 'false' | 'true';
+  required?: boolean;
 }): ReactElement {
   return (
     <div className="input-unit" data-slot="input-with-unit">
@@ -252,8 +302,10 @@ export function InputWithUnit({
         onChange={onChange}
         placeholder={placeholder}
         disabled={disabled}
-        aria-invalid={invalid || undefined}
-        aria-describedby={describedBy}
+        required={required || undefined}
+        aria-invalid={invalid ? 'true' : ariaInvalid || undefined}
+        aria-describedby={describedBy ?? ariaDescribedBy}
+        aria-required={ariaRequired || undefined}
       />
       <span className="unit-label" aria-hidden="true">{unit}</span>
     </div>
@@ -314,20 +366,23 @@ export function ErrorSummary({
 }: {
   errors: string[];
 }): ReactElement | null {
+  const { t } = useI18n();
   if (!errors.length) return null;
-  return <div className="error-summary" data-slot="error-summary" role="alert"><strong>{errors.length} items require attention</strong><ul>{errors.map((error) => <li key={error}>{error}</li>)}</ul></div>;
+  return <div className="error-summary" data-slot="error-summary" role="alert"><strong>{t('form.errors_count', { count: errors.length })}</strong><ul>{errors.map((error) => <li key={error}>{error}</li>)}</ul></div>;
 }
 
 export function ReadinessBar({
   ready,
-  actionLabel = 'Calculate',
+  actionLabel,
   onAction,
 }: {
   ready: boolean;
   actionLabel?: string;
   onAction?: () => void;
 }): ReactElement {
-  return <div className="readiness-bar" data-slot="readiness-bar"><span className={ready ? 'readiness-ready' : 'readiness-blocked'}>{ready ? '✓ Ready to calculate' : 'Items required before calculation'}</span><button className="button button-primary" type="button" disabled={!ready} onClick={onAction}>{actionLabel}</button></div>;
+  const { t } = useI18n();
+  const displayedActionLabel = actionLabel ?? t('action.calculate');
+  return <div className="readiness-bar" data-slot="readiness-bar"><span className={ready ? 'readiness-ready' : 'readiness-blocked'}>{ready ? `✓ ${t('status.ready_to_calculate')}` : t('status.items_required')}</span><button className="button button-primary" type="button" disabled={!ready} onClick={onAction}>{displayedActionLabel}</button></div>;
 }
 
 export function ResultHero({
@@ -361,7 +416,8 @@ export function EngineeringAssessment({
 }: {
   items: string[];
 }): ReactElement {
-  return <section className="assessment-panel" data-slot="engineering-assessment"><p className="section-label">ENGINEERING ASSESSMENT</p><ul>{items.map((item) => <li key={item}>{item}</li>)}</ul></section>;
+  const { t } = useI18n();
+  return <section className="assessment-panel" data-slot="engineering-assessment"><p className="section-label">{t('assessment.kicker')}</p><ul>{items.map((item) => <li key={item}>{item}</li>)}</ul></section>;
 }
 
 export function StatusBadge({
@@ -389,13 +445,16 @@ export function DetailsDisclosure({
 }
 
 export function StaleResultBanner({ onRecalculate }: { onRecalculate?: () => void }): ReactElement {
-  return <div className="stale-banner" data-slot="stale-result-banner" role="status"><div><strong>Input changed — recalculation required</strong><span>The previous result is retained for context but is not current.</span></div><button className="button button-primary" type="button" onClick={onRecalculate}>Recalculate</button></div>;
+  const { t } = useI18n();
+  return <div className="stale-banner" data-slot="stale-result-banner" role="status"><div><strong>{t('state.stale_title')}</strong><span>{t('state.stale_supporting')}</span></div><button className="button button-primary" type="button" onClick={onRecalculate}>{t('action.recalculate')}</button></div>;
 }
 
 export function CapacityFailurePanel(): ReactElement {
-  return <section className="state-panel state-panel-capacity" data-slot="capacity-failure-panel"><strong>Capacity exceeded</strong><span>Speed and density are not predicted in this state.</span></section>;
+  const { t } = useI18n();
+  return <section className="state-panel state-panel-capacity" data-slot="capacity-failure-panel"><strong>{t('state.capacity_title')}</strong><span>{t('state.capacity_supporting')}</span></section>;
 }
 
 export function HandoffPanel(): ReactElement {
-  return <section className="state-panel state-panel-handoff" data-slot="handoff-panel"><strong>HCM method handoff</strong><span>No result is assigned for this condition by the active method.</span></section>;
+  const { t } = useI18n();
+  return <section className="state-panel state-panel-handoff" data-slot="handoff-panel"><strong>{t('state.handoff_title')}</strong><span>{t('state.handoff_supporting')}</span></section>;
 }

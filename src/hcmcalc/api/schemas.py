@@ -39,7 +39,12 @@ class ApiErrorResponse(BaseModel):
 
 
 class MethodDefinitionResponse(BaseModel):
-    """Public engineering metadata; no frontend delivery status is implied."""
+    """Public engineering metadata; no frontend delivery status is implied.
+
+    The persisted method/input identity is intentionally separate from the
+    qualified engine method identity for legacy workflows whose result method
+    name differs from their project/fingerprint identity.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -48,8 +53,10 @@ class MethodDefinitionResponse(BaseModel):
     name_key: str = Field(min_length=1)
     description_key: str = Field(min_length=1)
     method_identifier: str = Field(min_length=1)
+    engine_method_identifier: str = Field(min_length=1)
     method_version: str = Field(min_length=1)
     input_contract: str = Field(min_length=1)
+    project_type: str = Field(min_length=1)
     hcm_edition: str = Field(min_length=1)
     hcm_chapter: str = Field(min_length=1)
     chapter_reference: str = Field(min_length=1)

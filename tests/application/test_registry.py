@@ -3,6 +3,8 @@ from pathlib import Path
 
 import pytest
 
+from hcmcalc.freeway import BasicFreewaySegmentMethod
+from hcmcalc.multilane import MultilaneHighwayLOSMethod
 from hcmcalc.application import (
     CalculationState,
     CalculationIdentity,
@@ -15,6 +17,11 @@ from hcmcalc.application import (
     interpretations_for_state,
     resolve_result_presentation_state,
 )
+from hcmcalc.methods.two_lane_highway_ch15 import TwoLaneHighwayChapter15Method
+from hcmcalc.ramp_influence.diverge.v7_0.method import HCM70DivergeSegmentMethod
+from hcmcalc.ramp_influence.merge.v7_0.method import HCM70MergeSegmentMethod
+from hcmcalc.ui import project_io
+from hcmcalc.weaving.v7_0.method import HCM70WeavingSegmentMethod
 
 
 EXPECTED_METHOD_IDS = {
@@ -28,6 +35,52 @@ EXPECTED_METHOD_IDS = {
 }
 
 
+AUTHORITATIVE_METHOD_CONTRACTS = {
+    "two_lane_segment": {
+        "engine_method_identifier": TwoLaneHighwayChapter15Method.method_name,
+        "method_identifier": project_io.TWO_LANE_SEGMENT_METHOD,
+        "input_contract": project_io.TWO_LANE_SEGMENT_CONTRACT,
+        "project_type": project_io.MANUAL_SINGLE_SEGMENT_PROJECT_TYPE,
+    },
+    "two_lane_facility": {
+        "engine_method_identifier": TwoLaneHighwayChapter15Method.method_name,
+        "method_identifier": project_io.TWO_LANE_FACILITY_METHOD,
+        "input_contract": project_io.TWO_LANE_FACILITY_CONTRACT,
+        "project_type": project_io.MANUAL_FACILITY_PROJECT_TYPE,
+    },
+    "multilane_segment": {
+        "engine_method_identifier": MultilaneHighwayLOSMethod.method_name,
+        "method_identifier": project_io.MULTILANE_METHOD,
+        "input_contract": project_io.MULTILANE_CONTRACT,
+        "project_type": project_io.MANUAL_MULTILANE_PROJECT_TYPE,
+    },
+    "basic_freeway_segment": {
+        "engine_method_identifier": BasicFreewaySegmentMethod.method_name,
+        "method_identifier": project_io.FREEWAY_METHOD,
+        "input_contract": project_io.FREEWAY_CONTRACT,
+        "project_type": project_io.MANUAL_BASIC_FREEWAY_PROJECT_TYPE,
+    },
+    "weaving_segment": {
+        "engine_method_identifier": HCM70WeavingSegmentMethod.method_name,
+        "method_identifier": project_io.WEAVING_METHOD_IDENTIFIER,
+        "input_contract": project_io.WEAVING_CALCULATION_CONTRACT,
+        "project_type": project_io.MANUAL_WEAVING_PROJECT_TYPE,
+    },
+    "merge_segment": {
+        "engine_method_identifier": HCM70MergeSegmentMethod.method_name,
+        "method_identifier": project_io.ramp_method_family("merge"),
+        "input_contract": project_io.ramp_calculation_contract("merge"),
+        "project_type": project_io.ramp_project_type("merge"),
+    },
+    "diverge_segment": {
+        "engine_method_identifier": HCM70DivergeSegmentMethod.method_name,
+        "method_identifier": project_io.ramp_method_family("diverge"),
+        "input_contract": project_io.ramp_calculation_contract("diverge"),
+        "project_type": project_io.ramp_project_type("diverge"),
+    },
+}
+
+
 def test_backend_registry_contains_all_current_methods_with_stable_identity() -> None:
     definitions = list_analysis_definitions()
     assert {definition.method_id for definition in definitions} == EXPECTED_METHOD_IDS
@@ -36,6 +89,20 @@ def test_backend_registry_contains_all_current_methods_with_stable_identity() ->
     assert all(definition.supported_unit_systems == ("metric", "imperial") for definition in definitions)
     assert all(definition.name_key.startswith("method.") for definition in definitions)
     assert all(definition.description_key.startswith("method.") for definition in definitions)
+
+
+@pytest.mark.parametrize("method_id", sorted(EXPECTED_METHOD_IDS))
+def test_registry_reuses_engine_and_project_io_authority(method_id: str) -> None:
+    """Registry metadata must not drift from qualified engine/project contracts."""
+
+    definition = get_analysis_definition(method_id)
+    assert definition is not None
+    assert {
+        "engine_method_identifier": definition.engine_method_identifier,
+        "method_identifier": definition.method_identifier,
+        "input_contract": definition.input_contract,
+        "project_type": definition.project_type,
+    } == AUTHORITATIVE_METHOD_CONTRACTS[method_id]
 
 
 def test_registry_lookup_is_language_neutral_and_missing_ids_are_explicit() -> None:

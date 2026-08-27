@@ -40,6 +40,9 @@ def test_one_method_and_unknown_method_use_typed_contracts() -> None:
     response = client.get("/api/v1/methods/multilane_segment")
     assert response.status_code == 200
     assert response.json()["method_identifier"] == "hcm7_multilane_los"
+    assert response.json()["engine_method_identifier"] == "hcm7_multilane_los"
+    assert response.json()["input_contract"] == "phase_8"
+    assert response.json()["project_type"] == "manual_multilane_v0"
 
     missing = client.get("/api/v1/methods/not-a-method")
     assert missing.status_code == 404
