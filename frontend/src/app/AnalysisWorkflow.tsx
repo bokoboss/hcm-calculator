@@ -11,6 +11,7 @@ import type {
   DisplayedInputs,
   FacilityRow,
   MethodDefinition,
+  ResultMetric,
   UnitSystem,
   WorkflowCalculationResponse,
   WorkflowField,
@@ -98,7 +99,14 @@ function serializeInputSnapshot(inputs: DisplayedInputs): string {
   return JSON.stringify(inputs);
 }
 
-function ResultPanel({
+function metricDisplayValue(metric: ResultMetric, translate: (key: string) => string): string {
+  if (metric.availability === 'not_predicted') return translate('result.not_predicted');
+  if (metric.availability === 'not_applicable') return translate('result.not_applicable');
+  if (metric.available && metric.value !== null) return metric.value.toFixed(1);
+  return translate('result.not_calculated');
+}
+
+export function ResultPanel({
   result,
   onExport,
   onSave,
@@ -111,6 +119,7 @@ function ResultPanel({
 }): ReactElement {
   const { t } = useI18n();
   const capacityFailure = Boolean(result.presentation.capacity.failure);
+  const metricsUnavailable = result.presentation.metrics.some((metric) => metric.availability === 'not_predicted');
   const answer = result.presentation.answer;
   return (
     <div className="workflow-results" data-testid="workflow-results">
@@ -121,13 +130,13 @@ function ResultPanel({
           state={capacityFailure ? 'capacity' : 'current'}
           supporting={answer.source}
         />
-        {capacityFailure ? <CapacityFailurePanel /> : null}
+        {capacityFailure ? <CapacityFailurePanel metricsUnavailable={metricsUnavailable} /> : null}
         <div className="metric-grid">
           {result.presentation.metrics.map((metric) => (
             <MetricCard
               key={metric.key}
               label={t(`result.metric.${metric.key}`)}
-              value={metric.available && metric.value !== null ? metric.value.toFixed(1) : t('result.not_calculated')}
+              value={metricDisplayValue(metric, t)}
               unit={metric.unit ?? undefined}
             />
           ))}
@@ -304,7 +313,7 @@ function FacilityForm({
   );
 }
 
-function FacilityResultPanel({
+export function FacilityResultPanel({
   result,
   onExport,
   onSave,
@@ -317,15 +326,16 @@ function FacilityResultPanel({
 }): ReactElement {
   const { t } = useI18n();
   const capacityFailure = Boolean(result.presentation.capacity.failure);
+  const metricsUnavailable = result.presentation.metrics.some((metric) => metric.availability === 'not_predicted');
   const answer = result.presentation.answer;
   const segments = Array.isArray(result.presentation.segments) ? result.presentation.segments as Array<Record<string, unknown>> : [];
   return (
     <div className="workflow-results" data-testid="workflow-results">
       <EngineeringSection title={t('result.facility_section_title')} description={t('result.facility_section_description')}>
         <ResultHero label={t('result.facility_level_of_service')} value={answer.available && answer.value ? answer.value : t('result.not_calculated')} state={capacityFailure ? 'capacity' : 'current'} supporting={answer.source} />
-        {capacityFailure ? <CapacityFailurePanel /> : null}
+        {capacityFailure ? <CapacityFailurePanel metricsUnavailable={metricsUnavailable} /> : null}
         <div className="metric-grid">
-          {result.presentation.metrics.map((metric) => <MetricCard key={metric.key} label={t(`result.metric.${metric.key}`)} value={metric.available && metric.value !== null ? metric.value.toFixed(1) : t('result.not_calculated')} unit={metric.unit ?? undefined} />)}
+          {result.presentation.metrics.map((metric) => <MetricCard key={metric.key} label={t(`result.metric.${metric.key}`)} value={metricDisplayValue(metric, t)} unit={metric.unit ?? undefined} />)}
         </div>
         <div className="critical-callout"><strong>{t('result.critical_segment')}</strong><span>{String(result.presentation.capacity.critical_segment_id ?? t('result.not_calculated'))}</span></div>
         <div className="table-scroll" role="region" aria-label={t('result.segment_results')} tabIndex={0}>

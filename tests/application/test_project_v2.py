@@ -14,7 +14,10 @@ from hcmcalc.application.project import (
     update_scenario_inputs,
 )
 from hcmcalc.application.workflows import MultilaneWorkflow
-from hcmcalc.ui.project_io import create_manual_multilane_project_payload
+from hcmcalc.ui.project_io import (
+    create_manual_multilane_project_payload,
+    create_manual_project_payload,
+)
 
 
 def calculated_snapshot(demand: float | None = None) -> dict:
@@ -153,9 +156,57 @@ def test_legacy_multilane_project_migrates_and_discards_mismatched_result_withou
     assert retained_scenario["result_status"] == "current"
     assert retained_scenario["result"]["engine_result"]["method"] == "hcm7_multilane_los"
 
+    def browser_numbers(value: object) -> object:
+        if isinstance(value, float) and value.is_integer():
+            return int(value)
+        if isinstance(value, list):
+            return [browser_numbers(item) for item in value]
+        if isinstance(value, dict):
+            return {key: browser_numbers(item) for key, item in value.items()}
+        return value
+
+    browser_legacy = deepcopy(legacy)
+    browser_legacy["displayed_ui_inputs"] = browser_numbers(browser_legacy["displayed_ui_inputs"])
+    browser_legacy["normalized_engine_inputs"] = browser_numbers(browser_legacy["normalized_engine_inputs"])
+    browser_retained = load_project(json.dumps(browser_legacy))
+    assert browser_retained["analyses"][0]["scenarios"][0]["result_status"] == "current"
+
     migrated = load_project(json.dumps(legacy_with_bad_result_identity))
     scenario = migrated["analyses"][0]["scenarios"][0]
     assert migrated["schema_version"] == "2.0"
     assert migrated["migration"]["status"] == "migrated_legacy"
     assert scenario["result"] is None
     assert scenario["result_status"] == "stale"
+
+
+def test_legacy_single_segment_reference_method_migrates_to_view_only_project() -> None:
+    legacy = create_manual_project_payload(
+        {
+            "unit_system": "metric",
+            "segment_type": "passing_constrained",
+            "terrain_type": "level",
+            "horizontal_alignment": "straight",
+            "segment_length": 1.2,
+            "posted_speed": 80.0,
+            "lane_width": 3.5,
+            "shoulder_width": 1.8,
+            "access_point_density": 0.0,
+            "analysis_direction_volume": 750.0,
+            "peak_hour_factor": 0.94,
+            "heavy_vehicle_percent": 5.0,
+            "grade_percent": 0.0,
+            "opposing_direction_volume": None,
+            "horizontal_alignment_subsegments": [],
+        },
+    )
+    legacy["generated_by"] = "hcm-calculator 0.9.0"
+
+    migrated = load_project(json.dumps(legacy))
+    analysis = migrated["analyses"][0]
+    scenario = analysis["scenarios"][0]
+    assert migrated["schema_version"] == "2.0"
+    assert migrated["migration"]["status"] == "migrated_legacy"
+    assert analysis["method_id"] == "two_lane_segment"
+    assert scenario["template_id"] == "legacy_import"
+    assert scenario["result_status"] == "not_calculated"
+    assert scenario["result"] is None

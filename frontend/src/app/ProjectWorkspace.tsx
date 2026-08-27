@@ -14,6 +14,12 @@ import {
   ScopeNotice,
   StatusBadge,
 } from '../components/primitives';
+import type { MethodDefinition } from '../api/types';
+import {
+  getFrontendModule,
+  getMethodActionabilityStatus,
+  isMethodActionable,
+} from '../registry/modules';
 import type { ScenarioEditContext } from './AnalysisWorkflow';
 
 interface ScenarioRecord {
@@ -52,11 +58,13 @@ function displayDelta(value: unknown): string {
 
 export function ProjectWorkspace({
   project,
+  methods,
   onProjectChange,
   onNewAnalysis,
   onEditScenario,
 }: {
   project: Record<string, unknown> | null;
+  methods: MethodDefinition[];
   onProjectChange: (project: Record<string, unknown>) => void;
   onNewAnalysis: () => void;
   onEditScenario: (methodId: string, context: ScenarioEditContext) => void;
@@ -81,6 +89,14 @@ export function ProjectWorkspace({
   );
   const scenarios = selectedAnalysis?.scenarios ?? [];
   const selectedScenario = scenarios.find((scenario) => scenario.scenario_id === selectedScenarioId) ?? scenarios[0];
+  const selectedMethod = selectedAnalysis
+    ? methods.find((method) => method.method_id === selectedAnalysis.method_id)
+    : undefined;
+  const selectedModule = selectedMethod ? getFrontendModule(selectedMethod.method_id) : undefined;
+  const workflowActionable = selectedMethod ? isMethodActionable(selectedMethod, selectedModule) : false;
+  const referenceOnly = selectedMethod
+    ? getMethodActionabilityStatus(selectedMethod, selectedModule) === 'not_delivered'
+    : false;
   const scenarioKindLabel = (kind: string) => t(kind === 'base' ? 'project.kind.base' : 'project.kind.duplicate');
   const scenarioStatusLabel = (status: ScenarioRecord['result_status']) => t(`project.status.${status}`);
 
@@ -145,7 +161,7 @@ export function ProjectWorkspace({
   };
 
   const calculateScenario = () => {
-    if (!project || !selectedAnalysis || !selectedScenario || !selectedScenario.template_id) return;
+    if (!workflowActionable || !project || !selectedAnalysis || !selectedScenario || !selectedScenario.template_id) return;
     setWorking(true);
     calculateWorkflow(
       selectedAnalysis.method_id,
@@ -188,7 +204,9 @@ export function ProjectWorkspace({
         </EngineeringSection>
         {selectedAnalysis ? <EngineeringSection title={t('project.scenario_title')} description={t('project.scenario_description')}>
           <div className="scenario-list">{scenarios.map((scenario) => <button className={`scenario-row ${selectedScenario?.scenario_id === scenario.scenario_id ? 'scenario-row-active' : ''}`} type="button" key={scenario.scenario_id} onClick={() => setSelectedScenarioId(scenario.scenario_id)}><span><strong>{scenario.scenario_name}</strong><small>{scenarioKindLabel(scenario.kind)} · {scenarioStatusLabel(scenario.result_status)}</small></span><StatusBadge tone={scenario.result_status === 'current' ? 'current' : scenario.result_status === 'stale' ? 'stale' : 'neutral'}>{scenarioStatusLabel(scenario.result_status)}</StatusBadge></button>)}</div>
-          <div className="project-actions"><button className="button button-primary" type="button" disabled={working || !selectedScenario || !selectedScenario.template_id} onClick={calculateScenario}>{t('action.calculate_scenario')}</button><button className="button button-secondary" type="button" disabled={working || !selectedScenario || !selectedScenario.template_id} onClick={() => { if (selectedScenario?.template_id) onEditScenario(selectedAnalysis.method_id, { analysisId: selectedAnalysis.analysis_id, scenarioId: selectedScenario.scenario_id, templateId: selectedScenario.template_id, unitSystem: selectedScenario.unit_system, displayedInputs: selectedScenario.displayed_inputs }); }}>{t('action.edit_scenario')}</button><label>{t('project.duplicate_name')}<input value={scenarioName} onChange={(event) => setScenarioName(event.target.value)} /></label><button className="button button-secondary" type="button" disabled={working || !selectedScenario} onClick={duplicate}>{t('action.duplicate_scenario')}</button><label>{t('project.rename_name')}<input value={renameName} onChange={(event) => setRenameName(event.target.value)} placeholder={selectedScenario?.scenario_name} /></label><button className="button button-secondary" type="button" disabled={working || !selectedScenario || !renameName.trim()} onClick={rename}>{t('action.rename_scenario')}</button></div>
+          <div className="project-method-status" data-testid="project-method-status"><StatusBadge tone={workflowActionable ? 'current' : 'neutral'}>{referenceOnly ? t('project.reference_only') : workflowActionable ? t('project.rebuilt_available') : t('project.rebuilt_unavailable')}</StatusBadge></div>
+          {referenceOnly ? <ScopeNotice title={t('project.reference_only_title')}>{t('project.reference_only_supporting')}</ScopeNotice> : null}
+          <div className="project-actions"><button className="button button-primary" type="button" disabled={working || !workflowActionable || !selectedScenario || !selectedScenario.template_id} onClick={calculateScenario}>{t('action.calculate_scenario')}</button><button className="button button-secondary" type="button" disabled={working || !workflowActionable || !selectedScenario || !selectedScenario.template_id} onClick={() => { if (workflowActionable && selectedScenario?.template_id) onEditScenario(selectedAnalysis.method_id, { analysisId: selectedAnalysis.analysis_id, scenarioId: selectedScenario.scenario_id, templateId: selectedScenario.template_id, unitSystem: selectedScenario.unit_system, displayedInputs: selectedScenario.displayed_inputs }); }}>{t('action.edit_scenario')}</button><label>{t('project.duplicate_name')}<input value={scenarioName} onChange={(event) => setScenarioName(event.target.value)} /></label><button className="button button-secondary" type="button" disabled={working || !selectedScenario} onClick={duplicate}>{t('action.duplicate_scenario')}</button><label>{t('project.rename_name')}<input value={renameName} onChange={(event) => setRenameName(event.target.value)} placeholder={selectedScenario?.scenario_name} /></label><button className="button button-secondary" type="button" disabled={working || !selectedScenario || !renameName.trim()} onClick={rename}>{t('action.rename_scenario')}</button></div>
         </EngineeringSection> : null}
         {selectedAnalysis && scenarios.length > 1 ? <EngineeringSection title={t('project.compare_title')} description={t('project.compare_description')}>
           <div className="project-controls"><label>{t('project.left_scenario')}<select value={leftScenarioId} onChange={(event) => setLeftScenarioId(event.target.value)}><option value="">{t('project.choose_scenario')}</option>{scenarios.map((scenario) => <option value={scenario.scenario_id} key={scenario.scenario_id}>{scenario.scenario_name}</option>)}</select></label><label>{t('project.right_scenario')}<select value={rightScenarioId} onChange={(event) => setRightScenarioId(event.target.value)}><option value="">{t('project.choose_scenario')}</option>{scenarios.map((scenario) => <option value={scenario.scenario_id} key={scenario.scenario_id}>{scenario.scenario_name}</option>)}</select></label><button className="button button-primary" type="button" disabled={working || !leftScenarioId || !rightScenarioId || leftScenarioId === rightScenarioId} onClick={compare}>{t('action.compare')}</button></div>

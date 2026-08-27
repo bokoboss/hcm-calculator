@@ -461,9 +461,9 @@ export function StaleResultBanner({ onRecalculate }: { onRecalculate?: () => voi
   return <div className="stale-banner" data-slot="stale-result-banner" role="status"><div><strong>{t('state.stale_title')}</strong><span>{t('state.stale_supporting')}</span></div><button className="button button-primary" type="button" onClick={onRecalculate}>{t('action.recalculate')}</button></div>;
 }
 
-export function CapacityFailurePanel(): ReactElement {
+export function CapacityFailurePanel({ metricsUnavailable = true }: { metricsUnavailable?: boolean } = {}): ReactElement {
   const { t } = useI18n();
-  return <section className="state-panel state-panel-capacity" data-slot="capacity-failure-panel"><strong>{t('state.capacity_title')}</strong><span>{t('state.capacity_supporting')}</span></section>;
+  return <section className="state-panel state-panel-capacity" data-slot="capacity-failure-panel"><strong>{t('state.capacity_title')}</strong><span>{metricsUnavailable ? t('state.capacity_supporting') : t('state.capacity_calculated_supporting')}</span></section>;
 }
 
 export function HandoffPanel(): ReactElement {

@@ -454,6 +454,15 @@ def migrate_legacy_project(payload: Mapping[str, Any]) -> dict[str, Any]:
         displayed = {}
     if not isinstance(normalized, Mapping):
         normalized = {}
+    template_id = payload.get("template_id") or payload.get("template") or "legacy_import"
+    unit_system = payload.get("unit_system") or "imperial"
+    canonical_normalized = _canonical_project_normalized_inputs(
+        method_id=method_id,
+        template_id=template_id,
+        unit_system=unit_system,
+        displayed_inputs=displayed,
+        supplied_normalized_inputs=normalized,
+    )
     document = new_project(str(payload.get("project_name") or payload.get("facility_name") or "Migrated HCM study"))
     document["locale"] = (payload.get("presentation") or {}).get("locale", "en") if isinstance(payload.get("presentation"), Mapping) else "en"
     snapshot = {
@@ -463,12 +472,17 @@ def migrate_legacy_project(payload: Mapping[str, Any]) -> dict[str, Any]:
         "method_version": definition.method_version,
         "input_contract": definition.input_contract,
         "project_type": definition.project_type,
-        "template_id": payload.get("template_id") or payload.get("template") or "legacy_import",
-        "unit_system": payload.get("unit_system") or "imperial",
+        "template_id": template_id,
+        "unit_system": unit_system,
         "displayed_inputs": deepcopy(dict(displayed)),
-        "normalized_inputs": deepcopy(dict(normalized)),
-        "calculation_fingerprint": _identity_fingerprint(definition.method_identifier, definition.input_contract, normalized),
-        "input_snapshot_fingerprint": _snapshot_fingerprint(definition.method_identifier, definition.input_contract, displayed, normalized),
+        "normalized_inputs": deepcopy(dict(canonical_normalized)),
+        "calculation_fingerprint": _identity_fingerprint(definition.method_identifier, definition.input_contract, canonical_normalized),
+        "input_snapshot_fingerprint": _snapshot_fingerprint(
+            definition.method_identifier,
+            definition.input_contract,
+            displayed,
+            canonical_normalized,
+        ),
         "result": stored_result if isinstance(stored_result, Mapping) else None,
         "audit": audit if isinstance(audit, Mapping) else {},
     }
@@ -484,7 +498,11 @@ def migrate_legacy_project(payload: Mapping[str, Any]) -> dict[str, Any]:
     scenario = document["analyses"][0]["scenarios"][0]
     # Legacy calculation fingerprints are retained only when their normalized
     # identity and engine method match.  No engine is called during import.
-    computed = _identity_fingerprint(definition.method_identifier, definition.input_contract, normalized)
+    computed = _identity_fingerprint(
+        definition.method_identifier,
+        definition.input_contract,
+        canonical_normalized,
+    )
     stored_fp = payload.get("calculation_fingerprint")
     engine_result = stored_result if isinstance(stored_result, Mapping) else None
     retained = bool(

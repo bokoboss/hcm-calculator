@@ -11,12 +11,14 @@ from hcmcalc.application.workflows import (
     StaleResultError,
     export_current_workflow,
 )
+from hcmcalc.application.workflow_state import MetricAvailability
 from hcmcalc.ui.manual_facility import run_manual_facility
 from hcmcalc.ui.manual_multilane import (
     load_multilane_template,
     multilane_ui_inputs_to_engine,
     run_manual_multilane,
 )
+from hcmcalc.ui.units import MILES_TO_KILOMETERS
 
 
 def multilane_inputs() -> dict:
@@ -55,6 +57,25 @@ def test_multilane_calculation_preserves_qualified_result_and_audit() -> None:
     assert response["presentation"]["metrics"][0]["available"] is True
     assert response["audit"]["calculation_succeeded"] is True
     assert response["result"]["intermediate_values"]
+
+
+def test_multilane_capacity_failure_marks_unavailable_metrics_as_not_predicted() -> None:
+    values = multilane_inputs()
+    values["demand_volume_veh_h"] = 5000.0
+    response = MultilaneWorkflow().calculate(
+        template_id="MLH-CH26-004-EB",
+        unit_system="imperial",
+        displayed_inputs=values,
+    )
+
+    assert response["calculation_state"]["presentation_state"] == "capacity_failure"
+    metrics = {item["key"]: item for item in response["presentation"]["metrics"]}
+    for key in ("density", "speed_used_for_density"):
+        assert metrics[key]["value"] is None
+        assert metrics[key]["available"] is False
+        assert metrics[key]["availability"] == MetricAvailability.NOT_PREDICTED.value
+    assert metrics["adjusted_free_flow_speed"]["availability"] == MetricAvailability.CALCULATED.value
+    assert metrics["demand_flow_rate"]["availability"] == MetricAvailability.CALCULATED.value
 
 
 def test_multilane_application_and_api_match_qualified_adapter() -> None:
@@ -164,6 +185,52 @@ def test_facility_calculation_exposes_facility_and_segment_evidence() -> None:
     assert len(response["presentation"]["segments"]) == 5
     assert response["presentation"]["capacity"]["critical_segment_id"] == response["result"]["outputs"]["critical_segment_id"]
     assert any(item["code"] == "facility_length_weighted" for item in response["presentation"]["interpretations"])
+
+
+def test_facility_metric_presentation_converts_aggregate_speed_and_density_only() -> None:
+    workflow = FacilityWorkflow()
+    imperial_rows = workflow.starting_values("level_example_3", "imperial")["segments"]
+    metric_rows = workflow.starting_values("level_example_3", "metric")["segments"]
+    imperial = workflow.calculate(
+        template_id="level_example_3",
+        unit_system="imperial",
+        displayed_inputs={"rows": imperial_rows},
+    )
+    metric = workflow.calculate(
+        template_id="level_example_3",
+        unit_system="metric",
+        displayed_inputs={"rows": metric_rows},
+    )
+
+    imperial_outputs = imperial["result"]["outputs"]
+    metric_outputs = metric["result"]["outputs"]
+    assert metric_outputs["facility_average_speed_mph"] == pytest.approx(
+        imperial_outputs["facility_average_speed_mph"]
+    )
+    assert metric_outputs["facility_follower_density_followers_mi_ln"] == pytest.approx(
+        imperial_outputs["facility_follower_density_followers_mi_ln"]
+    )
+    imperial_metrics = {item["key"]: item for item in imperial["presentation"]["metrics"]}
+    metric_metrics = {item["key"]: item for item in metric["presentation"]["metrics"]}
+    assert metric_metrics["facility_average_speed"]["value"] == pytest.approx(
+        imperial_metrics["facility_average_speed"]["value"] * MILES_TO_KILOMETERS
+    )
+    assert metric_metrics["facility_average_speed"]["unit"] == "km/h"
+    assert metric_metrics["facility_density"]["value"] == pytest.approx(
+        imperial_metrics["facility_density"]["value"] / MILES_TO_KILOMETERS
+    )
+    assert metric_metrics["facility_density"]["unit"] == "fol/km/ln"
+    for imperial_segment, metric_segment in zip(
+        imperial["presentation"]["segments"],
+        metric["presentation"]["segments"],
+        strict=True,
+    ):
+        assert metric_segment["average_speed"] == pytest.approx(
+            imperial_segment["average_speed"] * MILES_TO_KILOMETERS
+        )
+        assert metric_segment["follower_density"] == pytest.approx(
+            imperial_segment["follower_density"] / MILES_TO_KILOMETERS
+        )
 
 
 def test_facility_application_and_api_match_qualified_adapter() -> None:

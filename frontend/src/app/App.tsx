@@ -276,7 +276,7 @@ export function App(): ReactElement {
         {page === 'home' ? <HomePage onNavigate={navigate} /> : null}
         {page === 'new-analysis' && selectedMethod ? <AnalysisWorkflow method={selectedMethod} initialScenario={scenarioEdit ?? undefined} onBack={backFromWorkflow} onScenarioResultSaved={scenarioEdit ? saveEditedScenario : undefined} onProjectSaved={(savedProject) => { setProject(savedProject); setScenarioEdit(null); setSelectedMethodId(null); setPage('project'); window.history.replaceState({}, '', '/project'); }} /> : null}
         {page === 'new-analysis' && !selectedMethod ? <NewAnalysisPage methods={methods} loading={loading} onReference={referenceMethod} onSelect={selectMethod} /> : null}
-        {page === 'project' ? <ProjectWorkspace project={project} onProjectChange={setProject} onNewAnalysis={() => navigate('new-analysis')} onEditScenario={editScenario} /> : null}
+        {page === 'project' ? <ProjectWorkspace project={project} methods={methods} onProjectChange={setProject} onNewAnalysis={() => navigate('new-analysis')} onEditScenario={editScenario} /> : null}
         {page === 'reference' ? <ReferencePage methods={methods} loading={loading} /> : null}
       </AppShell>
     </>

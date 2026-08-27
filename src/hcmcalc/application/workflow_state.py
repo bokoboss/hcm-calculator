@@ -37,6 +37,15 @@ class ResultPresentationState(StrEnum):
     INTERNAL_ERROR = "internal_error"
 
 
+class MetricAvailability(StrEnum):
+    """Explicit states for a presented metric value."""
+
+    CALCULATED = "calculated"
+    NOT_CALCULATED = "not_calculated"
+    NOT_PREDICTED = "not_predicted"
+    NOT_APPLICABLE = "not_applicable"
+
+
 def resolve_result_presentation_state(
     *,
     freshness: str,

@@ -14,6 +14,7 @@ from hcmcalc.ui.manual_facility import (
     run_manual_facility,
     validate_manual_facility_table,
 )
+from hcmcalc.ui.units import FEET_TO_METERS
 
 
 @pytest.mark.parametrize("template_id", facility_template_options())
@@ -56,6 +57,61 @@ def test_example_4_like_template_matches_validated_facility_outputs() -> None:
     )
     assert result.outputs["facility_level_of_service"] == "E"
     assert len(result.outputs["segments"]) == 6
+
+
+def test_facility_metric_dimensions_round_trip_to_engine_native_values() -> None:
+    imperial = load_facility_template("level_example_3", "imperial")
+    metric = load_facility_template("level_example_3", "metric")
+
+    assert metric["segments"][0]["lane_width"] == pytest.approx(12.0 * FEET_TO_METERS)
+    assert metric["segments"][0]["shoulder_width"] == pytest.approx(6.0 * FEET_TO_METERS)
+
+    imperial_inputs = build_manual_facility_inputs(
+        imperial["template_id"], imperial["segments"], "imperial"
+    )
+    metric_inputs = build_manual_facility_inputs(
+        metric["template_id"], metric["segments"], "metric"
+    )
+    for imperial_segment, metric_segment in zip(
+        imperial_inputs["segments"], metric_inputs["segments"], strict=True
+    ):
+        for key in (
+            "segment_length_mi",
+            "posted_speed_mph",
+            "lane_width_ft",
+            "shoulder_width_ft",
+            "access_point_density_per_mi",
+        ):
+            assert metric_segment[key] == pytest.approx(imperial_segment[key])
+
+    imperial_result = run_manual_facility(
+        imperial["template_id"], imperial["segments"], "imperial"
+    )
+    metric_result = run_manual_facility(
+        metric["template_id"], metric["segments"], "metric"
+    )
+    for key in (
+        "facility_average_speed_mph",
+        "facility_follower_density_followers_mi_ln",
+        "facility_level_of_service",
+    ):
+        if isinstance(imperial_result.outputs[key], str):
+            assert metric_result.outputs[key] == imperial_result.outputs[key]
+        else:
+            assert metric_result.outputs[key] == pytest.approx(imperial_result.outputs[key])
+
+
+def test_imperial_facility_dimensions_remain_unchanged() -> None:
+    template = load_facility_template("level_example_3", "imperial")
+    normalized = build_manual_facility_inputs(
+        template["template_id"], template["segments"], "imperial"
+    )
+
+    assert normalized["segments"][0]["lane_width_ft"] == 12.0
+    assert normalized["segments"][0]["shoulder_width_ft"] == 6.0
+    assert normalized["segments"][0]["access_point_density_per_mi"] == pytest.approx(
+        template["segments"][0]["access_point_density"]
+    )
 
 
 def test_facility_result_table_includes_segment_metrics_and_flags() -> None:

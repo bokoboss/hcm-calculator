@@ -112,7 +112,7 @@ export interface ResultMetric {
   value: number | null;
   unit: string | null;
   available: boolean;
-  availability: 'calculated' | 'not_calculated';
+  availability: 'calculated' | 'not_calculated' | 'not_predicted' | 'not_applicable';
   source?: string | null;
 }
 

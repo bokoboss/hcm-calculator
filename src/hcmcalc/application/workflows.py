@@ -26,6 +26,7 @@ from hcmcalc.application.interpretation import (
 from hcmcalc.application.registry import AnalysisDefinition, get_analysis_definition
 from hcmcalc.application.workflow_state import (
     MISSING_REQUIRED_INPUT,
+    MetricAvailability,
     READY,
     ResultPresentationState,
     resolve_result_presentation_state,
@@ -234,16 +235,38 @@ def _available_metric(
     unit: str | None,
     *,
     source: str | None = None,
+    availability: MetricAvailability | str | None = None,
+    capacity_failure: bool = False,
 ) -> dict[str, Any]:
     available = value is not None
+    if available:
+        resolved_availability = MetricAvailability.CALCULATED.value
+    elif availability is not None:
+        resolved_availability = (
+            availability.value
+            if isinstance(availability, MetricAvailability)
+            else str(availability)
+        )
+    elif capacity_failure:
+        resolved_availability = MetricAvailability.NOT_PREDICTED.value
+    else:
+        resolved_availability = MetricAvailability.NOT_CALCULATED.value
+    if resolved_availability not in {item.value for item in MetricAvailability}:
+        raise ValueError(f"Unsupported metric availability: {resolved_availability}")
     return {
         "key": key,
         "value": None if value is None else float(value),
         "unit": unit,
         "available": available,
-        "availability": "calculated" if available else "not_calculated",
+        "availability": resolved_availability,
         "source": source,
     }
+
+
+def _scale_optional(value: Any, factor: float) -> float | None:
+    """Scale an optional engine value without turning unavailable into zero."""
+
+    return None if value is None else float(value) * factor
 
 
 def _interpretation_mappings(
@@ -518,11 +541,11 @@ class MultilaneWorkflow:
         )
         displayed_outputs = multilane_display_outputs(outputs, normalized_unit)
         metric_values = [
-            _available_metric("density", displayed_outputs["density"]["value"], displayed_outputs["density"]["unit"], source="HCM Eq. 12-11"),
-            _available_metric("speed_used_for_density", displayed_outputs["speed_used_for_density"]["value"], displayed_outputs["speed_used_for_density"]["unit"], source="HCM Eq. 12-1"),
-            _available_metric("adjusted_free_flow_speed", displayed_outputs["adjusted_free_flow_speed"]["value"], displayed_outputs["adjusted_free_flow_speed"]["unit"], source="HCM Eq. 12-3"),
-            _available_metric("base_free_flow_speed", displayed_outputs["base_free_flow_speed"]["value"], displayed_outputs["base_free_flow_speed"]["unit"], source="HCM Exhibit 12-18"),
-            _available_metric("demand_flow_rate", displayed_outputs["demand_flow_rate"]["value"], displayed_outputs["demand_flow_rate"]["unit"], source="HCM Eq. 12-9"),
+            _available_metric("density", displayed_outputs["density"]["value"], displayed_outputs["density"]["unit"], source="HCM Eq. 12-11", capacity_failure=capacity_failure),
+            _available_metric("speed_used_for_density", displayed_outputs["speed_used_for_density"]["value"], displayed_outputs["speed_used_for_density"]["unit"], source="HCM Eq. 12-1", capacity_failure=capacity_failure),
+            _available_metric("adjusted_free_flow_speed", displayed_outputs["adjusted_free_flow_speed"]["value"], displayed_outputs["adjusted_free_flow_speed"]["unit"], source="HCM Eq. 12-3", capacity_failure=capacity_failure),
+            _available_metric("base_free_flow_speed", displayed_outputs["base_free_flow_speed"]["value"], displayed_outputs["base_free_flow_speed"]["unit"], source="HCM Exhibit 12-18", capacity_failure=capacity_failure),
+            _available_metric("demand_flow_rate", displayed_outputs["demand_flow_rate"]["value"], displayed_outputs["demand_flow_rate"]["unit"], source="HCM Eq. 12-9", capacity_failure=capacity_failure),
         ]
         capacity = {
             "status": outputs.get("capacity_status", outputs.get("capacity_check")),
@@ -831,9 +854,9 @@ class FacilityWorkflow:
             },
             "metrics": [
                 _available_metric("facility_length", outputs.get("facility_length_mi", 0.0) * metric_factor, "km" if normalized_unit == "metric" else "mi", source="HCM Eq. 15-39"),
-                _available_metric("facility_average_speed", outputs.get("facility_average_speed_mph"), "km/h" if normalized_unit == "metric" else "mph", source="HCM Eq. 15-39"),
-                _available_metric("facility_density", outputs.get("facility_follower_density_followers_mi_ln"), "fol/km/ln" if normalized_unit == "metric" else "fol/mi/ln", source="HCM Eq. 15-39"),
-                _available_metric("facility_percent_followers", outputs.get("facility_percent_followers"), "%", source="HCM Eq. 15-39"),
+                _available_metric("facility_average_speed", _scale_optional(outputs.get("facility_average_speed_mph"), metric_factor), "km/h" if normalized_unit == "metric" else "mph", source="HCM Eq. 15-39", capacity_failure=capacity_failure),
+                _available_metric("facility_density", _scale_optional(outputs.get("facility_follower_density_followers_mi_ln"), density_factor), "fol/km/ln" if normalized_unit == "metric" else "fol/mi/ln", source="HCM Eq. 15-39", capacity_failure=capacity_failure),
+                _available_metric("facility_percent_followers", outputs.get("facility_percent_followers"), "%", source="HCM Eq. 15-39", capacity_failure=capacity_failure),
             ],
             "capacity": {
                 "status": "capacity_failure" if capacity_failure else "within_capacity",

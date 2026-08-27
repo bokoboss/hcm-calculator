@@ -14,7 +14,7 @@ from hcmcalc.core import CalculationResult, HCMCalcError, MethodNotImplementedEr
 from hcmcalc.methods.two_lane_highway_ch15 import TwoLaneHighwayChapter15Method
 from hcmcalc.methods.two_lane_highway_models import PASSING_LANE_ROLE_SEGMENT
 from hcmcalc.ui.runtime_resources import load_packaged_yaml
-from hcmcalc.ui.units import MILES_TO_KILOMETERS
+from hcmcalc.ui.units import FEET_TO_METERS, MILES_TO_KILOMETERS
 
 
 FIXTURE_FILENAME = "example_inputs.yaml"
@@ -303,8 +303,8 @@ def build_manual_facility_inputs(
                 "analysis_direction_volume_veh_h": float(row["analysis_direction_volume_veh_h"]),
                 "peak_hour_factor": float(row["peak_hour_factor"]), "heavy_vehicle_percent": float(row["heavy_vehicle_percent"]),
                 "grade_percent": float(row["grade_percent"]), "horizontal_alignment": str(row["horizontal_alignment"]),
-                "lane_width_ft": float(row["lane_width"]) / (3.280839895 if unit_system == "metric" else 1.0),
-                "shoulder_width_ft": float(row["shoulder_width"]) / (3.280839895 if unit_system == "metric" else 1.0),
+                "lane_width_ft": float(row["lane_width"]) / (FEET_TO_METERS if unit_system == "metric" else 1.0),
+                "shoulder_width_ft": float(row["shoulder_width"]) / (FEET_TO_METERS if unit_system == "metric" else 1.0),
                 "access_point_density_per_mi": float(row["access_point_density"]) * (MILES_TO_KILOMETERS if unit_system == "metric" else 1.0),
                 "passing_lane_role": str(row.get("passing_lane_role", PASSING_LANE_ROLE_SEGMENT if row["segment_type"] == "passing_lane" else "none")),
                 "horizontal_alignment_subsegments": row.get("horizontal_alignment_subsegments", []),
@@ -442,8 +442,8 @@ def _engine_segments_to_user_rows(
                 else "mountainous",
                 "grade_percent": segment["grade_percent"],
                 "horizontal_alignment": segment["horizontal_alignment"],
-                "lane_width": float(segment["lane_width_ft"]) * (3.280839895 if metric else 1.0),
-                "shoulder_width": float(segment["shoulder_width_ft"]) * (3.280839895 if metric else 1.0),
+                "lane_width": float(segment["lane_width_ft"]) * (FEET_TO_METERS if metric else 1.0),
+                "shoulder_width": float(segment["shoulder_width_ft"]) * (FEET_TO_METERS if metric else 1.0),
                 "access_point_density": float(segment["access_point_density_per_mi"]) / (MILES_TO_KILOMETERS if metric else 1.0),
                 "horizontal_alignment_subsegments": segment.get("horizontal_alignment_subsegments", []),
                 "passing_lane_role": "passing_lane" if is_passing_lane else ("downstream_affected" if passing_lane_seen else "none"),
