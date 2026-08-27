@@ -14,7 +14,7 @@ from hcmcalc.core import CalculationResult, HCMCalcError, MethodNotImplementedEr
 from hcmcalc.methods.two_lane_highway_ch15 import TwoLaneHighwayChapter15Method
 from hcmcalc.methods.two_lane_highway_models import PASSING_LANE_ROLE_SEGMENT
 from hcmcalc.ui.runtime_resources import load_packaged_yaml
-from hcmcalc.ui.units import MILES_TO_KILOMETERS
+from hcmcalc.ui.units import FEET_TO_METERS, MILES_TO_KILOMETERS
 
 
 FIXTURE_FILENAME = "example_inputs.yaml"
@@ -122,7 +122,6 @@ def validate_manual_facility_table(rows: list[dict[str, Any]] | Any) -> dict[str
     numeric_nonnegative = {
         "analysis_direction_volume_veh_h",
         "heavy_vehicle_percent",
-        "grade_percent",
         "shoulder_width",
         "access_point_density",
     }
@@ -188,6 +187,12 @@ def validate_manual_facility_table(rows: list[dict[str, Any]] | Any) -> dict[str
             _validate_numeric_field(messages, row, segment_label, field, positive=True)
         for field in numeric_nonnegative:
             _validate_numeric_field(messages, row, segment_label, field, positive=False)
+        # Grade is signed: the mountainous Chapter 26 Example 4 fixture
+        # includes both upgrade and downgrade segments.  The engine owns the
+        # applicable vertical-alignment guardrails; the table validator only
+        # requires a finite value here.
+        if _parse_float(row.get("grade_percent")) is None:
+            messages.append(f"Segment {segment_label}: grade_percent must be numeric.")
         phf = _parse_float(row.get("peak_hour_factor"))
         if phf is None or not 0.0 < phf <= 1.0:
             messages.append(
@@ -298,8 +303,8 @@ def build_manual_facility_inputs(
                 "analysis_direction_volume_veh_h": float(row["analysis_direction_volume_veh_h"]),
                 "peak_hour_factor": float(row["peak_hour_factor"]), "heavy_vehicle_percent": float(row["heavy_vehicle_percent"]),
                 "grade_percent": float(row["grade_percent"]), "horizontal_alignment": str(row["horizontal_alignment"]),
-                "lane_width_ft": float(row["lane_width"]) / (3.280839895 if unit_system == "metric" else 1.0),
-                "shoulder_width_ft": float(row["shoulder_width"]) / (3.280839895 if unit_system == "metric" else 1.0),
+                "lane_width_ft": float(row["lane_width"]) / (FEET_TO_METERS if unit_system == "metric" else 1.0),
+                "shoulder_width_ft": float(row["shoulder_width"]) / (FEET_TO_METERS if unit_system == "metric" else 1.0),
                 "access_point_density_per_mi": float(row["access_point_density"]) * (MILES_TO_KILOMETERS if unit_system == "metric" else 1.0),
                 "passing_lane_role": str(row.get("passing_lane_role", PASSING_LANE_ROLE_SEGMENT if row["segment_type"] == "passing_lane" else "none")),
                 "horizontal_alignment_subsegments": row.get("horizontal_alignment_subsegments", []),
@@ -437,8 +442,8 @@ def _engine_segments_to_user_rows(
                 else "mountainous",
                 "grade_percent": segment["grade_percent"],
                 "horizontal_alignment": segment["horizontal_alignment"],
-                "lane_width": float(segment["lane_width_ft"]) * (3.280839895 if metric else 1.0),
-                "shoulder_width": float(segment["shoulder_width_ft"]) * (3.280839895 if metric else 1.0),
+                "lane_width": float(segment["lane_width_ft"]) * (FEET_TO_METERS if metric else 1.0),
+                "shoulder_width": float(segment["shoulder_width_ft"]) * (FEET_TO_METERS if metric else 1.0),
                 "access_point_density": float(segment["access_point_density_per_mi"]) / (MILES_TO_KILOMETERS if metric else 1.0),
                 "horizontal_alignment_subsegments": segment.get("horizontal_alignment_subsegments", []),
                 "passing_lane_role": "passing_lane" if is_passing_lane else ("downstream_affected" if passing_lane_seen else "none"),

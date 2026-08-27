@@ -23,8 +23,8 @@ export type MethodActionabilityStatus =
  */
 export const frontendModuleRegistry: FrontendModuleRegistry = {
   two_lane_segment: { methodId: 'two_lane_segment', status: 'not_delivered', moduleContract: null, route: null },
-  two_lane_facility: { methodId: 'two_lane_facility', status: 'not_delivered', moduleContract: null, route: null },
-  multilane_segment: { methodId: 'multilane_segment', status: 'not_delivered', moduleContract: null, route: null },
+  two_lane_facility: { methodId: 'two_lane_facility', status: 'delivered', moduleContract: 'phase_5_product_integration', route: '/analysis/two_lane_facility' },
+  multilane_segment: { methodId: 'multilane_segment', status: 'delivered', moduleContract: 'phase_8', route: '/analysis/multilane_segment' },
   basic_freeway_segment: { methodId: 'basic_freeway_segment', status: 'not_delivered', moduleContract: null, route: null },
   weaving_segment: { methodId: 'weaving_segment', status: 'not_delivered', moduleContract: null, route: null },
   merge_segment: { methodId: 'merge_segment', status: 'not_delivered', moduleContract: null, route: null },

@@ -4,6 +4,91 @@
  */
 
 export interface paths {
+    "/api/v1/analyses/{method_id}/calculate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Calculate Workflow */
+        post: operations["calculate_workflow_api_v1_analyses__method_id__calculate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analyses/{method_id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Export Workflow */
+        post: operations["export_workflow_api_v1_analyses__method_id__export_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analyses/{method_id}/starting-values": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Workflow Starting Values */
+        get: operations["get_workflow_starting_values_api_v1_analyses__method_id__starting_values_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analyses/{method_id}/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Workflow Templates */
+        get: operations["get_workflow_templates_api_v1_analyses__method_id__templates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analyses/{method_id}/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Validate Workflow */
+        post: operations["validate_workflow_api_v1_analyses__method_id__validate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/health": {
         parameters: {
             query?: never;
@@ -58,6 +143,125 @@ export interface paths {
         get: operations["get_method_api_v1_methods__method_id__get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Project Compare */
+        post: operations["project_compare_api_v1_projects_compare_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/duplicate-scenario": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Project Duplicate Scenario */
+        post: operations["project_duplicate_scenario_api_v1_projects_duplicate_scenario_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/from-analysis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Project From Analysis */
+        post: operations["project_from_analysis_api_v1_projects_from_analysis_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/record-result": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Project Record Result */
+        post: operations["project_record_result_api_v1_projects_record_result_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/rename-scenario": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Project Rename Scenario */
+        post: operations["project_rename_scenario_api_v1_projects_rename_scenario_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/update-scenario": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Project Update Scenario */
+        post: operations["project_update_scenario_api_v1_projects_update_scenario_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/projects/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Validate Project */
+        post: operations["validate_project_api_v1_projects_validate_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -180,6 +384,123 @@ export interface components {
              */
             registry_version: string;
         };
+        /** ProjectCompareRequest */
+        ProjectCompareRequest: {
+            /** Analysis Id */
+            analysis_id: string;
+            /** Left Scenario Id */
+            left_scenario_id: string;
+            /** Project */
+            project: {
+                [key: string]: unknown;
+            };
+            /** Right Scenario Id */
+            right_scenario_id: string;
+        };
+        /** ProjectCompareResponse */
+        ProjectCompareResponse: {
+            /** Comparison */
+            comparison: {
+                [key: string]: unknown;
+            };
+        };
+        /**
+         * ProjectDocumentRequest
+         * @description Generic Project v2 document carried by a file-oriented client.
+         */
+        ProjectDocumentRequest: {
+            /** Project */
+            project: {
+                [key: string]: unknown;
+            };
+        };
+        /** ProjectDuplicateScenarioRequest */
+        ProjectDuplicateScenarioRequest: {
+            /** Analysis Id */
+            analysis_id: string;
+            /** Project */
+            project: {
+                [key: string]: unknown;
+            };
+            /** Scenario Id */
+            scenario_id: string;
+            /** Scenario Name */
+            scenario_name: string;
+        };
+        /** ProjectFromAnalysisRequest */
+        ProjectFromAnalysisRequest: {
+            /** Analysis Name */
+            analysis_name?: string | null;
+            /** Analysis Snapshot */
+            analysis_snapshot: {
+                [key: string]: unknown;
+            };
+            /**
+             * Project Name
+             * @default Untitled HCM study
+             */
+            project_name: string;
+            /**
+             * Scenario Name
+             * @default Base
+             */
+            scenario_name: string;
+        };
+        /** ProjectRecordResultRequest */
+        ProjectRecordResultRequest: {
+            /** Analysis Id */
+            analysis_id: string;
+            /** Analysis Snapshot */
+            analysis_snapshot: {
+                [key: string]: unknown;
+            };
+            /** Project */
+            project: {
+                [key: string]: unknown;
+            };
+            /** Scenario Id */
+            scenario_id: string;
+        };
+        /** ProjectRenameScenarioRequest */
+        ProjectRenameScenarioRequest: {
+            /** Analysis Id */
+            analysis_id: string;
+            /** Project */
+            project: {
+                [key: string]: unknown;
+            };
+            /** Scenario Id */
+            scenario_id: string;
+            /** Scenario Name */
+            scenario_name: string;
+        };
+        /** ProjectResponse */
+        ProjectResponse: {
+            /**
+             * Migrated
+             * @default false
+             */
+            migrated: boolean;
+            /** Project */
+            project: {
+                [key: string]: unknown;
+            };
+        };
+        /** ProjectUpdateScenarioRequest */
+        ProjectUpdateScenarioRequest: {
+            /** Analysis Id */
+            analysis_id: string;
+            /** Analysis Snapshot */
+            analysis_snapshot: {
+                [key: string]: unknown;
+            };
+            /** Project */
+            project: {
+                [key: string]: unknown;
+            };
+            /** Scenario Id */
+            scenario_id: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -193,6 +514,249 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /**
+         * ValidationIssue
+         * @description A field-level or workflow-level validation message.
+         */
+        ValidationIssue: {
+            /** Code */
+            code: string;
+            /** Field */
+            field?: string | null;
+            /** Message */
+            message: string;
+            /** Message Key */
+            message_key: string;
+        };
+        /**
+         * WorkflowCalculationResponse
+         * @description Auditable result envelope returned after explicit calculation.
+         */
+        WorkflowCalculationResponse: {
+            /** Audit */
+            audit: {
+                [key: string]: unknown;
+            };
+            /** Calculation Fingerprint */
+            calculation_fingerprint: string;
+            /** Calculation State */
+            calculation_state: {
+                [key: string]: unknown;
+            };
+            /** Displayed Inputs */
+            displayed_inputs: {
+                [key: string]: unknown;
+            };
+            /** Engine Method Identifier */
+            engine_method_identifier: string;
+            /** Generated At */
+            generated_at: string;
+            /** Input Contract */
+            input_contract: string;
+            /** Input Snapshot Fingerprint */
+            input_snapshot_fingerprint: string;
+            /** Method */
+            method: {
+                [key: string]: unknown;
+            };
+            /** Method Id */
+            method_id: string;
+            /** Method Identifier */
+            method_identifier: string;
+            /** Method Version */
+            method_version: string;
+            /** Normalized Inputs */
+            normalized_inputs: {
+                [key: string]: unknown;
+            };
+            /** Presentation */
+            presentation: {
+                [key: string]: unknown;
+            };
+            /** Project Type */
+            project_type: string;
+            /** Result */
+            result: {
+                [key: string]: unknown;
+            };
+            /** Template Id */
+            template_id: string;
+            /**
+             * Unit System
+             * @enum {string}
+             */
+            unit_system: "metric" | "imperial";
+        };
+        /**
+         * WorkflowExportRequest
+         * @description Export request carrying an already-calculated result identity.
+         */
+        WorkflowExportRequest: {
+            /** Calculation Fingerprint */
+            calculation_fingerprint: string;
+            /** Displayed Inputs */
+            displayed_inputs: {
+                [key: string]: unknown;
+            };
+            /**
+             * Export Format
+             * @enum {string}
+             */
+            export_format: "csv" | "xlsx" | "markdown" | "json";
+            /** Input Snapshot Fingerprint */
+            input_snapshot_fingerprint: string;
+            /** Result */
+            result: {
+                [key: string]: unknown;
+            };
+            /** Template Id */
+            template_id: string;
+            /**
+             * Unit System
+             * @enum {string}
+             */
+            unit_system: "metric" | "imperial";
+        };
+        /**
+         * WorkflowExportResponse
+         * @description A rendered export; ``content_base64`` is used for XLSX.
+         */
+        WorkflowExportResponse: {
+            /** Calculation Fingerprint */
+            calculation_fingerprint: string;
+            /** Content */
+            content?: string | null;
+            /** Content Base64 */
+            content_base64?: string | null;
+            /**
+             * Export Format
+             * @enum {string}
+             */
+            export_format: "csv" | "xlsx" | "markdown" | "json";
+            /** Filename */
+            filename: string;
+            /** Media Type */
+            media_type: string;
+            /**
+             * Recalculated
+             * @default false
+             * @constant
+             */
+            recalculated: false;
+        };
+        /**
+         * WorkflowRequest
+         * @description Displayed worksheet values submitted for validation/calculation.
+         */
+        WorkflowRequest: {
+            /** Displayed Inputs */
+            displayed_inputs: {
+                [key: string]: unknown;
+            };
+            /** Template Id */
+            template_id: string;
+            /**
+             * Unit System
+             * @enum {string}
+             */
+            unit_system: "metric" | "imperial";
+        };
+        /**
+         * WorkflowStartingValuesResponse
+         * @description Validated starting values for a selected template.
+         */
+        WorkflowStartingValuesResponse: {
+            /** Fields */
+            fields: {
+                [key: string]: unknown;
+            }[];
+            /** Method Id */
+            method_id: string;
+            /** Template Id */
+            template_id: string;
+            /** Template Label */
+            template_label: string;
+            /**
+             * Unit System
+             * @enum {string}
+             */
+            unit_system: "metric" | "imperial";
+        } & {
+            [key: string]: unknown;
+        };
+        /**
+         * WorkflowTemplatesResponse
+         * @description Template, branch, and field metadata for one delivered workflow.
+         */
+        WorkflowTemplatesResponse: {
+            /** Branches */
+            branches?: {
+                [key: string]: unknown;
+            };
+            /** Fields */
+            fields: {
+                [key: string]: unknown;
+            }[];
+            /** Method Id */
+            method_id: string;
+            /** Scope Notes */
+            scope_notes?: string[];
+            /** Templates */
+            templates: {
+                [key: string]: unknown;
+            }[];
+            /** Unit Systems */
+            unit_systems: ("metric" | "imperial")[];
+        };
+        /**
+         * WorkflowValidationResponse
+         * @description Readiness response; validation never executes an HCM calculation.
+         */
+        WorkflowValidationResponse: {
+            /** Calculation Fingerprint */
+            calculation_fingerprint?: string | null;
+            /** Calculation State */
+            calculation_state: {
+                [key: string]: unknown;
+            };
+            /** Displayed Inputs */
+            displayed_inputs: {
+                [key: string]: unknown;
+            };
+            /** Engine Method Identifier */
+            engine_method_identifier?: string | null;
+            /** Errors */
+            errors: components["schemas"]["ValidationIssue"][];
+            /** Input Contract */
+            input_contract?: string | null;
+            /** Input Snapshot Fingerprint */
+            input_snapshot_fingerprint?: string | null;
+            /** Method Id */
+            method_id: string;
+            /** Method Identifier */
+            method_identifier?: string | null;
+            /** Method Version */
+            method_version?: string | null;
+            /** Normalized Inputs */
+            normalized_inputs?: {
+                [key: string]: unknown;
+            } | null;
+            /** Project Type */
+            project_type?: string | null;
+            /** Ready */
+            ready: boolean;
+            /** Template Id */
+            template_id: string;
+            /**
+             * Unit System
+             * @enum {string}
+             */
+            unit_system: "metric" | "imperial";
+            /** Valid */
+            valid: boolean;
+            /** Validation Status */
+            validation_status: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -202,6 +766,221 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    calculate_workflow_api_v1_analyses__method_id__calculate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                method_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkflowRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowCalculationResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_workflow_api_v1_analyses__method_id__export_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                method_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkflowExportRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowExportResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_workflow_starting_values_api_v1_analyses__method_id__starting_values_get: {
+        parameters: {
+            query: {
+                template_id: string;
+                unit_system?: string;
+            };
+            header?: never;
+            path: {
+                method_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowStartingValuesResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_workflow_templates_api_v1_analyses__method_id__templates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                method_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowTemplatesResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    validate_workflow_api_v1_analyses__method_id__validate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                method_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkflowRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowValidationResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     health_api_v1_health_get: {
         parameters: {
             query?: never;
@@ -278,6 +1057,237 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    project_compare_api_v1_projects_compare_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectCompareRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectCompareResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    project_duplicate_scenario_api_v1_projects_duplicate_scenario_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectDuplicateScenarioRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    project_from_analysis_api_v1_projects_from_analysis_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectFromAnalysisRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    project_record_result_api_v1_projects_record_result_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectRecordResultRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    project_rename_scenario_api_v1_projects_rename_scenario_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectRenameScenarioRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    project_update_scenario_api_v1_projects_update_scenario_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectUpdateScenarioRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
+                };
+            };
+        };
+    };
+    validate_project_api_v1_projects_validate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectDocumentRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponse"];
                 };
             };
         };

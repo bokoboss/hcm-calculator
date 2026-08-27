@@ -37,6 +37,15 @@ class ResultPresentationState(StrEnum):
     INTERNAL_ERROR = "internal_error"
 
 
+class MetricAvailability(StrEnum):
+    """Explicit states for a presented metric value."""
+
+    CALCULATED = "calculated"
+    NOT_CALCULATED = "not_calculated"
+    NOT_PREDICTED = "not_predicted"
+    NOT_APPLICABLE = "not_applicable"
+
+
 def resolve_result_presentation_state(
     *,
     freshness: str,
@@ -93,6 +102,42 @@ def calculation_input_fingerprint(
             "inputs": inputs,
         }
     )
+
+
+def snapshot_input_fingerprint(
+    method_identifier: str,
+    input_contract: str,
+    displayed_inputs: Mapping[str, Any],
+    normalized_inputs: Mapping[str, Any],
+) -> str:
+    """Fingerprint a displayed/normalized snapshot across Python and JSON clients.
+
+    JSON clients do not preserve Python's distinction between integral ``int``
+    and ``float`` values.  Canonicalizing integral floats for this additional
+    freshness fingerprint keeps browser round trips stable without changing
+    the established calculation fingerprint contract.
+    """
+
+    return calculation_input_fingerprint(
+        method_identifier,
+        input_contract,
+        {
+            "displayed_inputs": _normalize_snapshot(displayed_inputs),
+            "normalized_inputs": _normalize_snapshot(normalized_inputs),
+        },
+    )
+
+
+def _normalize_snapshot(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return {str(key): _normalize_snapshot(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_normalize_snapshot(item) for item in value]
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    return value
 
 
 def workflow_status(

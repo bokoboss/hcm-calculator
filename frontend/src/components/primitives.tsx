@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { useI18n } from '../i18n';
 
-export type PageId = 'home' | 'new-analysis' | 'reference';
+export type PageId = 'home' | 'new-analysis' | 'project' | 'reference';
 
 export function AppHeader({
   onNavigate,
@@ -30,7 +30,7 @@ export function AppHeader({
         <button className="button button-quiet" type="button" onClick={() => onNavigate('new-analysis')}>
           {t('action.new_analysis')}
         </button>
-        <button className="button button-quiet" type="button" disabled aria-disabled="true">
+        <button className="button button-quiet" type="button" onClick={() => onNavigate('project')}>
           {t('action.open_project')}
         </button>
         <button className="button button-quiet" type="button" onClick={() => onNavigate('reference')}>
@@ -71,6 +71,14 @@ export function SidebarNavigation({
           onClick={() => onNavigate('home')}
         >
           <span className="nav-dot" aria-hidden="true" /> {t('nav.home')}
+        </button>
+        <button
+          className={`nav-item ${activePage === 'project' ? 'nav-item-active' : ''}`}
+          type="button"
+          aria-current={activePage === 'project' ? 'page' : undefined}
+          onClick={() => onNavigate('project')}
+        >
+          <span className="nav-dot" aria-hidden="true" /> {t('nav.project_workspace')}
         </button>
         <p className="sidebar-group-label">{t('nav.analysis')}</p>
         {navItems.slice(1, 2).map((item) => (
@@ -364,11 +372,15 @@ export function ScopeNotice({
 export function ErrorSummary({
   errors,
 }: {
-  errors: string[];
+  errors: Array<string | { message: string; targetId?: string }>;
 }): ReactElement | null {
   const { t } = useI18n();
   if (!errors.length) return null;
-  return <div className="error-summary" data-slot="error-summary" role="alert"><strong>{t('form.errors_count', { count: errors.length })}</strong><ul>{errors.map((error) => <li key={error}>{error}</li>)}</ul></div>;
+  return <div className="error-summary" data-slot="error-summary" role="alert"><strong>{t('form.errors_count', { count: errors.length })}</strong><ul>{errors.map((error, index) => {
+    const message = typeof error === 'string' ? error : error.message;
+    const targetId = typeof error === 'string' ? undefined : error.targetId;
+    return <li key={`${message}-${index}`}>{targetId ? <a href={`#${targetId}`}>{message}</a> : message}</li>;
+  })}</ul></div>;
 }
 
 export function ReadinessBar({
@@ -449,9 +461,9 @@ export function StaleResultBanner({ onRecalculate }: { onRecalculate?: () => voi
   return <div className="stale-banner" data-slot="stale-result-banner" role="status"><div><strong>{t('state.stale_title')}</strong><span>{t('state.stale_supporting')}</span></div><button className="button button-primary" type="button" onClick={onRecalculate}>{t('action.recalculate')}</button></div>;
 }
 
-export function CapacityFailurePanel(): ReactElement {
+export function CapacityFailurePanel({ metricsUnavailable = true }: { metricsUnavailable?: boolean } = {}): ReactElement {
   const { t } = useI18n();
-  return <section className="state-panel state-panel-capacity" data-slot="capacity-failure-panel"><strong>{t('state.capacity_title')}</strong><span>{t('state.capacity_supporting')}</span></section>;
+  return <section className="state-panel state-panel-capacity" data-slot="capacity-failure-panel"><strong>{t('state.capacity_title')}</strong><span>{metricsUnavailable ? t('state.capacity_supporting') : t('state.capacity_calculated_supporting')}</span></section>;
 }
 
 export function HandoffPanel(): ReactElement {

@@ -1,9 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 
 const releasePort = 8765;
-const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
 const repositoryRoot = path.resolve('..');
+const localPython = path.join(repositoryRoot, '.agent-work', 'ci-venv', 'Scripts', 'python.exe');
+const pythonCommand = process.platform === 'win32' && existsSync(localPython) ? localPython : 'python';
 
 export default defineConfig({
   testDir: './playwright',
