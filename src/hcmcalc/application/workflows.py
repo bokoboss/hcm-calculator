@@ -615,6 +615,7 @@ class MultilaneWorkflow:
             },
             "metrics": metric_values,
             "capacity": capacity,
+            "warning": warnings[0] if warnings else None,
             "interpretations": _interpretation_mappings(state, warning_codes=interpretation_codes),
             "evidence": {
                 "intermediate_values": result.get("intermediate_values", []),
@@ -921,6 +922,7 @@ class FacilityWorkflow:
                 "critical_segment_id": outputs.get("critical_segment_id"),
                 "source": "HCM Chapter 15 capacity checks",
             },
+            "warning": warnings[0] if warnings else None,
             "segments": segment_rows,
             "interpretations": _interpretation_mappings(
                 state,

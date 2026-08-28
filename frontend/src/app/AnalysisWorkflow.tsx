@@ -38,6 +38,7 @@ import {
   ScopeNotice,
   StatusBadge,
   StaleResultBanner,
+  WarningPanel,
 } from '../components/primitives';
 
 interface AnalysisWorkflowProps {
@@ -145,6 +146,8 @@ export function ResultPanel({
   const capacityFailure = Boolean(result.presentation.capacity.failure);
   const handoff = result.calculation_state.presentation_state === 'hcm_stopping_or_handoff'
     || Boolean(result.presentation.handoff);
+  const resultWarning = result.calculation_state.presentation_state === 'valid_current_result_with_warning';
+  const showWarning = resultWarning && !stale;
   const metricsUnavailable = result.presentation.metrics.some((metric) => metric.availability === 'not_predicted');
   const answer = result.presentation.answer;
   return (
@@ -153,10 +156,10 @@ export function ResultPanel({
         <ResultHero
           label={t('result.level_of_service')}
           value={answer.available && answer.value ? answer.value : handoff ? t('state.handoff_title') : t('result.not_calculated')}
-          state={stale ? 'stale' : handoff ? 'handoff' : capacityFailure ? 'capacity' : 'current'}
+          state={stale ? 'stale' : handoff ? 'handoff' : capacityFailure ? 'capacity' : showWarning ? 'warning' : 'current'}
           supporting={answer.source}
         />
-        {handoff ? <HandoffPanel /> : capacityFailure ? <CapacityFailurePanel metricsUnavailable={metricsUnavailable} /> : null}
+        {handoff ? <HandoffPanel /> : capacityFailure ? <CapacityFailurePanel metricsUnavailable={metricsUnavailable} /> : showWarning ? <WarningPanel message={result.presentation.warning} /> : null}
         {handoff && result.presentation.handoff?.reason ? <p className="handoff-reason">{String(result.presentation.handoff.reason)}</p> : null}
         <GeometryEvidenceDiagram methodId={result.method_id} result={result} assetMetadata={assetMetadata} />
         <div className="metric-grid">
@@ -747,14 +750,16 @@ export function FacilityResultPanel({
 }): ReactElement {
   const { t } = useI18n();
   const capacityFailure = Boolean(result.presentation.capacity.failure);
+  const resultWarning = result.calculation_state.presentation_state === 'valid_current_result_with_warning';
+  const showWarning = resultWarning && !stale;
   const metricsUnavailable = result.presentation.metrics.some((metric) => metric.availability === 'not_predicted');
   const answer = result.presentation.answer;
   const segments = Array.isArray(result.presentation.segments) ? result.presentation.segments as Array<Record<string, unknown>> : [];
   return (
     <div className="workflow-results" data-testid="workflow-results">
       <EngineeringSection title={t('result.facility_section_title')} description={t('result.facility_section_description')}>
-        <ResultHero label={t('result.facility_level_of_service')} value={answer.available && answer.value ? answer.value : t('result.not_calculated')} state={stale ? 'stale' : capacityFailure ? 'capacity' : 'current'} supporting={answer.source} />
-        {capacityFailure ? <CapacityFailurePanel metricsUnavailable={metricsUnavailable} /> : null}
+        <ResultHero label={t('result.facility_level_of_service')} value={answer.available && answer.value ? answer.value : t('result.not_calculated')} state={stale ? 'stale' : capacityFailure ? 'capacity' : showWarning ? 'warning' : 'current'} supporting={answer.source} />
+        {capacityFailure ? <CapacityFailurePanel metricsUnavailable={metricsUnavailable} /> : showWarning ? <WarningPanel message={result.presentation.warning} /> : null}
         <div className="metric-grid">
           {result.presentation.metrics.map((metric) => <MetricCard key={metric.key} label={t(`result.metric.${metric.key}`)} value={metricDisplayValue(metric, t)} unit={metric.unit ?? undefined} />)}
         </div>
@@ -996,7 +1001,9 @@ export function AnalysisWorkflow({ method, onBack, onDirtyChange, onProjectSaved
   };
 
   const isStale = dirty && Boolean(result);
-  const status = isStale ? t('state.stale_title') : result ? t('status.current') : validation?.valid ? t('status.ready_to_calculate') : t('status.items_required');
+  const resultWarning = result?.calculation_state.presentation_state === 'valid_current_result_with_warning';
+  const status = isStale ? t('state.stale_title') : resultWarning ? t('state.warning_title') : result ? t('status.current') : validation?.valid ? t('status.ready_to_calculate') : t('status.items_required');
+  const statusTone = isStale ? 'stale' : resultWarning ? 'warning' : result ? 'current' : 'neutral';
   const targetIdForIssue = (field: string | null): string | undefined => {
     if (!field) return undefined;
     const rowMatch = field.match(/^rows\[(\d+)\]\.(.+)$/);
@@ -1016,8 +1023,8 @@ export function AnalysisWorkflow({ method, onBack, onDirtyChange, onProjectSaved
   const assetMetadata = engineeringAssetsFrom(templates);
   return (
     <div className="page-stack workflow-page" data-testid={`workflow-${method.method_id}`}>
-      <div className="workflow-toolbar"><button className="button button-quiet" type="button" onClick={onBack}>← {t('action.back_to_methods')}</button><StatusBadge tone={isStale ? 'stale' : result ? 'current' : 'neutral'}>{status}</StatusBadge></div>
-      <AnalysisHeader title={t(method.name_key)} method={`${method.chapter_reference} · ${method.input_contract}`} status={status} tone={isStale ? 'stale' : result ? 'current' : 'neutral'} context={initialScenario ? t('workflow.project_context_value', { scenario: initialScenario.scenarioId }) : undefined} />
+      <div className="workflow-toolbar"><button className="button button-quiet" type="button" onClick={onBack}>← {t('action.back_to_methods')}</button><StatusBadge tone={statusTone}>{status}</StatusBadge></div>
+      <AnalysisHeader title={t(method.name_key)} method={`${method.chapter_reference} · ${method.input_contract}`} status={status} tone={statusTone} context={initialScenario ? t('workflow.project_context_value', { scenario: initialScenario.scenarioId }) : undefined} />
       {loading ? <ScopeNotice title={t('status.loading')}>{t('workflow.loading')}</ScopeNotice> : null}
       {error ? <ScopeNotice title={t('workflow.error_title')} tone="warning">{error}</ScopeNotice> : null}
       {notice ? <ScopeNotice title={t('workflow.notice_title')}>{notice}</ScopeNotice> : null}

@@ -489,7 +489,7 @@ export function ResultHero({
   label: string;
   value: string;
   supporting?: string;
-  state?: 'current' | 'stale' | 'capacity' | 'handoff';
+  state?: 'current' | 'warning' | 'stale' | 'capacity' | 'handoff';
 }): ReactElement {
   return <section className={`result-hero result-hero-${state}`} data-slot="result-hero"><p className="result-label">{label}</p><p className="result-value">{value}</p>{supporting ? <p className="result-supporting">{supporting}</p> : null}</section>;
 }
@@ -552,4 +552,9 @@ export function CapacityFailurePanel({ metricsUnavailable = true }: { metricsUna
 export function HandoffPanel(): ReactElement {
   const { t } = useI18n();
   return <section className="state-panel state-panel-handoff" data-slot="handoff-panel"><strong>{t('state.handoff_title')}</strong><span>{t('state.handoff_supporting')}</span></section>;
+}
+
+export function WarningPanel({ message }: { message?: string | null } = {}): ReactElement {
+  const { t } = useI18n();
+  return <section className="state-panel state-panel-warning" data-slot="warning-panel" role="status"><strong>{t('state.warning_title')}</strong><span>{message || t('state.warning_supporting')}</span></section>;
 }

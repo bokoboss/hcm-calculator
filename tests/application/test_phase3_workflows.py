@@ -162,6 +162,80 @@ def test_weaving_handoff_and_capacity_failure_remain_distinct() -> None:
     assert capacity["presentation"]["metrics"][0]["availability"] == "not_predicted"
 
 
+@pytest.mark.parametrize(
+    "method_id, updates, expected_state, max_exceeded, capacity_failure",
+    (
+        ("merge_segment", {}, "valid_current_result", False, False),
+        (
+            "merge_segment",
+            {
+                "freeway_lanes": 2,
+                "freeway_demand_veh_h": 3600.0,
+                "ramp_demand_veh_h": 600.0,
+                "freeway_peak_hour_factor": 0.95,
+                "ramp_peak_hour_factor": 0.95,
+                "free_flow_speed": 65.0,
+                "ramp_ffs": 40.0,
+                "auxiliary_lane_length": 600.0,
+            },
+            "valid_current_result_with_warning",
+            True,
+            False,
+        ),
+        ("merge_segment", {"freeway_demand_veh_h": 8000.0}, "capacity_failure", True, True),
+        ("diverge_segment", {}, "valid_current_result", False, False),
+        (
+            "diverge_segment",
+            {
+                "freeway_lanes": 2,
+                "freeway_demand_veh_h": 4000.0,
+                "ramp_demand_veh_h": 200.0,
+                "freeway_peak_hour_factor": 0.95,
+                "ramp_peak_hour_factor": 0.95,
+                "free_flow_speed": 65.0,
+                "ramp_ffs": 40.0,
+                "auxiliary_lane_length": 600.0,
+            },
+            "valid_current_result_with_warning",
+            True,
+            False,
+        ),
+        ("diverge_segment", {"ramp_demand_veh_h": 2300.0}, "capacity_failure", True, True),
+    ),
+)
+def test_ramp_presentation_state_preserves_qualified_warning_taxonomy(
+    method_id: str,
+    updates: dict[str, object],
+    expected_state: str,
+    max_exceeded: bool,
+    capacity_failure: bool,
+) -> None:
+    workflow = workflow_for_method(method_id)
+    template_id = workflow.templates()["default_template_id"]
+    displayed = workflow.starting_values(template_id, "imperial")["displayed_inputs"]
+    displayed.update(updates)
+
+    calculated = workflow.calculate(
+        template_id=template_id,
+        unit_system="imperial",
+        displayed_inputs=displayed,
+    )
+    outputs = calculated["result"]["outputs"]
+
+    assert calculated["calculation_state"]["presentation_state"] == expected_state
+    assert outputs["maximum_desirable_influence_flow_exceeded"] is max_exceeded
+    assert calculated["presentation"]["capacity"]["failure"] is capacity_failure
+    assert calculated["result"]["warnings"]
+    assert calculated["calculation_state"]["warnings"] == calculated["result"]["warnings"]
+    assert calculated["presentation"]["evidence"]["warnings"] == calculated["result"]["warnings"]
+    if expected_state == "valid_current_result_with_warning":
+        assert "Maximum desirable" in calculated["presentation"]["warning"]
+        assert calculated["presentation"]["answer"]["value"] != "F"
+        assert all(metric["availability"] == "calculated" for metric in calculated["presentation"]["metrics"])
+    else:
+        assert calculated["presentation"]["warning"] is None or expected_state == "capacity_failure"
+
+
 @pytest.mark.parametrize("method_id, template_id", [(case[0], case[1]) for case in PHASE3_CASES])
 def test_phase3_exports_use_supplied_result_without_rerunning(
     monkeypatch: pytest.MonkeyPatch,

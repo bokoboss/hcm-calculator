@@ -156,6 +156,7 @@ export interface WorkflowCalculationResponse {
     answer: { key: string; value: string | null; available: boolean; source?: string };
     metrics: ResultMetric[];
     capacity: Record<string, unknown>;
+    warning?: string | null;
     handoff?: { reason?: string | null; scope_status?: string | null };
     interpretations: Array<Record<string, unknown>>;
     evidence: Record<string, unknown>;

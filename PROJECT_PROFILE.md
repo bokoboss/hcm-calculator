@@ -70,8 +70,11 @@ evidence for PR #141.
 - Existing method identifiers, input contracts, Project v2 schema/fingerprints,
   current/stale result semantics, export no-rerun behavior, and Streamlit
   compatibility remain protected.
-- Handoff, unavailable, and capacity-failure states remain distinct; the UI
-  does not invent LOS, speed, density, or other numerical outputs.
+- Handoff, unavailable, warning-only, and capacity-failure states remain
+  distinct; the UI does not invent LOS, speed, density, or other numerical
+  outputs. Ramp limitation warnings remain auditable without being promoted
+  to an operational result warning unless the qualified maximum-desirable
+  condition is present.
 - No qualified engine methodology, numerical behavior, or scope was expanded
   by the Phase 3 application migration.
 - Engineering diagrams are sourced from the existing Python package asset set;
@@ -92,7 +95,7 @@ through one persistent bilingual workspace navigation model:
 Phase 3 also qualifies direct method routing, safe draft/project transitions,
 explicit validated starters and blank/custom semantics, structured horizontal
 curve editing, progressive Weaving evidence disclosure, existing schematics,
-results-first current/stale flows, Project v2/legacy closure, grouped exports,
+results-first current/stale/warning-only flows, Project v2/legacy closure, grouped exports,
 linked validation recovery, responsive EN/TH presentation, and the default
 rebuilt launcher. Detailed evidence is maintained in
 `docs/application_rebuild/phase3_release_qualification.md`.

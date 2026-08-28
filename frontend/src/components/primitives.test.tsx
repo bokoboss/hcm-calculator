@@ -14,6 +14,7 @@ import {
   ReadinessBar,
   ResultHero,
   StaleResultBanner,
+  WarningPanel,
 } from './primitives';
 import { I18nProvider } from '../i18n';
 
@@ -68,6 +69,7 @@ describe('R0 shared design-system primitives', () => {
           <StaleResultBanner />
           <CapacityFailurePanel />
           <HandoffPanel />
+          <WarningPanel message="Maximum desirable flow is exceeded." />
         </AppShell>
       </I18nProvider>,
     );
@@ -78,6 +80,8 @@ describe('R0 shared design-system primitives', () => {
     expect(screen.getByText('Input changed — recalculation required')).toBeInTheDocument();
     expect(screen.getByText('Capacity exceeded')).toBeInTheDocument();
     expect(screen.getByText('HCM method handoff')).toBeInTheDocument();
+    expect(screen.getByText('Current result with warning')).toBeInTheDocument();
+    expect(screen.getByText('Maximum desirable flow is exceeded.')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Thai' }));
 
@@ -87,6 +91,7 @@ describe('R0 shared design-system primitives', () => {
     expect(screen.getByText('ข้อมูลเปลี่ยนแปลง — ต้องคำนวณใหม่')).toBeInTheDocument();
     expect(screen.getByText('เกินความจุ')).toBeInTheDocument();
     expect(screen.getByText('การส่งต่อไปยังวิธี HCM')).toBeInTheDocument();
+    expect(screen.getByText('ผลลัพธ์ปัจจุบันพร้อมคำเตือน')).toBeInTheDocument();
   });
 
   it('keeps method navigation persistent and links validation recovery to a field', () => {

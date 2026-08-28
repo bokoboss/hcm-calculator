@@ -69,8 +69,9 @@ The two existing Phase 2 methods remain part of the same seven-method registry:
   reference through the existing Python `get_weaving_diagram_subtype()`
   semantics.
 - Results are presented first with method/chapter/scope/project/state context,
-  explicit current/stale/handoff/capacity-failure states, answer/LOS where
-  valid, metrics, warnings, schematic/evidence, assumptions, and audit data.
+  explicit current/stale/warning/handoff/capacity-failure states, answer/LOS
+  where valid, metrics, warnings, schematic/evidence, assumptions, and audit
+  data.
   There is one primary action at a time; Save is primary for a current result,
   Recalculate is secondary, and Export is grouped. Stale exports are disabled
   with a reason until recalculation. Validation summaries link to and focus the
@@ -89,8 +90,8 @@ through FastAPI; React does not maintain a second engineering asset set.
 - Weaving: `weaving/one_sided_weave.png` and `two_sided_weave.png`, shown
   before calculation with N/NWL, entry/exit, LC, FF/FR/RF/RR legend, and the
   conceptual geometry note.
-- Merge/Diverge: existing detailed `ramps/merge_right_on_ramp.svg` and
-  `ramps/diverge_right_off_ramp.svg`, shown with vF/vR/vFO, LA/LD, and the
+- Merge/Diverge: existing detailed `ramp_influence/merge_right_on_ramp.svg`
+  and `ramp_influence/diverge_right_off_ramp.svg`, shown with vF/vR/vFO, LA/LD, and the
   influence-area/conceptual meaning.
 
 No deleted `.agent/` or `mockups/` content was recovered or reconstructed.
@@ -114,13 +115,15 @@ journeys. The final run was:
 
 ```text
 pnpm --dir frontend exec playwright test --project=chromium
-18 passed
+22 passed
 ```
 
 The remediation coverage includes direct routes and chooser navigation,
 modified-draft protection, structured curves and Two-Lane schematics, both
-Weaving variants and disclosure, Merge/Diverge SVG evidence, Multilane density
-semantics, current/stale/export states, Thai, and a 390px responsive viewport.
+Weaving variants and disclosure, Merge/Diverge SVG evidence, method-specific
+Basic Freeway and Weaving capacity failures, ordinary/warning-only/capacity
+Merge and Diverge states, Multilane density semantics, current/stale/export
+states, Thai, and a 390px responsive viewport.
 
 Committed deterministic captures:
 
@@ -131,6 +134,8 @@ Committed deterministic captures:
 - [Weaving two-sided reference](visual-reference/phase3-remediation-weaving-two-sided.png)
 - [Merge detailed SVG result](visual-reference/phase3-remediation-merge_segment-detailed-svg.png)
 - [Diverge detailed SVG result](visual-reference/phase3-remediation-diverge_segment-detailed-svg.png)
+- [Merge valid result with warning](visual-reference/phase3-remediation-merge-warning-state.png)
+- [Diverge valid result with warning](visual-reference/phase3-remediation-diverge-warning-state.png)
 - [current result actions](visual-reference/phase3-remediation-current-result.png)
 - [stale result recovery](visual-reference/phase3-remediation-stale-result.png)
 - [Thai result](visual-reference/phase3-remediation-thai-result.png)
@@ -143,8 +148,8 @@ committed separately; none is replaced by deleted historical mockups.
 
 - Editable install: `python -m pip install -e ".[dev,ui]"` passed.
 - Fresh wheel: `hcm_calculator-0.9.0-py3-none-any.whl`,
-  1,972,308 bytes, SHA-256
-  `ab19a8eeac2d73b61328d4f0617a282ca919dae8069f4963af1f900de1809070`.
+  1,979,572 bytes, SHA-256
+  `5492ec1991def6144bad3df23bf0aa15e39867d88bef37a0258e4555a2dab097`.
   The archive contains `hcmcalc/ui/static/index.html` and the required
   Two-Lane, Weaving, Merge, and Diverge engineering assets.
 - Isolated Python 3.12 wheel runtime served `/` with HTTP 200, health `ok`,
@@ -162,16 +167,16 @@ committed separately; none is replaced by deleted historical mockups.
 | Gate | Command / evidence | Result |
 | --- | --- | --- |
 | Python install | `python -m pip install -e ".[dev,ui]"` | PASS |
-| Python regression | `python -m pytest` | **1,151 passed** |
+| Python regression | `python -m pytest` | **1,157 passed** |
 | Compile | `python -m compileall -q src tests` | PASS |
 | Workflow | v1.4.1 manifest and eight managed-file CRLF-normalized SHA-256 checks | PASS |
 | OpenAPI | `python scripts/check_openapi_contract.py` | PASS; snapshot matches |
 | Diff hygiene | `git diff --check` | PASS |
 | Frontend types | `pnpm --dir frontend run typecheck` | PASS |
 | Frontend units | `pnpm --dir frontend run test` | **17 passed** across 7 files |
-| Frontend build | `pnpm --dir frontend run build` | PASS; Vite emitted 334.32 kB JS / 26.19 kB CSS |
-| Browser/UAT | `pnpm --dir frontend exec playwright test --project=chromium` | **18 passed** |
-| Wheel | `python -m build --wheel --outdir .tmp\phase3-wheel` | PASS; SHA above |
+| Frontend build | `pnpm --dir frontend run build` | PASS; Vite emitted 335.44 kB JS / 26.34 kB CSS |
+| Browser/UAT | `pnpm --dir frontend exec playwright test --project=chromium` | **22 passed** |
+| Wheel | `python -m build --wheel --outdir .tmp\phase3-wheel-remediation` | PASS; SHA above |
 | Installed runtime | isolated wheel HTTP smoke | PASS; root/health/methods/assets |
 | Windows rebuilt launcher | `run_app.ps1` live smoke | PASS |
 | Streamlit compatibility | `run_streamlit.ps1` live health smoke | PASS |

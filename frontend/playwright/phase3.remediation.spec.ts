@@ -19,6 +19,16 @@ async function capture(page: Page, name: string): Promise<void> {
   await page.screenshot({ path: path.join(referenceDirectory, name), fullPage: true });
 }
 
+async function calculateWithFields(page: Page, methodId: string, values: Record<string, number>): Promise<void> {
+  await page.goto(`/analysis/${methodId}`);
+  for (const [field, value] of Object.entries(values)) {
+    await page.locator(`#${methodId}-${field}`).fill(String(value));
+  }
+  await expect(page.getByRole('button', { name: 'Calculate', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'Calculate', exact: true }).click();
+  await expect(page.getByTestId('workflow-results')).toBeVisible();
+}
+
 test.describe('Phase 3 remediation journeys', () => {
   test('direct routes load every delivered method and New Analysis returns to the chooser', async ({ page }) => {
     for (const methodId of deliveredMethods) {
@@ -97,6 +107,87 @@ test.describe('Phase 3 remediation journeys', () => {
       await expect(page.getByTestId('geometry-diagram').locator('img')).toHaveAttribute('data-asset-path', assetPath);
       await capture(page, `phase3-remediation-${methodId}-detailed-svg.png`);
     }
+  });
+
+  test('Basic Freeway capacity failure keeps unavailable predictions explicit', async ({ page }) => {
+    await calculateWithFields(page, 'basic_freeway_segment', { demand_volume_veh_h: 10000 });
+
+    await expect(page.locator('[data-slot="capacity-failure-panel"]')).toBeVisible();
+    await expect(page.locator('[data-slot="handoff-panel"]')).toHaveCount(0);
+    await expect(page.locator('[data-slot="result-hero"] .result-value')).toHaveText('F');
+    await expect(page.getByTestId('workflow-results')).toContainText('Not predicted in this state');
+  });
+
+  test('Weaving capacity failure stays distinct from the existing handoff state', async ({ page }) => {
+    await calculateWithFields(page, 'weaving_segment', {
+      volume_ff_veh_h: 10000,
+      volume_fr_veh_h: 10000,
+      volume_rf_veh_h: 10000,
+      volume_rr_veh_h: 10000,
+    });
+
+    await expect(page.locator('[data-slot="capacity-failure-panel"]')).toBeVisible();
+    await expect(page.locator('[data-slot="handoff-panel"]')).toHaveCount(0);
+    await expect(page.locator('[data-slot="result-hero"] .result-value')).toHaveText('F');
+    await expect(page.getByTestId('workflow-results')).toContainText('Not predicted in this state');
+  });
+
+  test('Merge preserves ordinary, warning-only, and capacity-failure presentation states', async ({ page }) => {
+    await calculateWithFields(page, 'merge_segment', {});
+    await expect(page.locator('[data-slot="warning-panel"]')).toHaveCount(0);
+    await expect(page.locator('[data-slot="capacity-failure-panel"]')).toHaveCount(0);
+
+    await calculateWithFields(page, 'merge_segment', {
+      freeway_lanes: 2,
+      freeway_demand_veh_h: 3600,
+      ramp_demand_veh_h: 600,
+      freeway_peak_hour_factor: 0.95,
+      ramp_peak_hour_factor: 0.95,
+      free_flow_speed: 104.60736,
+      ramp_ffs: 64.37376,
+      auxiliary_lane_length: 182.88,
+    });
+    await expect(page.locator('[data-slot="warning-panel"]')).toBeVisible();
+    await expect(page.locator('[data-slot="capacity-failure-panel"]')).toHaveCount(0);
+    await expect(page.locator('[data-slot="result-hero"] .result-value')).toHaveText('E');
+    await expect(page.getByTestId('workflow-results')).toContainText('Maximum desirable merge influence-area flow is exceeded');
+    await expect(page.getByTestId('workflow-results')).not.toContainText('Not predicted in this state');
+    await capture(page, 'phase3-remediation-merge-warning-state.png');
+
+    await calculateWithFields(page, 'merge_segment', { freeway_demand_veh_h: 8000 });
+    await expect(page.locator('[data-slot="capacity-failure-panel"]')).toBeVisible();
+    await expect(page.locator('[data-slot="warning-panel"]')).toHaveCount(0);
+    await expect(page.locator('[data-slot="result-hero"] .result-value')).toHaveText('F');
+    await expect(page.getByTestId('workflow-results')).toContainText('Not predicted in this state');
+  });
+
+  test('Diverge preserves ordinary, warning-only, and capacity-failure presentation states', async ({ page }) => {
+    await calculateWithFields(page, 'diverge_segment', {});
+    await expect(page.locator('[data-slot="warning-panel"]')).toHaveCount(0);
+    await expect(page.locator('[data-slot="capacity-failure-panel"]')).toHaveCount(0);
+
+    await calculateWithFields(page, 'diverge_segment', {
+      freeway_lanes: 2,
+      freeway_demand_veh_h: 4000,
+      ramp_demand_veh_h: 200,
+      freeway_peak_hour_factor: 0.95,
+      ramp_peak_hour_factor: 0.95,
+      free_flow_speed: 104.60736,
+      ramp_ffs: 64.37376,
+      auxiliary_lane_length: 182.88,
+    });
+    await expect(page.locator('[data-slot="warning-panel"]')).toBeVisible();
+    await expect(page.locator('[data-slot="capacity-failure-panel"]')).toHaveCount(0);
+    await expect(page.locator('[data-slot="result-hero"] .result-value')).toHaveText('E');
+    await expect(page.getByTestId('workflow-results')).toContainText('Maximum desirable diverge influence-area flow is exceeded');
+    await expect(page.getByTestId('workflow-results')).not.toContainText('Not predicted in this state');
+    await capture(page, 'phase3-remediation-diverge-warning-state.png');
+
+    await calculateWithFields(page, 'diverge_segment', { ramp_demand_veh_h: 2300 });
+    await expect(page.locator('[data-slot="capacity-failure-panel"]')).toBeVisible();
+    await expect(page.locator('[data-slot="warning-panel"]')).toHaveCount(0);
+    await expect(page.locator('[data-slot="result-hero"] .result-value')).toHaveText('F');
+    await expect(page.getByTestId('workflow-results')).toContainText('Not predicted in this state');
   });
 
   test('Multilane blank and estimated-FFS density semantics stay explicit', async ({ page }) => {

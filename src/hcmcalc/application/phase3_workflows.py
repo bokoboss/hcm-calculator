@@ -1248,6 +1248,31 @@ def _bool(value: Any) -> bool:
     raise HCMCalcError("Boolean worksheet values must be true or false.")
 
 
+def _phase3_presentation_warnings(
+    method_id: str,
+    outputs: Mapping[str, Any],
+    warnings: tuple[str, ...],
+) -> tuple[str, ...]:
+    """Return only warnings qualified for the visible result state.
+
+    The ramp engines retain their adjacent-ramp limitation warning in the
+    result and audit record for traceability. The qualified Streamlit path
+    presents an operational warning only when the maximum desirable influence
+    flow is exceeded, so the rebuilt application must keep that distinction at
+    its application boundary too.
+    """
+
+    if method_id not in {"merge_segment", "diverge_segment"}:
+        return warnings
+    if not outputs.get("maximum_desirable_influence_flow_exceeded"):
+        return ()
+    return tuple(
+        warning
+        for warning in warnings
+        if "maximum desirable" in warning.casefold()
+    )
+
+
 class Phase3Workflow:
     """One generic application boundary for a Phase 3 delivered method."""
 
@@ -1532,10 +1557,15 @@ class Phase3Workflow:
             or outputs.get("capacity_status") == "not_evaluated_after_handoff"
         )
         warnings = tuple(result.get("warnings", []))
+        presentation_warnings = _phase3_presentation_warnings(
+            self.method_id,
+            outputs,
+            warnings,
+        )
         state = resolve_result_presentation_state(
             freshness=READY,
             has_result=True,
-            warnings=warnings,
+            warnings=presentation_warnings,
             capacity_failure=capacity_failure,
             stopping_or_handoff=handoff,
         )
@@ -1563,6 +1593,7 @@ class Phase3Workflow:
             "answer": answer,
             "metrics": metrics,
             "capacity": capacity,
+            "warning": presentation_warnings[0] if presentation_warnings else None,
             "interpretations": _interpretation_mappings(state, warning_codes=interpretation_codes),
             "evidence": {
                 "intermediate_values": result.get("intermediate_values", []),
