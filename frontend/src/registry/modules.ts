@@ -17,18 +17,17 @@ export type MethodActionabilityStatus =
   | 'contract_mismatch';
 
 /**
- * R1 deliberately registers migration status for every current method while
- * delivering no calculation workflow.  R2 modules become actionable only
- * after their own contract/browser gate is accepted.
+ * Phase 3 registers one qualified rebuilt workflow for every delivered
+ * method.  Actionability still requires the backend identity handshake.
  */
 export const frontendModuleRegistry: FrontendModuleRegistry = {
-  two_lane_segment: { methodId: 'two_lane_segment', status: 'not_delivered', moduleContract: null, route: null },
+  two_lane_segment: { methodId: 'two_lane_segment', status: 'delivered', moduleContract: 'phase_5_product_integration', route: '/analysis/two_lane_segment' },
   two_lane_facility: { methodId: 'two_lane_facility', status: 'delivered', moduleContract: 'phase_5_product_integration', route: '/analysis/two_lane_facility' },
   multilane_segment: { methodId: 'multilane_segment', status: 'delivered', moduleContract: 'phase_8', route: '/analysis/multilane_segment' },
-  basic_freeway_segment: { methodId: 'basic_freeway_segment', status: 'not_delivered', moduleContract: null, route: null },
-  weaving_segment: { methodId: 'weaving_segment', status: 'not_delivered', moduleContract: null, route: null },
-  merge_segment: { methodId: 'merge_segment', status: 'not_delivered', moduleContract: null, route: null },
-  diverge_segment: { methodId: 'diverge_segment', status: 'not_delivered', moduleContract: null, route: null },
+  basic_freeway_segment: { methodId: 'basic_freeway_segment', status: 'delivered', moduleContract: 'phase_10_product_integration', route: '/analysis/basic_freeway_segment' },
+  weaving_segment: { methodId: 'weaving_segment', status: 'delivered', moduleContract: 'hcm_7_0_weaving_segment_operational_v1', route: '/analysis/weaving_segment' },
+  merge_segment: { methodId: 'merge_segment', status: 'delivered', moduleContract: 'hcm7_v70_chapter_14_isolated_right_side_one_lane_merge_operational', route: '/analysis/merge_segment' },
+  diverge_segment: { methodId: 'diverge_segment', status: 'delivered', moduleContract: 'hcm7_v70_chapter_14_isolated_right_side_one_lane_diverge_operational', route: '/analysis/diverge_segment' },
 };
 
 export function getFrontendModule(

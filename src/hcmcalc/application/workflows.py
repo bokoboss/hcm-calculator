@@ -1,4 +1,4 @@
-"""Framework-independent services for the representative Phase 2 workflows.
+"""Framework-independent services for the rebuilt HCM workflows.
 
 The services in this module are the application boundary between the existing
 qualified Python methods and any presentation layer.  They deliberately do
@@ -64,6 +64,13 @@ from hcmcalc.ui.units import FEET_TO_METERS, MILES_TO_KILOMETERS
 
 
 REPRESENTATIVE_METHOD_IDS = frozenset({"multilane_segment", "two_lane_facility"})
+PHASE3_METHOD_IDS = frozenset({
+    "two_lane_segment",
+    "basic_freeway_segment",
+    "weaving_segment",
+    "merge_segment",
+    "diverge_segment",
+})
 SUPPORTED_WORKFLOW_EXPORTS = frozenset({"csv", "xlsx", "markdown", "json"})
 
 
@@ -125,6 +132,10 @@ def _error_issue(exc: Exception, *, field: str | None = None) -> dict[str, Any]:
             "access_point_density", "heavy_vehicle_adjustment_method",
             "terrain_type", "grade_percent", "truck_mix",
             "passenger_car_equivalent",
+            "segment_type", "horizontal_alignment", "configuration",
+            "entry_side", "exit_side", "number_of_weaving_lanes",
+            "freeway_lanes", "ramp_demand_veh_h", "freeway_demand_veh_h",
+            "geometry_notes", "geometry_source", "pce_mode",
         ):
             if candidate in str(exc):
                 issue_field = candidate
@@ -156,13 +167,6 @@ def _definition(method_id: str) -> AnalysisDefinition:
             f"Unknown method_id: {method_id}.",
             code="method_not_found",
             message_key="api.method_not_found",
-            details={"method_id": method_id},
-        )
-    if method_id not in REPRESENTATIVE_METHOD_IDS:
-        raise ApplicationWorkflowError(
-            f"The rebuilt Phase 2 workflow is not delivered for {method_id}.",
-            code="workflow_not_delivered",
-            message_key="api.workflow_not_delivered",
             details={"method_id": method_id},
         )
     return definition
@@ -284,6 +288,7 @@ def _capacity_failure(result: Mapping[str, Any]) -> bool:
     return bool(
         outputs.get("demand_exceeds_capacity")
         or outputs.get("facility_has_capacity_failure")
+        or outputs.get("capacity_exceeded")
         or outputs.get("capacity_status") in {"demand_exceeds_capacity", "capacity_exceeded"}
         or outputs.get("capacity_check") in {"demand_exceeds_capacity", "capacity_exceeded"}
     )
@@ -954,11 +959,15 @@ def _facility_validation_issues(messages: list[str], rows: list[dict[str, Any]])
     return issues
 
 
-def workflow_for_method(method_id: str) -> MultilaneWorkflow | FacilityWorkflow:
+def workflow_for_method(method_id: str) -> Any:
     if method_id == "multilane_segment":
         return MultilaneWorkflow()
     if method_id == "two_lane_facility":
         return FacilityWorkflow()
+    if method_id in PHASE3_METHOD_IDS:
+        from hcmcalc.application.phase3_workflows import Phase3Workflow
+
+        return Phase3Workflow(method_id)
     _definition(method_id)
     raise AssertionError("unreachable")
 
@@ -983,7 +992,9 @@ def normalized_workflow_inputs(
     workflow = workflow_for_method(method_id)
     if isinstance(workflow, MultilaneWorkflow):
         return workflow._normalized(template_id, unit_system, displayed_inputs)
-    return workflow._normalized(template_id, unit_system, displayed_inputs)[1]
+    if isinstance(workflow, FacilityWorkflow):
+        return workflow._normalized(template_id, unit_system, displayed_inputs)[1]
+    return workflow._normalized(template_id, unit_system, displayed_inputs)
 
 
 def validate_workflow_request(
@@ -1048,12 +1059,15 @@ def export_current_workflow(
             code="result_required",
             message_key="api.result_required",
         )
-    if method_id == "multilane_segment":
+    if isinstance(workflow, MultilaneWorkflow):
         normalized = workflow._normalized(template_id, unit_system, displayed_inputs)  # type: ignore[attr-defined]
         effective_displayed = displayed_inputs
-    else:
+    elif isinstance(workflow, FacilityWorkflow):
         rows, normalized = workflow._normalized(template_id, unit_system, displayed_inputs)  # type: ignore[attr-defined]
         effective_displayed = {"rows": rows}
+    else:
+        normalized = workflow._normalized(template_id, unit_system, displayed_inputs)  # type: ignore[attr-defined]
+        effective_displayed = displayed_inputs
     snapshot = _snapshot(
         workflow.definition,
         template_id=template_id,

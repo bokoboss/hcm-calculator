@@ -7,11 +7,10 @@ test('release-like Python-served shell exposes safe discovery and localization',
 
   await page.getByRole('button', { name: 'New Analysis' }).first().click();
   await expect(page.getByRole('heading', { name: 'New Analysis' })).toBeVisible();
-  await expect(page.getByText('2 rebuilt workflows delivered')).toBeVisible();
-  await expect(page.getByText('Reference only').first()).toBeVisible();
+  await expect(page.getByText('7 rebuilt workflows delivered')).toBeVisible();
   const methodButtons = page.getByRole('button', { name: 'Select method' });
   await expect(methodButtons).toHaveCount(7);
-  expect(await methodButtons.evaluateAll((buttons) => buttons.filter((button) => !(button as HTMLButtonElement).disabled))).toHaveLength(2);
+  expect(await methodButtons.evaluateAll((buttons) => buttons.filter((button) => !(button as HTMLButtonElement).disabled))).toHaveLength(7);
 
   await page.getByRole('button', { name: 'Supported Methods' }).first().click();
   await expect(page.getByRole('heading', { name: 'Supported Methods' })).toBeVisible();

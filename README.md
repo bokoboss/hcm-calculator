@@ -61,8 +61,9 @@ Implemented:
 - Chapter 26 second-case inventory documenting that no additional compatible
   Multilane Highway motorized-vehicle validation case is available in the
   supplied example-problem reference
-- Streamlit single-page app with grouped navigation: Roadways, Freeways, and
-  Reference.
+- Rebuilt React/FastAPI single-origin app with grouped navigation: Roadways,
+  Freeways, Projects, and Reference. The compiled SPA is served by Python for
+  normal installed use.
 - Seven calculator modes: Two-Lane Segment, Two-Lane Facility, Multilane
   Segment, Basic Freeway Segment, Weaving Segment, Merge Segment, and Diverge
   Segment.
@@ -76,16 +77,14 @@ Implemented:
   JSON export integration using `project_type = manual_basic_freeway_v0`
 - Unit and validation fixture tests
 
-Not implemented yet:
+Release boundaries:
 
-- Full HCM Chapter 15 calculation engine
-- General facility manual input
-- Multilane Highway facility, ramp, weaving, merge/diverge, managed lane, work
-  zone, reliability, and unsupported PCE table expansion workflows
-- Basic Freeway ramps, weaving, merge/diverge, managed lanes, work zones,
-  reliability, facility/corridor workflows, mountainous/mixed-flow PCE domains,
-  unprinted PCE combinations, and oversaturated prediction
-- Production validation dataset
+- This release keeps the delivered methods bounded to their documented
+  contracts; unsupported HCM facility, managed-lane, work-zone, reliability,
+  queue, delay, and corridor domains remain guarded.
+- Chapter 15 is not a claim of full HCM coverage. The supported motorized
+  single-segment/facility envelope and its exclusions remain authoritative.
+- No PDF or DOCX report export is implemented.
 
 ## Supported Workflows
 
@@ -148,9 +147,10 @@ Use this exact two-step Windows workflow from the repository root:
    to refresh dependencies.
 2. Run `run_app.bat` for every normal launch.
 
-`run_app.bat` never installs or upgrades packages. It opens the calculator in
-your browser using `src\hcmcalc\ui\streamlit_app.py` and tells you to run
-setup if Python 3.12 or `.venv` is unavailable. See the [local quick-start
+`run_app.bat` never installs or upgrades packages. It starts the rebuilt
+React/FastAPI workspace at `http://127.0.0.1:8765/` and opens the browser. It
+does not require Node or Vite at runtime. `run_streamlit.bat` remains the
+explicit legacy compatibility launcher. See the [local quick-start
 guide](docs/user_quick_start.md) for the matching PowerShell commands and
 troubleshooting.
 
@@ -192,7 +192,7 @@ py -m hcmcalc run references/example_inputs.yaml --case TLH-CH15-004
 
 The CLI currently supports validated example fixtures only.
 
-## Streamlit Calculator
+## Legacy Streamlit Compatibility Calculator
 
 Run the single-page calculator from the repository root:
 
@@ -200,8 +200,11 @@ Run the single-page calculator from the repository root:
 streamlit run src/hcmcalc/ui/streamlit_app.py
 ```
 
-The single-page app groups eight visible modes under Roadways, Freeways, and
-Reference:
+This path is retained for compatibility and engineering rollback evidence;
+`run_app.bat` / `run_app.ps1` launch the rebuilt application by default.
+
+The compatibility single-page app groups its legacy modes under Roadways,
+Freeways, and Reference:
 
 - **Two-Lane Segment** accepts one straight or horizontal-curve
   Two-Lane Highway segment using Metric inputs by default or optional Imperial

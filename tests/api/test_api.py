@@ -108,6 +108,47 @@ def test_phase2_multilane_api_separates_readiness_from_calculation() -> None:
     assert payload["audit"]["calculation_succeeded"] is True
 
 
+@pytest.mark.parametrize(
+    "method_id, template_id, engine_method",
+    (
+        ("two_lane_segment", "TLH-CH15-001", "hcm7_ch15_two_lane_motorized"),
+        ("basic_freeway_segment", "BF-CH26-001", "hcm7_basic_freeway_segment"),
+        ("weaving_segment", "WVG-CH27-001", "hcm7_v70_freeway_weaving_segment"),
+        ("merge_segment", "chapter_28_example_1_merge", "hcm7_v70_freeway_merge_segment"),
+        ("diverge_segment", "chapter_28_example_3_diverge_component", "hcm7_v70_freeway_diverge_segment"),
+    ),
+)
+def test_phase3_api_exposes_templates_readiness_and_calculation(
+    method_id: str,
+    template_id: str,
+    engine_method: str,
+) -> None:
+    client = TestClient(create_app())
+    templates = client.get(f"/api/v1/analyses/{method_id}/templates")
+    assert templates.status_code == 200
+    assert templates.json()["groups"]
+
+    starting = client.get(
+        f"/api/v1/analyses/{method_id}/starting-values",
+        params={"template_id": template_id, "unit_system": "imperial"},
+    )
+    assert starting.status_code == 200
+    request = {
+        "template_id": template_id,
+        "unit_system": "imperial",
+        "displayed_inputs": starting.json()["displayed_inputs"],
+    }
+    ready = client.post(f"/api/v1/analyses/{method_id}/validate", json=request)
+    assert ready.status_code == 200
+    assert ready.json()["valid"] is True
+    calculated = client.post(f"/api/v1/analyses/{method_id}/calculate", json=request)
+    assert calculated.status_code == 200
+    payload = calculated.json()
+    assert payload["result"]["method"] == engine_method
+    assert payload["calculation_state"]["has_result"] is True
+    assert payload["audit"]
+
+
 def test_phase2_facility_api_rejects_locked_context_and_returns_segment_evidence() -> None:
     client = TestClient(create_app())
     starting = client.get(

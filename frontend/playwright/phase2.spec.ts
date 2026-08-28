@@ -199,7 +199,7 @@ test.describe('Phase 2 representative workflows', () => {
     await expect(page.getByText('ความเร็วเฉลี่ยสิ่งอำนวยความสะดวก', { exact: true })).toBeVisible();
   });
 
-  test('legacy v0.9 Multilane and reference-only imports migrate safely in Project v2', async ({ page }) => {
+  test('legacy v0.9 Multilane and Phase 3 imports migrate safely in Project v2', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Open Project' }).first().click();
     await expect(page.getByTestId('project-workspace')).toBeVisible();
@@ -272,9 +272,13 @@ test.describe('Phase 2 representative workflows', () => {
       buffer: Buffer.from(JSON.stringify(legacyReference)),
     });
     await expect(page.getByTestId('project-workspace')).toBeVisible();
-    await expect(page.getByText('Reference-only method', { exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Calculate scenario' })).toBeDisabled();
-    await expect(page.getByRole('button', { name: 'Edit scenario' })).toBeDisabled();
+    await expect(page.getByText('rebuilt workflow available', { exact: true })).toBeVisible();
+    await expect(page.locator('.analysis-row small').filter({ hasText: 'two_lane_segment' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Calculate scenario' })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Edit scenario' })).toBeEnabled();
     await expect(page.getByRole('button', { name: 'Duplicate scenario' })).toBeEnabled();
+    await page.getByRole('button', { name: 'Edit scenario' }).click();
+    await expect(page.getByTestId('workflow-two_lane_segment')).toBeVisible();
+    await expect(page.getByTestId('phase3-form-two_lane_segment')).toBeVisible();
   });
 });

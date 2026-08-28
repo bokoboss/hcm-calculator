@@ -25,9 +25,10 @@ if errorlevel 1 (
   goto :error
 )
 
-"%PYTHON%" -m streamlit run "src\hcmcalc\ui\streamlit_app.py"
+echo Starting the rebuilt React/FastAPI workspace at http://127.0.0.1:8765/ ...
+"%PYTHON%" -m hcmcalc.api.main --open-browser
 if errorlevel 1 (
-  echo Streamlit could not start. Run setup_app.bat to refresh dependencies.
+  echo The rebuilt HCM workspace could not start. Run setup_app.bat to refresh dependencies.
   goto :error
 )
 

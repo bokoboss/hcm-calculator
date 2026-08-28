@@ -36,11 +36,18 @@ export interface WorkflowField {
   options?: string[];
 }
 
+export interface WorkflowGroup {
+  key: string;
+  label_key: string;
+  field_keys: string[];
+}
+
 export interface WorkflowTemplatesResponse {
   method_id: string;
   unit_systems: UnitSystem[];
   templates: WorkflowTemplate[];
   fields: WorkflowField[];
+  groups?: WorkflowGroup[];
   branches?: Record<string, unknown>;
   scope_notes: string[];
 }
@@ -142,6 +149,7 @@ export interface WorkflowCalculationResponse {
     answer: { key: string; value: string | null; available: boolean; source?: string };
     metrics: ResultMetric[];
     capacity: Record<string, unknown>;
+    handoff?: { reason?: string | null; scope_status?: string | null };
     interpretations: Array<Record<string, unknown>>;
     evidence: Record<string, unknown>;
     [key: string]: unknown;

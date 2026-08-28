@@ -42,7 +42,9 @@ test('captures the deterministic Phase 2 reference set', async ({ page }) => {
   await expect(page.locator('[data-slot="stale-result-banner"]')).toBeVisible();
   await capture(page, '05-multilane-stale.png');
   await page.locator('[data-slot="stale-result-banner"] button').click();
+  await expect(page.getByTestId('workflow-results')).toBeVisible();
   await page.locator('#multilane-demand_volume_veh_h').fill('5000');
+  await expect(page.locator('[data-slot="stale-result-banner"]')).toBeVisible();
   await page.locator('[data-slot="stale-result-banner"] button').click();
   await expect(page.locator('[data-slot="capacity-failure-panel"]')).toBeVisible();
   await capture(page, '06-multilane-capacity-failure.png');

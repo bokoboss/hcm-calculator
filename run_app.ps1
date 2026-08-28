@@ -21,9 +21,10 @@ try {
         throw "The local .venv is not using Python 3.12. Run setup_app.ps1 to refresh it. If this continues, delete .venv and run setup_app.ps1."
     }
 
-    & $python -m streamlit run "src\hcmcalc\ui\streamlit_app.py"
+    Write-Host "Starting the rebuilt React/FastAPI workspace at http://127.0.0.1:8765/ ..."
+    & $python -m hcmcalc.api.main --open-browser
     if ($LASTEXITCODE -ne 0) {
-        throw "Streamlit could not start. Run setup_app.ps1 to refresh dependencies."
+        throw "The rebuilt HCM workspace could not start. Run setup_app.ps1 to refresh dependencies."
     }
 }
 catch {

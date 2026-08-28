@@ -48,11 +48,16 @@ const module = (
 });
 
 describe('frontend delivery registry', () => {
-  it('registers the two qualified Phase 2 modules and keeps the remaining methods reference-only', () => {
+  it('registers every delivered Phase 3 method with its backend input contract', () => {
     expect(Object.keys(frontendModuleRegistry)).toHaveLength(7);
+    expect(frontendModuleRegistry.two_lane_segment).toMatchObject({ status: 'delivered', moduleContract: 'phase_5_product_integration' });
     expect(frontendModuleRegistry.multilane_segment).toMatchObject({ status: 'delivered', moduleContract: 'phase_8' });
     expect(frontendModuleRegistry.two_lane_facility).toMatchObject({ status: 'delivered', moduleContract: 'phase_5_product_integration' });
-    expect(Object.values(frontendModuleRegistry).filter((entry) => entry.status === 'not_delivered')).toHaveLength(5);
+    expect(frontendModuleRegistry.basic_freeway_segment).toMatchObject({ status: 'delivered', moduleContract: 'phase_10_product_integration' });
+    expect(frontendModuleRegistry.weaving_segment).toMatchObject({ status: 'delivered', moduleContract: 'hcm_7_0_weaving_segment_operational_v1' });
+    expect(frontendModuleRegistry.merge_segment).toMatchObject({ status: 'delivered', moduleContract: 'hcm7_v70_chapter_14_isolated_right_side_one_lane_merge_operational' });
+    expect(frontendModuleRegistry.diverge_segment).toMatchObject({ status: 'delivered', moduleContract: 'hcm7_v70_chapter_14_isolated_right_side_one_lane_diverge_operational' });
+    expect(Object.values(frontendModuleRegistry).filter((entry) => entry.status === 'not_delivered')).toHaveLength(0);
   });
 
   it('uses one three-way predicate for actionability and route eligibility', () => {

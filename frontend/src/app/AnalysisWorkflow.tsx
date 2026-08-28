@@ -15,6 +15,7 @@ import type {
   UnitSystem,
   WorkflowCalculationResponse,
   WorkflowField,
+  WorkflowGroup,
   WorkflowStartingValuesResponse,
   WorkflowTemplatesResponse,
   WorkflowValidationResponse,
@@ -29,6 +30,7 @@ import {
   ErrorSummary,
   Field,
   InputWithUnit,
+  HandoffPanel,
   MetricCard,
   ReadinessBar,
   ResultHero,
@@ -60,7 +62,21 @@ function valueForInput(value: unknown): string | number {
 function parseInput(field: WorkflowField, value: string): unknown {
   if (!value.trim()) return null;
   if (field.kind === 'integer' || field.kind === 'number') return Number(value);
+  if (field.kind === 'boolean') return value === 'true';
+  if (field.kind === 'json') {
+    try {
+      return JSON.parse(value) as unknown;
+    } catch {
+      return value;
+    }
+  }
   return value;
+}
+
+function valueForField(field: WorkflowField, value: unknown): string | number {
+  if (field.kind === 'json') return value === null || value === undefined ? '' : JSON.stringify(value, null, 2);
+  if (field.kind === 'boolean') return value === true ? 'true' : value === false ? 'false' : '';
+  return valueForInput(value);
 }
 
 function unitFor(field: WorkflowField, unitSystem: UnitSystem): string {
@@ -119,6 +135,8 @@ export function ResultPanel({
 }): ReactElement {
   const { t } = useI18n();
   const capacityFailure = Boolean(result.presentation.capacity.failure);
+  const handoff = result.calculation_state.presentation_state === 'hcm_stopping_or_handoff'
+    || Boolean(result.presentation.handoff);
   const metricsUnavailable = result.presentation.metrics.some((metric) => metric.availability === 'not_predicted');
   const answer = result.presentation.answer;
   return (
@@ -126,11 +144,13 @@ export function ResultPanel({
       <EngineeringSection title={t('result.section_title')} description={t('result.section_description')}>
         <ResultHero
           label={t('result.level_of_service')}
-          value={answer.available && answer.value ? answer.value : t('result.not_calculated')}
-          state={capacityFailure ? 'capacity' : 'current'}
+          value={answer.available && answer.value ? answer.value : handoff ? t('state.handoff_title') : t('result.not_calculated')}
+          state={handoff ? 'handoff' : capacityFailure ? 'capacity' : 'current'}
           supporting={answer.source}
         />
-        {capacityFailure ? <CapacityFailurePanel metricsUnavailable={metricsUnavailable} /> : null}
+        {handoff ? <HandoffPanel /> : capacityFailure ? <CapacityFailurePanel metricsUnavailable={metricsUnavailable} /> : null}
+        {handoff && result.presentation.handoff?.reason ? <p className="handoff-reason">{String(result.presentation.handoff.reason)}</p> : null}
+        <GeometryEvidenceDiagram methodId={result.method_id} />
         <div className="metric-grid">
           {result.presentation.metrics.map((metric) => (
             <MetricCard
@@ -155,6 +175,32 @@ export function ResultPanel({
           <div><span className="section-label">{t('result.fingerprint')}</span><code>{result.calculation_fingerprint}</code></div>
         </div>
       </DetailsDisclosure>
+    </div>
+  );
+}
+
+function GeometryEvidenceDiagram({ methodId }: { methodId: string }): ReactElement | null {
+  const { t } = useI18n();
+  if (!['weaving_segment', 'merge_segment', 'diverge_segment'].includes(methodId)) return null;
+  const isWeaving = methodId === 'weaving_segment';
+  const isMerge = methodId === 'merge_segment';
+  const title = isWeaving ? t('workflow.geometry_weaving') : isMerge ? t('workflow.geometry_merge') : t('workflow.geometry_diverge');
+  const note = isWeaving ? t('workflow.geometry_weaving_note') : isMerge ? t('workflow.geometry_merge_note') : t('workflow.geometry_diverge_note');
+  return (
+    <div className="geometry-evidence" data-testid="geometry-diagram">
+      <div>
+        <span className="section-label">{t('workflow.geometry_evidence')}</span>
+        <strong>{title}</strong>
+        <p>{note}</p>
+      </div>
+      <svg viewBox="0 0 520 118" role="img" aria-label={title} className="geometry-svg">
+        <path d="M20 25 H500 M20 58 H500 M20 91 H500" className="geometry-lane" />
+        <path d={isWeaving ? 'M55 91 C170 91 220 25 330 25 H500' : isMerge ? 'M30 108 C170 108 240 58 350 58 H500' : 'M20 58 H220 C300 58 350 108 500 108'} className="geometry-ramp" />
+        <path d={isWeaving ? 'M55 91 C170 91 220 25 330 25' : isMerge ? 'M30 108 C170 108 240 58 350 58' : 'M220 58 C300 58 350 108 500 108'} className="geometry-arrow" />
+        <text x="22" y="17">{t('workflow.geometry_upstream')}</text>
+        <text x="398" y="17">{t('workflow.geometry_downstream')}</text>
+        <text x={isWeaving ? '195' : '260'} y={isWeaving ? '45' : '105'}>{isWeaving ? t('workflow.geometry_weaving_flow') : isMerge ? t('workflow.geometry_on_ramp') : t('workflow.geometry_off_ramp')}</text>
+      </svg>
     </div>
   );
 }
@@ -219,6 +265,91 @@ function MultilaneForm({
               return (
                 <Field key={field.key} id={`multilane-${field.key}`} label={t(field.label_key)} required={Boolean(field.required || field.required_if)}>
                   {(controlProps) => <InputWithUnit {...controlProps} type={field.kind === 'text' ? 'text' : 'number'} unit={unitFor(field, unitSystem)} value={valueForInput(inputs[field.key])} onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(field.key, parseInput(field, event.target.value))} />}
+                </Field>
+              );
+            })}
+          </div>
+        </EngineeringSection>
+      ))}
+    </div>
+  );
+}
+
+function Phase3Form({
+  methodId,
+  templates,
+  starting,
+  inputs,
+  unitSystem,
+  onUnitSystem,
+  onTemplate,
+  onChange,
+}: {
+  methodId: string;
+  templates: WorkflowTemplatesResponse;
+  starting: WorkflowStartingValuesResponse;
+  inputs: DisplayedInputs;
+  unitSystem: UnitSystem;
+  onUnitSystem: (unit: UnitSystem) => void;
+  onTemplate: (templateId: string) => void;
+  onChange: (key: string, value: unknown) => void;
+}): ReactElement {
+  const { t } = useI18n();
+  const fieldsByKey = new Map((starting.fields ?? templates.fields).map((field) => [field.key, field]));
+  const groups: WorkflowGroup[] = templates.groups?.length
+    ? templates.groups
+    : [{ key: 'worksheet', label_key: 'workflow.worksheet', field_keys: starting.fields.map((field) => field.key) }];
+  const optionLabel = (option: string): string => {
+    const translated = t(`${methodId}.option.${option}`);
+    return translated === `${methodId}.option.${option}` ? option.replaceAll('_', ' ') : translated;
+  };
+  return (
+    <div className="workflow-form phase3-form" data-testid={`phase3-form-${methodId}`}>
+      <div className="workflow-controls">
+        <Field id={`${methodId}-template`} label={t('workflow.template')} required>
+          <select id={`${methodId}-template`} value={starting.template_id} onChange={(event) => onTemplate(event.target.value)}>
+            {templates.templates.map((template) => <option value={template.template_id} key={template.template_id}>{template.label}</option>)}
+          </select>
+        </Field>
+        <Field id={`${methodId}-unit-system`} label={t('workflow.unit_system')} required>
+          <select id={`${methodId}-unit-system`} value={unitSystem} onChange={(event) => onUnitSystem(event.target.value as UnitSystem)}>
+            <option value="metric">{t('locale.metric')}</option>
+            <option value="imperial">{t('locale.imperial')}</option>
+          </select>
+        </Field>
+      </div>
+      {groups.map((group) => (
+        <EngineeringSection title={t(group.label_key)} key={group.key}>
+          <div className="form-grid">
+            {group.field_keys.map((key) => {
+              const field = fieldsByKey.get(key);
+              if (!field || !isVisible(field, inputs)) return null;
+              const required = Boolean(field.required || field.required_if);
+              if (field.kind === 'choice' || field.kind === 'boolean') {
+                const options = field.options ?? [];
+                return (
+                  <ChoiceGroup
+                    key={field.key}
+                    legend={t(field.label_key)}
+                    name={`${methodId}-${field.key}`}
+                    value={valueForField(field, inputs[field.key]) as string}
+                    options={options.map((option) => ({ value: option, label: optionLabel(option) }))}
+                    onChange={(value) => onChange(field.key, parseInput(field, value))}
+                  />
+                );
+              }
+              if (field.kind === 'json') {
+                const id = `${methodId}-${field.key}`;
+                return (
+                  <Field key={field.key} id={id} label={t(field.label_key)} required={required}>
+                    {(controlProps) => <textarea {...controlProps} className="json-input" value={valueForField(field, inputs[field.key])} onChange={(event) => onChange(field.key, parseInput(field, event.target.value))} rows={5} />}
+                  </Field>
+                );
+              }
+              const id = `${methodId}-${field.key}`;
+              return (
+                <Field key={field.key} id={id} label={t(field.label_key)} required={required}>
+                  {(controlProps) => <InputWithUnit {...controlProps} type={field.kind === 'text' ? 'text' : 'number'} unit={unitFor(field, unitSystem)} value={valueForField(field, inputs[field.key])} onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(field.key, parseInput(field, event.target.value))} />}
                 </Field>
               );
             })}
@@ -375,6 +506,7 @@ export function AnalysisWorkflow({ method, onBack, onProjectSaved, initialScenar
   const initialScenarioAppliedRef = useRef(false);
 
   const isFacility = method.method_id === 'two_lane_facility';
+  const isMultilane = method.method_id === 'multilane_segment';
   const serializedInputs = useMemo(() => serializeInputSnapshot(inputs), [inputs]);
 
   useEffect(() => {
@@ -515,7 +647,7 @@ export function AnalysisWorkflow({ method, onBack, onProjectSaved, initialScenar
       const rowId = row?.segment_id ?? Number(rowMatch[1]) + 1;
       return `facility-input-${String(rowId)}-${rowMatch[2]}`;
     }
-    return isFacility ? undefined : `multilane-${field}`;
+    return isFacility ? undefined : `${isMultilane ? 'multilane' : method.method_id}-${field}`;
   };
   const errors = validation?.errors.map((issue) => ({ message: issue.message, targetId: targetIdForIssue(issue.field) })) ?? [];
   return (
@@ -525,7 +657,7 @@ export function AnalysisWorkflow({ method, onBack, onProjectSaved, initialScenar
       {loading ? <ScopeNotice title={t('status.loading')}>{t('workflow.loading')}</ScopeNotice> : null}
       {error ? <ScopeNotice title={t('workflow.error_title')} tone="warning">{error}</ScopeNotice> : null}
       {notice ? <ScopeNotice title={t('workflow.notice_title')}>{notice}</ScopeNotice> : null}
-      {templates && starting ? (isFacility ? <FacilityForm templates={templates} starting={starting} inputs={inputs} unitSystem={unitSystem} onUnitSystem={setUnitSystem} onTemplate={setTemplateId} onChange={(rows) => updateInputs({ rows })} /> : <MultilaneForm templates={templates} starting={starting} inputs={inputs} unitSystem={unitSystem} onUnitSystem={setUnitSystem} onTemplate={setTemplateId} onChange={(key, value) => updateInputs({ ...inputs, [key]: value })} />) : null}
+      {templates && starting ? (isFacility ? <FacilityForm templates={templates} starting={starting} inputs={inputs} unitSystem={unitSystem} onUnitSystem={setUnitSystem} onTemplate={setTemplateId} onChange={(rows) => updateInputs({ rows })} /> : isMultilane ? <MultilaneForm templates={templates} starting={starting} inputs={inputs} unitSystem={unitSystem} onUnitSystem={setUnitSystem} onTemplate={setTemplateId} onChange={(key, value) => updateInputs({ ...inputs, [key]: value })} /> : <Phase3Form methodId={method.method_id} templates={templates} starting={starting} inputs={inputs} unitSystem={unitSystem} onUnitSystem={setUnitSystem} onTemplate={setTemplateId} onChange={(key, value) => updateInputs({ ...inputs, [key]: value })} />) : null}
       <ErrorSummary errors={errors} />
       {dirty && result ? <StaleResultBanner onRecalculate={handleCalculate} /> : null}
       <ReadinessBar ready={Boolean(validation?.valid) && !working} actionLabel={result && !dirty ? t('action.recalculate') : t('action.calculate')} onAction={handleCalculate} />

@@ -885,7 +885,7 @@
       },
       "WorkflowTemplatesResponse": {
         "additionalProperties": false,
-        "description": "Template, branch, and field metadata for one delivered workflow.",
+        "description": "Template, group, branch, and field metadata for one delivered workflow.",
         "properties": {
           "branches": {
             "additionalProperties": true,
@@ -898,6 +898,14 @@
               "type": "object"
             },
             "title": "Fields",
+            "type": "array"
+          },
+          "groups": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Groups",
             "type": "array"
           },
           "method_id": {
