@@ -180,7 +180,7 @@ committed separately; none is replaced by deleted historical mockups.
 | Installed runtime | isolated wheel HTTP smoke | PASS; root/health/methods/assets |
 | Windows rebuilt launcher | `run_app.ps1` live smoke | PASS |
 | Streamlit compatibility | `run_streamlit.ps1` live health smoke | PASS |
-| CI | PR #141 GitHub Actions `Tests` workflow | PASS; run [33161410428](https://github.com/bokoboss/hcm-calculator/actions/runs/33161410428) completed all four required jobs successfully |
+| CI | PR #141 GitHub Actions `R1 qualification` workflow | PASS; exact-head run [33177183746](https://github.com/bokoboss/hcm-calculator/actions/runs/33177183746) completed all four required jobs successfully |
 
 The release candidate preserves Python numerical authority, qualified engine
 behavior, method identifiers/contracts, Project v2/fingerprint semantics,
