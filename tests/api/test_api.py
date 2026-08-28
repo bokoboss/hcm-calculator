@@ -82,7 +82,7 @@ def test_compiled_spa_is_served_without_shadowing_api(tmp_path: Path) -> None:
 
 
 def test_compiled_spa_serves_qualified_engineering_assets_from_the_package() -> None:
-    client = TestClient(create_app(static_dir=Path("frontend/dist")))
+    client = TestClient(create_app())
 
     expected_assets = {
         "/engineering-assets/two_lane/passing_zone.png": "image/png",
