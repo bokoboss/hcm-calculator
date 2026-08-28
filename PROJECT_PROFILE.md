@@ -82,7 +82,7 @@ Changes must not alter the following unless explicitly approved:
 - High-risk areas: HCM formulas/tables, project schema/fingerprints, exports/reports, localization, Streamlit state, and R1 API/frontend seams.
 - Modules safe to parallelize: isolated documentation, tests, and bounded application components after contracts are fixed.
 - Modules tightly coupled / single-owner: engine behavior, project persistence, cross-workflow UI state, and release qualification.
-- Preferred local execution constraints: work from a clean branch/worktree; keep the Streamlit path runnable; do not require cloud services for local operation.
+- Preferred local execution constraints: work directly in the authoritative repository on a clean feature branch by default; do not create sibling clones/worktrees unless isolation is explicitly required; preserve user changes; keep the Streamlit path runnable; do not require cloud services for local operation.
 
 ## Git / release policy
 - Branch naming: `codex/` for implementation branches unless a task-specific branch name is explicitly required.
