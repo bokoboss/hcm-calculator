@@ -131,7 +131,10 @@ def multilane_blank_ui_inputs() -> dict[str, Any]:
         "lane_width": None,
         "roadside_lateral_clearance": None,
         "median_type": "twltl",
-        "access_point_density": None,
+        # Zero is an explicit, user-visible worksheet value for a segment with
+        # no access points.  Clearing the control still yields None and is
+        # rejected by the existing finite-number validation below.
+        "access_point_density": 0.0,
         "heavy_vehicle_adjustment_method": "general_terrain",
         "terrain_type": "level",
         "grade_percent": None,

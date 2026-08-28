@@ -6,6 +6,7 @@ import {
   ChoiceGroup,
   DetailsDisclosure,
   EngineeringAssessment,
+  ErrorSummary,
   Field,
   HandoffPanel,
   InputWithUnit,
@@ -86,5 +87,36 @@ describe('R0 shared design-system primitives', () => {
     expect(screen.getByText('ข้อมูลเปลี่ยนแปลง — ต้องคำนวณใหม่')).toBeInTheDocument();
     expect(screen.getByText('เกินความจุ')).toBeInTheDocument();
     expect(screen.getByText('การส่งต่อไปยังวิธี HCM')).toBeInTheDocument();
+  });
+
+  it('keeps method navigation persistent and links validation recovery to a field', () => {
+    render(
+      <I18nProvider>
+        <AppShell
+          activePage="new-analysis"
+          activeMethodId="weaving_segment"
+          onNavigate={() => undefined}
+          onSelectMethod={() => undefined}
+          apiConnected
+        >
+          <input id="speed-field" />
+          <ErrorSummary errors={[{ message: 'Speed is required', targetId: 'speed-field' }]} />
+        </AppShell>
+      </I18nProvider>,
+    );
+
+    for (const methodId of [
+      'two_lane_segment',
+      'two_lane_facility',
+      'multilane_segment',
+      'basic_freeway_segment',
+      'weaving_segment',
+      'merge_segment',
+      'diverge_segment',
+    ]) {
+      expect(screen.getAllByTestId(`nav-method-${methodId}`)).toHaveLength(2);
+    }
+    expect(screen.getAllByTestId('nav-method-weaving_segment')[0]).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Speed is required' })).toHaveAttribute('href', '#speed-field');
   });
 });

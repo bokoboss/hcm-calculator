@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactElement } from 'react';
 import {
   calculateWorkflow,
+  engineeringAssetUrl,
   exportWorkflow,
   fetchWorkflowStartingValues,
   fetchWorkflowTemplates,
@@ -42,6 +43,7 @@ import {
 interface AnalysisWorkflowProps {
   method: MethodDefinition;
   onBack: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
   onProjectSaved?: (project: Record<string, unknown>) => void;
   initialScenario?: ScenarioEditContext;
   onScenarioResultSaved?: (snapshot: WorkflowCalculationResponse) => Promise<void> | void;
@@ -127,11 +129,17 @@ export function ResultPanel({
   onExport,
   onSave,
   saveLabel,
+  onRecalculate,
+  stale = false,
+  assetMetadata,
 }: {
   result: WorkflowCalculationResponse;
   onExport: (format: 'csv' | 'xlsx' | 'markdown' | 'json') => void;
   onSave: () => void;
   saveLabel?: string;
+  onRecalculate?: () => void;
+  stale?: boolean;
+  assetMetadata?: EngineeringAssetMetadata;
 }): ReactElement {
   const { t } = useI18n();
   const capacityFailure = Boolean(result.presentation.capacity.failure);
@@ -145,12 +153,12 @@ export function ResultPanel({
         <ResultHero
           label={t('result.level_of_service')}
           value={answer.available && answer.value ? answer.value : handoff ? t('state.handoff_title') : t('result.not_calculated')}
-          state={handoff ? 'handoff' : capacityFailure ? 'capacity' : 'current'}
+          state={stale ? 'stale' : handoff ? 'handoff' : capacityFailure ? 'capacity' : 'current'}
           supporting={answer.source}
         />
         {handoff ? <HandoffPanel /> : capacityFailure ? <CapacityFailurePanel metricsUnavailable={metricsUnavailable} /> : null}
         {handoff && result.presentation.handoff?.reason ? <p className="handoff-reason">{String(result.presentation.handoff.reason)}</p> : null}
-        <GeometryEvidenceDiagram methodId={result.method_id} />
+        <GeometryEvidenceDiagram methodId={result.method_id} result={result} assetMetadata={assetMetadata} />
         <div className="metric-grid">
           {result.presentation.metrics.map((metric) => (
             <MetricCard
@@ -162,10 +170,9 @@ export function ResultPanel({
           ))}
         </div>
         <div className="result-actions">
-          <button className="button button-secondary" type="button" onClick={() => onExport('json')}>{t('action.export_json')}</button>
-          <button className="button button-secondary" type="button" onClick={() => onExport('markdown')}>{t('action.export_markdown')}</button>
-          <button className="button button-secondary" type="button" onClick={() => onExport('xlsx')}>{t('action.export_xlsx')}</button>
-          <button className="button button-primary" type="button" onClick={onSave}>{saveLabel ?? t('action.save_project')}</button>
+          <button className={`button ${stale ? 'button-secondary' : 'button-primary'}`} type="button" disabled={stale} onClick={onSave}>{saveLabel ?? t('action.save_project')}</button>
+          {!stale ? <button className="button button-secondary" type="button" onClick={onRecalculate}>{t('action.recalculate')}</button> : null}
+          <ExportMenu stale={stale} onExport={onExport} />
         </div>
       </EngineeringSection>
       <DetailsDisclosure title={t('result.evidence_title')}>
@@ -179,13 +186,275 @@ export function ResultPanel({
   );
 }
 
-function GeometryEvidenceDiagram({ methodId }: { methodId: string }): ReactElement | null {
+type EngineeringAssetMetadata = {
+  kind?: string;
+  asset_path?: string;
+  variants?: Array<{
+    subtype?: string;
+    segment_type?: string;
+    configuration?: string;
+    number_of_weaving_lanes?: number;
+    asset_path: string;
+  }>;
+};
+
+function engineeringAssetsFrom(templates: WorkflowTemplatesResponse | null): EngineeringAssetMetadata | undefined {
+  const raw = templates?.branches?.engineering_assets;
+  return raw && typeof raw === 'object' ? raw as EngineeringAssetMetadata : undefined;
+}
+
+function numericValue(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function displayNumber(value: unknown, suffix = ''): string {
+  const parsed = numericValue(value);
+  return parsed === null ? '—' : `${parsed.toFixed(1)}${suffix}`;
+}
+
+function StarterNotice({ starting }: { starting: WorkflowStartingValuesResponse }): ReactElement | null {
+  const { t } = useI18n();
+  if (starting.starter_kind === 'example') {
+    return <ScopeNotice title={t('workflow.example_loaded_title')}>{t('workflow.example_loaded_supporting')}</ScopeNotice>;
+  }
+  if (starting.starter_kind === 'blank' || starting.starter_kind === 'custom_starter') {
+    return <ScopeNotice title={starting.template_label}>{t('workflow.custom_starter_note')}</ScopeNotice>;
+  }
+  return null;
+}
+
+function TwoLaneSchematic({
+  inputs,
+  unitSystem,
+  assets,
+}: {
+  inputs: DisplayedInputs;
+  unitSystem: UnitSystem;
+  assets?: EngineeringAssetMetadata;
+}): ReactElement | null {
+  const { t } = useI18n();
+  const segmentType = String(inputs.segment_type ?? 'passing_constrained');
+  const variant = assets?.variants?.find((item) => item.segment_type === segmentType);
+  if (!variant) return null;
+  const lengthUnit = unitSystem === 'metric' ? 'km' : 'mi';
+  const alignment = String(inputs.horizontal_alignment ?? 'straight');
+  const facts = [
+    `${t('two_lane.schematic_length')}: ${displayNumber(inputs.segment_length, ` ${lengthUnit}`)}`,
+    `${t('two_lane.schematic_segment_type')}: ${t(`two_lane_segment.option.${segmentType}`)}`,
+    `${t('two_lane.schematic_alignment')}: ${t(`two_lane_segment.option.${alignment}`)}`,
+  ];
+  if (inputs.terrain_type === 'mountainous') {
+    facts.push(`${t('two_lane.schematic_grade')}: ${displayNumber(inputs.grade_percent, ' %')}`);
+  }
+  return (
+    <section className="engineering-reference two-lane-schematic" data-testid="two-lane-schematic" aria-labelledby="two-lane-schematic-title">
+      <div className="engineering-reference-copy">
+        <span className="section-label">{t('two_lane.schematic_title')}</span>
+        <h3 id="two-lane-schematic-title">{t(`two_lane_segment.option.${segmentType}`)}</h3>
+        <p>{facts.join(' · ')}</p>
+      </div>
+      <img src={engineeringAssetUrl(variant.asset_path)} alt={`${t('two_lane.schematic_alt')}: ${t(`two_lane_segment.option.${segmentType}`)}`} data-asset-path={variant.asset_path} />
+      <p className="engineering-reference-note">{t('two_lane.schematic_caption')}</p>
+    </section>
+  );
+}
+
+function WeavingReference({
+  inputs,
+  assets,
+}: {
+  inputs: DisplayedInputs;
+  assets?: EngineeringAssetMetadata;
+}): ReactElement | null {
+  const { t } = useI18n();
+  const configuration = String(inputs.configuration ?? '');
+  const numberOfWeavingLanes = numericValue(inputs.number_of_weaving_lanes);
+  const variant = assets?.variants?.find((item) => item.configuration === configuration && item.number_of_weaving_lanes === numberOfWeavingLanes);
+  const entry = String(inputs.entry_side ?? '');
+  const exit = String(inputs.exit_side ?? '');
+  const laneChanges = [
+    ['RF', inputs.lc_rf],
+    ['FR', inputs.lc_fr],
+    ['RR', inputs.lc_rr],
+  ].filter(([, value]) => value !== null && value !== undefined && value !== '')
+    .map(([label, value]) => `${label}=${String(value)}`)
+    .join(', ') || '—';
+  return (
+    <section className="engineering-reference weaving-reference" data-testid="weaving-reference" aria-labelledby="weaving-reference-title">
+      <div className="engineering-reference-copy">
+        <span className="section-label">{t('weaving.reference_title')}</span>
+        <h3 id="weaving-reference-title">{configuration ? t(`weaving.option.${configuration}`) : t('weaving.reference_title')}</h3>
+        {variant ? <img src={engineeringAssetUrl(variant.asset_path)} alt={`${t('weaving.reference_title')}: ${configuration ? t(`weaving.option.${configuration}`) : ''}`} data-asset-path={variant.asset_path} /> : <p className="muted">{t('weaving.reference_incomplete')}</p>}
+        <dl className="weaving-reference-facts">
+          <div><dt>{t('weaving.reference_nwl')}</dt><dd>N={displayNumber(inputs.number_of_lanes)} / NWL={displayNumber(inputs.number_of_weaving_lanes)}</dd></div>
+          <div><dt>{t('weaving.reference_entry_exit')}</dt><dd>{entry ? t(`weaving.option.${entry}`) : '—'} / {exit ? t(`weaving.option.${exit}`) : '—'}</dd></div>
+          <div><dt>{t('weaving.reference_lane_changes')}</dt><dd>{laneChanges}</dd></div>
+        </dl>
+      </div>
+      <div className="weaving-movement-legend">
+        <strong>{t('weaving.reference_legend')}</strong>
+        <ul>
+          <li>{t('weaving.reference_ff')}</li>
+          <li>{t('weaving.reference_fr')}</li>
+          <li>{t('weaving.reference_rf')}</li>
+          <li>{t('weaving.reference_rr')}</li>
+        </ul>
+        <p className="engineering-reference-note">{t('weaving.reference_caption')} {t('weaving.reference_conceptual')}</p>
+      </div>
+    </section>
+  );
+}
+
+type CurveSubsegment = {
+  type?: string;
+  length?: number | null;
+  superelevation_percent?: number | null;
+  radius?: number | null;
+  central_angle_deg?: number | null;
+  horizontal_class?: number | null;
+};
+
+function CurveEditor({
+  inputs,
+  unitSystem,
+  onChange,
+}: {
+  inputs: DisplayedInputs;
+  unitSystem: UnitSystem;
+  onChange: (value: CurveSubsegment[]) => void;
+}): ReactElement {
+  const { t } = useI18n();
+  const rows = Array.isArray(inputs.horizontal_alignment_subsegments)
+    ? inputs.horizontal_alignment_subsegments as CurveSubsegment[]
+    : [];
+  const [setup, setSetup] = useState({
+    totalLength: numericValue(inputs.segment_length) === null
+      ? ''
+      : String((numericValue(inputs.segment_length) ?? 0) * (unitSystem === 'metric' ? 1000 : 5280)),
+    radius: unitSystem === 'metric' ? '137.2' : '450',
+    superelevation: '3',
+    centralAngle: '55',
+    horizontalClass: '3',
+    count: '11',
+  });
+  const updateSetup = (key: keyof typeof setup, value: string) => setSetup((current) => ({ ...current, [key]: value }));
+  const updateRow = (index: number, key: keyof CurveSubsegment, value: string) => {
+    const next = rows.map((row, rowIndex) => rowIndex === index ? { ...row, [key]: key === 'type' ? value : numericValue(value) } : row);
+    onChange(next);
+  };
+  const addRow = () => onChange([...rows, { type: 'tangent', length: numericValue(setup.totalLength) && rows.length === 0 ? numericValue(setup.totalLength) : null, superelevation_percent: null, radius: null, central_angle_deg: null, horizontal_class: null }]);
+  const removeRow = (index: number) => onChange(rows.filter((_, rowIndex) => rowIndex !== index));
+  const generate = () => {
+    const totalLength = numericValue(setup.totalLength);
+    const radius = numericValue(setup.radius);
+    const count = numericValue(setup.count);
+    if (!totalLength || !radius || !count || count < 1) return;
+    const rowLength = totalLength / Math.trunc(count);
+    onChange(Array.from({ length: Math.trunc(count) }, () => ({
+      type: 'horizontal_curve',
+      length: rowLength,
+      superelevation_percent: numericValue(setup.superelevation),
+      radius,
+      central_angle_deg: numericValue(setup.centralAngle),
+      horizontal_class: numericValue(setup.horizontalClass),
+    })));
+  };
+  const unit = unitSystem === 'metric' ? 'm' : 'ft';
+  return (
+    <div className="curve-editor" id="two_lane_segment-horizontal_alignment_subsegments" data-testid="two-lane-curve-editor" tabIndex={-1}>
+      <div className="curve-editor-heading">
+        <div><h3>{t('two_lane.curve_editor_title')}</h3><p>{t('two_lane.curve_editor_caption')}</p></div>
+        <button className="button button-secondary" type="button" onClick={addRow}>{t('two_lane.curve_add_row')}</button>
+      </div>
+      <DetailsDisclosure title={t('two_lane.curve_generate_title')}>
+        <div className="curve-setup-grid">
+          <Field id="two-lane-curve-total-length" label={t('two_lane.curve_total_length')}>
+            {(controlProps) => <InputWithUnit {...controlProps} type="number" unit={unit} value={setup.totalLength} onChange={(event) => updateSetup('totalLength', event.target.value)} />}
+          </Field>
+          <Field id="two-lane-curve-radius" label={t('two_lane.curve_radius')}>
+            {(controlProps) => <InputWithUnit {...controlProps} type="number" unit={unit} value={setup.radius} onChange={(event) => updateSetup('radius', event.target.value)} />}
+          </Field>
+          <Field id="two-lane-curve-superelevation" label={t('two_lane.curve_superelevation')}>
+            {(controlProps) => <InputWithUnit {...controlProps} type="number" unit="%" value={setup.superelevation} onChange={(event) => updateSetup('superelevation', event.target.value)} />}
+          </Field>
+          <Field id="two-lane-curve-angle" label={t('two_lane.curve_central_angle')}>
+            {(controlProps) => <InputWithUnit {...controlProps} type="number" unit="deg" value={setup.centralAngle} onChange={(event) => updateSetup('centralAngle', event.target.value)} />}
+          </Field>
+          <Field id="two-lane-curve-class" label={t('two_lane.curve_horizontal_class')}>
+            {(controlProps) => <InputWithUnit {...controlProps} type="number" unit="" value={setup.horizontalClass} onChange={(event) => updateSetup('horizontalClass', event.target.value)} />}
+          </Field>
+          <Field id="two-lane-curve-count" label={t('two_lane.curve_subsegment_count')}>
+            {(controlProps) => <InputWithUnit {...controlProps} type="number" unit="rows" value={setup.count} onChange={(event) => updateSetup('count', event.target.value)} />}
+          </Field>
+        </div>
+        <button className="button button-secondary" type="button" onClick={generate}>{t('two_lane.curve_generate')}</button>
+      </DetailsDisclosure>
+      {!rows.length ? <p className="curve-empty">{t('two_lane.curve_no_rows')}</p> : (
+        <div className="table-scroll curve-table-scroll" role="region" aria-label={t('two_lane.curve_editor_title')} tabIndex={0}>
+          <table className="curve-table"><thead><tr>
+            <th scope="col">{t('two_lane.curve_type')}</th><th scope="col">{t('two_lane.curve_length')} ({unit})</th><th scope="col">{t('two_lane.curve_superelevation')} (%)</th><th scope="col">{t('two_lane.curve_radius')} ({unit})</th><th scope="col">{t('two_lane.curve_central_angle')} (deg)</th><th scope="col">{t('two_lane.curve_horizontal_class')}</th><th scope="col"><span className="sr-only">{t('two_lane.curve_remove_row')}</span></th>
+          </tr></thead><tbody>
+            {rows.map((row, index) => <tr key={`curve-row-${index}`} data-testid={`two-lane-curve-row-${index}`}>
+              <td><select id={`two-lane-curve-${index}-type`} aria-label={`${t('two_lane.curve_type')} ${index + 1}`} value={String(row.type ?? 'tangent')} onChange={(event) => updateRow(index, 'type', event.target.value)}><option value="tangent">{t('two_lane.curve_tangent')}</option><option value="horizontal_curve">{t('two_lane.curve_horizontal_curve')}</option></select></td>
+              <td><input id={`two-lane-curve-${index}-length`} aria-label={`${t('two_lane.curve_length')} ${index + 1}`} type="number" value={row.length ?? ''} onChange={(event) => updateRow(index, 'length', event.target.value)} /></td>
+              <td><input id={`two-lane-curve-${index}-superelevation`} aria-label={`${t('two_lane.curve_superelevation')} ${index + 1}`} type="number" value={row.superelevation_percent ?? ''} onChange={(event) => updateRow(index, 'superelevation_percent', event.target.value)} /></td>
+              <td><input id={`two-lane-curve-${index}-radius`} aria-label={`${t('two_lane.curve_radius')} ${index + 1}`} type="number" value={row.radius ?? ''} onChange={(event) => updateRow(index, 'radius', event.target.value)} /></td>
+              <td><input id={`two-lane-curve-${index}-angle`} aria-label={`${t('two_lane.curve_central_angle')} ${index + 1}`} type="number" value={row.central_angle_deg ?? ''} onChange={(event) => updateRow(index, 'central_angle_deg', event.target.value)} /></td>
+              <td><input id={`two-lane-curve-${index}-class`} aria-label={`${t('two_lane.curve_horizontal_class')} ${index + 1}`} type="number" value={row.horizontal_class ?? ''} onChange={(event) => updateRow(index, 'horizontal_class', event.target.value)} /></td>
+              <td><button className="button button-link" type="button" onClick={() => removeRow(index)}>{t('two_lane.curve_remove_row')}</button></td>
+            </tr>)}
+          </tbody></table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ExportMenu({
+  stale,
+  onExport,
+}: {
+  stale: boolean;
+  onExport: (format: 'csv' | 'xlsx' | 'markdown' | 'json') => void;
+}): ReactElement {
+  const { t } = useI18n();
+  if (stale) {
+    return <div className="export-menu-disabled"><button className="button button-secondary" type="button" disabled>{t('action.export')} ▾</button><span>{t('result.export_stale_reason')}</span></div>;
+  }
+  return (
+    <details className="export-menu" open>
+      <summary className="button button-secondary">{t('action.export')} ▾</summary>
+      <div className="export-menu-content">
+        <button className="button button-quiet" type="button" onClick={() => onExport('json')}>{t('action.export_json')}</button>
+        <button className="button button-quiet" type="button" onClick={() => onExport('markdown')}>{t('action.export_markdown')}</button>
+        <button className="button button-quiet" type="button" onClick={() => onExport('xlsx')}>{t('action.export_xlsx')}</button>
+      </div>
+    </details>
+  );
+}
+
+function GeometryEvidenceDiagram({
+  methodId,
+  result,
+  assetMetadata,
+}: {
+  methodId: string;
+  result: WorkflowCalculationResponse;
+  assetMetadata?: EngineeringAssetMetadata;
+}): ReactElement | null {
   const { t } = useI18n();
   if (!['weaving_segment', 'merge_segment', 'diverge_segment'].includes(methodId)) return null;
   const isWeaving = methodId === 'weaving_segment';
   const isMerge = methodId === 'merge_segment';
   const title = isWeaving ? t('workflow.geometry_weaving') : isMerge ? t('workflow.geometry_merge') : t('workflow.geometry_diverge');
   const note = isWeaving ? t('workflow.geometry_weaving_note') : isMerge ? t('workflow.geometry_merge_note') : t('workflow.geometry_diverge_note');
+  const weavingVariant = isWeaving
+    ? assetMetadata?.variants?.find((item) => item.configuration === result.displayed_inputs.configuration && item.number_of_weaving_lanes === numericValue(result.displayed_inputs.number_of_weaving_lanes))
+    : undefined;
+  const assetPath = isWeaving ? weavingVariant?.asset_path : assetMetadata?.asset_path;
+  if (!assetPath) return null;
   return (
     <div className="geometry-evidence" data-testid="geometry-diagram">
       <div>
@@ -193,14 +462,8 @@ function GeometryEvidenceDiagram({ methodId }: { methodId: string }): ReactEleme
         <strong>{title}</strong>
         <p>{note}</p>
       </div>
-      <svg viewBox="0 0 520 118" role="img" aria-label={title} className="geometry-svg">
-        <path d="M20 25 H500 M20 58 H500 M20 91 H500" className="geometry-lane" />
-        <path d={isWeaving ? 'M55 91 C170 91 220 25 330 25 H500' : isMerge ? 'M30 108 C170 108 240 58 350 58 H500' : 'M20 58 H220 C300 58 350 108 500 108'} className="geometry-ramp" />
-        <path d={isWeaving ? 'M55 91 C170 91 220 25 330 25' : isMerge ? 'M30 108 C170 108 240 58 350 58' : 'M220 58 C300 58 350 108 500 108'} className="geometry-arrow" />
-        <text x="22" y="17">{t('workflow.geometry_upstream')}</text>
-        <text x="398" y="17">{t('workflow.geometry_downstream')}</text>
-        <text x={isWeaving ? '195' : '260'} y={isWeaving ? '45' : '105'}>{isWeaving ? t('workflow.geometry_weaving_flow') : isMerge ? t('workflow.geometry_on_ramp') : t('workflow.geometry_off_ramp')}</text>
-      </svg>
+      <img className="geometry-asset" src={engineeringAssetUrl(assetPath)} alt={title} data-asset-path={assetPath} />
+      <p className="engineering-reference-note">{t('workflow.conceptual_reference')}</p>
     </div>
   );
 }
@@ -213,6 +476,7 @@ function MultilaneForm({
   onUnitSystem,
   onTemplate,
   onChange,
+  fieldErrors,
 }: {
   templates: WorkflowTemplatesResponse;
   starting: WorkflowStartingValuesResponse;
@@ -221,6 +485,7 @@ function MultilaneForm({
   onUnitSystem: (unit: UnitSystem) => void;
   onTemplate: (templateId: string) => void;
   onChange: (key: string, value: unknown) => void;
+  fieldErrors: Map<string, string>;
 }): ReactElement {
   const { t } = useI18n();
   const grouped = [
@@ -232,7 +497,7 @@ function MultilaneForm({
   return (
     <div className="workflow-form" data-testid="multilane-form">
       <div className="workflow-controls">
-        <Field id="multilane-template" label={t('workflow.template')} required>
+        <Field id="multilane-template" label={t('workflow.start_with')} required>
           <select id="multilane-template" value={starting.template_id} onChange={(event) => onTemplate(event.target.value)}>
             {templates.templates.map((template) => <option value={template.template_id} key={template.template_id}>{template.label}</option>)}
           </select>
@@ -244,6 +509,7 @@ function MultilaneForm({
           </select>
         </Field>
       </div>
+      <StarterNotice starting={starting} />
       {grouped.map((group) => (
         <EngineeringSection title={group.title} key={group.key}>
           <div className="form-grid">
@@ -258,12 +524,14 @@ function MultilaneForm({
                     name={`multilane-${field.key}`}
                     value={String(inputs[field.key] ?? '')}
                     options={(field.options ?? []).map((option) => ({ value: option, label: t(`multilane.option.${option}`) }))}
+                    error={fieldErrors.get(field.key)}
                     onChange={(value) => onChange(field.key, value)}
                   />
                 );
               }
+              const hint = field.key === 'access_point_density' ? t('multilane.access_density_hint') : undefined;
               return (
-                <Field key={field.key} id={`multilane-${field.key}`} label={t(field.label_key)} required={Boolean(field.required || field.required_if)}>
+                <Field key={field.key} id={`multilane-${field.key}`} label={t(field.label_key)} required={Boolean(field.required || field.required_if)} hint={hint} error={fieldErrors.get(field.key)}>
                   {(controlProps) => <InputWithUnit {...controlProps} type={field.kind === 'text' ? 'text' : 'number'} unit={unitFor(field, unitSystem)} value={valueForInput(inputs[field.key])} onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(field.key, parseInput(field, event.target.value))} />}
                 </Field>
               );
@@ -284,6 +552,7 @@ function Phase3Form({
   onUnitSystem,
   onTemplate,
   onChange,
+  fieldErrors,
 }: {
   methodId: string;
   templates: WorkflowTemplatesResponse;
@@ -293,20 +562,30 @@ function Phase3Form({
   onUnitSystem: (unit: UnitSystem) => void;
   onTemplate: (templateId: string) => void;
   onChange: (key: string, value: unknown) => void;
+  fieldErrors: Map<string, string>;
 }): ReactElement {
   const { t } = useI18n();
+  const assets = engineeringAssetsFrom(templates);
   const fieldsByKey = new Map((starting.fields ?? templates.fields).map((field) => [field.key, field]));
   const groups: WorkflowGroup[] = templates.groups?.length
     ? templates.groups
     : [{ key: 'worksheet', label_key: 'workflow.worksheet', field_keys: starting.fields.map((field) => field.key) }];
   const optionLabel = (option: string): string => {
-    const translated = t(`${methodId}.option.${option}`);
-    return translated === `${methodId}.option.${option}` ? option.replaceAll('_', ' ') : translated;
+    const namespace = methodId === 'weaving_segment'
+      ? 'weaving'
+      : methodId === 'basic_freeway_segment'
+        ? 'basic_freeway'
+        : methodId === 'two_lane_segment'
+          ? 'two_lane_segment'
+          : 'ramp';
+    const key = `${namespace}.option.${option}`;
+    const translated = t(key);
+    return translated === key ? option.replaceAll('_', ' ') : translated;
   };
   return (
     <div className="workflow-form phase3-form" data-testid={`phase3-form-${methodId}`}>
       <div className="workflow-controls">
-        <Field id={`${methodId}-template`} label={t('workflow.template')} required>
+        <Field id={`${methodId}-template`} label={t('workflow.start_with')} required>
           <select id={`${methodId}-template`} value={starting.template_id} onChange={(event) => onTemplate(event.target.value)}>
             {templates.templates.map((template) => <option value={template.template_id} key={template.template_id}>{template.label}</option>)}
           </select>
@@ -318,44 +597,47 @@ function Phase3Form({
           </select>
         </Field>
       </div>
-      {groups.map((group) => (
-        <EngineeringSection title={t(group.label_key)} key={group.key}>
-          <div className="form-grid">
-            {group.field_keys.map((key) => {
-              const field = fieldsByKey.get(key);
-              if (!field || !isVisible(field, inputs)) return null;
-              const required = Boolean(field.required || field.required_if);
-              if (field.kind === 'choice' || field.kind === 'boolean') {
-                const options = field.options ?? [];
-                return (
-                  <ChoiceGroup
-                    key={field.key}
-                    legend={t(field.label_key)}
-                    name={`${methodId}-${field.key}`}
-                    value={valueForField(field, inputs[field.key]) as string}
-                    options={options.map((option) => ({ value: option, label: optionLabel(option) }))}
-                    onChange={(value) => onChange(field.key, parseInput(field, value))}
-                  />
-                );
-              }
-              if (field.kind === 'json') {
+      <StarterNotice starting={starting} />
+      {methodId === 'two_lane_segment' ? <TwoLaneSchematic inputs={inputs} unitSystem={unitSystem} assets={assets} /> : null}
+      {methodId === 'weaving_segment' ? <WeavingReference inputs={inputs} assets={assets} /> : null}
+      {groups.map((group) => {
+        const groupContent = (
+          <>
+            <div className="form-grid">
+              {group.field_keys.map((key) => {
+                const field = fieldsByKey.get(key);
+                if (key === 'horizontal_alignment_subsegments') return null;
+                if (!field || !isVisible(field, inputs)) return null;
+                const required = Boolean(field.required || field.required_if);
+                if (field.kind === 'choice' || field.kind === 'boolean') {
+                  const options = field.options ?? [];
+                  return (
+                    <ChoiceGroup
+                      key={field.key}
+                      legend={t(field.label_key)}
+                      name={`${methodId}-${field.key}`}
+                      value={valueForField(field, inputs[field.key]) as string}
+                      options={options.map((option) => ({ value: option, label: optionLabel(option) }))}
+                      error={fieldErrors.get(field.key)}
+                      onChange={(value) => onChange(field.key, parseInput(field, value))}
+                    />
+                  );
+                }
+                if (field.kind === 'json') return null;
                 const id = `${methodId}-${field.key}`;
                 return (
-                  <Field key={field.key} id={id} label={t(field.label_key)} required={required}>
-                    {(controlProps) => <textarea {...controlProps} className="json-input" value={valueForField(field, inputs[field.key])} onChange={(event) => onChange(field.key, parseInput(field, event.target.value))} rows={5} />}
+                  <Field key={field.key} id={id} label={t(field.label_key)} required={required} error={fieldErrors.get(field.key)}>
+                    {(controlProps) => <InputWithUnit {...controlProps} type={field.kind === 'text' ? 'text' : 'number'} unit={unitFor(field, unitSystem)} value={valueForField(field, inputs[field.key])} onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(field.key, parseInput(field, event.target.value))} />}
                   </Field>
                 );
-              }
-              const id = `${methodId}-${field.key}`;
-              return (
-                <Field key={field.key} id={id} label={t(field.label_key)} required={required}>
-                  {(controlProps) => <InputWithUnit {...controlProps} type={field.kind === 'text' ? 'text' : 'number'} unit={unitFor(field, unitSystem)} value={valueForField(field, inputs[field.key])} onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(field.key, parseInput(field, event.target.value))} />}
-                </Field>
-              );
-            })}
-          </div>
-        </EngineeringSection>
-      ))}
+              })}
+            </div>
+            {methodId === 'two_lane_segment' && group.key === 'roadway' && inputs.horizontal_alignment === 'horizontal_curves' ? <CurveEditor inputs={inputs} unitSystem={unitSystem} onChange={(value) => onChange('horizontal_alignment_subsegments', value)} /> : null}
+          </>
+        );
+        const advanced = group.key === 'advanced_geometry' || group.key === 'provenance';
+        return <div className="workflow-group" key={group.key}>{advanced ? <DetailsDisclosure title={t(group.label_key)}>{groupContent}</DetailsDisclosure> : <EngineeringSection title={t(group.label_key)}>{groupContent}</EngineeringSection>}</div>;
+      })}
     </div>
   );
 }
@@ -368,6 +650,7 @@ function FacilityForm({
   onUnitSystem,
   onTemplate,
   onChange,
+  fieldErrors,
 }: {
   templates: WorkflowTemplatesResponse;
   starting: WorkflowStartingValuesResponse;
@@ -376,6 +659,7 @@ function FacilityForm({
   onUnitSystem: (unit: UnitSystem) => void;
   onTemplate: (templateId: string) => void;
   onChange: (rows: FacilityRow[]) => void;
+  fieldErrors: Map<string, string>;
 }): ReactElement {
   const { t } = useI18n();
   const rows = Array.isArray(inputs.rows) ? inputs.rows as FacilityRow[] : starting.segments ?? [];
@@ -393,7 +677,7 @@ function FacilityForm({
   return (
     <div className="workflow-form" data-testid="facility-form">
       <div className="workflow-controls">
-        <Field id="facility-template" label={t('workflow.template')} required>
+        <Field id="facility-template" label={t('workflow.facility_template')} required>
           <select id="facility-template" value={starting.template_id} onChange={(event) => onTemplate(event.target.value)}>
             {templates.templates.map((template) => <option value={template.template_id} key={template.template_id}>{template.label}</option>)}
           </select>
@@ -429,8 +713,10 @@ function FacilityForm({
                         readOnly={!isEditable}
                         aria-readonly={!isEditable}
                         aria-label={`${t(`facility.col.${column}`)} ${row.segment_id}`}
+                        aria-invalid={fieldErrors.has(`rows[${rowIndex}].${column}`) ? 'true' : undefined}
                         onChange={(event) => updateRow(rowIndex, column, event.target.value)}
                       />
+                      {fieldErrors.get(`rows[${rowIndex}].${column}`) ? <span className="field-error">{fieldErrors.get(`rows[${rowIndex}].${column}`)}</span> : null}
                     </td>
                   );
                 })}
@@ -449,11 +735,15 @@ export function FacilityResultPanel({
   onExport,
   onSave,
   saveLabel,
+  onRecalculate,
+  stale = false,
 }: {
   result: WorkflowCalculationResponse;
   onExport: (format: 'csv' | 'xlsx' | 'markdown' | 'json') => void;
   onSave: () => void;
   saveLabel?: string;
+  onRecalculate?: () => void;
+  stale?: boolean;
 }): ReactElement {
   const { t } = useI18n();
   const capacityFailure = Boolean(result.presentation.capacity.failure);
@@ -463,7 +753,7 @@ export function FacilityResultPanel({
   return (
     <div className="workflow-results" data-testid="workflow-results">
       <EngineeringSection title={t('result.facility_section_title')} description={t('result.facility_section_description')}>
-        <ResultHero label={t('result.facility_level_of_service')} value={answer.available && answer.value ? answer.value : t('result.not_calculated')} state={capacityFailure ? 'capacity' : 'current'} supporting={answer.source} />
+        <ResultHero label={t('result.facility_level_of_service')} value={answer.available && answer.value ? answer.value : t('result.not_calculated')} state={stale ? 'stale' : capacityFailure ? 'capacity' : 'current'} supporting={answer.source} />
         {capacityFailure ? <CapacityFailurePanel metricsUnavailable={metricsUnavailable} /> : null}
         <div className="metric-grid">
           {result.presentation.metrics.map((metric) => <MetricCard key={metric.key} label={t(`result.metric.${metric.key}`)} value={metricDisplayValue(metric, t)} unit={metric.unit ?? undefined} />)}
@@ -475,10 +765,9 @@ export function FacilityResultPanel({
           </tbody></table>
         </div>
         <div className="result-actions">
-          <button className="button button-secondary" type="button" onClick={() => onExport('json')}>{t('action.export_json')}</button>
-          <button className="button button-secondary" type="button" onClick={() => onExport('markdown')}>{t('action.export_markdown')}</button>
-          <button className="button button-secondary" type="button" onClick={() => onExport('xlsx')}>{t('action.export_xlsx')}</button>
-          <button className="button button-primary" type="button" onClick={onSave}>{saveLabel ?? t('action.save_project')}</button>
+          <button className={`button ${stale ? 'button-secondary' : 'button-primary'}`} type="button" disabled={stale} onClick={onSave}>{saveLabel ?? t('action.save_project')}</button>
+          {!stale ? <button className="button button-secondary" type="button" onClick={onRecalculate}>{t('action.recalculate')}</button> : null}
+          <ExportMenu stale={stale} onExport={onExport} />
         </div>
       </EngineeringSection>
       <DetailsDisclosure title={t('result.evidence_title')}>
@@ -488,7 +777,7 @@ export function FacilityResultPanel({
   );
 }
 
-export function AnalysisWorkflow({ method, onBack, onProjectSaved, initialScenario, onScenarioResultSaved }: AnalysisWorkflowProps): ReactElement {
+export function AnalysisWorkflow({ method, onBack, onDirtyChange, onProjectSaved, initialScenario, onScenarioResultSaved }: AnalysisWorkflowProps): ReactElement {
   const { t } = useI18n();
   const [templates, setTemplates] = useState<WorkflowTemplatesResponse | null>(null);
   const [starting, setStarting] = useState<WorkflowStartingValuesResponse | null>(null);
@@ -510,6 +799,20 @@ export function AnalysisWorkflow({ method, onBack, onProjectSaved, initialScenar
   const serializedInputs = useMemo(() => serializeInputSnapshot(inputs), [inputs]);
 
   useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+
+  useEffect(() => {
+    if (!dirty) return undefined;
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', beforeUnload);
+    return () => window.removeEventListener('beforeunload', beforeUnload);
+  }, [dirty]);
+
+  useEffect(() => {
     let active = true;
     setLoading(true);
     setError(null);
@@ -528,7 +831,7 @@ export function AnalysisWorkflow({ method, onBack, onProjectSaved, initialScenar
         if (!active) return;
         setTemplates(response);
         const preferred = initialScenarioRef.current?.templateId;
-        const first = response.templates[0]?.template_id ?? '';
+        const first = response.default_template_id ?? response.templates[0]?.template_id ?? '';
         setTemplateId(response.templates.some((template) => template.template_id === preferred) ? preferred ?? first : first);
       })
       .catch((reason: Error) => { if (active) setError(reason.message); })
@@ -577,8 +880,62 @@ export function AnalysisWorkflow({ method, onBack, onProjectSaved, initialScenar
     setNotice(null);
   };
 
+  const confirmWorksheetReset = (): boolean => {
+    if (!dirty) return true;
+    return window.confirm(t('workflow.discard_confirmation'));
+  };
+
+  const changeTemplate = (nextTemplateId: string) => {
+    if (!confirmWorksheetReset()) return;
+    setTemplateId(nextTemplateId);
+  };
+
+  const changeUnitSystem = (nextUnitSystem: UnitSystem) => {
+    if (!confirmWorksheetReset()) return;
+    setUnitSystem(nextUnitSystem);
+  };
+
+  const onChangeFromForm = (key: string, value: unknown) => {
+    const next = { ...inputs, [key]: value };
+    if (key === 'horizontal_alignment') {
+      next.horizontal_alignment_subsegments = value === 'horizontal_curves'
+        ? (Array.isArray(inputs.horizontal_alignment_subsegments) ? inputs.horizontal_alignment_subsegments : [])
+        : [];
+    }
+    if (method.method_id === 'weaving_segment' && key === 'configuration') {
+      if (value === 'two_sided') {
+        const entry = String(inputs.entry_side ?? 'right');
+        next.number_of_weaving_lanes = 0;
+        next.exit_side = entry === 'right' ? 'left' : 'right';
+        next.lc_rf = null;
+        next.lc_fr = null;
+        next.lc_rr = numericValue(inputs.lc_rr) ?? 2;
+      } else {
+        const entry = String(inputs.entry_side ?? 'right');
+        const existingNwl = numericValue(inputs.number_of_weaving_lanes);
+        next.number_of_weaving_lanes = existingNwl === 2 || existingNwl === 3 ? existingNwl : 2;
+        next.exit_side = entry;
+        next.lc_rf = numericValue(inputs.lc_rf) ?? 0;
+        next.lc_fr = numericValue(inputs.lc_fr) ?? 0;
+        next.lc_rr = null;
+      }
+    }
+    updateInputs(next);
+  };
+
+  const focusValidationError = () => {
+    const firstTarget = errors[0]?.targetId;
+    const target = firstTarget ? document.getElementById(firstTarget) : null;
+    const destination = target ?? document.getElementById('error-summary');
+    destination?.focus();
+    destination?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  };
+
   const handleCalculate = () => {
-    if (!templateId || !validation?.valid) return;
+    if (!templateId || !validation?.valid) {
+      focusValidationError();
+      return;
+    }
     setWorking(true);
     setError(null);
     calculateWorkflow(method.method_id, templateId, unitSystem, inputs)
@@ -638,7 +995,8 @@ export function AnalysisWorkflow({ method, onBack, onProjectSaved, initialScenar
       .finally(() => setWorking(false));
   };
 
-  const status = dirty ? t('state.stale_title') : result ? t('status.current') : validation?.valid ? t('status.ready_to_calculate') : t('status.items_required');
+  const isStale = dirty && Boolean(result);
+  const status = isStale ? t('state.stale_title') : result ? t('status.current') : validation?.valid ? t('status.ready_to_calculate') : t('status.items_required');
   const targetIdForIssue = (field: string | null): string | undefined => {
     if (!field) return undefined;
     const rowMatch = field.match(/^rows\[(\d+)\]\.(.+)$/);
@@ -650,18 +1008,28 @@ export function AnalysisWorkflow({ method, onBack, onProjectSaved, initialScenar
     return isFacility ? undefined : `${isMultilane ? 'multilane' : method.method_id}-${field}`;
   };
   const errors = validation?.errors.map((issue) => ({ message: issue.message, targetId: targetIdForIssue(issue.field) })) ?? [];
+  const fieldErrors = new Map(
+    (validation?.errors ?? [])
+      .filter((issue) => issue.field)
+      .map((issue) => [issue.field as string, issue.message]),
+  );
+  const assetMetadata = engineeringAssetsFrom(templates);
   return (
     <div className="page-stack workflow-page" data-testid={`workflow-${method.method_id}`}>
-      <div className="workflow-toolbar"><button className="button button-quiet" type="button" onClick={onBack}>← {t('action.back_to_methods')}</button><StatusBadge tone={dirty ? 'stale' : result ? 'current' : 'neutral'}>{status}</StatusBadge></div>
-      <AnalysisHeader title={t(method.name_key)} method={`${method.chapter_reference} · ${method.input_contract}`} status={status} />
+      <div className="workflow-toolbar"><button className="button button-quiet" type="button" onClick={onBack}>← {t('action.back_to_methods')}</button><StatusBadge tone={isStale ? 'stale' : result ? 'current' : 'neutral'}>{status}</StatusBadge></div>
+      <AnalysisHeader title={t(method.name_key)} method={`${method.chapter_reference} · ${method.input_contract}`} status={status} tone={isStale ? 'stale' : result ? 'current' : 'neutral'} context={initialScenario ? t('workflow.project_context_value', { scenario: initialScenario.scenarioId }) : undefined} />
       {loading ? <ScopeNotice title={t('status.loading')}>{t('workflow.loading')}</ScopeNotice> : null}
       {error ? <ScopeNotice title={t('workflow.error_title')} tone="warning">{error}</ScopeNotice> : null}
       {notice ? <ScopeNotice title={t('workflow.notice_title')}>{notice}</ScopeNotice> : null}
-      {templates && starting ? (isFacility ? <FacilityForm templates={templates} starting={starting} inputs={inputs} unitSystem={unitSystem} onUnitSystem={setUnitSystem} onTemplate={setTemplateId} onChange={(rows) => updateInputs({ rows })} /> : isMultilane ? <MultilaneForm templates={templates} starting={starting} inputs={inputs} unitSystem={unitSystem} onUnitSystem={setUnitSystem} onTemplate={setTemplateId} onChange={(key, value) => updateInputs({ ...inputs, [key]: value })} /> : <Phase3Form methodId={method.method_id} templates={templates} starting={starting} inputs={inputs} unitSystem={unitSystem} onUnitSystem={setUnitSystem} onTemplate={setTemplateId} onChange={(key, value) => updateInputs({ ...inputs, [key]: value })} />) : null}
-      <ErrorSummary errors={errors} />
       {dirty && result ? <StaleResultBanner onRecalculate={handleCalculate} /> : null}
-      <ReadinessBar ready={Boolean(validation?.valid) && !working} actionLabel={result && !dirty ? t('action.recalculate') : t('action.calculate')} onAction={handleCalculate} />
-      {result && !dirty ? (isFacility ? <FacilityResultPanel result={result} onExport={handleExport} onSave={handleSave} saveLabel={onScenarioResultSaved ? t('action.save_scenario') : undefined} /> : <ResultPanel result={result} onExport={handleExport} onSave={handleSave} saveLabel={onScenarioResultSaved ? t('action.save_scenario') : undefined} />) : null}
+      {result && !dirty ? (isFacility ? <FacilityResultPanel result={result} onExport={handleExport} onSave={handleSave} onRecalculate={handleCalculate} saveLabel={onScenarioResultSaved ? t('action.save_scenario') : undefined} /> : <ResultPanel result={result} onExport={handleExport} onSave={handleSave} onRecalculate={handleCalculate} assetMetadata={assetMetadata} saveLabel={onScenarioResultSaved ? t('action.save_scenario') : undefined} />) : null}
+      {templates && starting ? (isFacility
+        ? <FacilityForm templates={templates} starting={starting} inputs={inputs} unitSystem={unitSystem} onUnitSystem={changeUnitSystem} onTemplate={changeTemplate} fieldErrors={fieldErrors} onChange={(rows) => updateInputs({ rows })} />
+        : isMultilane
+          ? <MultilaneForm templates={templates} starting={starting} inputs={inputs} unitSystem={unitSystem} onUnitSystem={changeUnitSystem} onTemplate={changeTemplate} fieldErrors={fieldErrors} onChange={onChangeFromForm} />
+          : <Phase3Form methodId={method.method_id} templates={templates} starting={starting} inputs={inputs} unitSystem={unitSystem} onUnitSystem={changeUnitSystem} onTemplate={changeTemplate} fieldErrors={fieldErrors} onChange={onChangeFromForm} />) : null}
+      <ErrorSummary errors={errors} />
+      {!result ? <ReadinessBar ready={Boolean(validation?.valid)} disabled={working} actionLabel={t('action.calculate')} onAction={handleCalculate} /> : null}
       {working ? <p className="muted" role="status">{t('status.working')}</p> : null}
     </div>
   );

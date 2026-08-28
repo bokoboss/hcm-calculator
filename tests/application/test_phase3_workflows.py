@@ -15,6 +15,61 @@ PHASE3_CASES = (
 )
 
 
+ALL_DELIVERED_METHODS = (
+    "two_lane_segment",
+    "two_lane_facility",
+    "multilane_segment",
+    "basic_freeway_segment",
+    "weaving_segment",
+    "merge_segment",
+    "diverge_segment",
+)
+
+
+def test_all_delivered_workflows_identify_a_default_and_starter_semantics() -> None:
+    expected_defaults = {
+        "two_lane_segment": "TLH-CH15-001",
+        "two_lane_facility": "level_example_3",
+        "multilane_segment": "MLH-CH26-004-EB",
+        "basic_freeway_segment": "BF-CH26-001",
+        "weaving_segment": "WVG-CH27-001",
+        "merge_segment": "chapter_28_example_1_merge",
+        "diverge_segment": "chapter_28_example_3_diverge_component",
+    }
+    for method_id in ALL_DELIVERED_METHODS:
+        templates = workflow_for_method(method_id).templates()
+        assert templates["default_template_id"] == expected_defaults[method_id]
+        default = next(item for item in templates["templates"] if item["template_id"] == templates["default_template_id"])
+        assert default["starter_kind"] in {"example", "facility_template"}
+
+
+def test_phase3_asset_metadata_reuses_qualified_package_assets() -> None:
+    assert workflow_for_method("two_lane_segment").templates()["branches"]["engineering_assets"]["variants"]
+    weaving_assets = workflow_for_method("weaving_segment").templates()["branches"]["engineering_assets"]["variants"]
+    assert {item["asset_path"] for item in weaving_assets} == {
+        "weaving/one_sided_weave.png",
+        "weaving/two_sided_weave.png",
+    }
+    assert workflow_for_method("merge_segment").templates()["branches"]["engineering_assets"]["asset_path"].endswith("merge_right_on_ramp.svg")
+    assert workflow_for_method("diverge_segment").templates()["branches"]["engineering_assets"]["asset_path"].endswith("diverge_right_off_ramp.svg")
+
+
+def test_multilane_blank_access_density_is_explicit_zero_but_clear_is_invalid() -> None:
+    workflow = workflow_for_method("multilane_segment")
+    blank = workflow.starting_values("blank_custom", "metric")
+    assert blank["displayed_inputs"]["access_point_density"] == 0.0
+    starting = workflow.starting_values("MLH-CH26-004-EB", "metric")
+    cleared = dict(starting["displayed_inputs"])
+    cleared["access_point_density"] = None
+    validation = workflow.validate(
+        template_id="MLH-CH26-004-EB",
+        unit_system="metric",
+        displayed_inputs=cleared,
+    )
+    assert validation["valid"] is False
+    assert any(issue["field"] == "access_point_density" for issue in validation["errors"])
+
+
 @pytest.mark.parametrize("method_id, template_id, engine_method, expected_los", PHASE3_CASES)
 def test_phase3_templates_validate_and_calculate_through_existing_engines(
     method_id: str,

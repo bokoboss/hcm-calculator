@@ -16,6 +16,13 @@ import type {
 
 const API_ROOT = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.VITE_API_ROOT ?? '';
 
+export function engineeringAssetUrl(assetPath: string): string {
+  return `${API_ROOT}/engineering-assets/${assetPath
+    .split('/')
+    .map((part) => encodeURIComponent(part))
+    .join('/')}`;
+}
+
 async function getJson<T>(path: string): Promise<T> {
   const response = await fetch(`${API_ROOT}${path}`, {
     headers: { Accept: 'application/json' },

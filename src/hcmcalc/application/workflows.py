@@ -74,6 +74,34 @@ PHASE3_METHOD_IDS = frozenset({
 SUPPORTED_WORKFLOW_EXPORTS = frozenset({"csv", "xlsx", "markdown", "json"})
 
 
+def _starter_kind(method_id: str, template_id: str) -> str:
+    """Return language-neutral starter semantics for the rebuilt UI."""
+
+    if template_id == "legacy_import":
+        return "legacy_import"
+    if method_id == "two_lane_facility":
+        return "facility_template"
+    if template_id in {"blank_custom", "blank_case"}:
+        return "blank"
+    return "example"
+
+
+def _starter_label(method_id: str, template_id: str, fallback: str) -> str:
+    """Keep starter grammar in application metadata, not React label logic."""
+
+    if template_id in {"blank_custom", "blank_case"}:
+        return "Blank worksheet"
+    if template_id == "legacy_import":
+        return "Imported legacy worksheet"
+    if method_id == "two_lane_facility":
+        example = fallback.replace(" starting values", "")
+        return f"Facility template — {example}"
+    if method_id == "multilane_segment":
+        suffix = "EB" if template_id.endswith("-EB") else "WB"
+        return f"Example — Chapter 26 Example 4 ({suffix})"
+    return fallback
+
+
 class ApplicationWorkflowError(ValueError):
     """A safe, structured application-boundary error."""
 
@@ -380,8 +408,20 @@ class MultilaneWorkflow:
         return {
             "method_id": self.method_id,
             "unit_systems": ["metric", "imperial"],
+            "default_template_id": "MLH-CH26-004-EB",
             "templates": [
-                {"template_id": key, "label": label}
+                {
+                    "template_id": key,
+                    "label": _starter_label(self.method_id, key, label),
+                    "starter_kind": _starter_kind(self.method_id, key),
+                    "description": (
+                        "Chapter 26 Example 4 eastbound values."
+                        if key.endswith("-EB")
+                        else "Chapter 26 Example 4 westbound values."
+                        if key.endswith("-WB")
+                        else "Enter the required worksheet values; access-point density starts at 0."
+                    ),
+                }
                 for key, label in multilane_template_options(include_blank=True).items()
             ],
             "fields": [deepcopy(field) for field in MULTILANE_FIELD_SCHEMA],
@@ -420,9 +460,12 @@ class MultilaneWorkflow:
             {
                 "method_id": self.method_id,
                 "template_id": template_id,
-                "template_label": template["template_label"],
+                "template_label": _starter_label(
+                    self.method_id, template_id, template["template_label"]
+                ),
                 "template_description": template["description"],
                 "validation_status": template["validation_status"],
+                "starter_kind": _starter_kind(self.method_id, template_id),
                 "unit_system": unit_system,
                 "displayed_inputs": displayed,
                 "fields": [deepcopy(field) for field in MULTILANE_FIELD_SCHEMA],
@@ -613,12 +656,18 @@ class FacilityWorkflow:
 
     def templates(self) -> dict[str, Any]:
         options = [
-            {"template_id": template_id, "label": label}
+            {
+                "template_id": template_id,
+                "label": _starter_label(self.method_id, template_id, label),
+                "starter_kind": _starter_kind(self.method_id, template_id),
+                "description": "Validated facility sequence and geometry remain template-controlled.",
+            }
             for template_id, label in facility_template_options().items()
         ]
         return {
             "method_id": self.method_id,
             "unit_systems": ["metric", "imperial"],
+            "default_template_id": "level_example_3",
             "templates": options,
             "fields": [deepcopy(field) for field in FACILITY_FIELD_SCHEMA],
             "scope_notes": [
@@ -643,7 +692,10 @@ class FacilityWorkflow:
             {
                 "method_id": self.method_id,
                 "template_id": template_id,
-                "template_label": template["template_label"],
+                "template_label": _starter_label(
+                    self.method_id, template_id, template["template_label"]
+                ),
+                "starter_kind": _starter_kind(self.method_id, template_id),
                 "template_source_reference": template["template_source_reference"],
                 "template_basis": template["template_basis"],
                 "supported_context": template["supported_context"],

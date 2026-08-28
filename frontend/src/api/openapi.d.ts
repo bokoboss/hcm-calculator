@@ -693,6 +693,8 @@ export interface components {
             branches?: {
                 [key: string]: unknown;
             };
+            /** Default Template Id */
+            default_template_id?: string | null;
             /** Fields */
             fields: {
                 [key: string]: unknown;

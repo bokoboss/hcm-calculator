@@ -31,6 +31,7 @@ from hcmcalc.ui.manual_freeway import (
     build_manual_freeway_audit_record,
 )
 from hcmcalc.ui.manual_ramp_influence import (
+    diagram_path,
     ramp_display_outputs,
     ramp_engine_inputs_to_ui,
     ramp_preset_options,
@@ -48,7 +49,9 @@ from hcmcalc.ui.manual_weaving import (
     run_manual_weaving,
 )
 from hcmcalc.ui.runtime_resources import load_packaged_yaml
+from hcmcalc.ui.schematics import SEGMENT_SCHEMATIC_FILENAMES
 from hcmcalc.ui.units import FEET_TO_METERS, MILES_TO_KILOMETERS, manual_defaults
+from hcmcalc.ui.weaving_diagrams import get_weaving_diagram, get_weaving_diagram_subtype
 from hcmcalc.weaving.geometry import validate_v70_geometry
 from hcmcalc.weaving.models import WeavingSegmentInputs
 from hcmcalc.weaving.validation import validate_common as validate_weaving_common
@@ -64,6 +67,88 @@ PHASE3_METHOD_IDS = frozenset(
         "diverge_segment",
     }
 )
+
+
+def _phase3_template_kind(template_id: str) -> str:
+    if template_id == "legacy_import":
+        return "legacy_import"
+    if template_id == "blank_custom":
+        return "blank"
+    return "example"
+
+
+def _phase3_template_label(method_id: str, template_id: str, fallback: str) -> str:
+    if template_id == "blank_custom":
+        return "Blank worksheet"
+    if template_id == "legacy_import":
+        return "Imported legacy worksheet"
+    if method_id == "two_lane_segment":
+        number = {"TLH-CH15-001": "1", "TLH-CH15-002": "2"}.get(template_id)
+        if number:
+            return f"Example — Chapter 15 Example {number}"
+    if method_id == "basic_freeway_segment":
+        return "Example — Chapter 26 Example 1"
+    if method_id == "weaving_segment" and template_id.startswith("WVG-CH27-"):
+        return f"Example — Chapter 27 Example {template_id[-3:].lstrip('0')}"
+    if method_id in {"merge_segment", "diverge_segment"}:
+        if template_id == "chapter_28_example_1_merge":
+            return "Example — Chapter 28 Example 1"
+        if template_id == "chapter_28_example_3_merge_component":
+            return "Example — Chapter 28 Example 3 merge component"
+        if template_id == "chapter_28_example_3_diverge_component":
+            return "Example — Chapter 28 Example 3 diverge component"
+    return fallback
+
+
+def _phase3_default_template_id(method_id: str) -> str:
+    """Identify the validated example loaded for a new Phase 3 worksheet."""
+
+    return {
+        "two_lane_segment": "TLH-CH15-001",
+        "basic_freeway_segment": "BF-CH26-001",
+        "weaving_segment": "WVG-CH27-001",
+        "merge_segment": "chapter_28_example_1_merge",
+        "diverge_segment": "chapter_28_example_3_diverge_component",
+    }[method_id]
+
+
+def _phase3_asset_metadata(method_id: str) -> dict[str, Any]:
+    """Describe presentation assets without duplicating them in React."""
+
+    if method_id == "two_lane_segment":
+        return {
+            "kind": "two_lane_schematic",
+            "variants": [
+                {"segment_type": segment_type, "asset_path": f"two_lane/{filename}"}
+                for segment_type, filename in SEGMENT_SCHEMATIC_FILENAMES.items()
+            ],
+        }
+    if method_id == "weaving_segment":
+        variants: list[dict[str, Any]] = []
+        for configuration, number_of_weaving_lanes in (
+            ("one_sided", 3),
+            ("one_sided", 2),
+            ("two_sided", 0),
+        ):
+            subtype = get_weaving_diagram_subtype(configuration, number_of_weaving_lanes)
+            diagram = get_weaving_diagram(subtype)
+            if subtype is not None and diagram is not None:
+                variants.append(
+                    {
+                        "subtype": subtype,
+                        "configuration": configuration,
+                        "number_of_weaving_lanes": number_of_weaving_lanes,
+                        "asset_path": f"weaving/{diagram.filename}",
+                    }
+                )
+        return {"kind": "weaving_reference", "variants": variants}
+    if method_id in {"merge_segment", "diverge_segment"}:
+        workflow = "merge" if method_id == "merge_segment" else "diverge"
+        return {
+            "kind": "ramp_influence_diagram",
+            "asset_path": f"ramp_influence/{diagram_path(workflow).name}",
+        }
+    return {}
 
 
 def _field(
@@ -785,7 +870,8 @@ PHASE3_GROUPS: dict[str, tuple[dict[str, Any], ...]] = {
         {"key": "provenance", "label_key": "basic_freeway.group_provenance", "field_keys": ["driver_population_category", "speed_adjustment_factor", "capacity_adjustment_factor", "speed_adjustment_factor_source", "capacity_adjustment_factor_source"]},
     ),
     "weaving_segment": (
-        {"key": "geometry", "label_key": "weaving.group_geometry", "field_keys": ["configuration", "segment_length", "number_of_lanes", "number_of_weaving_lanes", "entry_side", "exit_side", "option_fr", "option_rf", "option_rr", "reachable_ff", "reachable_fr", "reachable_rf", "reachable_rr", "nwl_basis", "lane_change_basis", "lc_rf", "lc_fr", "lc_rr"]},
+        {"key": "geometry", "label_key": "weaving.group_geometry", "field_keys": ["configuration", "segment_length", "number_of_lanes", "number_of_weaving_lanes", "entry_side", "exit_side"]},
+        {"key": "advanced_geometry", "label_key": "weaving.group_advanced_geometry", "field_keys": ["option_fr", "option_rf", "option_rr", "reachable_ff", "reachable_fr", "reachable_rf", "reachable_rr", "nwl_basis", "lane_change_basis", "lc_rf", "lc_fr", "lc_rr"]},
         {"key": "movements", "label_key": "weaving.group_movements", "field_keys": ["volume_ff_veh_h", "volume_fr_veh_h", "volume_rf_veh_h", "volume_rr_veh_h", "peak_hour_factor", "interchange_density"]},
         {"key": "free_flow", "label_key": "weaving.group_free_flow", "field_keys": ["ffs_source", "free_flow_speed", "base_free_flow_speed", "lane_width", "right_side_lateral_clearance", "total_ramp_density"]},
         {"key": "heavy_vehicles", "label_key": "weaving.group_heavy_vehicles", "field_keys": ["heavy_vehicle_percent", "terrain_type"]},
@@ -862,36 +948,139 @@ def _two_lane_display_from_engine(inputs: Mapping[str, Any], unit_system: str) -
 
 def _two_lane_templates() -> dict[str, dict[str, Any]]:
     fixture = load_packaged_yaml("example_inputs.yaml")
-    result: dict[str, dict[str, Any]] = {
-        "blank_custom": {
-            "template_label": "Blank/custom starting values",
-            "template_description": "A valid straight-segment worksheet starter; replace values before release use.",
-            "validation_status": "ui_starter_only",
-            "displayed_inputs": {},
+    result: dict[str, dict[str, Any]] = {}
+    for case_id, number in (("TLH-CH15-001", "1"), ("TLH-CH15-002", "2")):
+        case = find_case(fixture, case_id)
+        result[case_id] = {
+            "template_label": f"Example — Chapter 15 Example {number}",
+            "template_description": case["source"]["segment_description"],
+            "validation_status": case["validation_status"],
+            "starter_kind": "example",
+            "displayed_inputs": _two_lane_display_from_engine(case["inputs"], "imperial"),
         }
+    result["blank_custom"] = {
+        "template_label": "Blank worksheet",
+        "template_description": "Enter the required worksheet values; only neutral roadway choices are preselected.",
+        "validation_status": "ui_starter_only",
+        "starter_kind": "blank",
+        "displayed_inputs": {
+            key: None
+            for key in manual_defaults("imperial")
+        },
     }
-    result["blank_custom"]["displayed_inputs"] = {
-        **manual_defaults("imperial"),
+    result["blank_custom"]["displayed_inputs"].update({
         "segment_type": "passing_constrained",
+        "opposing_direction_volume": None,
         "terrain_type": "level",
         "horizontal_alignment": "straight",
         "horizontal_alignment_subsegments": [],
-    }
+    })
     result["legacy_import"] = {
         "template_label": "Imported legacy worksheet",
         "template_description": "The displayed values are restored from a legacy Project 1.x file.",
         "validation_status": "legacy_import",
+        "starter_kind": "legacy_import",
         "displayed_inputs": deepcopy(result["blank_custom"]["displayed_inputs"]),
     }
-    for case_id in ("TLH-CH15-001", "TLH-CH15-002"):
-        case = find_case(fixture, case_id)
-        result[case_id] = {
-            "template_label": f"{case['source']['example_problem']} starting values",
-            "template_description": case["source"]["segment_description"],
-            "validation_status": case["validation_status"],
-            "displayed_inputs": _two_lane_display_from_engine(case["inputs"], "imperial"),
-        }
     return result
+
+
+def _phase3_blank_inputs(method_id: str, unit_system: str) -> dict[str, Any]:
+    """Return neutral custom values without borrowing a validation example."""
+
+    if method_id == "two_lane_segment":
+        values = {
+            key: None for key in manual_defaults(unit_system)
+        }
+        values.update(
+            {
+                "segment_type": "passing_constrained",
+                "terrain_type": "level",
+                "horizontal_alignment": "straight",
+                "horizontal_alignment_subsegments": [],
+                "opposing_direction_volume": None,
+            }
+        )
+        return values
+    if method_id == "basic_freeway_segment":
+        values = freeway_engine_inputs_to_ui(
+            load_freeway_preset("BF-CH26-001")["inputs"], unit_system
+        )
+        for key in (
+            "number_of_lanes", "segment_length", "demand_volume_veh_h",
+            "peak_hour_factor", "heavy_vehicle_percent", "posted_speed_limit",
+            "lane_width", "right_side_lateral_clearance", "total_ramp_density",
+            "free_flow_speed", "base_free_flow_speed", "grade_percent",
+            "passenger_car_equivalent", "speed_adjustment_factor",
+            "capacity_adjustment_factor",
+        ):
+            values[key] = None
+        values.update(
+            {
+                "ffs_source": "estimated",
+                "terrain_type": "level",
+                "truck_mix": "default_30_sut_70_tt",
+                "pce_mode": "internal",
+                "driver_population_category": "regular",
+                "speed_adjustment_factor_source": "hcm_base_conditions",
+                "capacity_adjustment_factor_source": "hcm_base_conditions",
+            }
+        )
+        return values
+    if method_id == "weaving_segment":
+        values = weaving_preset_ui_inputs("WVG-CH27-001", unit_system)
+        for key in (
+            "segment_length", "lc_rf", "lc_fr", "lc_rr", "volume_ff_veh_h",
+            "volume_fr_veh_h", "volume_rf_veh_h", "volume_rr_veh_h",
+            "peak_hour_factor", "interchange_density", "free_flow_speed",
+            "base_free_flow_speed", "lane_width", "right_side_lateral_clearance",
+            "total_ramp_density", "heavy_vehicle_percent",
+        ):
+            values[key] = None
+        values.update(
+            {
+                "case_name": "CUSTOM-WEAVING",
+                "configuration": "one_sided",
+                "number_of_lanes": 3,
+                "number_of_weaving_lanes": 2,
+                "entry_side": "right",
+                "exit_side": "right",
+                "option_fr": False,
+                "option_rf": False,
+                "option_rr": False,
+                "reachable_ff": "",
+                "reachable_fr": "",
+                "reachable_rf": "",
+                "reachable_rr": "",
+                "nwl_basis": "",
+                "lane_change_basis": "",
+                "ffs_source": "measured",
+                "terrain_type": "level",
+            }
+        )
+        return values
+    workflow = "merge" if method_id == "merge_segment" else "diverge"
+    values = ramp_preset_ui_inputs(workflow, next(iter(ramp_preset_options(workflow))), unit_system)
+    for key in (
+        "freeway_lanes", "auxiliary_lane_length", "freeway_demand_veh_h",
+        "ramp_demand_veh_h", "freeway_peak_hour_factor", "ramp_peak_hour_factor",
+        "freeway_heavy_vehicle_percent", "ramp_heavy_vehicle_percent",
+        "free_flow_speed", "base_free_flow_speed", "lane_width",
+        "right_side_lateral_clearance", "total_ramp_density", "ramp_ffs",
+    ):
+        values[key] = None
+    values.update(
+        {
+            "case_name": f"CUSTOM-{workflow.upper()}",
+            "terrain_type": "level",
+            "ffs_source": "measured",
+            "geometry_source": "user_entered",
+            "geometry_notes": "",
+            "speed_adjustment_factor_source": "hcm_base_conditions",
+            "capacity_adjustment_factor_source": "hcm_base_conditions",
+        }
+    )
+    return values
 
 
 def _phase3_template_inputs(method_id: str, template_id: str, unit_system: str) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -901,13 +1090,7 @@ def _phase3_template_inputs(method_id: str, template_id: str, unit_system: str) 
             raise ValueError(f"Unsupported Two-Lane Segment template: {template_id}.")
         item = templates[template_id]
         displayed = (
-            {
-                **manual_defaults(unit_system),
-                "segment_type": "passing_constrained",
-                "terrain_type": "level",
-                "horizontal_alignment": "straight",
-                "horizontal_alignment_subsegments": [],
-            }
+            _phase3_blank_inputs(method_id, unit_system)
             if template_id == "blank_custom"
             or template_id == "legacy_import"
             else _two_lane_display_from_engine(
@@ -918,40 +1101,55 @@ def _phase3_template_inputs(method_id: str, template_id: str, unit_system: str) 
         return displayed, item
 
     if method_id == "basic_freeway_segment":
-        options = {"blank_custom": "Blank/custom starting values", **freeway_preset_options()}
+        options = {**freeway_preset_options(), "blank_custom": "Blank worksheet"}
         if template_id not in options:
             raise ValueError(f"Unsupported Basic Freeway template: {template_id}.")
         source = load_freeway_preset("BF-CH26-001")
         source["inputs"]["case_id"] = "CUSTOM-BASIC-FREEWAY" if template_id == "blank_custom" else template_id
         item = {
-            "template_label": options[template_id],
-            "template_description": source["description"],
+            "template_label": _phase3_template_label(method_id, template_id, options[template_id]),
+            "template_description": "Enter the required worksheet values; only neutral branch choices are preselected." if template_id == "blank_custom" else source["description"],
             "validation_status": "ui_starter_only" if template_id == "blank_custom" else source["validation_status"],
+            "starter_kind": _phase3_template_kind(template_id),
         }
-        return freeway_engine_inputs_to_ui(source["inputs"], unit_system), item
+        return (_phase3_blank_inputs(method_id, unit_system) if template_id == "blank_custom" else freeway_engine_inputs_to_ui(source["inputs"], unit_system)), item
 
     if method_id == "weaving_segment":
-        options = weaving_preset_options()
+        raw_options = weaving_preset_options()
+        options = {
+            key: _phase3_template_label(method_id, key, label)
+            for key, label in raw_options.items()
+            if key != "blank_custom"
+        }
+        options["blank_custom"] = "Blank worksheet"
         if template_id not in options:
             raise ValueError(f"Unsupported Weaving template: {template_id}.")
         item = {
             "template_label": options[template_id],
-            "template_description": "Explicit Chapter 27 geometry and movement-flow evidence.",
+            "template_description": "Enter the required worksheet values; neutral geometry choices are preselected." if template_id == "blank_custom" else "Explicit Chapter 27 geometry and movement-flow evidence.",
             "validation_status": "ui_starter_only" if template_id == "blank_custom" else "reference_fixture",
+            "starter_kind": _phase3_template_kind(template_id),
         }
-        return weaving_preset_ui_inputs(template_id, unit_system), item
+        return (_phase3_blank_inputs(method_id, unit_system) if template_id == "blank_custom" else weaving_preset_ui_inputs(template_id, unit_system)), item
 
     if method_id in {"merge_segment", "diverge_segment"}:
         workflow = "merge" if method_id == "merge_segment" else "diverge"
-        options = ramp_preset_options(workflow)
+        raw_options = ramp_preset_options(workflow)
+        options = {
+            key: _phase3_template_label(method_id, key, label)
+            for key, label in raw_options.items()
+            if key != "blank_custom"
+        }
+        options["blank_custom"] = "Blank worksheet"
         if template_id not in options:
             raise ValueError(f"Unsupported {workflow} template: {template_id}.")
         item = {
             "template_label": options[template_id],
-            "template_description": "Explicit isolated one-lane right-side ramp geometry evidence.",
+            "template_description": "Enter the required worksheet values; neutral geometry choices are preselected." if template_id == "blank_custom" else "Explicit isolated one-lane right-side ramp geometry evidence.",
             "validation_status": "ui_starter_only" if template_id == "blank_custom" else "reference_fixture",
+            "starter_kind": _phase3_template_kind(template_id),
         }
-        return ramp_preset_ui_inputs(workflow, template_id, unit_system), item
+        return (_phase3_blank_inputs(method_id, unit_system) if template_id == "blank_custom" else ramp_preset_ui_inputs(workflow, template_id, unit_system)), item
 
     raise KeyError(method_id)
 
@@ -1065,42 +1263,60 @@ class Phase3Workflow:
         if self.method_id == "two_lane_segment":
             options = _two_lane_templates()
         elif self.method_id == "basic_freeway_segment":
+            labels = {**freeway_preset_options(), "blank_custom": "Blank worksheet"}
             options = {
                 key: {
-                    "template_label": label,
-                    "template_description": "Bounded Chapter 12 Basic Freeway worksheet.",
+                    "template_label": _phase3_template_label(self.method_id, key, label),
+                    "template_description": "Enter the required worksheet values; only neutral branch choices are preselected." if key == "blank_custom" else "Bounded Chapter 12 Basic Freeway worksheet.",
                     "validation_status": "reference_fixture" if key != "blank_custom" else "ui_starter_only",
+                    "starter_kind": _phase3_template_kind(key),
                 }
-                for key, label in {"blank_custom": "Blank/custom starting values", **freeway_preset_options()}.items()
+                for key, label in labels.items()
             }
         elif self.method_id == "weaving_segment":
+            labels = {
+                key: _phase3_template_label(self.method_id, key, label)
+                for key, label in weaving_preset_options().items()
+                if key != "blank_custom"
+            }
+            labels["blank_custom"] = "Blank worksheet"
             options = {
                 key: {
                     "template_label": label,
-                    "template_description": "Explicit Chapter 27 geometry and movement-flow evidence.",
+                    "template_description": "Enter the required worksheet values; neutral geometry choices are preselected." if key == "blank_custom" else "Explicit Chapter 27 geometry and movement-flow evidence.",
                     "validation_status": "reference_fixture" if key != "blank_custom" else "ui_starter_only",
+                    "starter_kind": _phase3_template_kind(key),
                 }
-                for key, label in weaving_preset_options().items()
+                for key, label in labels.items()
             }
         else:
             workflow = "merge" if self.method_id == "merge_segment" else "diverge"
+            labels = {
+                key: _phase3_template_label(self.method_id, key, label)
+                for key, label in ramp_preset_options(workflow).items()
+                if key != "blank_custom"
+            }
+            labels["blank_custom"] = "Blank worksheet"
             options = {
                 key: {
                     "template_label": label,
-                    "template_description": "Explicit isolated one-lane right-side ramp geometry evidence.",
+                    "template_description": "Enter the required worksheet values; neutral geometry choices are preselected." if key == "blank_custom" else "Explicit isolated one-lane right-side ramp geometry evidence.",
                     "validation_status": "reference_fixture" if key != "blank_custom" else "ui_starter_only",
+                    "starter_kind": _phase3_template_kind(key),
                 }
-                for key, label in ramp_preset_options(workflow).items()
+                for key, label in labels.items()
             }
         return {
             "method_id": self.method_id,
             "unit_systems": ["metric", "imperial"],
+            "default_template_id": _phase3_default_template_id(self.method_id),
             "templates": [
                 {
                     "template_id": template_id,
                     "label": item["template_label"],
                     "description": item.get("template_description"),
                     "validation_status": item.get("validation_status"),
+                    "starter_kind": item.get("starter_kind", _phase3_template_kind(template_id)),
                 }
                 for template_id, item in options.items()
             ],
@@ -1109,6 +1325,8 @@ class Phase3Workflow:
             "branches": {
                 "phase": "phase_3_full_migration",
                 "validation_without_calculation": True,
+                "starter_metadata": True,
+                "engineering_assets": _phase3_asset_metadata(self.method_id),
             },
             "scope_notes": [
                 "Python remains the sole HCM calculation authority.",
@@ -1132,6 +1350,7 @@ class Phase3Workflow:
                 "template_label": item["template_label"],
                 "template_description": item.get("template_description"),
                 "validation_status": item.get("validation_status"),
+                "starter_kind": item.get("starter_kind", _phase3_template_kind(template_id)),
                 "unit_system": unit,
                 "displayed_inputs": displayed,
                 "fields": [deepcopy(field) for field in phase3_fields(self.method_id)],

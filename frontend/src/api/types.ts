@@ -20,6 +20,9 @@ export interface ValidationIssue {
 export interface WorkflowTemplate {
   template_id: string;
   label: string;
+  description?: string;
+  validation_status?: string;
+  starter_kind?: 'example' | 'blank' | 'custom_starter' | 'facility_template' | 'legacy_import' | string;
 }
 
 export interface WorkflowField {
@@ -50,12 +53,16 @@ export interface WorkflowTemplatesResponse {
   groups?: WorkflowGroup[];
   branches?: Record<string, unknown>;
   scope_notes: string[];
+  default_template_id?: string;
 }
 
 export interface WorkflowStartingValuesResponse {
   method_id: string;
   template_id: string;
   template_label: string;
+  template_description?: string;
+  validation_status?: string;
+  starter_kind?: 'example' | 'blank' | 'custom_starter' | 'facility_template' | 'legacy_import' | string;
   unit_system: UnitSystem;
   displayed_inputs?: DisplayedInputs;
   segments?: FacilityRow[];

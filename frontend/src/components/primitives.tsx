@@ -10,6 +10,14 @@ import {
 import { useI18n } from '../i18n';
 
 export type PageId = 'home' | 'new-analysis' | 'project' | 'reference';
+export type MethodNavigationId =
+  | 'two_lane_segment'
+  | 'two_lane_facility'
+  | 'multilane_segment'
+  | 'basic_freeway_segment'
+  | 'weaving_segment'
+  | 'merge_segment'
+  | 'diverge_segment';
 
 export function AppHeader({
   onNavigate,
@@ -49,21 +57,57 @@ export function AppHeader({
 
 export function SidebarNavigation({
   activePage,
+  activeMethodId,
   onNavigate,
+  onSelectMethod,
 }: {
   activePage: PageId;
+  activeMethodId?: string | null;
   onNavigate: (page: PageId) => void;
+  onSelectMethod?: (methodId: MethodNavigationId) => void;
 }): ReactElement {
   const { t } = useI18n();
-  const navItems: Array<{ id: PageId; label: string }> = [
-    { id: 'home', label: t('nav.home') },
-    { id: 'new-analysis', label: t('nav.new_analysis') },
-    { id: 'reference', label: t('nav.reference') },
+  const [mobileOpen, setMobileOpen] = useState(Boolean(activeMethodId));
+  const methodGroups: Array<{ key: string; label: string; methods: Array<{ id: MethodNavigationId; label: string }> }> = [
+    {
+      key: 'roadways',
+      label: t('nav.roadways'),
+      methods: [
+        { id: 'two_lane_segment', label: t('method.two_lane_segment.name') },
+        { id: 'two_lane_facility', label: t('method.two_lane_facility.name') },
+        { id: 'multilane_segment', label: t('method.multilane_segment.name') },
+      ],
+    },
+    {
+      key: 'freeways',
+      label: t('nav.freeways'),
+      methods: [
+        { id: 'basic_freeway_segment', label: t('method.basic_freeway_segment.name') },
+        { id: 'weaving_segment', label: t('method.weaving_segment.name') },
+        { id: 'merge_segment', label: t('method.merge_segment.name') },
+        { id: 'diverge_segment', label: t('method.diverge_segment.name') },
+      ],
+    },
   ];
+  const methodButton = (method: { id: MethodNavigationId; label: string }) => {
+    const active = activeMethodId === method.id;
+    return (
+      <button
+        className={`nav-item nav-method-item ${active ? 'nav-item-active' : ''}`}
+        type="button"
+        aria-current={active ? 'page' : undefined}
+        data-testid={`nav-method-${method.id}`}
+        onClick={() => onSelectMethod?.(method.id)}
+        key={method.id}
+      >
+        <span className="nav-dot" aria-hidden="true" /> {method.label}
+      </button>
+    );
+  };
   return (
     <aside className="app-sidebar" data-slot="sidebar-navigation">
       <nav aria-label={t('nav.workspace')}>
-        <p className="sidebar-group-label">{t('nav.project')}</p>
+        <p className="sidebar-group-label">{t('nav.workspace_group')}</p>
         <button
           className={`nav-item ${activePage === 'home' ? 'nav-item-active' : ''}`}
           type="button"
@@ -80,18 +124,37 @@ export function SidebarNavigation({
         >
           <span className="nav-dot" aria-hidden="true" /> {t('nav.project_workspace')}
         </button>
-        <p className="sidebar-group-label">{t('nav.analysis')}</p>
-        {navItems.slice(1, 2).map((item) => (
-          <button
-            className={`nav-item ${activePage === item.id ? 'nav-item-active' : ''}`}
-            type="button"
-            aria-current={activePage === item.id ? 'page' : undefined}
-            onClick={() => onNavigate(item.id)}
-            key={item.id}
-          >
-            <span className="nav-dot" aria-hidden="true" /> {item.label}
-          </button>
-        ))}
+        <button
+          className={`nav-item ${activePage === 'new-analysis' && !activeMethodId ? 'nav-item-active' : ''}`}
+          type="button"
+          aria-current={activePage === 'new-analysis' && !activeMethodId ? 'page' : undefined}
+          onClick={() => onNavigate('new-analysis')}
+        >
+          <span className="nav-dot" aria-hidden="true" /> {t('nav.new_analysis')}
+        </button>
+        <div className="desktop-method-nav" aria-label={t('nav.method_navigation')}>
+          {methodGroups.map((group) => (
+            <div key={group.key}>
+              <p className="sidebar-group-label">{group.label}</p>
+              {group.methods.map(methodButton)}
+            </div>
+          ))}
+        </div>
+        <details
+          className="mobile-method-nav"
+          open={mobileOpen}
+          onToggle={(event) => setMobileOpen(event.currentTarget.open)}
+        >
+          <summary>{t('nav.method_selector')}</summary>
+          <div className="mobile-method-nav-content">
+            {methodGroups.map((group) => (
+              <div key={group.key}>
+                <p className="sidebar-group-label">{group.label}</p>
+                {group.methods.map(methodButton)}
+              </div>
+            ))}
+          </div>
+        </details>
         <p className="sidebar-group-label">{t('nav.reference_group')}</p>
         <button
           className={`nav-item ${activePage === 'reference' ? 'nav-item-active' : ''}`}
@@ -127,12 +190,16 @@ export function StatusBar({ apiConnected }: { apiConnected: boolean }): ReactEle
 
 export function AppShell({
   activePage,
+  activeMethodId,
   onNavigate,
+  onSelectMethod,
   apiConnected,
   children,
 }: {
   activePage: PageId;
+  activeMethodId?: string | null;
   onNavigate: (page: PageId) => void;
+  onSelectMethod?: (methodId: MethodNavigationId) => void;
   apiConnected: boolean;
   children: ReactNode;
 }): ReactElement {
@@ -142,7 +209,7 @@ export function AppShell({
       <a className="skip-link" href="#main-content">{t('accessibility.skip_to_main')}</a>
       <AppHeader onNavigate={onNavigate} />
       <div className="app-shell-layout">
-        <SidebarNavigation activePage={activePage} onNavigate={onNavigate} />
+        <SidebarNavigation activePage={activePage} activeMethodId={activeMethodId} onNavigate={onNavigate} onSelectMethod={onSelectMethod} />
         <main className="app-main" id="main-content">{children}</main>
       </div>
       <StatusBar apiConnected={apiConnected} />
@@ -172,10 +239,14 @@ export function AnalysisHeader({
   title,
   method,
   status,
+  context,
+  tone = 'neutral',
 }: {
   title: string;
   method: string;
   status?: string;
+  context?: string;
+  tone?: 'current' | 'warning' | 'stale' | 'neutral' | 'capacity';
 }): ReactElement {
   const { t } = useI18n();
   const displayedStatus = status ?? t('status.current');
@@ -185,8 +256,9 @@ export function AnalysisHeader({
         <p className="eyebrow">{t('analysis.eyebrow')}</p>
         <h2>{title}</h2>
         <p className="muted">{method}</p>
+        {context ? <p className="analysis-context">{context}</p> : null}
       </div>
-      <StatusBadge tone="current">{displayedStatus}</StatusBadge>
+      <StatusBadge tone={tone}>{displayedStatus}</StatusBadge>
     </div>
   );
 }
@@ -326,15 +398,17 @@ export function ChoiceGroup({
   options,
   value,
   onChange,
+  error,
 }: {
   legend: string;
   name: string;
   options: Array<{ value: string; label: string; description?: string }>;
   value?: string;
   onChange?: (value: string) => void;
+  error?: string;
 }): ReactElement {
   return (
-    <fieldset className="choice-group" data-slot="choice-group">
+    <fieldset className={`choice-group ${error ? 'choice-group-invalid' : ''}`} data-slot="choice-group" aria-invalid={error ? 'true' : undefined}>
       <legend>{legend}</legend>
       <div className="choice-options">
         {options.map((option) => (
@@ -353,6 +427,7 @@ export function ChoiceGroup({
           </label>
         ))}
       </div>
+      {error ? <span className="field-error" role="alert">{error}</span> : null}
     </fieldset>
   );
 }
@@ -376,10 +451,16 @@ export function ErrorSummary({
 }): ReactElement | null {
   const { t } = useI18n();
   if (!errors.length) return null;
-  return <div className="error-summary" data-slot="error-summary" role="alert"><strong>{t('form.errors_count', { count: errors.length })}</strong><ul>{errors.map((error, index) => {
+  return <div className="error-summary" id="error-summary" data-slot="error-summary" role="alert" tabIndex={-1}><strong>{t('form.errors_count', { count: errors.length })}</strong><ul>{errors.map((error, index) => {
     const message = typeof error === 'string' ? error : error.message;
     const targetId = typeof error === 'string' ? undefined : error.targetId;
-    return <li key={`${message}-${index}`}>{targetId ? <a href={`#${targetId}`}>{message}</a> : message}</li>;
+    return <li key={`${message}-${index}`}>{targetId ? <a href={`#${targetId}`} onClick={(event) => {
+      const target = document.getElementById(targetId);
+      if (!target) return;
+      event.preventDefault();
+      target.focus();
+      target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }}>{message}</a> : message}</li>;
   })}</ul></div>;
 }
 
@@ -387,14 +468,16 @@ export function ReadinessBar({
   ready,
   actionLabel,
   onAction,
+  disabled = false,
 }: {
   ready: boolean;
   actionLabel?: string;
   onAction?: () => void;
+  disabled?: boolean;
 }): ReactElement {
   const { t } = useI18n();
   const displayedActionLabel = actionLabel ?? t('action.calculate');
-  return <div className="readiness-bar" data-slot="readiness-bar"><span className={ready ? 'readiness-ready' : 'readiness-blocked'}>{ready ? `✓ ${t('status.ready_to_calculate')}` : t('status.items_required')}</span><button className="button button-primary" type="button" disabled={!ready} onClick={onAction}>{displayedActionLabel}</button></div>;
+  return <div className="readiness-bar" data-slot="readiness-bar"><span className={ready ? 'readiness-ready' : 'readiness-blocked'}>{ready ? `✓ ${t('status.ready_to_calculate')}` : t('status.items_required')}</span><button className="button button-primary" type="button" disabled={disabled || !ready} onClick={onAction}>{displayedActionLabel}</button></div>;
 }
 
 export function ResultHero({
@@ -458,7 +541,7 @@ export function DetailsDisclosure({
 
 export function StaleResultBanner({ onRecalculate }: { onRecalculate?: () => void }): ReactElement {
   const { t } = useI18n();
-  return <div className="stale-banner" data-slot="stale-result-banner" role="status"><div><strong>{t('state.stale_title')}</strong><span>{t('state.stale_supporting')}</span></div><button className="button button-primary" type="button" onClick={onRecalculate}>{t('action.recalculate')}</button></div>;
+  return <div className="stale-banner" data-slot="stale-result-banner" role="status"><div><strong>{t('state.stale_title')}</strong><span>{t('state.stale_supporting')}</span><span className="stale-export-note">{t('result.export_stale_reason')}</span></div><div className="stale-action-readiness readiness-bar" data-slot="readiness-bar"><button className="button button-primary" type="button" onClick={onRecalculate}>{t('action.recalculate')}</button></div></div>;
 }
 
 export function CapacityFailurePanel({ metricsUnavailable = true }: { metricsUnavailable?: boolean } = {}): ReactElement {

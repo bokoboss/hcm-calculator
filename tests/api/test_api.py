@@ -81,6 +81,23 @@ def test_compiled_spa_is_served_without_shadowing_api(tmp_path: Path) -> None:
     assert client.get("/api/v1/not-a-route").status_code == 404
 
 
+def test_compiled_spa_serves_qualified_engineering_assets_from_the_package() -> None:
+    client = TestClient(create_app(static_dir=Path("frontend/dist")))
+
+    expected_assets = {
+        "/engineering-assets/two_lane/passing_zone.png": "image/png",
+        "/engineering-assets/weaving/one_sided_weave.png": "image/png",
+        "/engineering-assets/weaving/two_sided_weave.png": "image/png",
+        "/engineering-assets/ramp_influence/merge_right_on_ramp.svg": "image/svg+xml",
+        "/engineering-assets/ramp_influence/diverge_right_off_ramp.svg": "image/svg+xml",
+    }
+    for path, media_type in expected_assets.items():
+        response = client.get(path)
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith(media_type)
+        assert response.content
+
+
 def test_local_server_default_is_loopback() -> None:
     assert DEFAULT_HOST == "127.0.0.1"
 

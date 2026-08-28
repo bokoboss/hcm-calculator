@@ -97,10 +97,27 @@ def _resolve_static_dir(static_dir: str | Path | None) -> Path | None:
     return None
 
 
+def _resolve_engineering_assets_dir() -> Path | None:
+    """Resolve the one packaged source of truth for engineering diagrams."""
+
+    candidate = Path(__file__).resolve().parents[1] / "ui" / "assets"
+    return candidate if candidate.is_dir() else None
+
+
 def _mount_compiled_spa(app: FastAPI, static_dir: Path) -> None:
     assets_dir = static_dir / "assets"
     if assets_dir.is_dir():
         app.mount("/assets", StaticFiles(directory=assets_dir), name="frontend-assets")
+
+    engineering_assets_dir = _resolve_engineering_assets_dir()
+    if engineering_assets_dir is not None:
+        # React references these files through this route; it never owns a
+        # second copy of the qualified engineering asset set.
+        app.mount(
+            "/engineering-assets",
+            StaticFiles(directory=engineering_assets_dir),
+            name="engineering-assets",
+        )
 
     @app.get("/", include_in_schema=False)
     def compiled_root() -> FileResponse:

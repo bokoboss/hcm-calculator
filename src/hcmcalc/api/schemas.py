@@ -163,6 +163,7 @@ class WorkflowTemplatesResponse(BaseModel):
     groups: list[dict[str, Any]] = Field(default_factory=list)
     branches: dict[str, Any] = Field(default_factory=dict)
     scope_notes: list[str] = Field(default_factory=list)
+    default_template_id: str | None = None
 
 
 class WorkflowStartingValuesResponse(BaseModel):

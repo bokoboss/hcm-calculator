@@ -892,6 +892,17 @@
             "title": "Branches",
             "type": "object"
           },
+          "default_template_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Default Template Id"
+          },
           "fields": {
             "items": {
               "additionalProperties": true,

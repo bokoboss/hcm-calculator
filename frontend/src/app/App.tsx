@@ -22,8 +22,19 @@ import {
   ResultHero,
   ScopeNotice,
   StatusBadge,
+  type MethodNavigationId,
   type PageId,
 } from '../components/primitives';
+
+function routeFromLocation(): { page: PageId; methodId: string | null } {
+  const path = window.location.pathname.replace(/\/+$/, '') || '/';
+  const analysisMatch = path.match(/^\/analysis\/([^/]+)$/);
+  if (analysisMatch) return { page: 'new-analysis', methodId: decodeURIComponent(analysisMatch[1]) };
+  if (path === '/new-analysis') return { page: 'new-analysis', methodId: null };
+  if (path === '/project' || path.startsWith('/project/')) return { page: 'project', methodId: null };
+  if (path === '/reference' || path.startsWith('/reference/')) return { page: 'reference', methodId: null };
+  return { page: 'home', methodId: null };
+}
 
 export function MethodCard({
   method,
@@ -196,13 +207,15 @@ function ReferencePage({
 
 export function App(): ReactElement {
   const { t } = useI18n();
-  const [page, setPage] = useState<PageId>('home');
-  const [selectedMethodId, setSelectedMethodId] = useState<string | null>(null);
+  const initialRoute = useMemo(routeFromLocation, []);
+  const [page, setPage] = useState<PageId>(initialRoute.page);
+  const [selectedMethodId, setSelectedMethodId] = useState<string | null>(initialRoute.methodId);
   const [scenarioEdit, setScenarioEdit] = useState<ScenarioEditContext | null>(null);
   const [project, setProject] = useState<Record<string, unknown> | null>(null);
   const [methods, setMethods] = useState<MethodDefinition[]>([]);
   const [loading, setLoading] = useState(true);
   const [apiConnected, setApiConnected] = useState(false);
+  const [workflowDirty, setWorkflowDirty] = useState(false);
   useEffect(() => {
     let active = true;
     fetchMethods()
@@ -220,21 +233,46 @@ export function App(): ReactElement {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    const onPopState = () => {
+      const route = routeFromLocation();
+      setPage(route.page);
+      setSelectedMethodId(route.methodId);
+      setScenarioEdit(null);
+      setWorkflowDirty(false);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  const confirmLeave = (): boolean => {
+    if (scenarioEdit) return window.confirm(t('workflow.project_switch_confirmation'));
+    if (workflowDirty) return window.confirm(t('workflow.discard_confirmation'));
+    return true;
+  };
+
   const referenceMethod = (methodId: string) => {
+    if (!confirmLeave()) return;
+    setWorkflowDirty(false);
     setSelectedMethodId(null);
+    setScenarioEdit(null);
     setPage('reference');
     window.history.replaceState({}, '', `/reference/methods/${methodId}`);
   };
 
   const navigate = (nextPage: PageId) => {
-    if (nextPage !== 'new-analysis') {
-      setSelectedMethodId(null);
-      setScenarioEdit(null);
-    }
+    if (!confirmLeave()) return;
+    setWorkflowDirty(false);
+    setSelectedMethodId(null);
+    setScenarioEdit(null);
     setPage(nextPage);
+    const path = nextPage === 'new-analysis' ? '/new-analysis' : nextPage === 'project' ? '/project' : nextPage === 'reference' ? '/reference' : '/';
+    window.history.replaceState({}, '', path);
   };
 
-  const selectMethod = (methodId: string) => {
+  const selectMethod = (methodId: MethodNavigationId | string) => {
+    if (!confirmLeave()) return;
+    setWorkflowDirty(false);
     setScenarioEdit(null);
     setSelectedMethodId(methodId);
     setPage('new-analysis');
@@ -261,7 +299,9 @@ export function App(): ReactElement {
   };
 
   const backFromWorkflow = () => {
+    if (!confirmLeave()) return;
     const returningToProject = Boolean(scenarioEdit);
+    setWorkflowDirty(false);
     setScenarioEdit(null);
     setSelectedMethodId(null);
     setPage(returningToProject ? 'project' : 'new-analysis');
@@ -272,9 +312,9 @@ export function App(): ReactElement {
 
   return (
     <>
-      <AppShell activePage={page} onNavigate={navigate} apiConnected={apiConnected}>
+      <AppShell activePage={page} activeMethodId={selectedMethodId} onNavigate={navigate} onSelectMethod={selectMethod} apiConnected={apiConnected}>
         {page === 'home' ? <HomePage onNavigate={navigate} /> : null}
-        {page === 'new-analysis' && selectedMethod ? <AnalysisWorkflow method={selectedMethod} initialScenario={scenarioEdit ?? undefined} onBack={backFromWorkflow} onScenarioResultSaved={scenarioEdit ? saveEditedScenario : undefined} onProjectSaved={(savedProject) => { setProject(savedProject); setScenarioEdit(null); setSelectedMethodId(null); setPage('project'); window.history.replaceState({}, '', '/project'); }} /> : null}
+        {page === 'new-analysis' && selectedMethod ? <AnalysisWorkflow method={selectedMethod} initialScenario={scenarioEdit ?? undefined} onDirtyChange={setWorkflowDirty} onBack={backFromWorkflow} onScenarioResultSaved={scenarioEdit ? saveEditedScenario : undefined} onProjectSaved={(savedProject) => { setProject(savedProject); setWorkflowDirty(false); setScenarioEdit(null); setSelectedMethodId(null); setPage('project'); window.history.replaceState({}, '', '/project'); }} /> : null}
         {page === 'new-analysis' && !selectedMethod ? <NewAnalysisPage methods={methods} loading={loading} onReference={referenceMethod} onSelect={selectMethod} /> : null}
         {page === 'project' ? <ProjectWorkspace project={project} methods={methods} onProjectChange={setProject} onNewAnalysis={() => navigate('new-analysis')} onEditScenario={editScenario} /> : null}
         {page === 'reference' ? <ReferencePage methods={methods} loading={loading} /> : null}
