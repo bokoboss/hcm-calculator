@@ -69,7 +69,6 @@ describe('ProjectWorkspace method actionability', () => {
     );
 
     expect(screen.getAllByText('Migrated legacy Base')).toHaveLength(2);
-    expect(screen.getByText('rebuilt workflow available')).toBeInTheDocument();
     expect(screen.queryByText('Reference-only method')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Calculate scenario' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Edit scenario' })).toBeEnabled();

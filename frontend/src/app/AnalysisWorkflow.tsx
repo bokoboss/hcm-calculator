@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactElement } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ChangeEvent, type ReactElement } from 'react';
+import { createPortal } from 'react-dom';
 import {
   calculateWorkflow,
   engineeringAssetUrl,
@@ -23,6 +24,7 @@ import type {
 } from '../api/types';
 import { useI18n } from '../i18n';
 import {
+  ActionToast,
   AnalysisHeader,
   CapacityFailurePanel,
   ChoiceGroup,
@@ -36,8 +38,8 @@ import {
   ReadinessBar,
   ResultHero,
   ScopeNotice,
+  StaleResultPanel,
   StatusBadge,
-  StaleResultBanner,
   WarningPanel,
 } from '../components/primitives';
 
@@ -97,8 +99,11 @@ function downloadText(filename: string, content: string, mediaType: string): voi
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = filename;
+  anchor.style.display = 'none';
+  document.body.append(anchor);
   anchor.click();
-  window.URL.revokeObjectURL(url);
+  anchor.remove();
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 1_000);
 }
 
 function downloadBase64(filename: string, content: string, mediaType: string): void {
@@ -110,8 +115,11 @@ function downloadBase64(filename: string, content: string, mediaType: string): v
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = filename;
+  anchor.style.display = 'none';
+  document.body.append(anchor);
   anchor.click();
-  window.URL.revokeObjectURL(url);
+  anchor.remove();
+  window.setTimeout(() => window.URL.revokeObjectURL(url), 1_000);
 }
 
 function serializeInputSnapshot(inputs: DisplayedInputs): string {
@@ -132,7 +140,8 @@ export function ResultPanel({
   saveLabel,
   onRecalculate,
   stale = false,
-  assetMetadata,
+  exampleResult = false,
+  workingAction,
 }: {
   result: WorkflowCalculationResponse;
   onExport: (format: 'csv' | 'xlsx' | 'markdown' | 'json') => void;
@@ -140,7 +149,8 @@ export function ResultPanel({
   saveLabel?: string;
   onRecalculate?: () => void;
   stale?: boolean;
-  assetMetadata?: EngineeringAssetMetadata;
+  exampleResult?: boolean;
+  workingAction?: 'calculate' | 'save' | 'export' | null;
 }): ReactElement {
   const { t } = useI18n();
   const capacityFailure = Boolean(result.presentation.capacity.failure);
@@ -150,20 +160,23 @@ export function ResultPanel({
   const showWarning = resultWarning && !stale;
   const metricsUnavailable = result.presentation.metrics.some((metric) => metric.availability === 'not_predicted');
   const answer = result.presentation.answer;
+  const keyMetrics = selectKeyMetrics(result.method_id, result.presentation.metrics);
   return (
-    <div className="workflow-results" data-testid="workflow-results">
-      <EngineeringSection title={t('result.section_title')} description={t('result.section_description')}>
+    <section className="workflow-results result-inspector-surface" data-testid="workflow-results" aria-labelledby="result-inspector-title">
+      <div className="result-inspector-heading">
+        <div><span className="section-label">{t('result.inspector_label')}</span><h2 id="result-inspector-title" tabIndex={-1}>{t('result.section_title')}</h2></div>
+        {exampleResult ? <StatusBadge tone="neutral">{t('workflow.example_result')}</StatusBadge> : null}
+      </div>
         <ResultHero
           label={t('result.level_of_service')}
           value={answer.available && answer.value ? answer.value : handoff ? t('state.handoff_title') : t('result.not_calculated')}
           state={stale ? 'stale' : handoff ? 'handoff' : capacityFailure ? 'capacity' : showWarning ? 'warning' : 'current'}
           supporting={answer.source}
         />
-        {handoff ? <HandoffPanel /> : capacityFailure ? <CapacityFailurePanel metricsUnavailable={metricsUnavailable} /> : showWarning ? <WarningPanel message={result.presentation.warning} /> : null}
+        {stale ? <StaleResultPanel /> : handoff ? <HandoffPanel /> : capacityFailure ? <CapacityFailurePanel metricsUnavailable={metricsUnavailable} /> : showWarning ? <WarningPanel message={result.presentation.warning} /> : null}
         {handoff && result.presentation.handoff?.reason ? <p className="handoff-reason">{String(result.presentation.handoff.reason)}</p> : null}
-        <GeometryEvidenceDiagram methodId={result.method_id} result={result} assetMetadata={assetMetadata} />
         <div className="metric-grid">
-          {result.presentation.metrics.map((metric) => (
+          {keyMetrics.map((metric) => (
             <MetricCard
               key={metric.key}
               label={t(`result.metric.${metric.key}`)}
@@ -173,11 +186,53 @@ export function ResultPanel({
           ))}
         </div>
         <div className="result-actions">
-          <button className={`button ${stale ? 'button-secondary' : 'button-primary'}`} type="button" disabled={stale} onClick={onSave}>{saveLabel ?? t('action.save_project')}</button>
-          {!stale ? <button className="button button-secondary" type="button" onClick={onRecalculate}>{t('action.recalculate')}</button> : null}
-          <ExportMenu stale={stale} onExport={onExport} />
+          {stale ? <button className="button button-primary" type="button" disabled={workingAction === 'calculate'} aria-busy={workingAction === 'calculate' || undefined} onClick={onRecalculate}>{workingAction === 'calculate' ? t('status.calculating') : t('action.recalculate')}</button> : <>
+            <button className="button button-primary" type="button" disabled={workingAction === 'save'} aria-busy={workingAction === 'save' || undefined} onClick={onSave}>{workingAction === 'save' ? t('status.saving') : saveLabel ?? t('action.save_project')}</button>
+            <ExportMenu busy={workingAction === 'export'} stale={false} onExport={onExport} />
+          </>}
         </div>
-      </EngineeringSection>
+    </section>
+  );
+}
+
+function scopeFor(method: MethodDefinition, translate: (key: string) => string): string {
+  const scopeKey = method.name_key.replace(/\.name$/, '.scope');
+  const translated = translate(scopeKey);
+  return translated === scopeKey ? translate(method.description_key) : translated;
+}
+
+function selectKeyMetrics(methodId: string, metrics: ResultMetric[]): ResultMetric[] {
+  const preferred: Record<string, string[]> = {
+    two_lane_segment: ['follower_density', 'average_speed', 'percent_followers'],
+    multilane_segment: ['density', 'speed_used_for_density', 'demand_flow_rate', 'adjusted_capacity'],
+    basic_freeway_segment: ['density', 'speed_used_for_density', 'demand_flow_rate', 'adjusted_capacity'],
+    weaving_segment: ['density', 'mean_speed', 'capacity', 'demand'],
+    merge_segment: ['density', 'ramp_influence_speed', 'governing_vc', 'governing_capacity'],
+    diverge_segment: ['density', 'ramp_influence_speed', 'governing_vc', 'governing_capacity'],
+    two_lane_facility: ['facility_average_speed', 'facility_density', 'facility_percent_followers'],
+  };
+  const selected = preferred[methodId] ?? [];
+  const byKey = new Map(metrics.map((metric) => [metric.key, metric]));
+  const ordered = selected.map((key) => byKey.get(key)).filter((metric): metric is ResultMetric => Boolean(metric));
+  return ordered.length ? ordered.slice(0, 5) : metrics.slice(0, 4);
+}
+
+function DetailedResultSection({
+  result,
+  assetMetadata,
+}: {
+  result: WorkflowCalculationResponse;
+  assetMetadata?: EngineeringAssetMetadata;
+}): ReactElement {
+  const { t } = useI18n();
+  const keyMetrics = new Set(selectKeyMetrics(result.method_id, result.presentation.metrics).map((metric) => metric.key));
+  const secondaryMetrics = result.presentation.metrics.filter((metric) => !keyMetrics.has(metric.key));
+  return (
+    <EngineeringSection className="result-details" title={t('result.details_title')} description={t('result.details_description')}>
+      <GeometryEvidenceDiagram methodId={result.method_id} result={result} assetMetadata={assetMetadata} />
+      {secondaryMetrics.length ? <DetailsDisclosure title={t('result.more_metrics')}>
+        <div className="metric-grid">{secondaryMetrics.map((metric) => <MetricCard key={metric.key} label={t(`result.metric.${metric.key}`)} value={metricDisplayValue(metric, t)} unit={metric.unit ?? undefined} />)}</div>
+      </DetailsDisclosure> : null}
       <DetailsDisclosure title={t('result.evidence_title')}>
         <div className="evidence-grid">
           <div><span className="section-label">{t('result.assumptions')}</span><ul>{result.result.assumptions.map((item) => <li key={item}>{item}</li>)}</ul></div>
@@ -185,7 +240,7 @@ export function ResultPanel({
           <div><span className="section-label">{t('result.fingerprint')}</span><code>{result.calculation_fingerprint}</code></div>
         </div>
       </DetailsDisclosure>
-    </div>
+    </EngineeringSection>
   );
 }
 
@@ -310,6 +365,26 @@ function WeavingReference({
   );
 }
 
+function RampReference({
+  methodId,
+  assets,
+}: {
+  methodId: 'merge_segment' | 'diverge_segment';
+  assets?: EngineeringAssetMetadata;
+}): ReactElement | null {
+  const { t } = useI18n();
+  const isMerge = methodId === 'merge_segment';
+  const title = isMerge ? t('workflow.geometry_merge') : t('workflow.geometry_diverge');
+  const note = isMerge ? t('workflow.geometry_merge_note') : t('workflow.geometry_diverge_note');
+  if (!assets?.asset_path) return null;
+  return (
+    <section className="engineering-reference ramp-reference" data-testid="ramp-reference" aria-labelledby={`${methodId}-reference-title`}>
+      <div className="engineering-reference-copy"><span className="section-label">{t('workflow.geometry_evidence')}</span><h3 id={`${methodId}-reference-title`}>{title}</h3><p>{note}</p><p className="engineering-reference-note">{t('workflow.conceptual_reference')}</p></div>
+      <img src={engineeringAssetUrl(assets.asset_path)} alt={title} data-asset-path={assets.asset_path} />
+    </section>
+  );
+}
+
 type CurveSubsegment = {
   type?: string;
   length?: number | null;
@@ -418,23 +493,83 @@ function CurveEditor({
 function ExportMenu({
   stale,
   onExport,
+  busy = false,
 }: {
   stale: boolean;
   onExport: (format: 'csv' | 'xlsx' | 'markdown' | 'json') => void;
+  busy?: boolean;
 }): ReactElement {
   const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuId = useId();
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+  const placeMenu = () => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const menuWidth = 210;
+    const menuHeight = 150;
+    const top = window.innerHeight - rect.bottom > menuHeight + 12 ? rect.bottom + 6 : Math.max(12, rect.top - menuHeight - 6);
+    const left = Math.max(12, Math.min(rect.right - menuWidth, window.innerWidth - menuWidth - 12));
+    setPosition({ top, left });
+  };
+  useEffect(() => {
+    if (!open) return undefined;
+    placeMenu();
+    const focusFirstItem = window.setTimeout(() => {
+      menuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus();
+    }, 0);
+    const dismiss = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (!triggerRef.current?.contains(target) && !menuRef.current?.contains(target)) setOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    const reposition = () => placeMenu();
+    document.addEventListener('pointerdown', dismiss);
+    document.addEventListener('keydown', onKeyDown);
+    window.addEventListener('resize', reposition);
+    window.addEventListener('scroll', reposition, true);
+    return () => {
+      window.clearTimeout(focusFirstItem);
+      document.removeEventListener('pointerdown', dismiss);
+      document.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('resize', reposition);
+      window.removeEventListener('scroll', reposition, true);
+    };
+  }, [open]);
   if (stale) {
     return <div className="export-menu-disabled"><button className="button button-secondary" type="button" disabled>{t('action.export')} ▾</button><span>{t('result.export_stale_reason')}</span></div>;
   }
   return (
-    <details className="export-menu" open>
-      <summary className="button button-secondary">{t('action.export')} ▾</summary>
-      <div className="export-menu-content">
-        <button className="button button-quiet" type="button" onClick={() => onExport('json')}>{t('action.export_json')}</button>
-        <button className="button button-quiet" type="button" onClick={() => onExport('markdown')}>{t('action.export_markdown')}</button>
-        <button className="button button-quiet" type="button" onClick={() => onExport('xlsx')}>{t('action.export_xlsx')}</button>
-      </div>
-    </details>
+    <div className="export-menu">
+      <button ref={triggerRef} className="button button-secondary" type="button" aria-haspopup="menu" aria-controls={open ? menuId : undefined} aria-expanded={open} disabled={busy} aria-busy={busy || undefined} onClick={() => { if (!open) placeMenu(); setOpen((current) => !current); }}>{busy ? t('status.exporting') : `${t('action.export')} ▾`}</button>
+      {open && position ? createPortal(
+        <div ref={menuRef} id={menuId} className="export-menu-content" role="menu" aria-label={t('action.export')} style={{ top: position.top, left: position.left }} onKeyDown={(event) => {
+          const items = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]') ?? []);
+          if (!items.length) return;
+          const current = Math.max(0, items.indexOf(document.activeElement as HTMLButtonElement));
+          const next = event.key === 'ArrowDown' ? (current + 1) % items.length
+            : event.key === 'ArrowUp' ? (current - 1 + items.length) % items.length
+              : event.key === 'Home' ? 0
+                : event.key === 'End' ? items.length - 1
+                  : null;
+          if (next !== null) {
+            event.preventDefault();
+            items[next]?.focus();
+          }
+        }}>
+          {(['json', 'markdown', 'xlsx'] as const).map((format) => <button className="button button-quiet" type="button" role="menuitem" key={format} onClick={() => { onExport(format); setOpen(false); }}>{t(`action.export_${format}`)}</button>)}
+        </div>,
+        document.body,
+      ) : null}
+    </div>
   );
 }
 
@@ -471,6 +606,37 @@ function GeometryEvidenceDiagram({
   );
 }
 
+type FormSection = {
+  key: string;
+  title: string;
+  fields: string[];
+  optional?: boolean;
+};
+
+function SectionNavigator({
+  methodId,
+  sections,
+  issueCounts,
+}: {
+  methodId: string;
+  sections: FormSection[];
+  issueCounts: Map<string, number>;
+}): ReactElement | null {
+  const { t } = useI18n();
+  if (sections.length < 2) return null;
+  return (
+    <nav className="section-checklist" aria-label={t('workflow.section_navigator')} data-testid="section-checklist">
+      {sections.map((section) => {
+        const count = issueCounts.get(section.key) ?? 0;
+        return <button type="button" className={count ? 'section-checklist-item section-checklist-item-pending' : 'section-checklist-item'} key={section.key} onClick={() => document.getElementById(`workflow-section-${methodId}-${section.key}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' })}>
+          <span>{section.title}</span>
+          <small>{section.optional ? t('workflow.optional') : count ? t('workflow.section_required', { count }) : t('workflow.section_complete')}</small>
+        </button>;
+      })}
+    </nav>
+  );
+}
+
 function MultilaneForm({
   templates,
   starting,
@@ -480,6 +646,8 @@ function MultilaneForm({
   onTemplate,
   onChange,
   fieldErrors,
+  sectionIssues,
+  onFieldTouch,
 }: {
   templates: WorkflowTemplatesResponse;
   starting: WorkflowStartingValuesResponse;
@@ -489,6 +657,8 @@ function MultilaneForm({
   onTemplate: (templateId: string) => void;
   onChange: (key: string, value: unknown) => void;
   fieldErrors: Map<string, string>;
+  sectionIssues: Map<string, number>;
+  onFieldTouch: (field: string) => void;
 }): ReactElement {
   const { t } = useI18n();
   const grouped = [
@@ -497,6 +667,7 @@ function MultilaneForm({
     { key: 'heavy', title: t('multilane.section_heavy'), fields: ['heavy_vehicle_adjustment_method', 'terrain_type', 'grade_percent', 'truck_mix', 'passenger_car_equivalent'] },
   ];
   const fieldsByKey = new Map(starting.fields.map((field) => [field.key, field]));
+  const sections = grouped.map((group) => ({ key: group.key, title: group.title, fields: group.fields }));
   return (
     <div className="workflow-form" data-testid="multilane-form">
       <div className="workflow-controls">
@@ -513,8 +684,9 @@ function MultilaneForm({
         </Field>
       </div>
       <StarterNotice starting={starting} />
+      <SectionNavigator methodId="multilane" sections={sections} issueCounts={sectionIssues} />
       {grouped.map((group) => (
-        <EngineeringSection title={group.title} key={group.key}>
+        <EngineeringSection title={group.title} id={`workflow-section-multilane-${group.key}`} key={group.key}>
           <div className="form-grid">
             {group.fields.map((key) => {
               const field = fieldsByKey.get(key);
@@ -529,12 +701,13 @@ function MultilaneForm({
                     options={(field.options ?? []).map((option) => ({ value: option, label: t(`multilane.option.${option}`) }))}
                     error={fieldErrors.get(field.key)}
                     onChange={(value) => onChange(field.key, value)}
+                    onTouched={() => onFieldTouch(field.key)}
                   />
                 );
               }
               const hint = field.key === 'access_point_density' ? t('multilane.access_density_hint') : undefined;
               return (
-                <Field key={field.key} id={`multilane-${field.key}`} label={t(field.label_key)} required={Boolean(field.required || field.required_if)} hint={hint} error={fieldErrors.get(field.key)}>
+                <Field key={field.key} id={`multilane-${field.key}`} label={t(field.label_key)} required={Boolean(field.required || field.required_if)} hint={hint} error={fieldErrors.get(field.key)} onBlur={() => onFieldTouch(field.key)}>
                   {(controlProps) => <InputWithUnit {...controlProps} type={field.kind === 'text' ? 'text' : 'number'} unit={unitFor(field, unitSystem)} value={valueForInput(inputs[field.key])} onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(field.key, parseInput(field, event.target.value))} />}
                 </Field>
               );
@@ -556,6 +729,8 @@ function Phase3Form({
   onTemplate,
   onChange,
   fieldErrors,
+  sectionIssues,
+  onFieldTouch,
 }: {
   methodId: string;
   templates: WorkflowTemplatesResponse;
@@ -566,6 +741,8 @@ function Phase3Form({
   onTemplate: (templateId: string) => void;
   onChange: (key: string, value: unknown) => void;
   fieldErrors: Map<string, string>;
+  sectionIssues: Map<string, number>;
+  onFieldTouch: (field: string) => void;
 }): ReactElement {
   const { t } = useI18n();
   const assets = engineeringAssetsFrom(templates);
@@ -573,6 +750,12 @@ function Phase3Form({
   const groups: WorkflowGroup[] = templates.groups?.length
     ? templates.groups
     : [{ key: 'worksheet', label_key: 'workflow.worksheet', field_keys: starting.fields.map((field) => field.key) }];
+  const sections: FormSection[] = groups.map((group) => ({
+    key: group.key,
+    title: t(group.label_key),
+    fields: group.field_keys,
+    optional: /advanced|provenance|calibration/i.test(group.key),
+  }));
   const optionLabel = (option: string): string => {
     const namespace = methodId === 'weaving_segment'
       ? 'weaving'
@@ -601,11 +784,13 @@ function Phase3Form({
         </Field>
       </div>
       <StarterNotice starting={starting} />
-      {methodId === 'two_lane_segment' ? <TwoLaneSchematic inputs={inputs} unitSystem={unitSystem} assets={assets} /> : null}
-      {methodId === 'weaving_segment' ? <WeavingReference inputs={inputs} assets={assets} /> : null}
+      <SectionNavigator methodId={methodId} sections={sections} issueCounts={sectionIssues} />
       {groups.map((group) => {
         const groupContent = (
           <>
+            {methodId === 'two_lane_segment' && group.key === 'roadway' ? <TwoLaneSchematic inputs={inputs} unitSystem={unitSystem} assets={assets} /> : null}
+            {methodId === 'weaving_segment' && /geometry|weaving/i.test(group.key) ? <WeavingReference inputs={inputs} assets={assets} /> : null}
+            {(methodId === 'merge_segment' || methodId === 'diverge_segment') && group.key === 'geometry' ? <RampReference methodId={methodId} assets={assets} /> : null}
             <div className="form-grid">
               {group.field_keys.map((key) => {
                 const field = fieldsByKey.get(key);
@@ -623,13 +808,14 @@ function Phase3Form({
                       options={options.map((option) => ({ value: option, label: optionLabel(option) }))}
                       error={fieldErrors.get(field.key)}
                       onChange={(value) => onChange(field.key, parseInput(field, value))}
+                      onTouched={() => onFieldTouch(field.key)}
                     />
                   );
                 }
                 if (field.kind === 'json') return null;
                 const id = `${methodId}-${field.key}`;
                 return (
-                  <Field key={field.key} id={id} label={t(field.label_key)} required={required} error={fieldErrors.get(field.key)}>
+                  <Field key={field.key} id={id} label={t(field.label_key)} required={required} error={fieldErrors.get(field.key)} onBlur={() => onFieldTouch(field.key)}>
                     {(controlProps) => <InputWithUnit {...controlProps} type={field.kind === 'text' ? 'text' : 'number'} unit={unitFor(field, unitSystem)} value={valueForField(field, inputs[field.key])} onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(field.key, parseInput(field, event.target.value))} />}
                   </Field>
                 );
@@ -638,8 +824,8 @@ function Phase3Form({
             {methodId === 'two_lane_segment' && group.key === 'roadway' && inputs.horizontal_alignment === 'horizontal_curves' ? <CurveEditor inputs={inputs} unitSystem={unitSystem} onChange={(value) => onChange('horizontal_alignment_subsegments', value)} /> : null}
           </>
         );
-        const advanced = group.key === 'advanced_geometry' || group.key === 'provenance';
-        return <div className="workflow-group" key={group.key}>{advanced ? <DetailsDisclosure title={t(group.label_key)}>{groupContent}</DetailsDisclosure> : <EngineeringSection title={t(group.label_key)}>{groupContent}</EngineeringSection>}</div>;
+        const advanced = /advanced|provenance|calibration/i.test(group.key);
+        return <div className="workflow-group" id={`workflow-section-${methodId}-${group.key}`} key={group.key}>{advanced ? <DetailsDisclosure title={t(group.label_key)}>{groupContent}</DetailsDisclosure> : <EngineeringSection title={t(group.label_key)}>{groupContent}</EngineeringSection>}</div>;
       })}
     </div>
   );
@@ -654,6 +840,7 @@ function FacilityForm({
   onTemplate,
   onChange,
   fieldErrors,
+  onFieldTouch,
 }: {
   templates: WorkflowTemplatesResponse;
   starting: WorkflowStartingValuesResponse;
@@ -663,6 +850,7 @@ function FacilityForm({
   onTemplate: (templateId: string) => void;
   onChange: (rows: FacilityRow[]) => void;
   fieldErrors: Map<string, string>;
+  onFieldTouch: (field: string) => void;
 }): ReactElement {
   const { t } = useI18n();
   const rows = Array.isArray(inputs.rows) ? inputs.rows as FacilityRow[] : starting.segments ?? [];
@@ -717,6 +905,7 @@ function FacilityForm({
                         aria-readonly={!isEditable}
                         aria-label={`${t(`facility.col.${column}`)} ${row.segment_id}`}
                         aria-invalid={fieldErrors.has(`rows[${rowIndex}].${column}`) ? 'true' : undefined}
+                        onBlur={() => onFieldTouch(`rows[${rowIndex}].${column}`)}
                         onChange={(event) => updateRow(rowIndex, column, event.target.value)}
                       />
                       {fieldErrors.get(`rows[${rowIndex}].${column}`) ? <span className="field-error">{fieldErrors.get(`rows[${rowIndex}].${column}`)}</span> : null}
@@ -740,6 +929,7 @@ export function FacilityResultPanel({
   saveLabel,
   onRecalculate,
   stale = false,
+  workingAction,
 }: {
   result: WorkflowCalculationResponse;
   onExport: (format: 'csv' | 'xlsx' | 'markdown' | 'json') => void;
@@ -747,6 +937,7 @@ export function FacilityResultPanel({
   saveLabel?: string;
   onRecalculate?: () => void;
   stale?: boolean;
+  workingAction?: 'calculate' | 'save' | 'export' | null;
 }): ReactElement {
   const { t } = useI18n();
   const capacityFailure = Boolean(result.presentation.capacity.failure);
@@ -759,7 +950,7 @@ export function FacilityResultPanel({
     <div className="workflow-results" data-testid="workflow-results">
       <EngineeringSection title={t('result.facility_section_title')} description={t('result.facility_section_description')}>
         <ResultHero label={t('result.facility_level_of_service')} value={answer.available && answer.value ? answer.value : t('result.not_calculated')} state={stale ? 'stale' : capacityFailure ? 'capacity' : showWarning ? 'warning' : 'current'} supporting={answer.source} />
-        {capacityFailure ? <CapacityFailurePanel metricsUnavailable={metricsUnavailable} /> : showWarning ? <WarningPanel message={result.presentation.warning} /> : null}
+        {stale ? <StaleResultPanel /> : capacityFailure ? <CapacityFailurePanel metricsUnavailable={metricsUnavailable} /> : showWarning ? <WarningPanel message={result.presentation.warning} /> : null}
         <div className="metric-grid">
           {result.presentation.metrics.map((metric) => <MetricCard key={metric.key} label={t(`result.metric.${metric.key}`)} value={metricDisplayValue(metric, t)} unit={metric.unit ?? undefined} />)}
         </div>
@@ -770,15 +961,34 @@ export function FacilityResultPanel({
           </tbody></table>
         </div>
         <div className="result-actions">
-          <button className={`button ${stale ? 'button-secondary' : 'button-primary'}`} type="button" disabled={stale} onClick={onSave}>{saveLabel ?? t('action.save_project')}</button>
-          {!stale ? <button className="button button-secondary" type="button" onClick={onRecalculate}>{t('action.recalculate')}</button> : null}
-          <ExportMenu stale={stale} onExport={onExport} />
+          {stale ? <button className="button button-primary" type="button" disabled={workingAction === 'calculate'} aria-busy={workingAction === 'calculate' || undefined} onClick={onRecalculate}>{workingAction === 'calculate' ? t('status.calculating') : t('action.recalculate')}</button> : <>
+            <button className="button button-primary" type="button" disabled={workingAction === 'save'} aria-busy={workingAction === 'save' || undefined} onClick={onSave}>{workingAction === 'save' ? t('status.saving') : saveLabel ?? t('action.save_project')}</button>
+            <ExportMenu stale={false} busy={workingAction === 'export'} onExport={onExport} />
+          </>}
         </div>
       </EngineeringSection>
       <DetailsDisclosure title={t('result.evidence_title')}>
         <div className="evidence-grid"><div><span className="section-label">{t('result.assumptions')}</span><ul>{result.result.assumptions.map((item) => <li key={item}>{item}</li>)}</ul></div><div><span className="section-label">{t('result.warnings')}</span><ul>{result.result.warnings.length ? result.result.warnings.map((item) => <li key={item}>{item}</li>) : <li>{t('result.no_warnings')}</li>}</ul></div><div><span className="section-label">{t('result.fingerprint')}</span><code>{result.calculation_fingerprint}</code></div></div>
       </DetailsDisclosure>
     </div>
+  );
+}
+
+function ResultPlaceholder({
+  ready,
+  requiredCount,
+  exampleValues,
+}: {
+  ready: boolean;
+  requiredCount: number;
+  exampleValues: boolean;
+}): ReactElement {
+  const { t } = useI18n();
+  return (
+    <section className="result-placeholder" data-testid="result-placeholder" aria-labelledby="result-inspector-title">
+      <div className="result-inspector-heading"><div><span className="section-label">{t('result.inspector_label')}</span><h2 id="result-inspector-title" tabIndex={-1}>{ready ? t('status.ready_to_calculate') : t('result.not_calculated')}</h2></div>{exampleValues ? <StatusBadge tone="neutral">{t('workflow.example_values')}</StatusBadge> : null}</div>
+      <p>{ready ? t('result.ready_supporting') : t('result.missing_supporting', { count: requiredCount })}</p>
+    </section>
   );
 }
 
@@ -794,14 +1004,29 @@ export function AnalysisWorkflow({ method, onBack, onDirtyChange, onProjectSaved
   const [dirty, setDirty] = useState(false);
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
+  const [activeOperation, setActiveOperation] = useState<'calculate' | 'save' | 'export' | null>(null);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [touchedFields, setTouchedFields] = useState<Set<string>>(() => new Set());
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [focusValidationRequest, setFocusValidationRequest] = useState(0);
   const initialScenarioRef = useRef(initialScenario);
   const initialScenarioAppliedRef = useRef(false);
+  const validationSequenceRef = useRef(0);
+  const calculationSequenceRef = useRef(0);
+  const inputRevisionRef = useRef(0);
+  const focusValidationRef = useRef(false);
+  const resultInspectorRef = useRef<HTMLDivElement>(null);
 
   const isFacility = method.method_id === 'two_lane_facility';
   const isMultilane = method.method_id === 'multilane_segment';
   const serializedInputs = useMemo(() => serializeInputSnapshot(inputs), [inputs]);
+
+  useEffect(() => {
+    if (!notice) return undefined;
+    const timer = window.setTimeout(() => setNotice(null), 5_000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
 
   useEffect(() => {
     onDirtyChange?.(dirty);
@@ -819,6 +1044,9 @@ export function AnalysisWorkflow({ method, onBack, onDirtyChange, onProjectSaved
 
   useEffect(() => {
     let active = true;
+    calculationSequenceRef.current += 1;
+    inputRevisionRef.current += 1;
+    validationSequenceRef.current += 1;
     setLoading(true);
     setError(null);
     setTemplates(null);
@@ -829,6 +1057,11 @@ export function AnalysisWorkflow({ method, onBack, onDirtyChange, onProjectSaved
     setValidation(null);
     setResult(null);
     setDirty(false);
+    setSubmitAttempted(false);
+    setFocusValidationRequest(0);
+    focusValidationRef.current = false;
+    setTouchedFields(new Set());
+    setActiveOperation(null);
     initialScenarioRef.current = initialScenario;
     initialScenarioAppliedRef.current = false;
     fetchWorkflowTemplates(method.method_id)
@@ -847,10 +1080,17 @@ export function AnalysisWorkflow({ method, onBack, onDirtyChange, onProjectSaved
   useEffect(() => {
     if (!templateId) return;
     let active = true;
+    calculationSequenceRef.current += 1;
+    inputRevisionRef.current += 1;
+    validationSequenceRef.current += 1;
     setWorking(true);
     setError(null);
     setResult(null);
     setValidation(null);
+    setSubmitAttempted(false);
+    setTouchedFields(new Set());
+    setFocusValidationRequest(0);
+    focusValidationRef.current = false;
     fetchWorkflowStartingValues(method.method_id, templateId, unitSystem)
       .then((response) => {
         if (!active) return;
@@ -860,6 +1100,8 @@ export function AnalysisWorkflow({ method, onBack, onDirtyChange, onProjectSaved
           && scenario
           && scenario.templateId === templateId
           && scenario.unitSystem === unitSystem;
+        inputRevisionRef.current += 1;
+        validationSequenceRef.current += 1;
         setInputs(canRestoreScenario ? scenario.displayedInputs : (isFacility ? { rows: response.segments ?? [] } : response.displayed_inputs ?? {}));
         initialScenarioAppliedRef.current = true;
         setDirty(false);
@@ -871,18 +1113,30 @@ export function AnalysisWorkflow({ method, onBack, onDirtyChange, onProjectSaved
 
   useEffect(() => {
     if (!starting || !templateId || !Object.keys(inputs).length) return;
+    const requestSequence = validationSequenceRef.current + 1;
+    validationSequenceRef.current = requestSequence;
     const timer = window.setTimeout(() => {
       validateWorkflow(method.method_id, templateId, unitSystem, inputs)
-        .then(setValidation)
-        .catch((reason: Error) => setError(reason.message));
-    }, 180);
+        .then((response) => {
+          if (validationSequenceRef.current === requestSequence) setValidation(response);
+        })
+        .catch((reason: Error) => {
+          if (validationSequenceRef.current === requestSequence) setError(reason.message);
+        });
+    }, 350);
     return () => window.clearTimeout(timer);
   }, [method.method_id, templateId, unitSystem, serializedInputs, starting, inputs]);
 
   const updateInputs = (next: DisplayedInputs) => {
+    inputRevisionRef.current += 1;
+    validationSequenceRef.current += 1;
     setInputs(next);
     setDirty(true);
     setNotice(null);
+  };
+
+  const markFieldTouched = (field: string) => {
+    setTouchedFields((current) => current.has(field) ? current : new Set([...current, field]));
   };
 
   const confirmWorksheetReset = (): boolean => {
@@ -892,11 +1146,17 @@ export function AnalysisWorkflow({ method, onBack, onDirtyChange, onProjectSaved
 
   const changeTemplate = (nextTemplateId: string) => {
     if (!confirmWorksheetReset()) return;
+    calculationSequenceRef.current += 1;
+    inputRevisionRef.current += 1;
+    validationSequenceRef.current += 1;
     setTemplateId(nextTemplateId);
   };
 
   const changeUnitSystem = (nextUnitSystem: UnitSystem) => {
     if (!confirmWorksheetReset()) return;
+    calculationSequenceRef.current += 1;
+    inputRevisionRef.current += 1;
+    validationSequenceRef.current += 1;
     setUnitSystem(nextUnitSystem);
   };
 
@@ -929,40 +1189,66 @@ export function AnalysisWorkflow({ method, onBack, onDirtyChange, onProjectSaved
   };
 
   const focusValidationError = () => {
-    const firstTarget = errors[0]?.targetId;
-    const target = firstTarget ? document.getElementById(firstTarget) : null;
-    const destination = target ?? document.getElementById('error-summary');
-    destination?.focus();
-    destination?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    focusValidationRef.current = true;
+    setFocusValidationRequest((current) => current + 1);
   };
 
   const handleCalculate = () => {
-    if (!templateId || !validation?.valid) {
+    setSubmitAttempted(true);
+    if (!templateId) {
       focusValidationError();
       return;
     }
     setWorking(true);
+    setActiveOperation('calculate');
     setError(null);
-    calculateWorkflow(method.method_id, templateId, unitSystem, inputs)
+    const requestSequence = calculationSequenceRef.current + 1;
+    const inputRevision = inputRevisionRef.current;
+    calculationSequenceRef.current = requestSequence;
+    validateWorkflow(method.method_id, templateId, unitSystem, inputs)
+      .then((freshValidation) => {
+        if (calculationSequenceRef.current !== requestSequence || inputRevisionRef.current !== inputRevision) return null;
+        setValidation(freshValidation);
+        if (!freshValidation.valid) {
+          focusValidationError();
+          return null;
+        }
+        return calculateWorkflow(method.method_id, templateId, unitSystem, inputs);
+      })
       .then((response) => {
+        if (!response || calculationSequenceRef.current !== requestSequence || inputRevisionRef.current !== inputRevision) return;
         setResult(response);
         setDirty(false);
-        setValidation({
-          ...validation,
+        setValidation((current) => current ? {
+          ...current,
           valid: true,
           ready: true,
           calculation_fingerprint: response.calculation_fingerprint,
           input_snapshot_fingerprint: response.input_snapshot_fingerprint,
           calculation_state: response.calculation_state,
-        });
+        } : current);
+        if (!isFacility && window.matchMedia('(max-width: 1180px)').matches) {
+          window.setTimeout(() => {
+            const destination = document.getElementById('result-inspector-title') ?? resultInspectorRef.current;
+            destination?.focus();
+            destination?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+          }, 0);
+        }
       })
       .catch((reason: Error) => setError(reason.message))
-      .finally(() => setWorking(false));
+      .finally(() => {
+        if (calculationSequenceRef.current === requestSequence) {
+          setWorking(false);
+          setActiveOperation(null);
+        }
+      });
   };
 
   const handleExport = (format: 'csv' | 'xlsx' | 'markdown' | 'json') => {
     if (!result || dirty) return;
+    setNotice(t('status.exporting'));
     setWorking(true);
+    setActiveOperation('export');
     exportWorkflow(method.method_id, {
       template_id: templateId,
       unit_system: unitSystem,
@@ -978,16 +1264,17 @@ export function AnalysisWorkflow({ method, onBack, onDirtyChange, onProjectSaved
         setNotice(t('result.exported', { filename: response.filename }));
       })
       .catch((reason: Error) => setError(reason.message))
-      .finally(() => setWorking(false));
+      .finally(() => { setWorking(false); setActiveOperation(null); });
   };
 
   const handleSave = () => {
     if (!result || dirty) return;
     setWorking(true);
+    setActiveOperation('save');
     if (onScenarioResultSaved) {
       Promise.resolve(onScenarioResultSaved(result))
         .catch((reason: Error) => setError(reason.message))
-        .finally(() => setWorking(false));
+        .finally(() => { setWorking(false); setActiveOperation(null); });
       return;
     }
     saveAnalysisToProject(result, `${t(method.name_key)} study`)
@@ -997,13 +1284,27 @@ export function AnalysisWorkflow({ method, onBack, onDirtyChange, onProjectSaved
         setNotice(t('project.saved'));
       })
       .catch((reason: Error) => setError(reason.message))
-      .finally(() => setWorking(false));
+      .finally(() => { setWorking(false); setActiveOperation(null); });
   };
 
   const isStale = dirty && Boolean(result);
   const resultWarning = result?.calculation_state.presentation_state === 'valid_current_result_with_warning';
-  const status = isStale ? t('state.stale_title') : resultWarning ? t('state.warning_title') : result ? t('status.current') : validation?.valid ? t('status.ready_to_calculate') : t('status.items_required');
-  const statusTone = isStale ? 'stale' : resultWarning ? 'warning' : result ? 'current' : 'neutral';
+  const capacityFailure = Boolean(result?.presentation.capacity.failure);
+  const handoff = result?.calculation_state.presentation_state === 'hcm_stopping_or_handoff' || Boolean(result?.presentation.handoff);
+  const status = isStale
+    ? t('state.stale_title')
+    : handoff
+      ? t('state.handoff_title')
+      : capacityFailure
+        ? t('state.capacity_title')
+        : resultWarning
+          ? t('state.warning_title')
+          : result
+            ? t('status.current')
+            : validation?.valid
+              ? t('status.ready_to_calculate')
+              : t('status.items_required');
+  const statusTone = isStale ? 'stale' : capacityFailure ? 'capacity' : resultWarning ? 'warning' : result ? 'current' : 'neutral';
   const targetIdForIssue = (field: string | null): string | undefined => {
     if (!field) return undefined;
     const rowMatch = field.match(/^rows\[(\d+)\]\.(.+)$/);
@@ -1014,30 +1315,70 @@ export function AnalysisWorkflow({ method, onBack, onDirtyChange, onProjectSaved
     }
     return isFacility ? undefined : `${isMultilane ? 'multilane' : method.method_id}-${field}`;
   };
-  const errors = validation?.errors.map((issue) => ({ message: issue.message, targetId: targetIdForIssue(issue.field) })) ?? [];
-  const fieldErrors = new Map(
+  const allFieldErrors = new Map(
     (validation?.errors ?? [])
       .filter((issue) => issue.field)
       .map((issue) => [issue.field as string, issue.message]),
   );
+  const fieldErrors = new Map([...allFieldErrors].filter(([field]) => submitAttempted || touchedFields.has(field)));
+  const errors = submitAttempted
+    ? (validation?.errors.map((issue) => ({ message: issue.message, targetId: targetIdForIssue(issue.field) })) ?? [])
+    : [];
+  useEffect(() => {
+    if (!focusValidationRequest || !focusValidationRef.current || !errors.length) return undefined;
+    const frame = window.requestAnimationFrame(() => {
+      const firstTarget = errors[0]?.targetId;
+      const target = firstTarget ? document.getElementById(firstTarget) : null;
+      const destination = document.getElementById('error-summary') ?? target;
+      destination?.focus({ preventScroll: true });
+      destination?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      focusValidationRef.current = false;
+      setFocusValidationRequest(0);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [errors, focusValidationRequest]);
+  const formSections: FormSection[] = isMultilane
+    ? [
+      { key: 'traffic', title: t('multilane.section_traffic'), fields: ['number_of_lanes', 'segment_length', 'demand_volume_veh_h', 'peak_hour_factor', 'heavy_vehicle_percent'] },
+      { key: 'ffs', title: t('multilane.section_ffs'), fields: ['ffs_source', 'free_flow_speed', 'posted_speed_limit', 'lane_width', 'roadside_lateral_clearance', 'median_type', 'left_side_lateral_clearance', 'access_point_density'] },
+      { key: 'heavy', title: t('multilane.section_heavy'), fields: ['heavy_vehicle_adjustment_method', 'terrain_type', 'grade_percent', 'truck_mix', 'passenger_car_equivalent'] },
+    ]
+    : (templates?.groups?.map((group) => ({ key: group.key, title: t(group.label_key), fields: group.field_keys, optional: /advanced|provenance|calibration/i.test(group.key) })) ?? []);
+  const sectionIssues = new Map(formSections.map((section) => [
+    section.key,
+    (validation?.errors ?? []).filter((issue) => issue.field !== null && section.fields.includes(issue.field)).length,
+  ]));
   const assetMetadata = engineeringAssetsFrom(templates);
+  const exampleResult = Boolean(starting?.starter_kind === 'example' && !initialScenario);
+  const requiredCount = validation?.errors.length ?? 0;
   return (
-    <div className="page-stack workflow-page" data-testid={`workflow-${method.method_id}`}>
-      <div className="workflow-toolbar"><button className="button button-quiet" type="button" onClick={onBack}>← {t('action.back_to_methods')}</button><StatusBadge tone={statusTone}>{status}</StatusBadge></div>
-      <AnalysisHeader title={t(method.name_key)} method={`${method.chapter_reference} · ${method.input_contract}`} status={status} tone={statusTone} context={initialScenario ? t('workflow.project_context_value', { scenario: initialScenario.scenarioId }) : undefined} />
+    <div className={`page-stack workflow-page ${isFacility ? 'facility-workflow' : ''}`} data-testid={`workflow-${method.method_id}`}>
+      <div className="workflow-toolbar"><button className="button button-quiet" type="button" onClick={onBack}>← {t('action.back_to_methods')}</button></div>
+      <AnalysisHeader title={t(method.name_key)} method={`${method.chapter_reference} · ${scopeFor(method, t)}`} status={status} tone={statusTone} context={initialScenario ? t('workflow.project_context') : undefined} />
       {loading ? <ScopeNotice title={t('status.loading')}>{t('workflow.loading')}</ScopeNotice> : null}
       {error ? <ScopeNotice title={t('workflow.error_title')} tone="warning">{error}</ScopeNotice> : null}
-      {notice ? <ScopeNotice title={t('workflow.notice_title')}>{notice}</ScopeNotice> : null}
-      {dirty && result ? <StaleResultBanner onRecalculate={handleCalculate} /> : null}
-      {result && !dirty ? (isFacility ? <FacilityResultPanel result={result} onExport={handleExport} onSave={handleSave} onRecalculate={handleCalculate} saveLabel={onScenarioResultSaved ? t('action.save_scenario') : undefined} /> : <ResultPanel result={result} onExport={handleExport} onSave={handleSave} onRecalculate={handleCalculate} assetMetadata={assetMetadata} saveLabel={onScenarioResultSaved ? t('action.save_scenario') : undefined} />) : null}
-      {templates && starting ? (isFacility
-        ? <FacilityForm templates={templates} starting={starting} inputs={inputs} unitSystem={unitSystem} onUnitSystem={changeUnitSystem} onTemplate={changeTemplate} fieldErrors={fieldErrors} onChange={(rows) => updateInputs({ rows })} />
-        : isMultilane
-          ? <MultilaneForm templates={templates} starting={starting} inputs={inputs} unitSystem={unitSystem} onUnitSystem={changeUnitSystem} onTemplate={changeTemplate} fieldErrors={fieldErrors} onChange={onChangeFromForm} />
-          : <Phase3Form methodId={method.method_id} templates={templates} starting={starting} inputs={inputs} unitSystem={unitSystem} onUnitSystem={changeUnitSystem} onTemplate={changeTemplate} fieldErrors={fieldErrors} onChange={onChangeFromForm} />) : null}
-      <ErrorSummary errors={errors} />
-      {!result ? <ReadinessBar ready={Boolean(validation?.valid)} disabled={working} actionLabel={t('action.calculate')} onAction={handleCalculate} /> : null}
-      {working ? <p className="muted" role="status">{t('status.working')}</p> : null}
+      {templates && starting && isFacility ? <div className="facility-workspace">
+        <FacilityForm templates={templates} starting={starting} inputs={inputs} unitSystem={unitSystem} onUnitSystem={changeUnitSystem} onTemplate={changeTemplate} fieldErrors={fieldErrors} onFieldTouch={markFieldTouched} onChange={(rows) => updateInputs({ rows })} />
+        <ErrorSummary errors={errors} />
+        {!result ? <ReadinessBar ready={Boolean(validation?.valid)} requiredCount={requiredCount} disabled={working} working={activeOperation === 'calculate'} actionLabel={t('action.calculate')} onAction={handleCalculate} /> : null}
+        {result ? <FacilityResultPanel result={result} stale={isStale} workingAction={activeOperation} onExport={handleExport} onSave={handleSave} onRecalculate={handleCalculate} saveLabel={onScenarioResultSaved ? t('action.save_scenario') : undefined} /> : <ResultPlaceholder ready={Boolean(validation?.valid)} requiredCount={requiredCount} exampleValues={exampleResult} />}
+      </div> : null}
+      {templates && starting && !isFacility ? <>
+        <div className="workflow-workbench">
+          <div className="workflow-input-workspace">
+            {isMultilane
+              ? <MultilaneForm templates={templates} starting={starting} inputs={inputs} unitSystem={unitSystem} onUnitSystem={changeUnitSystem} onTemplate={changeTemplate} fieldErrors={fieldErrors} sectionIssues={sectionIssues} onFieldTouch={markFieldTouched} onChange={onChangeFromForm} />
+              : <Phase3Form methodId={method.method_id} templates={templates} starting={starting} inputs={inputs} unitSystem={unitSystem} onUnitSystem={changeUnitSystem} onTemplate={changeTemplate} fieldErrors={fieldErrors} sectionIssues={sectionIssues} onFieldTouch={markFieldTouched} onChange={onChangeFromForm} />}
+            <ErrorSummary errors={errors} />
+            {!result ? <ReadinessBar ready={Boolean(validation?.valid)} requiredCount={requiredCount} disabled={working} working={activeOperation === 'calculate'} actionLabel={t('action.calculate')} onAction={handleCalculate} /> : <ReadinessBar ready={!isStale} showAction={false} statusLabel={isStale ? t('state.stale_title') : t('status.result_current')} />}
+          </div>
+          <div className="workflow-result-inspector" ref={resultInspectorRef} tabIndex={-1}>
+            {result ? <ResultPanel result={result} stale={isStale} onExport={handleExport} onSave={handleSave} onRecalculate={handleCalculate} exampleResult={exampleResult} workingAction={activeOperation} saveLabel={onScenarioResultSaved ? t('action.save_scenario') : undefined} /> : <ResultPlaceholder ready={Boolean(validation?.valid)} requiredCount={requiredCount} exampleValues={exampleResult} />}
+          </div>
+        </div>
+        {result && !isStale ? <DetailedResultSection result={result} assetMetadata={assetMetadata} /> : null}
+      </> : null}
+      <ActionToast message={notice} />
     </div>
   );
 }

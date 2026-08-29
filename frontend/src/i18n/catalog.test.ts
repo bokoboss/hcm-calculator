@@ -21,7 +21,7 @@ const sharedPrimitiveKeys = [
 
 describe('localization catalog', () => {
   it('provides shell vocabulary in both supported locales', () => {
-    expect(translate('en', 'app.title')).toBe('HCM Analysis Workspace');
+    expect(translate('en', 'app.title')).toBe('HCM Calculator');
     expect(translate('th', 'app.title')).toContain('HCM');
     expect(translate('th', 'action.new_analysis')).not.toBe(translate('en', 'action.new_analysis'));
   });

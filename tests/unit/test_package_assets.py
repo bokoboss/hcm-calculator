@@ -1,3 +1,4 @@
+import re
 from importlib.resources import files
 
 from hcmcalc.ui.schematics import get_segment_schematic_path
@@ -25,6 +26,22 @@ def test_required_ui_assets_resolve_from_package_resources() -> None:
 
     for asset in expected_assets:
         assert asset.is_file(), f"Missing packaged UI asset: {asset}"
+
+
+def test_packaged_rebuilt_spa_entrypoint_references_packaged_assets() -> None:
+    package_root = files("hcmcalc.ui")
+    static_root = package_root.joinpath("static")
+    index = static_root.joinpath("index.html")
+
+    assert index.is_file(), "Missing packaged rebuilt SPA entrypoint"
+    markup = index.read_text(encoding="utf-8")
+    assert '<div id="root"></div>' in markup
+    asset_paths = re.findall(r'(?:src|href)="(/assets/[^"]+)"', markup)
+    assert asset_paths, "Packaged rebuilt SPA must reference compiled assets"
+    for asset_path in asset_paths:
+        assert static_root.joinpath(asset_path.lstrip("/")).is_file(), (
+            f"Missing packaged rebuilt SPA asset: {asset_path}"
+        )
 
 
 def test_public_asset_resolvers_return_existing_packaged_paths() -> None:

@@ -100,6 +100,23 @@ linked validation recovery, responsive EN/TH presentation, and the default
 rebuilt launcher. Detailed evidence is maintained in
 `docs/application_rebuild/phase3_release_qualification.md`.
 
+## PR #141 whole-product UX qualification
+- The owner-authorized whole-application refinement implements the PR #141
+  interaction/layout and page-grammar reviews without changing Python HCM
+  authority, method scope, contracts, Project v2, or calculation semantics.
+- The normal UI now uses a persistent bilingual engineering-workstation shell,
+  real route history with dirty-state protection, adaptive segment workbenches,
+  a distinct Facility table workflow, in-place result inspectors, linked error
+  recovery, grouped Export, and Project Workspace master-detail/compare flows.
+- The reviewed production `frontend/dist` output is synchronized to the
+  packaged `src/hcmcalc/ui/static` entrypoint before release-wheel
+  qualification. Normal installed use therefore serves the rebuilt UI through
+  FastAPI with no Node/Vite runtime dependency.
+- Deterministic 1920, 1366, 1024, and 390 px evidence, browser UAT, wheel,
+  isolated runtime, and both Windows launcher results are indexed in the Phase
+  3 qualification record. PR #141 remains an unmerged candidate pending the
+  final GitHub CI pass and owner product/visual acceptance.
+
 ## Validation and release policy
 - Every change goes through a reviewable PR; PR #141 links the Phase 3 work to
   Issue #139 with `Closes #139` and is intentionally not merged by this task.

@@ -34,6 +34,12 @@ The two existing Phase 2 methods remain part of the same seven-method registry:
 
 ## Consolidated UX/IA remediation
 
+The whole-application refinement authorized by PR #141 implements the
+interaction/layout review #5052090168 and page-grammar review #5052568561.
+It is a bounded React/FastAPI product pass; the accepted Python numerical,
+method, Project v2, fingerprint, and warning/capacity/handoff semantics are
+unchanged.
+
 - The desktop workspace has persistent direct navigation for Workspace Home,
   Project Workspace, New Analysis, all three roadway methods, all four freeway
   methods, and Supported Methods. The narrow layout uses a compact selector;
@@ -72,10 +78,10 @@ The two existing Phase 2 methods remain part of the same seven-method registry:
   explicit current/stale/warning/handoff/capacity-failure states, answer/LOS
   where valid, metrics, warnings, schematic/evidence, assumptions, and audit
   data.
-  There is one primary action at a time; Save is primary for a current result,
-  Recalculate is secondary, and Export is grouped. Stale exports are disabled
-  with a reason until recalculation. Validation summaries link to and focus the
-  corresponding field.
+  There is one primary action at a time: Save/Add to Project is primary for a
+  current quick-analysis result, Export is grouped, and a stale result makes
+  Recalculate primary while explaining why Export is unavailable. Validation
+  summaries link to and focus the corresponding field.
 - English/Thai catalog parity, responsive layout, and narrow-screen overflow
   are covered by browser tests and committed visual evidence.
 
@@ -109,51 +115,66 @@ Streamlit remains runnable and is qualified as the compatibility path.
 
 ## Browser/UAT and deterministic visual evidence
 
-The full Chromium gate includes the shared Phase 2 representative journeys,
-the existing Phase 3 all-method journeys, and the consolidated remediation
-journeys. The final run was:
+The final serial Chromium gate includes the shared Phase 2 representative
+journeys, all seven registered-method journeys, consolidated remediation
+journeys, and the whole-product workstation UAT. The final run was:
 
 ```text
-pnpm --dir frontend exec playwright test --project=chromium
-22 passed
+pnpm --dir frontend exec playwright test --project=chromium --workers=1 --reporter=line
+30 passed
 ```
 
-The remediation coverage includes direct routes and chooser navigation,
-modified-draft protection, structured curves and Two-Lane schematics, both
-Weaving variants and disclosure, Merge/Diverge SVG evidence, method-specific
-Basic Freeway and Weaving capacity failures, ordinary/warning-only/capacity
-Merge and Diverge states, Multilane density semantics, current/stale/export
-states, Thai, and a 390px responsive viewport.
+The pass covers direct routes and chooser navigation; browser Back/Forward and
+dirty-draft protection; structured curves and Two-Lane schematics; both
+Weaving variants and progressive disclosure; Merge/Diverge SVG evidence;
+method-specific Basic Freeway and Weaving capacity failures; ordinary,
+warning-only, and capacity Merge/Diverge states; Multilane density semantics;
+current/stale/keyboard Export states; Project master-detail, duplicate,
+rename, edit, calculate, and compare; EN/TH persistence; and 1920, 1366, 1024,
+and 390 px layout checks without global horizontal overflow.
 
-Committed deterministic captures:
+The whole-product captures were visually reviewed for clipping, global
+overflow, reverse result flow, hierarchy, action competition, focus recovery,
+Thai rendering, and developer-facing language:
 
-- [desktop persistent navigation](visual-reference/phase3-remediation-desktop-navigation.png)
-- [Two-Lane passing schematic](visual-reference/phase3-remediation-two-lane-passing-schematic.png)
-- [Two-Lane structured curve editor](visual-reference/phase3-remediation-two-lane-curve-editor.png)
-- [Weaving one-sided reference](visual-reference/phase3-remediation-weaving-one-sided.png)
-- [Weaving two-sided reference](visual-reference/phase3-remediation-weaving-two-sided.png)
-- [Merge detailed SVG result](visual-reference/phase3-remediation-merge_segment-detailed-svg.png)
-- [Diverge detailed SVG result](visual-reference/phase3-remediation-diverge_segment-detailed-svg.png)
-- [Merge valid result with warning](visual-reference/phase3-remediation-merge-warning-state.png)
-- [Diverge valid result with warning](visual-reference/phase3-remediation-diverge-warning-state.png)
-- [current result actions](visual-reference/phase3-remediation-current-result.png)
-- [stale result recovery](visual-reference/phase3-remediation-stale-result.png)
-- [Thai result](visual-reference/phase3-remediation-thai-result.png)
-- [narrow navigation](visual-reference/phase3-remediation-narrow-navigation.png)
+- [Home, English, 1920 px](visual-reference/phase3-ux-home-en-1920.png)
+- [Home, Thai, 1920 px](visual-reference/phase3-ux-home-th-1920.png)
+- [New Analysis chooser, 1920 px](visual-reference/phase3-ux-new-analysis-1920.png)
+- [Method Guide, 1920 px](visual-reference/phase3-ux-method-guide-1920.png)
+- [segment workbench, 1920 px](visual-reference/phase3-ux-workbench-1920.png)
+- [segment workbench, 1366 px](visual-reference/phase3-ux-workbench-1366.png)
+- [stacked workbench, 1024 px](visual-reference/phase3-ux-workbench-stacked-1024.png)
+- [validation focus recovery](visual-reference/phase3-ux-validation-recovery.png)
+- [retained stale result](visual-reference/phase3-ux-stale-result.png)
+- [keyboard Export menu](visual-reference/phase3-ux-export-menu.png)
+- [Two-Lane Facility grid and result, 1366 px](visual-reference/phase3-ux-facility-1366.png)
+- [Two-Lane structured curve editor](visual-reference/phase3-ux-two-lane-curve.png)
+- [Weaving geometry/evidence, 1366 px](visual-reference/phase3-ux-weaving-1366.png)
+- [Merge warning state](visual-reference/phase3-ux-merge-warning.png)
+- [Diverge capacity state](visual-reference/phase3-ux-diverge-capacity.png)
+- [empty Project Workspace](visual-reference/phase3-ux-project-empty.png)
+- [populated Project Workspace](visual-reference/phase3-ux-project-populated.png)
+- [Project comparison](visual-reference/phase3-ux-project-compare.png)
+- [390 px method navigation](visual-reference/phase3-ux-mobile-navigation-390.png)
 
-The pre-existing Phase 2 visual set and the five Phase 3 result captures remain
-committed separately; none is replaced by deleted historical mockups.
+The pre-existing Phase 2 and method-specific Phase 3 captures remain committed
+separately; none is replaced by deleted historical mockups.
 
 ## Packaging and runtime qualification
 
 - Editable install: `python -m pip install -e ".[dev,ui]"` passed.
-- Fresh wheel: `hcm_calculator-0.9.0-py3-none-any.whl`,
-  1,979,572 bytes, SHA-256
-  `5492ec1991def6144bad3df23bf0aa15e39867d88bef37a0258e4555a2dab097`.
-  The archive contains `hcmcalc/ui/static/index.html` and the required
-  Two-Lane, Weaving, Merge, and Diverge engineering assets.
-- Isolated Python 3.12 wheel runtime served `/` with HTTP 200, health `ok`,
-  seven methods, and the packaged assets from a loopback-only API.
+- The production `frontend/dist` bundle was synchronized into
+  `src/hcmcalc/ui/static` before the wheel build. The package entrypoint and
+  its two hashed React assets are therefore current without Node/Vite at
+  runtime.
+- Fresh wheel: `hcm_calculator-0.9.0-py3-none-any.whl`, 1,986,776 bytes,
+  SHA-256
+  `1e934b418cf26dc0a0e749b0c2a867adf42fde2e6a0e57456c452a15cf9aa6dc`.
+  Its compiled-SPA entries are `index.html`, `index-CMd6T3Zt.css`, and
+  `index-BC_o5WcY.js`, alongside the required packaged engineering assets.
+- A fresh isolated Python 3.12 wheel runtime served `/` with HTTP 200, the
+  current packaged bundle, health `ok`, seven methods, and a packaged Weaving
+  image from a loopback-only API.
 - The actual `run_app.ps1` Windows launcher served `/` with HTTP 200, health
   `ok`, and seven methods. Its process tree was stopped after the smoke and
   no HCM release process remained.
@@ -167,20 +188,23 @@ committed separately; none is replaced by deleted historical mockups.
 | Gate | Command / evidence | Result |
 | --- | --- | --- |
 | Python install | `python -m pip install -e ".[dev,ui]"` | PASS |
-| Python regression | `python -m pytest` | **1,157 passed** |
+| Python regression | `python -m pytest` | **1,158 passed** |
+| Application/API | `python -m pytest tests/application tests/api` | **89 passed** |
 | Compile | `python -m compileall -q src tests` | PASS |
-| Workflow | v1.4.1 manifest and eight managed-file CRLF-normalized SHA-256 checks | PASS |
+| Workflow | v1.4.1 reference plus eight CRLF-normalized managed-file SHA-256 checks against `7a33ff3` | PASS |
 | OpenAPI | `python scripts/check_openapi_contract.py` | PASS; snapshot matches |
+| Generated API types | `pnpm --dir frontend run generate:api` then `git diff --exit-code -- frontend/src/api/openapi.d.ts` | PASS |
 | Diff hygiene | `git diff --check` | PASS |
 | Frontend types | `pnpm --dir frontend run typecheck` | PASS |
 | Frontend units | `pnpm --dir frontend run test` | **17 passed** across 7 files |
-| Frontend build | `pnpm --dir frontend run build` | PASS; Vite emitted 335.44 kB JS / 26.34 kB CSS |
-| Browser/UAT | `pnpm --dir frontend exec playwright test --project=chromium` | **22 passed** |
-| Wheel | `python -m build --wheel --outdir .tmp\phase3-wheel-remediation` | PASS; SHA above |
-| Installed runtime | isolated wheel HTTP smoke | PASS; root/health/methods/assets |
-| Windows rebuilt launcher | `run_app.ps1` live smoke | PASS |
-| Streamlit compatibility | `run_streamlit.ps1` live health smoke | PASS |
-| CI | PR #141 GitHub Actions `R1 qualification` workflow | PASS; exact-head run [33177183746](https://github.com/bokoboss/hcm-calculator/actions/runs/33177183746) completed all four required jobs successfully |
+| Frontend build | `pnpm --dir frontend run build` | PASS; Vite emitted 359.83 kB JS / 36.58 kB CSS |
+| Browser/UAT | `pnpm --dir frontend exec playwright test --project=chromium --workers=1 --reporter=line` | **30 passed** |
+| Packaged SPA resource test | `python -m pytest tests/unit/test_package_assets.py` | **3 passed** |
+| Wheel | fresh wheel to the temporary release-qualification directory | PASS; SHA above |
+| Installed runtime | fresh isolated-wheel HTTP smoke | PASS; current root bundle, health, methods, and engineering asset |
+| Windows rebuilt launcher | `run_app.ps1` live smoke | PASS; root HTTP 200, health `ok`, seven methods |
+| Streamlit compatibility | `run_streamlit.ps1` live health smoke | PASS; `/_stcore/health` 200/`ok` |
+| CI | PR #141 GitHub Actions `R1 qualification` workflow | Required after the final remediation commit and push; the PR body/final evidence records the exact green run |
 
 The release candidate preserves Python numerical authority, qualified engine
 behavior, method identifiers/contracts, Project v2/fingerprint semantics,

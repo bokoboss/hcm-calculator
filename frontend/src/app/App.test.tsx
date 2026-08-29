@@ -26,7 +26,7 @@ const method: MethodDefinition = {
 };
 
 describe('MethodCard actionability boundary', () => {
-  it('keeps Select method disabled for a delivered module with an incompatible contract', () => {
+  it('keeps Start analysis disabled for a delivered module with an incompatible contract', () => {
     render(
       <I18nProvider>
         <MethodCard
@@ -43,7 +43,7 @@ describe('MethodCard actionability boundary', () => {
       </I18nProvider>,
     );
 
-    expect(screen.getByRole('button', { name: 'Select method' })).toBeDisabled();
-    expect(screen.getByText('Contract mismatch')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Start analysis' })).toBeDisabled();
+    expect(screen.getByText('Engineering support unavailable')).toBeInTheDocument();
   });
 });

@@ -198,8 +198,11 @@ test.describe('Phase 3 remediation journeys', () => {
 
     await page.goto('/analysis/multilane_segment');
     await page.locator('#multilane-access_point_density').fill('');
+    await expect(page.locator('[data-slot="error-summary"]')).toHaveCount(0);
+    await expect(page.locator('[data-slot="readiness-bar"] button')).toBeEnabled();
+    await page.getByRole('button', { name: 'Calculate', exact: true }).click();
     await expect(page.locator('.error-summary a[href="#multilane-access_point_density"]')).toBeVisible();
-    await expect(page.locator('[data-slot="readiness-bar"] button')).toBeDisabled();
+    await expect(page.locator('[data-slot="error-summary"]')).toBeFocused();
     await page.locator('#multilane-access_point_density').fill('0');
     await expect(page.locator('.error-summary a[href="#multilane-access_point_density"]')).toHaveCount(0);
   });
@@ -212,12 +215,12 @@ test.describe('Phase 3 remediation journeys', () => {
     await capture(page, 'phase3-remediation-current-result.png');
 
     await page.locator('#multilane-demand_volume_veh_h').fill('1510');
-    await expect(page.locator('[data-slot="stale-result-banner"]')).toBeVisible();
-    await expect(page.getByTestId('workflow-results')).not.toBeVisible();
-    await expect(page.getByText('Unavailable until this stale result is recalculated.', { exact: true })).toBeVisible();
+    await expect(page.locator('[data-slot="stale-result-panel"]')).toBeVisible();
+    await expect(page.getByTestId('workflow-results')).toBeVisible();
+    await expect(page.locator('[data-slot="stale-result-panel"]')).toContainText('Unavailable until this stale result is recalculated.');
     await capture(page, 'phase3-remediation-stale-result.png');
 
-    await page.locator('[data-slot="stale-result-banner"] button').click();
+    await page.getByRole('button', { name: 'Recalculate', exact: true }).click();
     await expect(page.getByTestId('workflow-results')).toBeVisible();
     await page.getByRole('button', { name: 'Thai' }).click();
     await expect(page.getByText('ระดับการให้บริการ', { exact: true }).first()).toBeVisible();

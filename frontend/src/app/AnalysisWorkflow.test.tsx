@@ -60,7 +60,8 @@ describe('result metric availability', () => {
     );
 
     expect(screen.getAllByText('Not predicted in this state')).toHaveLength(2);
-    expect(screen.getByText('Not calculated')).toBeInTheDocument();
+    expect(screen.getByText('Demand flow rate')).toBeInTheDocument();
+    expect(screen.queryByText('Not calculated')).not.toBeInTheDocument();
     expect(screen.getByText('Speed and density are not predicted in this state.')).toBeInTheDocument();
     expect(screen.queryByText('0.0')).not.toBeInTheDocument();
 

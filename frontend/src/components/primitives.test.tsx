@@ -13,7 +13,7 @@ import {
   PageHeader,
   ReadinessBar,
   ResultHero,
-  StaleResultBanner,
+  StaleResultPanel,
   WarningPanel,
 } from './primitives';
 import { I18nProvider } from '../i18n';
@@ -66,7 +66,7 @@ describe('R0 shared design-system primitives', () => {
         <AppShell activePage="home" onNavigate={() => undefined} apiConnected>
           <ReadinessBar ready />
           <EngineeringAssessment items={['Evidence']} />
-          <StaleResultBanner />
+          <StaleResultPanel />
           <CapacityFailurePanel />
           <HandoffPanel />
           <WarningPanel message="Maximum desirable flow is exceeded." />

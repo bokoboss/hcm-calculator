@@ -9,9 +9,27 @@ interface I18nContextValue {
 }
 
 const I18nContext = createContext<I18nContextValue | null>(null);
+const localeStorageKey = 'hcmcalc.locale';
+
+function initialLocale(): Locale {
+  try {
+    const stored = window.localStorage.getItem(localeStorageKey);
+    return stored === 'th' || stored === 'en' ? stored : 'en';
+  } catch {
+    return 'en';
+  }
+}
 
 export function I18nProvider({ children }: { children: ReactNode }): ReactElement {
-  const [locale, setLocale] = useState<Locale>('en');
+  const [locale, setLocaleState] = useState<Locale>(initialLocale);
+  const setLocale = (nextLocale: Locale) => {
+    setLocaleState(nextLocale);
+    try {
+      window.localStorage.setItem(localeStorageKey, nextLocale);
+    } catch {
+      // Local preference is a convenience only; the active session remains usable.
+    }
+  };
   useEffect(() => {
     document.documentElement.lang = locale === 'th' ? 'th' : 'en';
     document.title = translate(locale, 'app.title');
