@@ -55,7 +55,7 @@ const migratedReferenceOnlyProject: Record<string, unknown> = {
 };
 
 describe('ProjectWorkspace method actionability', () => {
-  it('keeps migrated reference-only methods viewable while disabling Calculate and Edit', () => {
+  it('keeps migrated delivered methods actionable for Calculate and Edit', () => {
     render(
       <I18nProvider>
         <ProjectWorkspace
@@ -69,10 +69,9 @@ describe('ProjectWorkspace method actionability', () => {
     );
 
     expect(screen.getAllByText('Migrated legacy Base')).toHaveLength(2);
-    expect(screen.getByText('Reference-only method')).toBeInTheDocument();
-    expect(screen.getByText(/Existing results and project data remain viewable/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Calculate scenario' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Edit scenario' })).toBeDisabled();
+    expect(screen.queryByText('Reference-only method')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Calculate scenario' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Edit scenario' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Duplicate scenario' })).not.toBeDisabled();
   });
 });

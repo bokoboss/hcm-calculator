@@ -1,4 +1,4 @@
-"""Framework-independent services for the representative Phase 2 workflows.
+"""Framework-independent services for the rebuilt HCM workflows.
 
 The services in this module are the application boundary between the existing
 qualified Python methods and any presentation layer.  They deliberately do
@@ -64,7 +64,42 @@ from hcmcalc.ui.units import FEET_TO_METERS, MILES_TO_KILOMETERS
 
 
 REPRESENTATIVE_METHOD_IDS = frozenset({"multilane_segment", "two_lane_facility"})
+PHASE3_METHOD_IDS = frozenset({
+    "two_lane_segment",
+    "basic_freeway_segment",
+    "weaving_segment",
+    "merge_segment",
+    "diverge_segment",
+})
 SUPPORTED_WORKFLOW_EXPORTS = frozenset({"csv", "xlsx", "markdown", "json"})
+
+
+def _starter_kind(method_id: str, template_id: str) -> str:
+    """Return language-neutral starter semantics for the rebuilt UI."""
+
+    if template_id == "legacy_import":
+        return "legacy_import"
+    if method_id == "two_lane_facility":
+        return "facility_template"
+    if template_id in {"blank_custom", "blank_case"}:
+        return "blank"
+    return "example"
+
+
+def _starter_label(method_id: str, template_id: str, fallback: str) -> str:
+    """Keep starter grammar in application metadata, not React label logic."""
+
+    if template_id in {"blank_custom", "blank_case"}:
+        return "Blank worksheet"
+    if template_id == "legacy_import":
+        return "Imported legacy worksheet"
+    if method_id == "two_lane_facility":
+        example = fallback.replace(" starting values", "")
+        return f"Facility template — {example}"
+    if method_id == "multilane_segment":
+        suffix = "EB" if template_id.endswith("-EB") else "WB"
+        return f"Example — Chapter 26 Example 4 ({suffix})"
+    return fallback
 
 
 class ApplicationWorkflowError(ValueError):
@@ -125,6 +160,10 @@ def _error_issue(exc: Exception, *, field: str | None = None) -> dict[str, Any]:
             "access_point_density", "heavy_vehicle_adjustment_method",
             "terrain_type", "grade_percent", "truck_mix",
             "passenger_car_equivalent",
+            "segment_type", "horizontal_alignment", "configuration",
+            "entry_side", "exit_side", "number_of_weaving_lanes",
+            "freeway_lanes", "ramp_demand_veh_h", "freeway_demand_veh_h",
+            "geometry_notes", "geometry_source", "pce_mode",
         ):
             if candidate in str(exc):
                 issue_field = candidate
@@ -156,13 +195,6 @@ def _definition(method_id: str) -> AnalysisDefinition:
             f"Unknown method_id: {method_id}.",
             code="method_not_found",
             message_key="api.method_not_found",
-            details={"method_id": method_id},
-        )
-    if method_id not in REPRESENTATIVE_METHOD_IDS:
-        raise ApplicationWorkflowError(
-            f"The rebuilt Phase 2 workflow is not delivered for {method_id}.",
-            code="workflow_not_delivered",
-            message_key="api.workflow_not_delivered",
             details={"method_id": method_id},
         )
     return definition
@@ -284,6 +316,7 @@ def _capacity_failure(result: Mapping[str, Any]) -> bool:
     return bool(
         outputs.get("demand_exceeds_capacity")
         or outputs.get("facility_has_capacity_failure")
+        or outputs.get("capacity_exceeded")
         or outputs.get("capacity_status") in {"demand_exceeds_capacity", "capacity_exceeded"}
         or outputs.get("capacity_check") in {"demand_exceeds_capacity", "capacity_exceeded"}
     )
@@ -375,8 +408,20 @@ class MultilaneWorkflow:
         return {
             "method_id": self.method_id,
             "unit_systems": ["metric", "imperial"],
+            "default_template_id": "MLH-CH26-004-EB",
             "templates": [
-                {"template_id": key, "label": label}
+                {
+                    "template_id": key,
+                    "label": _starter_label(self.method_id, key, label),
+                    "starter_kind": _starter_kind(self.method_id, key),
+                    "description": (
+                        "Chapter 26 Example 4 eastbound values."
+                        if key.endswith("-EB")
+                        else "Chapter 26 Example 4 westbound values."
+                        if key.endswith("-WB")
+                        else "Enter the required worksheet values; access-point density starts at 0."
+                    ),
+                }
                 for key, label in multilane_template_options(include_blank=True).items()
             ],
             "fields": [deepcopy(field) for field in MULTILANE_FIELD_SCHEMA],
@@ -415,9 +460,12 @@ class MultilaneWorkflow:
             {
                 "method_id": self.method_id,
                 "template_id": template_id,
-                "template_label": template["template_label"],
+                "template_label": _starter_label(
+                    self.method_id, template_id, template["template_label"]
+                ),
                 "template_description": template["description"],
                 "validation_status": template["validation_status"],
+                "starter_kind": _starter_kind(self.method_id, template_id),
                 "unit_system": unit_system,
                 "displayed_inputs": displayed,
                 "fields": [deepcopy(field) for field in MULTILANE_FIELD_SCHEMA],
@@ -567,6 +615,7 @@ class MultilaneWorkflow:
             },
             "metrics": metric_values,
             "capacity": capacity,
+            "warning": warnings[0] if warnings else None,
             "interpretations": _interpretation_mappings(state, warning_codes=interpretation_codes),
             "evidence": {
                 "intermediate_values": result.get("intermediate_values", []),
@@ -608,12 +657,18 @@ class FacilityWorkflow:
 
     def templates(self) -> dict[str, Any]:
         options = [
-            {"template_id": template_id, "label": label}
+            {
+                "template_id": template_id,
+                "label": _starter_label(self.method_id, template_id, label),
+                "starter_kind": _starter_kind(self.method_id, template_id),
+                "description": "Validated facility sequence and geometry remain template-controlled.",
+            }
             for template_id, label in facility_template_options().items()
         ]
         return {
             "method_id": self.method_id,
             "unit_systems": ["metric", "imperial"],
+            "default_template_id": "level_example_3",
             "templates": options,
             "fields": [deepcopy(field) for field in FACILITY_FIELD_SCHEMA],
             "scope_notes": [
@@ -638,7 +693,10 @@ class FacilityWorkflow:
             {
                 "method_id": self.method_id,
                 "template_id": template_id,
-                "template_label": template["template_label"],
+                "template_label": _starter_label(
+                    self.method_id, template_id, template["template_label"]
+                ),
+                "starter_kind": _starter_kind(self.method_id, template_id),
                 "template_source_reference": template["template_source_reference"],
                 "template_basis": template["template_basis"],
                 "supported_context": template["supported_context"],
@@ -864,6 +922,7 @@ class FacilityWorkflow:
                 "critical_segment_id": outputs.get("critical_segment_id"),
                 "source": "HCM Chapter 15 capacity checks",
             },
+            "warning": warnings[0] if warnings else None,
             "segments": segment_rows,
             "interpretations": _interpretation_mappings(
                 state,
@@ -954,11 +1013,15 @@ def _facility_validation_issues(messages: list[str], rows: list[dict[str, Any]])
     return issues
 
 
-def workflow_for_method(method_id: str) -> MultilaneWorkflow | FacilityWorkflow:
+def workflow_for_method(method_id: str) -> Any:
     if method_id == "multilane_segment":
         return MultilaneWorkflow()
     if method_id == "two_lane_facility":
         return FacilityWorkflow()
+    if method_id in PHASE3_METHOD_IDS:
+        from hcmcalc.application.phase3_workflows import Phase3Workflow
+
+        return Phase3Workflow(method_id)
     _definition(method_id)
     raise AssertionError("unreachable")
 
@@ -983,7 +1046,9 @@ def normalized_workflow_inputs(
     workflow = workflow_for_method(method_id)
     if isinstance(workflow, MultilaneWorkflow):
         return workflow._normalized(template_id, unit_system, displayed_inputs)
-    return workflow._normalized(template_id, unit_system, displayed_inputs)[1]
+    if isinstance(workflow, FacilityWorkflow):
+        return workflow._normalized(template_id, unit_system, displayed_inputs)[1]
+    return workflow._normalized(template_id, unit_system, displayed_inputs)
 
 
 def validate_workflow_request(
@@ -1048,12 +1113,15 @@ def export_current_workflow(
             code="result_required",
             message_key="api.result_required",
         )
-    if method_id == "multilane_segment":
+    if isinstance(workflow, MultilaneWorkflow):
         normalized = workflow._normalized(template_id, unit_system, displayed_inputs)  # type: ignore[attr-defined]
         effective_displayed = displayed_inputs
-    else:
+    elif isinstance(workflow, FacilityWorkflow):
         rows, normalized = workflow._normalized(template_id, unit_system, displayed_inputs)  # type: ignore[attr-defined]
         effective_displayed = {"rows": rows}
+    else:
+        normalized = workflow._normalized(template_id, unit_system, displayed_inputs)  # type: ignore[attr-defined]
+        effective_displayed = displayed_inputs
     snapshot = _snapshot(
         workflow.definition,
         template_id=template_id,

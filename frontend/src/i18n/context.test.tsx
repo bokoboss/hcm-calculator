@@ -17,12 +17,12 @@ describe('i18n foundation', () => {
   it('updates document metadata and catalog-backed UI language', async () => {
     render(<I18nProvider><LocaleProbe /></I18nProvider>);
     expect(document.documentElement.lang).toBe('en');
-    expect(document.title).toBe('HCM Analysis Workspace');
+    expect(document.title).toBe('HCM Calculator');
 
     screen.getByRole('button', { name: 'ไทย' }).click();
     expect(await screen.findByText('th')).toBeInTheDocument();
-    expect(screen.getByText('การวิเคราะห์ความจุทางหลวง')).toBeInTheDocument();
+    expect(screen.getByText('เครื่องคำนวณ HCM')).toBeInTheDocument();
     expect(document.documentElement.lang).toBe('th');
-    expect(document.title).toBe('พื้นที่ทำงานวิเคราะห์ HCM');
+    expect(document.title).toBe('เครื่องคำนวณ HCM');
   });
 });

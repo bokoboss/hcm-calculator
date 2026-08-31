@@ -4,7 +4,7 @@ test.describe('Phase 2 representative workflows', () => {
   test('Multilane supports explicit calculate, stale protection, and FFS branch switching', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'New Analysis' }).first().click();
-    await page.getByTestId('method-card-multilane_segment').getByRole('button', { name: 'Select method' }).click();
+    await page.getByTestId('method-card-multilane_segment').getByRole('button', { name: 'Start analysis' }).click();
     await expect(page.getByTestId('workflow-multilane_segment')).toBeVisible();
     await expect(page.locator('#multilane-demand_volume_veh_h')).toHaveValue('1500');
     await expect(page.getByRole('button', { name: 'Calculate', exact: true })).toBeEnabled();
@@ -14,22 +14,22 @@ test.describe('Phase 2 representative workflows', () => {
     await expect(page.getByTestId('workflow-results')).toContainText('11.2');
 
     await page.locator('#multilane-demand_volume_veh_h').fill('1800');
-    await expect(page.locator('[data-slot="stale-result-banner"]')).toBeVisible();
-    await expect(page.getByTestId('workflow-results')).not.toBeVisible();
-    await page.locator('[data-slot="stale-result-banner"]').getByRole('button', { name: 'Recalculate' }).click();
+    await expect(page.locator('[data-slot="stale-result-panel"]')).toBeVisible();
+    await expect(page.getByTestId('workflow-results')).toBeVisible();
+    await page.getByRole('button', { name: 'Recalculate', exact: true }).click();
     await expect(page.getByTestId('workflow-results')).toBeVisible();
 
     await page.getByRole('radio', { name: 'Measured' }).click();
     await expect(page.locator('#multilane-free_flow_speed')).toBeVisible();
-    await expect(page.locator('.error-summary a[href="#multilane-free_flow_speed"]')).toBeVisible();
+    await expect(page.locator('[data-slot="error-summary"]')).toHaveCount(0);
     await page.locator('#multilane-free_flow_speed').fill('90');
     await expect(page.locator('[data-slot="error-summary"]')).not.toBeVisible();
-    await page.locator('[data-slot="readiness-bar"]').getByRole('button').click();
+    await page.getByRole('button', { name: 'Recalculate', exact: true }).click();
     await expect(page.getByTestId('workflow-results')).toBeVisible();
     await expect(page.getByText('Measured', { exact: true }).first()).toBeVisible();
-    const exportDownload = page.waitForEvent('download');
-    await page.getByRole('button', { name: 'Export Markdown' }).click();
-    expect((await exportDownload).suggestedFilename()).toMatch(/\.md$/);
+    await page.getByRole('button', { name: /^Export/ }).click();
+    await page.getByRole('menuitem', { name: 'Export Markdown' }).click();
+    await expect(page.locator('[data-slot="action-toast"]')).toContainText(/Export/);
 
     await page.getByRole('radio', { name: 'Estimated' }).click();
     await expect(page.locator('#multilane-posted_speed_limit')).toBeVisible();
@@ -39,24 +39,24 @@ test.describe('Phase 2 representative workflows', () => {
     await page.getByRole('radio', { name: 'Specific grade' }).click();
     await expect(page.locator('#multilane-grade_percent')).toBeVisible();
     await page.locator('#multilane-grade_percent').fill('-3.5');
-    await page.locator('[data-slot="readiness-bar"]').getByRole('button').click();
+    await page.getByRole('button', { name: 'Recalculate', exact: true }).click();
     await expect(page.getByTestId('workflow-results')).toBeVisible();
     await page.getByRole('radio', { name: 'General terrain' }).click();
     await page.getByRole('radio', { name: 'Level' }).click();
     await expect(page.locator('[data-slot="error-summary"]')).not.toBeVisible();
-    await page.locator('[data-slot="readiness-bar"]').getByRole('button').click();
+    await page.getByRole('button', { name: 'Recalculate', exact: true }).click();
     await expect(page.getByTestId('workflow-results')).toBeVisible();
     await page.getByRole('radio', { name: 'External PCE' }).click();
     await page.locator('#multilane-passenger_car_equivalent').fill('2.5');
     await expect(page.locator('[data-slot="error-summary"]')).not.toBeVisible();
-    await page.locator('[data-slot="readiness-bar"]').getByRole('button').click();
+    await page.getByRole('button', { name: 'Recalculate', exact: true }).click();
     await expect(page.getByTestId('workflow-results')).toBeVisible();
   });
 
   test('Two-Lane Facility keeps locked context visible, calculates evidence, and saves Project v2', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'New Analysis' }).first().click();
-    await page.getByTestId('method-card-two_lane_facility').getByRole('button', { name: 'Select method' }).click();
+    await page.getByTestId('method-card-two_lane_facility').getByRole('button', { name: 'Start analysis' }).click();
     await expect(page.getByTestId('workflow-two_lane_facility')).toBeVisible();
     await expect(page.getByTestId('facility-input-4-opposing_direction_volume_veh_h')).toBeEnabled();
     await expect(page.getByTestId('facility-input-1-opposing_direction_volume_veh_h')).toHaveCount(0);
@@ -65,7 +65,8 @@ test.describe('Phase 2 representative workflows', () => {
     await expect(page.getByTestId('facility-input-1-segment_length')).toHaveAttribute('readonly', '');
     await expect(page.getByTestId('facility-input-1-posted_speed')).toBeEnabled();
     await page.getByTestId('facility-input-1-posted_speed').fill('');
-    await expect(page.locator('.error-summary a[href="#facility-input-1-posted_speed"]')).toBeVisible();
+    await page.getByTestId('facility-input-1-posted_speed').blur();
+    await expect(page.getByTestId('facility-input-1-posted_speed')).toHaveAttribute('aria-invalid', 'true');
     await page.getByTestId('facility-input-1-posted_speed').fill('55');
     await expect(page.locator('[data-slot="error-summary"]')).not.toBeVisible();
     await page.getByRole('button', { name: 'Calculate', exact: true }).click();
@@ -73,24 +74,28 @@ test.describe('Phase 2 representative workflows', () => {
     await expect(page.getByTestId('workflow-results')).toContainText('Facility level of service');
     await expect(page.getByTestId('workflow-results')).toContainText('Critical segment');
     const xlsxDownload = page.waitForEvent('download');
-    await page.getByRole('button', { name: 'Export XLSX' }).click();
+    await page.getByRole('button', { name: /^Export/ }).click();
+    await page.getByRole('menuitem', { name: 'Export XLSX' }).click();
     expect((await xlsxDownload).suggestedFilename()).toMatch(/\.xlsx$/);
+    await expect(page.locator('[data-slot="action-toast"]')).toContainText(/Export/);
 
     const download = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Save to Project' }).click();
     const projectDownload = await download;
+    expect(projectDownload.suggestedFilename()).toMatch(/\.json$/);
     const downloadedProjectPath = await projectDownload.path();
     expect(downloadedProjectPath).toBeTruthy();
     await expect(page.getByTestId('project-workspace')).toBeVisible();
-    await expect(page.getByText('2.0', { exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Two-Lane Facility study' })).toBeVisible();
     await expect(page.getByText('Migrated', { exact: false })).not.toBeVisible();
 
     if (downloadedProjectPath) {
       await page.setInputFiles('#project-file', downloadedProjectPath);
       await expect(page.getByText('Project opened and validated.', { exact: true })).toBeVisible();
-      await expect(page.getByText('2.0', { exact: true })).toBeVisible();
+      await expect(page.getByRole('heading', { name: 'Two-Lane Facility study' })).toBeVisible();
     }
 
+    await page.locator('.scenario-actions-menu > summary').click();
     await page.getByRole('button', { name: 'Duplicate scenario' }).click();
     await expect(page.getByRole('button', { name: /Alternative/ })).toBeVisible();
     await page.getByRole('button', { name: /Alternative/ }).click();
@@ -116,14 +121,14 @@ test.describe('Phase 2 representative workflows', () => {
     await page.getByRole('button', { name: 'Compare', exact: true }).click();
     await expect(page.getByTestId('comparison-result')).toBeVisible();
     await expect(page.getByTestId('comparison-result')).toContainText('no recalculation');
-    await expect(page.getByTestId('comparison-result').locator('ul li').first()).toBeVisible();
+    await expect(page.getByTestId('comparison-result').locator('tbody tr').first()).toBeVisible();
   });
 
   test('Two-Lane Facility keeps narrow overflow inside the engineering grid', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');
     await page.getByRole('button', { name: 'New Analysis' }).first().click();
-    await page.getByTestId('method-card-two_lane_facility').getByRole('button', { name: 'Select method' }).click();
+    await page.getByTestId('method-card-two_lane_facility').getByRole('button', { name: 'Start analysis' }).click();
     await page.locator('#facility-template').selectOption('mountainous_example_4');
     await expect(page.getByTestId('facility-input-6-segment_length')).toHaveAttribute('readonly', '');
     const overflow = await page.evaluate(() => ({
@@ -141,15 +146,15 @@ test.describe('Phase 2 representative workflows', () => {
   test('Multilane capacity failure exposes unavailable metrics and preserves identity across locales', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'New Analysis' }).first().click();
-    await page.getByTestId('method-card-multilane_segment').getByRole('button', { name: 'Select method' }).click();
+    await page.getByTestId('method-card-multilane_segment').getByRole('button', { name: 'Start analysis' }).click();
     await page.getByRole('button', { name: 'Calculate', exact: true }).click();
     await expect(page.getByTestId('workflow-results')).toBeVisible();
 
     await page.locator('#multilane-demand_volume_veh_h').fill('5000');
-    await expect(page.locator('[data-slot="stale-result-banner"]')).toBeVisible();
-    await expect(page.getByTestId('workflow-results')).not.toBeVisible();
-    await expect(page.getByRole('button', { name: 'Export Markdown' })).toHaveCount(0);
-    await page.locator('[data-slot="stale-result-banner"]').getByRole('button', { name: 'Recalculate' }).click();
+    await expect(page.locator('[data-slot="stale-result-panel"]')).toBeVisible();
+    await expect(page.getByTestId('workflow-results')).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Export/ })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Recalculate', exact: true }).click();
     await expect(page.locator('[data-slot="capacity-failure-panel"]')).toBeVisible();
     await expect(page.getByText('Not predicted in this state', { exact: true })).toHaveCount(2);
     await expect(page.getByText('Speed and density are not predicted in this state.', { exact: true })).toBeVisible();
@@ -171,19 +176,21 @@ test.describe('Phase 2 representative workflows', () => {
   test('Two-Lane Facility validates editable rows and renders metric and Thai evidence', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'New Analysis' }).first().click();
-    await page.getByTestId('method-card-two_lane_facility').getByRole('button', { name: 'Select method' }).click();
-    await expect(page.getByTestId('facility-input-1-lane_width')).toHaveValue(/3\.6576/);
-    await expect(page.getByTestId('facility-input-1-shoulder_width')).toHaveValue(/1\.8288/);
+    await page.getByTestId('method-card-two_lane_facility').getByRole('button', { name: 'Start analysis' }).click();
+    await expect(page.getByTestId('facility-input-1-lane_width')).toHaveValue('3.658');
+    await expect(page.getByTestId('facility-input-1-shoulder_width')).toHaveValue('1.829');
 
     await page.getByTestId('facility-input-1-peak_hour_factor').fill('0');
-    await expect(page.locator('.error-summary a[href="#facility-input-1-peak_hour_factor"]')).toBeVisible();
-    await expect(page.locator('[data-slot="readiness-bar"] button')).toBeDisabled();
+    await page.getByTestId('facility-input-1-peak_hour_factor').blur();
+    await expect(page.getByTestId('facility-input-1-peak_hour_factor')).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('[data-slot="readiness-bar"] button')).toBeEnabled();
     await page.getByTestId('facility-input-1-peak_hour_factor').fill('0.94');
     await expect(page.locator('[data-slot="error-summary"]')).not.toBeVisible();
 
     await page.getByTestId('facility-input-4-opposing_direction_volume_veh_h').fill('');
-    await expect(page.locator('.error-summary a[href="#facility-input-4-opposing_direction_volume_veh_h"]')).toBeVisible();
-    await expect(page.locator('[data-slot="readiness-bar"] button')).toBeDisabled();
+    await page.getByTestId('facility-input-4-opposing_direction_volume_veh_h').blur();
+    await expect(page.getByTestId('facility-input-4-opposing_direction_volume_veh_h')).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('[data-slot="readiness-bar"] button')).toBeEnabled();
     await page.getByTestId('facility-input-4-opposing_direction_volume_veh_h').fill('600');
     await expect(page.locator('[data-slot="error-summary"]')).not.toBeVisible();
 
@@ -199,7 +206,7 @@ test.describe('Phase 2 representative workflows', () => {
     await expect(page.getByText('ความเร็วเฉลี่ยสิ่งอำนวยความสะดวก', { exact: true })).toBeVisible();
   });
 
-  test('legacy v0.9 Multilane and reference-only imports migrate safely in Project v2', async ({ page }) => {
+  test('legacy v0.9 Multilane and Phase 3 imports migrate safely in Project v2', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'Open Project' }).first().click();
     await expect(page.getByTestId('project-workspace')).toBeVisible();
@@ -231,14 +238,13 @@ test.describe('Phase 2 representative workflows', () => {
       audit: snapshot.audit,
       presentation: { locale: 'en' },
     };
-    await page.setInputFiles('#project-file', {
+    await page.setInputFiles('#project-file-empty', {
       name: 'legacy-multilane-v09.json',
       mimeType: 'application/json',
       buffer: Buffer.from(JSON.stringify(legacyMultilane)),
     });
     await expect(page.getByTestId('project-workspace')).toBeVisible();
-    await expect(page.getByText('Legacy project migrated to Project v2; stale or incompatible results were discarded.', { exact: true })).toBeVisible();
-    await expect(page.getByText('2.0', { exact: true })).toBeVisible();
+    await expect(page.getByText('An older project was opened. Results that are no longer current require recalculation.', { exact: true })).toBeVisible();
     await expect(page.getByText('Migrated legacy Base', { exact: true }).first()).toBeVisible();
 
     const legacyReference = {
@@ -272,9 +278,13 @@ test.describe('Phase 2 representative workflows', () => {
       buffer: Buffer.from(JSON.stringify(legacyReference)),
     });
     await expect(page.getByTestId('project-workspace')).toBeVisible();
-    await expect(page.getByText('Reference-only method', { exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Calculate scenario' })).toBeDisabled();
-    await expect(page.getByRole('button', { name: 'Edit scenario' })).toBeDisabled();
-    await expect(page.getByRole('button', { name: 'Duplicate scenario' })).toBeEnabled();
+    await expect(page.getByText('Two-Lane Highway Segment', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('HCM 7th Edition Chapter 15', { exact: true }).first()).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Calculate scenario' })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Edit scenario' })).toBeEnabled();
+    await expect(page.locator('.scenario-actions-menu > summary')).toBeVisible();
+    await page.getByRole('button', { name: 'Edit scenario' }).click();
+    await expect(page.getByTestId('workflow-two_lane_segment')).toBeVisible();
+    await expect(page.getByTestId('phase3-form-two_lane_segment')).toBeVisible();
   });
 });

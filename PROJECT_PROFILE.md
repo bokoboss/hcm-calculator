@@ -3,102 +3,126 @@
 ## Identity
 - Project name: HCM Calculator
 - Repository URL: https://github.com/bokoboss/hcm-calculator
-- Authoritative local path: `C:\Users\kittipat_t\Documents\hcm-calculator` (workflow adoption executed in an isolated sibling worktree)
+- Authoritative local path: `D:\R&D\hcm-calculator`
 - Primary branch: `main`
-- Package/application version: `0.9.0` (`pyproject.toml` at accepted Phase 2 baseline `868c00616b6cb3b74308777c4753e1af80bb863e`).
+- Phase 3 branch: `codex/application-rebuild-phase-3-release`
+- Package/application version: `0.9.0`
 
-## Current accepted baseline
-- Accepted branch: `main`
-- Accepted HEAD SHA: `868c00616b6cb3b74308777c4753e1af80bb863e`
-- Accepted date: 2026-08-27
-- Current phase/milestone: **Phase 2 — Prototype & Architecture Validation accepted and merged; Phase 3 — Full Migration & Release authorized but not yet started.**
-- Last accepted implementation PR / CI run: PR #137 merged at `868c00616b6cb3b74308777c4753e1af80bb863e`; GitHub Actions qualification run #255 passed all four jobs.
-- Accepted Phase 2 adds production rebuilt Multilane and Two-Lane Facility workflows, Project v2 Project/Analysis/Scenario/Result persistence and comparison, legacy 1.0/1.1/1.2 migration, no-rerun exports, committed visual evidence, and browser-qualified bilingual representative workflows.
-- Final Phase 2 UI-capable qualification on the accepted head: Streamlit 1.62.0; `1116 passed, 0 skipped, 0 failed`; wheel/runtime smoke passed.
-- Installed Engineering Development Workflow: v1.4.1 at exact source commit `3547ae260feacf8fc9a102b2abfdb13881e36dab`.
+## Current accepted baseline and release state
+- Authoritative remote `main` at Phase 3 preflight: `da64a662094458738f8c9cae7213bcf04a6f5007`.
+- Accepted Phase 2 implementation ancestor: `868c00616b6cb3b74308777c4753e1af80bb863e`.
+- Phase 3 is an implementation candidate carried by PR #141; it is not merged
+  or accepted until the owner completes ChatGPT application-rebuild acceptance.
+- The rebuilt React/FastAPI launcher is the intended normal installed-use path.
+  Streamlit remains available as the qualified compatibility path.
+- The owner-authorized stale local `.agent/` and `mockups/` paths were removed
+  during preflight and are not Phase 3 authority; neither is recreated here.
 
 ## Technology stack
-- Languages: Python 3.12+; accepted rebuild target adds TypeScript.
-- Frameworks: Pydantic and optional Streamlit remain; the accepted rebuild foundation now includes React + TypeScript + Vite and a FastAPI boundary on `main`.
-- Package manager: `pip`/Hatchling for Python; frontend uses `pnpm` with the committed lockfile/package-manager declaration.
-- Supported OS/runtime: local Python application; repository launcher and setup scripts provide Windows support; CI runs on Ubuntu with Python 3.12.
+- Python 3.12+ package with qualified HCM engines and pytest.
+- React + TypeScript + Vite frontend, served in release use by FastAPI.
+- Python framework-independent application layer remains between the API and
+  the existing qualified HCM engines.
+- Package manager: pip/Hatchling for Python; pnpm with the committed lockfile
+  for frontend development and qualification.
+- Windows launchers: `run_app.ps1` / `run_app.bat` for the rebuilt UI and
+  `run_streamlit.ps1` / `run_streamlit.bat` for compatibility.
 
 ## Standard commands
 ### Install/bootstrap
 ```text
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[dev,ui]"
 ```
-### Fast validation
-```text
-python -m pytest
-git diff --check
-```
-### Full validation
+
+### Python and contract validation
 ```text
 python -m pytest
 python -m compileall -q src tests
+python scripts/check_openapi_contract.py
+git diff --check
 ```
-### Build/package
+
+### Frontend and browser validation
 ```text
-python -m build
+pnpm --dir frontend run typecheck
+pnpm --dir frontend run test
+pnpm --dir frontend run build
+pnpm --dir frontend exec playwright test --project=chromium
 ```
-### Local run
+
+### Build/package and local run
 ```text
-python -m streamlit run src/hcmcalc/ui/streamlit_app.py
+python -m build --wheel
+.\run_app.ps1
+.\run_streamlit.ps1
 ```
 
-## Architecture / invariants
-- Accepted R0 architecture: React + TypeScript + Vite -> FastAPI -> framework-independent Python application layer -> existing qualified HCM engines.
-- Python is the calculation authority; TypeScript must not duplicate HCM formulas.
-- `docs/application_rebuild/r0_architecture_acceptance_review.md` is the highest-authority R0 document, followed by its README, implementation plan, technology architecture, and remaining R0 specifications.
-- Streamlit remains runnable during migration; Phase 2 has proven release-like local same-origin serving of the compiled SPA and API for real Multilane and Two-Lane Facility workflows without a Node/Vite runtime server.
+Normal installed use serves the compiled SPA from the Python distribution and
+does not require Node or Vite at runtime. The Phase 3 qualification record
+contains the release-like wheel, isolated-runtime, launcher, and browser
+evidence for PR #141.
 
-## Protected behavior
-Changes must not alter the following unless explicitly approved:
-- Qualified HCM engine formulas, numerical outputs, method contracts, and validation evidence.
-- Project schema compatibility and fingerprint-derived current/stale result behavior.
-- Reports/exports must represent accepted current results and must not silently rerun calculations.
-- The seven existing engineering workflows and the qualified Streamlit migration path.
+## Architecture and invariants
+- Accepted R0 architecture: React + TypeScript + Vite -> FastAPI -> a
+  framework-independent Python application layer -> qualified HCM engines.
+- Python is the sole HCM numerical authority; TypeScript contains no HCM
+  formulas.
+- Existing method identifiers, input contracts, Project v2 schema/fingerprints,
+  current/stale result semantics, export no-rerun behavior, and Streamlit
+  compatibility remain protected.
+- Handoff, unavailable, warning-only, and capacity-failure states remain
+  distinct; the UI does not invent LOS, speed, density, or other numerical
+  outputs. Ramp limitation warnings remain auditable without being promoted
+  to an operational result warning unless the qualified maximum-desirable
+  condition is present.
+- No qualified engine methodology, numerical behavior, or scope was expanded
+  by the Phase 3 application migration.
+- Engineering diagrams are sourced from the existing Python package asset set;
+  React does not maintain a duplicate engineering asset set.
 
-## Important paths
-- Source: `src/hcmcalc/`
-- Tests: `tests/`
-- Documentation: `docs/`, especially `docs/application_rebuild/`
-- Generated output: `output/`
-- Local-only / sensitive / licensed data: `local_references/`, `references/`, and local environment directories; do not publish unless explicitly authorized.
+## Phase 3 delivery scope
+The rebuilt application now exposes all seven delivered calculation methods
+through one persistent bilingual workspace navigation model:
 
-## Validation matrix
-| Gate | Command / Method | Required |
-|---|---|---|
-| Unit / targeted | `python -m pytest` | Required |
-| Integration / regression | repository pytest suite and relevant Chapter 26/reference fixtures | Required for affected behavior |
-| Browser/UI | Streamlit smoke/AppTest and browser qualification when UI is affected | Required for UI changes |
-| Build/package/runtime | `python -m compileall -q src tests`; `python -m build` when packaging is in scope | Required for affected release/package work |
-| Real-data/reference | HCM Chapter 26 fixtures and documented provenance | Required for calculation changes |
-| CI | GitHub Actions `Tests` workflow on the PR | Required |
+- Two-Lane Segment
+- Two-Lane Facility (distinct locked Facility template semantics)
+- Multilane Segment
+- Basic Freeway Segment
+- Weaving Segment
+- Merge Segment
+- Diverge Segment
 
-## Execution characteristics
-- Typical task ambiguity: high when requirements touch HCM scope, accepted architecture, or migration compatibility; resolve against repository evidence before coding.
-- High-risk areas: HCM formulas/tables, project schema/fingerprints, exports/reports, localization, Streamlit state, and R1 API/frontend seams.
-- Modules safe to parallelize: isolated documentation, tests, and bounded application components after contracts are fixed.
-- Modules tightly coupled / single-owner: engine behavior, project persistence, cross-workflow UI state, and release qualification.
-- Preferred local execution constraints: work directly in the authoritative repository on a clean feature branch by default; do not create sibling clones/worktrees unless isolation is explicitly required; preserve user changes; keep the Streamlit path runnable; do not require cloud services for local operation.
+Phase 3 also qualifies direct method routing, safe draft/project transitions,
+explicit validated starters and blank/custom semantics, structured horizontal
+curve editing, progressive Weaving evidence disclosure, existing schematics,
+results-first current/stale/warning-only flows, Project v2/legacy closure, grouped exports,
+linked validation recovery, responsive EN/TH presentation, and the default
+rebuilt launcher. Detailed evidence is maintained in
+`docs/application_rebuild/phase3_release_qualification.md`.
 
-## Git / release policy
-- Branch naming: `codex/` for implementation branches unless a task-specific branch name is explicitly required.
-- Commit policy: focused commits; no history rewriting.
-- PR policy: all changes through a reviewable PR with commands, tests, diff summary, CI, and known limitations recorded.
-- Merge policy: do not merge automatically; acceptance requires evidence beyond a commit or local test pass.
-- Release policy: preserve accepted HCM behavior and record qualification evidence, exact relevant SHAs, and package/runtime results.
+## PR #141 whole-product UX qualification
+- The owner-authorized whole-application refinement implements the PR #141
+  interaction/layout and page-grammar reviews without changing Python HCM
+  authority, method scope, contracts, Project v2, or calculation semantics.
+- The normal UI now uses a persistent bilingual engineering-workstation shell,
+  real route history with dirty-state protection, adaptive segment workbenches,
+  a distinct Facility table workflow, in-place result inspectors, linked error
+  recovery, grouped Export, and Project Workspace master-detail/compare flows.
+- The reviewed production `frontend/dist` output is synchronized to the
+  packaged `src/hcmcalc/ui/static` entrypoint before release-wheel
+  qualification. Normal installed use therefore serves the rebuilt UI through
+  FastAPI with no Node/Vite runtime dependency.
+- Deterministic 1920, 1366, 1024, and 390 px evidence, browser UAT, wheel,
+  isolated runtime, and both Windows launcher results are indexed in the Phase
+  3 qualification record. PR #141 remains an unmerged candidate pending the
+  final GitHub CI pass and owner product/visual acceptance.
 
-## Current known limitations / risks
-- Five current workflows remain reference-only in the rebuilt UI: Two-Lane Segment, Basic Freeway Segment, Weaving, Merge, and Diverge.
-- The qualified Streamlit application remains runnable and is still required as the compatibility path until Phase 3 default-UI/release qualification is accepted.
-- Project v2 is accepted for the rebuilt application; legacy schema 1.0/1.1/1.2 import compatibility remains protected.
-- Phase 3 must migrate the remaining methods without weakening numerical equivalence, current/stale fingerprints, capacity/handoff semantics, reports/exports, or offline/local runtime assumptions.
-
-## Current next objective
-- Execute **Phase 3 — Full Migration & Release** as the final application-rebuild phase.
-- Migrate Two-Lane Segment, Basic Freeway Segment, Weaving, Merge, and Diverge through the accepted Phase 2 application/API/frontend patterns.
-- Complete all-seven-method parity, Project v2 integration, bilingual/browser/UAT qualification, packaging/runtime checks, default rebuilt-UI transition, release qualification, and milestone closure.
-- Do not remove the Streamlit compatibility path or change release/default launch behavior until the final Phase 3 acceptance gate passes.
+## Validation and release policy
+- Every change goes through a reviewable PR; PR #141 links the Phase 3 work to
+  Issue #139 with `Closes #139` and is intentionally not merged by this task.
+- Release claims require objective local and CI evidence, including the full
+  pytest suite, frontend tests/build, full Playwright coverage, package/runtime
+  smoke, both launchers, OpenAPI drift, compileall, and diff checks.
+- HCM Chapter 26/27/28 evidence and existing qualified engine fixtures remain
+  the authority for supported calculation paths. UI work must not be used to
+  imply broader methodology support.

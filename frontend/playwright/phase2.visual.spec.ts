@@ -11,7 +11,7 @@ async function capture(page: Page, name: string, projectView = false): Promise<v
     path: path.join(referenceDirectory, name),
     fullPage: true,
     mask: projectView
-      ? [page.locator('.project-facts strong').nth(2), page.locator('.project-identity code')]
+      ? [page.locator('.project-topbar strong')]
       : undefined,
   });
 }
@@ -33,25 +33,30 @@ test('captures the deterministic Phase 2 reference set', async ({ page }) => {
 
   await selectMethod(page, 'multilane_segment');
   await expect(page.getByTestId('workflow-multilane_segment')).toBeVisible();
+  await expect(page.locator('#multilane-template')).toBeVisible();
   await capture(page, '03-multilane-input.png');
   await page.locator('[data-slot="readiness-bar"] button').click();
   await expect(page.getByTestId('workflow-results')).toBeVisible();
   await capture(page, '04-multilane-result.png');
 
-  await page.locator('#multilane-demand_volume_veh_h').fill('1800');
-  await expect(page.locator('[data-slot="stale-result-banner"]')).toBeVisible();
+  await page.locator('#multilane-demand_volume_veh_h').fill('1900');
+  await expect(page.locator('[data-slot="stale-result-panel"]')).toBeVisible();
   await capture(page, '05-multilane-stale.png');
-  await page.locator('[data-slot="stale-result-banner"] button').click();
+  await page.getByRole('button', { name: 'Recalculate', exact: true }).click();
+  await expect(page.locator('[data-slot="stale-result-panel"]')).toHaveCount(0);
+  await expect(page.getByTestId('workflow-results')).toBeVisible();
   await page.locator('#multilane-demand_volume_veh_h').fill('5000');
-  await page.locator('[data-slot="stale-result-banner"] button').click();
+  await expect(page.locator('[data-slot="stale-result-panel"]')).toBeVisible();
+  await page.getByRole('button', { name: 'Recalculate', exact: true }).click();
   await expect(page.locator('[data-slot="capacity-failure-panel"]')).toBeVisible();
   await capture(page, '06-multilane-capacity-failure.png');
 
   await page.locator('.workflow-toolbar button').click();
   await selectMethod(page, 'two_lane_facility');
-  await expect(page.getByTestId('facility-input-1-lane_width')).toHaveValue(/3\.6576/);
+  await expect(page.getByTestId('facility-input-1-lane_width')).toHaveValue('3.658');
   await capture(page, '07-facility-grid.png');
   await page.getByTestId('facility-input-1-peak_hour_factor').fill('0');
+  await page.getByRole('button', { name: 'Calculate', exact: true }).click();
   await expect(page.locator('[data-slot="error-summary"]')).toBeVisible();
   await capture(page, '08-facility-validation.png');
   await page.getByTestId('facility-input-1-peak_hour_factor').fill('0.94');
@@ -65,6 +70,7 @@ test('captures the deterministic Phase 2 reference set', async ({ page }) => {
   await expect(page.getByTestId('project-workspace')).toBeVisible();
   await capture(page, '10-project-v2-overview.png', true);
 
+  await page.locator('.scenario-actions-menu > summary').click();
   await page.getByRole('button', { name: 'Duplicate scenario' }).click();
   await page.getByRole('button', { name: /Alternative/ }).click();
   await page.getByRole('button', { name: 'Edit scenario' }).click();

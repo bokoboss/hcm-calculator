@@ -1,6 +1,7 @@
 import {
   cloneElement,
   isValidElement,
+  useEffect,
   useId,
   useState,
   type ChangeEvent,
@@ -10,12 +11,17 @@ import {
 import { useI18n } from '../i18n';
 
 export type PageId = 'home' | 'new-analysis' | 'project' | 'reference';
+export type MethodNavigationId =
+  | 'two_lane_segment'
+  | 'two_lane_facility'
+  | 'multilane_segment'
+  | 'basic_freeway_segment'
+  | 'weaving_segment'
+  | 'merge_segment'
+  | 'diverge_segment';
 
 export function AppHeader({
-  onNavigate,
-}: {
-  onNavigate: (page: PageId) => void;
-}): ReactElement {
+}: Record<string, never>): ReactElement {
   const { locale, setLocale, t } = useI18n();
   return (
     <header className="app-header" data-slot="app-header">
@@ -27,15 +33,6 @@ export function AppHeader({
         </div>
       </div>
       <div className="header-actions" aria-label={t('app.header_actions')}>
-        <button className="button button-quiet" type="button" onClick={() => onNavigate('new-analysis')}>
-          {t('action.new_analysis')}
-        </button>
-        <button className="button button-quiet" type="button" onClick={() => onNavigate('project')}>
-          {t('action.open_project')}
-        </button>
-        <button className="button button-quiet" type="button" onClick={() => onNavigate('reference')}>
-          {t('action.help')}
-        </button>
         <div className="locale-switcher" aria-label={t('locale.label')}>
           <span>{t('locale.label')}</span>
           <button className={locale === 'en' ? 'locale-active' : ''} type="button" aria-pressed={locale === 'en'} onClick={() => setLocale('en')}>{t('locale.en')}</button>
@@ -49,21 +46,56 @@ export function AppHeader({
 
 export function SidebarNavigation({
   activePage,
+  activeMethodId,
   onNavigate,
+  onSelectMethod,
 }: {
   activePage: PageId;
+  activeMethodId?: string | null;
   onNavigate: (page: PageId) => void;
+  onSelectMethod?: (methodId: MethodNavigationId) => void;
 }): ReactElement {
   const { t } = useI18n();
-  const navItems: Array<{ id: PageId; label: string }> = [
-    { id: 'home', label: t('nav.home') },
-    { id: 'new-analysis', label: t('nav.new_analysis') },
-    { id: 'reference', label: t('nav.reference') },
+  const methodGroups: Array<{ key: string; label: string; methods: Array<{ id: MethodNavigationId; label: string }> }> = [
+    {
+      key: 'roadways',
+      label: t('nav.roadways'),
+      methods: [
+        { id: 'two_lane_segment', label: t('method.two_lane_segment.name') },
+        { id: 'two_lane_facility', label: t('method.two_lane_facility.name') },
+        { id: 'multilane_segment', label: t('method.multilane_segment.name') },
+      ],
+    },
+    {
+      key: 'freeways',
+      label: t('nav.freeways'),
+      methods: [
+        { id: 'basic_freeway_segment', label: t('method.basic_freeway_segment.name') },
+        { id: 'weaving_segment', label: t('method.weaving_segment.name') },
+        { id: 'merge_segment', label: t('method.merge_segment.name') },
+        { id: 'diverge_segment', label: t('method.diverge_segment.name') },
+      ],
+    },
   ];
+  const methodButton = (method: { id: MethodNavigationId; label: string }) => {
+    const active = activeMethodId === method.id;
+    return (
+      <button
+        className={`nav-item nav-method-item ${active ? 'nav-item-active' : ''}`}
+        type="button"
+        aria-current={active ? 'page' : undefined}
+        data-testid={`nav-method-${method.id}`}
+        onClick={() => onSelectMethod?.(method.id)}
+        key={method.id}
+      >
+        <span className="nav-dot" aria-hidden="true" /> {method.label}
+      </button>
+    );
+  };
   return (
     <aside className="app-sidebar" data-slot="sidebar-navigation">
       <nav aria-label={t('nav.workspace')}>
-        <p className="sidebar-group-label">{t('nav.project')}</p>
+        <p className="sidebar-group-label">{t('nav.workspace_group')}</p>
         <button
           className={`nav-item ${activePage === 'home' ? 'nav-item-active' : ''}`}
           type="button"
@@ -80,18 +112,33 @@ export function SidebarNavigation({
         >
           <span className="nav-dot" aria-hidden="true" /> {t('nav.project_workspace')}
         </button>
-        <p className="sidebar-group-label">{t('nav.analysis')}</p>
-        {navItems.slice(1, 2).map((item) => (
-          <button
-            className={`nav-item ${activePage === item.id ? 'nav-item-active' : ''}`}
-            type="button"
-            aria-current={activePage === item.id ? 'page' : undefined}
-            onClick={() => onNavigate(item.id)}
-            key={item.id}
-          >
-            <span className="nav-dot" aria-hidden="true" /> {item.label}
-          </button>
-        ))}
+        <button
+          className={`nav-item ${activePage === 'new-analysis' && !activeMethodId ? 'nav-item-active' : ''}`}
+          type="button"
+          aria-current={activePage === 'new-analysis' && !activeMethodId ? 'page' : undefined}
+          onClick={() => onNavigate('new-analysis')}
+        >
+          <span className="nav-dot" aria-hidden="true" /> {t('nav.new_analysis')}
+        </button>
+        <div className="desktop-method-nav" aria-label={t('nav.method_navigation')}>
+          {methodGroups.map((group) => (
+            <div key={group.key}>
+              <p className="sidebar-group-label">{group.label}</p>
+              {group.methods.map(methodButton)}
+            </div>
+          ))}
+        </div>
+        <details className="mobile-method-nav">
+          <summary>{t('nav.method_selector')}</summary>
+          <div className="mobile-method-nav-content">
+            {methodGroups.map((group) => (
+              <div key={group.key}>
+                <p className="sidebar-group-label">{group.label}</p>
+                {group.methods.map(methodButton)}
+              </div>
+            ))}
+          </div>
+        </details>
         <p className="sidebar-group-label">{t('nav.reference_group')}</p>
         <button
           className={`nav-item ${activePage === 'reference' ? 'nav-item-active' : ''}`}
@@ -102,10 +149,6 @@ export function SidebarNavigation({
           <span className="nav-dot" aria-hidden="true" /> {t('nav.reference')}
         </button>
       </nav>
-      <div className="sidebar-note">
-        <span className="status-dot" aria-hidden="true" />
-        <span>{t('status.local_runtime')}</span>
-      </div>
     </aside>
   );
 }
@@ -116,23 +159,25 @@ export function StatusBar({ apiConnected }: { apiConnected: boolean }): ReactEle
     <footer className="status-bar" data-slot="status-bar" aria-live="polite">
       <span className="status-item"><span className="status-dot" aria-hidden="true" /> {t('status.ready')}</span>
       <span className="status-divider" aria-hidden="true" />
-      <span className="status-item">{t('app.eyebrow')}</span>
-      <span className="status-divider" aria-hidden="true" />
       <span className="status-item">{apiConnected ? t('status.api_connected') : t('status.api_unavailable')}</span>
       <span className="status-spacer" />
-      <span className="status-item">{t('status.units')}</span>
+      <span className="status-item">{t('status.local_runtime')}</span>
     </footer>
   );
 }
 
 export function AppShell({
   activePage,
+  activeMethodId,
   onNavigate,
+  onSelectMethod,
   apiConnected,
   children,
 }: {
   activePage: PageId;
+  activeMethodId?: string | null;
   onNavigate: (page: PageId) => void;
+  onSelectMethod?: (methodId: MethodNavigationId) => void;
   apiConnected: boolean;
   children: ReactNode;
 }): ReactElement {
@@ -140,10 +185,10 @@ export function AppShell({
   return (
     <div className="app-shell" data-slot="app-shell">
       <a className="skip-link" href="#main-content">{t('accessibility.skip_to_main')}</a>
-      <AppHeader onNavigate={onNavigate} />
+      <AppHeader />
       <div className="app-shell-layout">
-        <SidebarNavigation activePage={activePage} onNavigate={onNavigate} />
-        <main className="app-main" id="main-content">{children}</main>
+        <SidebarNavigation activePage={activePage} activeMethodId={activeMethodId} onNavigate={onNavigate} onSelectMethod={onSelectMethod} />
+        <main className="app-main" id="main-content" tabIndex={-1}>{children}</main>
       </div>
       <StatusBar apiConnected={apiConnected} />
     </div>
@@ -172,10 +217,14 @@ export function AnalysisHeader({
   title,
   method,
   status,
+  context,
+  tone = 'neutral',
 }: {
   title: string;
   method: string;
   status?: string;
+  context?: string;
+  tone?: 'current' | 'warning' | 'stale' | 'neutral' | 'capacity';
 }): ReactElement {
   const { t } = useI18n();
   const displayedStatus = status ?? t('status.current');
@@ -185,8 +234,9 @@ export function AnalysisHeader({
         <p className="eyebrow">{t('analysis.eyebrow')}</p>
         <h2>{title}</h2>
         <p className="muted">{method}</p>
+        {context ? <p className="analysis-context">{context}</p> : null}
       </div>
-      <StatusBadge tone="current">{displayedStatus}</StatusBadge>
+      <StatusBadge tone={tone}>{displayedStatus}</StatusBadge>
     </div>
   );
 }
@@ -195,14 +245,18 @@ export function EngineeringSection({
   title,
   description,
   children,
+  id,
+  className,
 }: {
   title: string;
   description?: string;
   children: ReactNode;
+  id?: string;
+  className?: string;
 }): ReactElement {
   const headingId = useId();
   return (
-    <section className="engineering-section" data-slot="engineering-section" aria-labelledby={headingId}>
+    <section className={`engineering-section ${className ?? ''}`} id={id} data-slot="engineering-section" aria-labelledby={headingId}>
       <div className="section-heading">
         <h2 id={headingId}>{title}</h2>
         {description ? <p>{description}</p> : null}
@@ -218,6 +272,7 @@ export interface FieldControlProps {
   'aria-invalid'?: 'true';
   'aria-required'?: 'true';
   required?: boolean;
+  onBlur?: () => void;
 }
 
 type FieldControl = ReactNode | ((props: FieldControlProps) => ReactNode);
@@ -230,6 +285,7 @@ export function Field({
   hint,
   error,
   children,
+  onBlur,
 }: {
   id?: string;
   label: string;
@@ -238,6 +294,7 @@ export function Field({
   hint?: string;
   error?: string;
   children: FieldControl;
+  onBlur?: () => void;
 }): ReactElement {
   const { t } = useI18n();
   const generatedId = useId();
@@ -251,6 +308,7 @@ export function Field({
     'aria-invalid': error ? 'true' : undefined,
     'aria-required': required ? 'true' : undefined,
     required: required || undefined,
+    onBlur,
   };
   const control = typeof children === 'function'
     ? children(controlProps)
@@ -286,6 +344,8 @@ export function InputWithUnit({
   'aria-invalid': ariaInvalid,
   'aria-required': ariaRequired,
   required = false,
+  onBlur,
+  formatValue,
 }: {
   id: string;
   unit: string;
@@ -300,20 +360,45 @@ export function InputWithUnit({
   'aria-invalid'?: boolean | 'false' | 'true';
   'aria-required'?: boolean | 'false' | 'true';
   required?: boolean;
+  onBlur?: () => void;
+  formatValue?: (value: string | number | undefined) => string;
 }): ReactElement {
+  const rawValue = value === undefined ? '' : String(value);
+  const formattedValue = formatValue?.(value) ?? rawValue;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(formattedValue);
+  useEffect(() => {
+    if (!editing) setDraft(formattedValue);
+  }, [editing, formattedValue]);
+  const displayedValue = formatValue && !editing ? formattedValue : editing ? draft : value;
   return (
     <div className="input-unit" data-slot="input-with-unit">
       <input
         id={id}
         type={type}
-        value={value}
-        onChange={onChange}
+        value={displayedValue}
+        onFocus={() => {
+          if (formatValue) {
+            setEditing(true);
+          }
+        }}
+        onChange={(event) => {
+          if (formatValue) {
+            setEditing(true);
+            setDraft(event.target.value);
+          }
+          onChange?.(event);
+        }}
         placeholder={placeholder}
         disabled={disabled}
         required={required || undefined}
         aria-invalid={invalid ? 'true' : ariaInvalid || undefined}
         aria-describedby={describedBy ?? ariaDescribedBy}
         aria-required={ariaRequired || undefined}
+        onBlur={() => {
+          if (formatValue) setEditing(false);
+          onBlur?.();
+        }}
       />
       <span className="unit-label" aria-hidden="true">{unit}</span>
     </div>
@@ -326,15 +411,19 @@ export function ChoiceGroup({
   options,
   value,
   onChange,
+  error,
+  onTouched,
 }: {
   legend: string;
   name: string;
   options: Array<{ value: string; label: string; description?: string }>;
   value?: string;
   onChange?: (value: string) => void;
+  error?: string;
+  onTouched?: () => void;
 }): ReactElement {
   return (
-    <fieldset className="choice-group" data-slot="choice-group">
+    <fieldset className={`choice-group ${error ? 'choice-group-invalid' : ''}`} data-slot="choice-group" aria-invalid={error ? 'true' : undefined}>
       <legend>{legend}</legend>
       <div className="choice-options">
         {options.map((option) => (
@@ -344,7 +433,8 @@ export function ChoiceGroup({
               name={name}
               value={option.value}
               checked={value === option.value}
-              onChange={() => onChange?.(option.value)}
+              onChange={() => { onTouched?.(); onChange?.(option.value); }}
+              onBlur={onTouched}
             />
             <span>
               <strong>{option.label}</strong>
@@ -353,6 +443,7 @@ export function ChoiceGroup({
           </label>
         ))}
       </div>
+      {error ? <span className="field-error" role="alert">{error}</span> : null}
     </fieldset>
   );
 }
@@ -376,10 +467,16 @@ export function ErrorSummary({
 }): ReactElement | null {
   const { t } = useI18n();
   if (!errors.length) return null;
-  return <div className="error-summary" data-slot="error-summary" role="alert"><strong>{t('form.errors_count', { count: errors.length })}</strong><ul>{errors.map((error, index) => {
+  return <div className="error-summary" id="error-summary" data-slot="error-summary" role="alert" tabIndex={-1}><strong>{t('form.errors_count', { count: errors.length })}</strong><ul>{errors.map((error, index) => {
     const message = typeof error === 'string' ? error : error.message;
     const targetId = typeof error === 'string' ? undefined : error.targetId;
-    return <li key={`${message}-${index}`}>{targetId ? <a href={`#${targetId}`}>{message}</a> : message}</li>;
+    return <li key={`${message}-${index}`}>{targetId ? <a href={`#${targetId}`} onClick={(event) => {
+      const target = document.getElementById(targetId);
+      if (!target) return;
+      event.preventDefault();
+      target.focus();
+      target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }}>{message}</a> : message}</li>;
   })}</ul></div>;
 }
 
@@ -387,14 +484,29 @@ export function ReadinessBar({
   ready,
   actionLabel,
   onAction,
+  disabled = false,
+  requiredCount = 0,
+  working = false,
+  showAction = true,
+  statusLabel,
 }: {
   ready: boolean;
   actionLabel?: string;
   onAction?: () => void;
+  disabled?: boolean;
+  requiredCount?: number;
+  working?: boolean;
+  showAction?: boolean;
+  statusLabel?: string;
 }): ReactElement {
   const { t } = useI18n();
   const displayedActionLabel = actionLabel ?? t('action.calculate');
-  return <div className="readiness-bar" data-slot="readiness-bar"><span className={ready ? 'readiness-ready' : 'readiness-blocked'}>{ready ? `✓ ${t('status.ready_to_calculate')}` : t('status.items_required')}</span><button className="button button-primary" type="button" disabled={!ready} onClick={onAction}>{displayedActionLabel}</button></div>;
+  const readiness = statusLabel ?? (ready
+    ? `✓ ${t('status.ready_to_calculate')}`
+    : requiredCount > 0
+      ? t('status.required_count', { count: requiredCount })
+      : t('status.items_required'));
+  return <div className="readiness-bar" data-slot="readiness-bar"><span className={ready ? 'readiness-ready' : 'readiness-blocked'}>{readiness}</span>{showAction ? <button className="button button-primary" type="button" disabled={disabled || working} aria-busy={working || undefined} onClick={onAction}>{working ? t('status.calculating') : displayedActionLabel}</button> : null}</div>;
 }
 
 export function ResultHero({
@@ -406,7 +518,7 @@ export function ResultHero({
   label: string;
   value: string;
   supporting?: string;
-  state?: 'current' | 'stale' | 'capacity' | 'handoff';
+  state?: 'current' | 'warning' | 'stale' | 'capacity' | 'handoff';
 }): ReactElement {
   return <section className={`result-hero result-hero-${state}`} data-slot="result-hero"><p className="result-label">{label}</p><p className="result-value">{value}</p>{supporting ? <p className="result-supporting">{supporting}</p> : null}</section>;
 }
@@ -456,9 +568,14 @@ export function DetailsDisclosure({
   return <div className="details-disclosure" data-slot="details-disclosure"><button className="disclosure-trigger" type="button" aria-expanded={open} aria-controls={contentId} onClick={() => setOpen((current) => !current)}><span>{title}</span><span aria-hidden="true">{open ? '−' : '+'}</span></button>{open ? <div className="disclosure-content" id={contentId}>{children}</div> : null}</div>;
 }
 
-export function StaleResultBanner({ onRecalculate }: { onRecalculate?: () => void }): ReactElement {
+export function StaleResultPanel(): ReactElement {
   const { t } = useI18n();
-  return <div className="stale-banner" data-slot="stale-result-banner" role="status"><div><strong>{t('state.stale_title')}</strong><span>{t('state.stale_supporting')}</span></div><button className="button button-primary" type="button" onClick={onRecalculate}>{t('action.recalculate')}</button></div>;
+  return <section className="state-panel state-panel-stale" data-slot="stale-result-panel" role="status"><strong>{t('state.stale_title')}</strong><span>{t('state.stale_supporting')} {t('result.export_stale_reason')}</span></section>;
+}
+
+export function ActionToast({ message }: { message: string | null }): ReactElement | null {
+  if (!message) return null;
+  return <div className="action-toast" role="status" aria-live="polite" data-slot="action-toast">{message}</div>;
 }
 
 export function CapacityFailurePanel({ metricsUnavailable = true }: { metricsUnavailable?: boolean } = {}): ReactElement {
@@ -469,4 +586,9 @@ export function CapacityFailurePanel({ metricsUnavailable = true }: { metricsUna
 export function HandoffPanel(): ReactElement {
   const { t } = useI18n();
   return <section className="state-panel state-panel-handoff" data-slot="handoff-panel"><strong>{t('state.handoff_title')}</strong><span>{t('state.handoff_supporting')}</span></section>;
+}
+
+export function WarningPanel({ message }: { message?: string | null } = {}): ReactElement {
+  const { t } = useI18n();
+  return <section className="state-panel state-panel-warning" data-slot="warning-panel" role="status"><strong>{t('state.warning_title')}</strong><span>{message || t('state.warning_supporting')}</span></section>;
 }

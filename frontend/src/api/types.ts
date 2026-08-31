@@ -20,6 +20,9 @@ export interface ValidationIssue {
 export interface WorkflowTemplate {
   template_id: string;
   label: string;
+  description?: string;
+  validation_status?: string;
+  starter_kind?: 'example' | 'blank' | 'custom_starter' | 'facility_template' | 'legacy_import' | string;
 }
 
 export interface WorkflowField {
@@ -36,19 +39,30 @@ export interface WorkflowField {
   options?: string[];
 }
 
+export interface WorkflowGroup {
+  key: string;
+  label_key: string;
+  field_keys: string[];
+}
+
 export interface WorkflowTemplatesResponse {
   method_id: string;
   unit_systems: UnitSystem[];
   templates: WorkflowTemplate[];
   fields: WorkflowField[];
+  groups?: WorkflowGroup[];
   branches?: Record<string, unknown>;
   scope_notes: string[];
+  default_template_id?: string;
 }
 
 export interface WorkflowStartingValuesResponse {
   method_id: string;
   template_id: string;
   template_label: string;
+  template_description?: string;
+  validation_status?: string;
+  starter_kind?: 'example' | 'blank' | 'custom_starter' | 'facility_template' | 'legacy_import' | string;
   unit_system: UnitSystem;
   displayed_inputs?: DisplayedInputs;
   segments?: FacilityRow[];
@@ -142,6 +156,8 @@ export interface WorkflowCalculationResponse {
     answer: { key: string; value: string | null; available: boolean; source?: string };
     metrics: ResultMetric[];
     capacity: Record<string, unknown>;
+    warning?: string | null;
+    handoff?: { reason?: string | null; scope_status?: string | null };
     interpretations: Array<Record<string, unknown>>;
     evidence: Record<string, unknown>;
     [key: string]: unknown;

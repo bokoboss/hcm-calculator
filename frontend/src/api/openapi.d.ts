@@ -686,15 +686,21 @@ export interface components {
         };
         /**
          * WorkflowTemplatesResponse
-         * @description Template, branch, and field metadata for one delivered workflow.
+         * @description Template, group, branch, and field metadata for one delivered workflow.
          */
         WorkflowTemplatesResponse: {
             /** Branches */
             branches?: {
                 [key: string]: unknown;
             };
+            /** Default Template Id */
+            default_template_id?: string | null;
             /** Fields */
             fields: {
+                [key: string]: unknown;
+            }[];
+            /** Groups */
+            groups?: {
                 [key: string]: unknown;
             }[];
             /** Method Id */

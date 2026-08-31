@@ -1,6 +1,6 @@
 # HCM Calculator — Application Rebuild
 
-Status: **Phase 2 — Prototype & Architecture Validation accepted and merged; Phase 3 — Full Migration & Release authorized**
+Status: **Phase 2 accepted and merged; Phase 3 implementation candidate pending Issue #139 review and final acceptance**
 Date: 2026-08-27
 Accepted R0 commit: `6482808c06fd4bfc3f6d6ef246bd6efdc58c4e65`
 Accepted Phase 1 commit: `cfcfe7af14d821dadc04c4f067322ef5d3760c1c`
@@ -106,11 +106,17 @@ Phase 2 — Prototype & Architecture Validation
   -> accepted at 868c00616b6cb3b74308777c4753e1af80bb863e
 
 Phase 3 — Full Migration & Release
-  -> remaining five current workflows
+  -> all seven workflows, runtime, and release qualification
   -> parity / regression / runtime / packaging / default-UI transition
 ```
 
-Phase 2 is accepted. Phase 3 should use the proven Phase 2 application/API/frontend patterns to migrate the remaining five methods, then perform all-seven-method parity, UAT, packaging/runtime, default-UI transition, and release qualification. Stop for external re-planning only when a genuine engineering-contract, compatibility, or distribution stop condition is reached.
+Phase 2 is accepted. Phase 3 uses the proven Phase 2 application/API/frontend
+patterns to migrate the remaining five methods, then performs all-seven-method
+parity, UAT, packaging/runtime, default-UI transition, and release
+qualification. The evidence index is
+[`phase3_release_qualification.md`](phase3_release_qualification.md). Stop for
+external re-planning only when a genuine engineering-contract, compatibility,
+or distribution stop condition is reached.
 
 ## Non-negotiable invariants
 
@@ -173,18 +179,22 @@ Issue #128 (`Phase 17: Release hardening and engineering acceptance`) is closed 
 
 The branch `codex/phase-17-planning` is retained as historical reference only. It must not be merged or treated as rebuild implementation authority because its single-page Streamlit premise conflicts with the accepted Application Rebuild direction.
 
-## Next action — Phase 3 Full Migration & Release
+## Phase 3 delivery state
 
 Phase 2 is complete and accepted at `868c00616b6cb3b74308777c4753e1af80bb863e`.
 
-The next implementation work must:
+The Phase 3 implementation candidate records:
 
-1. start from current clean `main` containing the accepted Phase 2 architecture and Engineering Development Workflow v1.4.1;
-2. use one isolated Phase 3 implementation branch/worktree;
-3. migrate Two-Lane Segment, Basic Freeway Segment, Weaving, Merge, and Diverge through the accepted application/API/frontend architecture without duplicating HCM formulas;
-4. integrate all five into Project v2, scenario lifecycle, compare eligibility where technically meaningful, exports/reports, localization, audit/evidence, and canonical actionability;
-5. preserve numerical equivalence, legacy schema 1.x import compatibility, fingerprint-derived current/stale state, capacity/handoff/null semantics, and the Streamlit compatibility path;
-6. qualify all seven rebuilt workflows in real browser journeys and deterministic visual/UAT references;
-7. prove release-like local runtime, wheel/package behavior, launcher/default-UI transition, and no Node/Vite runtime requirement for normal use;
-8. push one reviewable Phase 3 PR with full engineering, API, frontend, browser, migration, package, and release evidence;
-9. return to ChatGPT/GitHub final acceptance before changing/removing compatibility launch paths or declaring the application rebuild complete.
+1. The authoritative preflight fast-forwarded local `main` to
+   `da64a662094458738f8c9cae7213bcf04a6f5007` and created the Phase 3 branch
+   in the same repository.
+2. Two-Lane Segment, Basic Freeway Segment, Weaving, Merge, and Diverge now
+   use the accepted application/API/frontend architecture without duplicated
+   HCM formulas.
+3. All five are integrated into Project v2, legacy 1.x migration,
+   scenario lifecycle, exports, localization, audit/evidence, and canonical
+   actionability.
+4. The remaining release gates and exact command results are indexed in
+   [`phase3_release_qualification.md`](phase3_release_qualification.md).
+5. The Phase 3 branch will be pushed as one reviewable PR with `Closes #139`
+   and will remain unmerged for ChatGPT/GitHub final acceptance.

@@ -63,12 +63,16 @@ payloads are retained only when their stored fingerprint and engine method
 identity match the recomputed normalized identity; mismatched or missing
 results are discarded without a silent calculation rerun.
 
-The two Phase 2 representative workflows use the same graph and persistence
-contract:
+All seven delivered workflows use the same graph and persistence contract:
 
+- `two_lane_segment` → `hcm7_two_lane_highway_segment` /
+  `phase_5_product_integration`;
 - `multilane_segment` → `hcm7_multilane_los` / `phase_8`;
 - `two_lane_facility` → `hcm7_two_lane_highway_facility` /
   `phase_5_product_integration`.
-
-The other five registered methods remain discoverable/reference-only in the
-rebuilt UI and are not mass-migrated by Phase 2.
+- `basic_freeway_segment` → `hcm7_basic_freeway_segment` /
+  `phase_10_product_integration`;
+- `weaving_segment` → `weaving_segment` /
+  `hcm_7_0_weaving_segment_operational_v1`;
+- `merge_segment` and `diverge_segment` retain their exact Chapter 14
+  operational contracts.

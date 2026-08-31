@@ -112,16 +112,27 @@ def _canonical_project_normalized_inputs(
     unit_system: Any,
     displayed_inputs: Mapping[str, Any],
     supplied_normalized_inputs: Mapping[str, Any],
+    allow_missing: bool = False,
 ) -> dict[str, Any]:
-    """Recover canonical adapter numeric types for delivered Phase 2 methods."""
+    """Recover canonical adapter numeric types for every delivered method.
 
-    if (
-        method_id not in {"multilane_segment", "two_lane_facility"}
-        or not isinstance(template_id, str)
-        or not template_id
-        or template_id == "legacy_import"
-    ):
+    This is deliberately a normalization/validation seam.  It never invokes
+    an HCM engine, so opening a Project v2 or migrating a legacy file cannot
+    silently recalculate a result.
+    """
+
+    if method_id not in {
+        "multilane_segment",
+        "two_lane_facility",
+        "two_lane_segment",
+        "basic_freeway_segment",
+        "weaving_segment",
+        "merge_segment",
+        "diverge_segment",
+    }:
         return deepcopy(dict(supplied_normalized_inputs))
+    if not isinstance(template_id, str) or not template_id:
+        raise ProjectFileError("Project inputs require a template or preset identity.")
     try:
         from hcmcalc.application.workflows import normalized_workflow_inputs
 
@@ -135,6 +146,8 @@ def _canonical_project_normalized_inputs(
         raise ProjectFileError(
             f"Project inputs are not valid for the selected workflow: {exc}"
         ) from exc
+    if allow_missing and not supplied_normalized_inputs:
+        return deepcopy(canonical)
     if not _semantically_equal(canonical, supplied_normalized_inputs):
         raise ProjectFileError("Project normalized inputs do not match displayed workflow inputs.")
     return deepcopy(canonical)
@@ -306,6 +319,8 @@ def record_result(
         raise ProjectFileError("A calculated result is required to retain a scenario result.")
     if stored_result.get("method") != analysis["engine_method_identifier"]:
         raise ProjectFileError("Result method identity does not match the analysis.")
+    if not _engine_result_identity_matches(str(analysis["method_id"]), stored_result):
+        raise ProjectFileError("Result engine version or contract does not match the analysis.")
     if snapshot.get("calculation_fingerprint") != scenario["calculation_fingerprint"]:
         raise ProjectFileError("Result fingerprint does not match the scenario inputs.")
     scenario["result"] = {
@@ -454,7 +469,12 @@ def migrate_legacy_project(payload: Mapping[str, Any]) -> dict[str, Any]:
         displayed = {}
     if not isinstance(normalized, Mapping):
         normalized = {}
-    template_id = payload.get("template_id") or payload.get("template") or "legacy_import"
+    template_id = (
+        payload.get("template_id")
+        or payload.get("preset_id")
+        or payload.get("template")
+        or "legacy_import"
+    )
     unit_system = payload.get("unit_system") or "imperial"
     canonical_normalized = _canonical_project_normalized_inputs(
         method_id=method_id,
@@ -462,6 +482,7 @@ def migrate_legacy_project(payload: Mapping[str, Any]) -> dict[str, Any]:
         unit_system=unit_system,
         displayed_inputs=displayed,
         supplied_normalized_inputs=normalized,
+        allow_missing=True,
     )
     document = new_project(str(payload.get("project_name") or payload.get("facility_name") or "Migrated HCM study"))
     document["locale"] = (payload.get("presentation") or {}).get("locale", "en") if isinstance(payload.get("presentation"), Mapping) else "en"
@@ -496,8 +517,9 @@ def migrate_legacy_project(payload: Mapping[str, Any]) -> dict[str, Any]:
     analysis_id = document["analyses"][0]["analysis_id"]
     scenario_id = document["analyses"][0]["scenarios"][0]["scenario_id"]
     scenario = document["analyses"][0]["scenarios"][0]
-    # Legacy calculation fingerprints are retained only when their normalized
-    # identity and engine method match.  No engine is called during import.
+    # Legacy calculation fingerprints are retained only when every persisted
+    # identity layer matches the released method.  No engine is called during
+    # import.
     computed = _identity_fingerprint(
         definition.method_identifier,
         definition.input_contract,
@@ -505,10 +527,13 @@ def migrate_legacy_project(payload: Mapping[str, Any]) -> dict[str, Any]:
     )
     stored_fp = payload.get("calculation_fingerprint")
     engine_result = stored_result if isinstance(stored_result, Mapping) else None
-    retained = bool(
-        engine_result
-        and (stored_fp is None or stored_fp == computed)
-        and engine_result.get("method") == definition.engine_method_identifier
+    retained = _legacy_result_is_compatible(
+        method_id=method_id,
+        definition=definition,
+        payload=payload,
+        engine_result=engine_result,
+        computed_fingerprint=computed,
+        stored_fingerprint=stored_fp,
     )
     if retained:
         snapshot["calculation_fingerprint"] = computed
@@ -554,11 +579,158 @@ def _legacy_parts(payload: Mapping[str, Any], project_type: Any) -> tuple[Any, A
             payload.get("calculation_result") or payload.get("result"),
             payload.get("audit_record") or payload.get("audit"),
         )
+    if project_type in {
+        "manual_basic_freeway_v0",
+        "manual_freeway_weaving_segment_v1",
+        "manual_freeway_merge_segment_v1",
+        "manual_freeway_diverge_segment_v1",
+    }:
+        return (
+            payload.get("displayed_ui_inputs", {}),
+            payload.get("normalized_engine_inputs", {}),
+            payload.get("calculation_result") or payload.get("result"),
+            payload.get("audit") or payload.get("audit_record"),
+        )
     return (
         payload.get("manual_inputs", {}),
         payload.get("normalized_engine_inputs", {}),
         payload.get("result"),
         payload.get("audit_record"),
+    )
+
+
+def _legacy_result_is_compatible(
+    *,
+    method_id: str,
+    definition: Any,
+    payload: Mapping[str, Any],
+    engine_result: Any,
+    computed_fingerprint: str,
+    stored_fingerprint: Any,
+) -> bool:
+    """Check legacy result identity without recalculating the payload."""
+
+    if not isinstance(engine_result, Mapping):
+        return False
+    if stored_fingerprint not in (None, computed_fingerprint):
+        return False
+    if engine_result.get("method") != definition.engine_method_identifier:
+        return False
+
+    expected_result_contract = {
+        "two_lane_segment": "phase_5_product_integration",
+        "two_lane_facility": "phase_5_product_integration",
+        "multilane_segment": "phase_8",
+        "basic_freeway_segment": "phase_10_product_integration",
+        "weaving_segment": "hcm_7_0_weaving_segment_operational_v1",
+        "merge_segment": "hcm7_v70_chapter_14_isolated_right_side_one_lane_merge_operational",
+        "diverge_segment": "hcm7_v70_chapter_14_isolated_right_side_one_lane_diverge_operational",
+    }[method_id]
+    result_contract = engine_result.get("result_contract_version")
+    if result_contract not in (None, expected_result_contract):
+        return False
+
+    expected_legacy_identity = {
+        "two_lane_segment": {
+            "method_identifier": {definition.method_identifier},
+            "method_version": {definition.input_contract, definition.method_version},
+        },
+        "multilane_segment": {
+            "method_identifier": {definition.method_identifier},
+            "method_version": {definition.input_contract, definition.method_version},
+        },
+        "basic_freeway_segment": {
+            "method_identifier": {definition.method_identifier},
+            "method_version": {definition.input_contract, definition.method_version},
+        },
+        "weaving_segment": {
+            "method_family": definition.method_identifier,
+            "method_version": {definition.method_version},
+            "calculation_contract": {definition.input_contract},
+        },
+        "merge_segment": {
+            "method_family": definition.method_identifier,
+            "method_version": {definition.method_version},
+            "calculation_contract": {definition.input_contract},
+        },
+        "diverge_segment": {
+            "method_family": definition.method_identifier,
+            "method_version": {definition.method_version},
+            "calculation_contract": {definition.input_contract},
+        },
+    }[method_id]
+    for field, expected in expected_legacy_identity.items():
+        if field in payload and payload[field] not in expected:
+            return False
+
+    outputs = engine_result.get("outputs")
+    if not isinstance(outputs, Mapping):
+        return False
+    output_identity = {
+        "two_lane_segment": {},
+        "multilane_segment": {},
+        "basic_freeway_segment": {"method_version": "phase_9_engine"},
+        "weaving_segment": {
+            "method_name": definition.engine_method_identifier,
+            "method_version": definition.method_version,
+            "method_family": definition.method_identifier,
+        },
+        "merge_segment": {
+            "method_name": definition.engine_method_identifier,
+            "method_version": definition.method_version,
+            "method_family": definition.method_identifier,
+        },
+        "diverge_segment": {
+            "method_name": definition.engine_method_identifier,
+            "method_version": definition.method_version,
+            "method_family": definition.method_identifier,
+        },
+    }[method_id]
+    return all(outputs.get(field) in (None, expected) for field, expected in output_identity.items())
+
+
+def _engine_result_identity_matches(
+    method_id: str, engine_result: Mapping[str, Any]
+) -> bool:
+    """Validate optional result contract metadata without running the engine."""
+
+    expected_contract = {
+        "two_lane_segment": "phase_5_product_integration",
+        "two_lane_facility": "phase_5_product_integration",
+        "multilane_segment": "phase_8",
+        "basic_freeway_segment": "phase_10_product_integration",
+        "weaving_segment": "hcm_7_0_weaving_segment_operational_v1",
+        "merge_segment": "hcm7_v70_chapter_14_isolated_right_side_one_lane_merge_operational",
+        "diverge_segment": "hcm7_v70_chapter_14_isolated_right_side_one_lane_diverge_operational",
+    }.get(method_id)
+    if expected_contract is None:
+        return False
+    if (
+        "result_contract_version" in engine_result
+        and engine_result["result_contract_version"] != expected_contract
+    ):
+        return False
+    outputs = engine_result.get("outputs")
+    if not isinstance(outputs, Mapping):
+        return False
+    expected_output_identity = {
+        "basic_freeway_segment": {"method_version": "phase_9_engine"},
+        "weaving_segment": {
+            "method_name": "hcm7_v70_freeway_weaving_segment",
+            "method_version": "hcm_7_0",
+        },
+        "merge_segment": {
+            "method_name": "hcm7_v70_freeway_merge_segment",
+            "method_version": "hcm_7_0",
+        },
+        "diverge_segment": {
+            "method_name": "hcm7_v70_freeway_diverge_segment",
+            "method_version": "hcm_7_0",
+        },
+    }.get(method_id, {})
+    return all(
+        outputs.get(field) in (None, expected)
+        for field, expected in expected_output_identity.items()
     )
 
 
@@ -761,6 +933,10 @@ def _validate_result_record(result: Any, analysis: Mapping[str, Any], scenario: 
         raise ProjectFileError("Stored result.engine_result must contain outputs.")
     if result["engine_result"].get("method") != analysis["engine_method_identifier"]:
         raise ProjectFileError("Stored engine result method identity does not match its analysis.")
+    if not _engine_result_identity_matches(
+        str(analysis["method_id"]), result["engine_result"]
+    ):
+        raise ProjectFileError("Stored engine result version or contract does not match its analysis.")
     if "presentation" in result:
         raise ProjectFileError("Serialized presentation is not a Project v2 result authority field.")
     if not isinstance(result["warnings"], list) or not isinstance(result["assumptions"], list) or not isinstance(result["audit"], Mapping):

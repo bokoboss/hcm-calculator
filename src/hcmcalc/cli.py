@@ -20,6 +20,8 @@ RESULT_CONTRACT_VERSIONS = {
     "hcm7_multilane_los": "phase_8",
     "hcm7_basic_freeway_segment": "phase_10_product_integration",
     "hcm7_v70_freeway_weaving_segment": "hcm_7_0_weaving_segment_operational_v1",
+    "hcm7_v70_freeway_merge_segment": "hcm7_v70_chapter_14_isolated_right_side_one_lane_merge_operational",
+    "hcm7_v70_freeway_diverge_segment": "hcm7_v70_chapter_14_isolated_right_side_one_lane_diverge_operational",
 }
 
 

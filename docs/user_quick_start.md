@@ -18,8 +18,8 @@ computer while you use the calculator.
 2. Double-click `setup_app.bat` once for first-time setup, and run it again to
    refresh dependencies after an update.
 3. Double-click `run_app.bat` for every normal launch.
-4. Streamlit opens the calculator in your default browser. If it does not,
-   open the local URL shown in the terminal, usually `http://localhost:8501`.
+4. The rebuilt React/FastAPI workspace opens in your default browser. If it
+   does not, open `http://127.0.0.1:8765/` from the terminal message.
 
 The normal launch script does not install or upgrade packages. If it reports a
 missing Python 3.12 installation or `.venv`, run the setup script after fixing
@@ -45,8 +45,8 @@ administrator rights.
 
 ## Stop the app
 
-Return to the terminal window running Streamlit and press `Ctrl+C`. You can
-then close the terminal window.
+Return to the terminal window running the local API and press `Ctrl+C`. You
+can then close the terminal window.
 
 ## Calculate, save, and export safely
 
@@ -106,8 +106,9 @@ before using a workflow outside its documented scope.
 - **`py` is not recognized or Python 3.12 cannot be found:** install Python
   3.12, select the Python Launcher option during installation, then run the
   script again.
-- **The browser does not open:** copy the `Local URL` displayed in the
-  terminal into a browser, normally `http://localhost:8501`.
+- **The browser does not open:** copy `http://127.0.0.1:8765/` into a browser.
+- **Need the compatibility UI:** run `run_streamlit.bat` (or
+  `run_streamlit.ps1`) explicitly. It is not the normal release launcher.
 - **A script error is displayed:** leave the terminal open and read the error;
   the launch scripts pause after an error so the message remains visible.
 - **PowerShell blocks the script:** use the `-ExecutionPolicy Bypass` command

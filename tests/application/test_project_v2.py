@@ -13,10 +13,14 @@ from hcmcalc.application.project import (
     save_analysis_to_project,
     update_scenario_inputs,
 )
-from hcmcalc.application.workflows import MultilaneWorkflow
+import hcmcalc.application.phase3_workflows as phase3_services
+from hcmcalc.application.workflows import MultilaneWorkflow, workflow_for_method
 from hcmcalc.ui.project_io import (
+    create_manual_freeway_project_payload,
     create_manual_multilane_project_payload,
     create_manual_project_payload,
+    create_manual_ramp_project_payload,
+    create_manual_weaving_project_payload,
 )
 
 
@@ -45,6 +49,34 @@ def test_project_v2_roundtrip_retains_ids_and_result_identity_without_presentati
     assert loaded["analyses"][0]["scenarios"][0]["scenario_id"] == scenario["scenario_id"]
     assert loaded["analyses"][0]["scenarios"][0]["result"]["calculation_fingerprint"] == scenario["calculation_fingerprint"]
     assert project_to_json(loaded) == project_to_json(project)
+
+
+@pytest.mark.parametrize(
+    "method_id, template_id",
+    (
+        ("two_lane_segment", "TLH-CH15-001"),
+        ("basic_freeway_segment", "BF-CH26-001"),
+        ("weaving_segment", "WVG-CH27-001"),
+        ("merge_segment", "chapter_28_example_1_merge"),
+        ("diverge_segment", "chapter_28_example_3_diverge_component"),
+    ),
+)
+def test_phase3_project_v2_roundtrip_revalidates_all_delivered_methods(
+    method_id: str,
+    template_id: str,
+) -> None:
+    workflow = workflow_for_method(method_id)
+    starting = workflow.starting_values(template_id, "imperial")
+    snapshot = workflow.calculate(
+        template_id=template_id,
+        unit_system="imperial",
+        displayed_inputs=starting["displayed_inputs"],
+    )
+    project = save_analysis_to_project(snapshot, project_name=f"{method_id} study")
+    loaded = load_project(project_to_json(project))
+    scenario = loaded["analyses"][0]["scenarios"][0]
+    assert scenario["result_status"] == "current"
+    assert scenario["result"]["engine_result"]["method"] == snapshot["result"]["method"]
 
 
 def test_project_v2_accepts_browser_numeric_round_trip_without_changing_fingerprint() -> None:
@@ -210,3 +242,76 @@ def test_legacy_single_segment_reference_method_migrates_to_view_only_project() 
     assert scenario["template_id"] == "legacy_import"
     assert scenario["result_status"] == "not_calculated"
     assert scenario["result"] is None
+
+
+@pytest.mark.parametrize(
+    "method_id, template_id",
+    (
+        ("two_lane_segment", "TLH-CH15-001"),
+        ("basic_freeway_segment", "BF-CH26-001"),
+        ("weaving_segment", "WVG-CH27-001"),
+        ("merge_segment", "chapter_28_example_1_merge"),
+        ("diverge_segment", "chapter_28_example_3_diverge_component"),
+    ),
+)
+def test_phase3_legacy_projects_retain_current_results_without_engine_calls(
+    monkeypatch: pytest.MonkeyPatch,
+    method_id: str,
+    template_id: str,
+) -> None:
+    workflow = workflow_for_method(method_id)
+    starting = workflow.starting_values(template_id, "imperial")
+    snapshot = workflow.calculate(
+        template_id=template_id,
+        unit_system="imperial",
+        displayed_inputs=starting["displayed_inputs"],
+    )
+    displayed = deepcopy(snapshot["displayed_inputs"])
+    if method_id == "two_lane_segment":
+        displayed["unit_system"] = "imperial"
+        legacy = create_manual_project_payload(
+            displayed,
+            result=snapshot["result"],
+            audit_record=snapshot["audit"],
+            locale="en",
+        )
+    elif method_id == "basic_freeway_segment":
+        legacy = create_manual_freeway_project_payload(
+            template_id,
+            "imperial",
+            displayed,
+            result=snapshot["result"],
+            audit_record=snapshot["audit"],
+            locale="en",
+        )
+    elif method_id == "weaving_segment":
+        legacy = create_manual_weaving_project_payload(
+            template_id,
+            "imperial",
+            displayed,
+            result=snapshot["result"],
+            audit_record=snapshot["audit"],
+            locale="en",
+        )
+    else:
+        legacy = create_manual_ramp_project_payload(
+            "merge" if method_id == "merge_segment" else "diverge",
+            template_id,
+            "imperial",
+            displayed,
+            result=snapshot["result"],
+            audit_record=snapshot["audit"],
+            locale="en",
+        )
+
+    def fail_if_called(*args: object, **kwargs: object) -> None:
+        raise AssertionError("legacy import must not run an HCM engine")
+
+    for engine_name in ("run_manual_single_segment", "run_manual_freeway", "run_manual_weaving", "run_manual_ramp"):
+        monkeypatch.setattr(phase3_services, engine_name, fail_if_called)
+
+    migrated = load_project(json.dumps(legacy))
+    scenario = migrated["analyses"][0]["scenarios"][0]
+    assert migrated["schema_version"] == "2.0"
+    assert scenario["result_status"] == "current"
+    assert scenario["result"]["engine_result"]["method"] == snapshot["result"]["method"]

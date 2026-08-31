@@ -81,17 +81,43 @@ def _resolve_static_dir(static_dir: str | Path | None) -> Path | None:
         import os
 
         configured = os.environ.get("HCMCALC_FRONTEND_DIST")
-        candidate = Path(configured) if configured else Path(__file__).resolve().parents[3] / "frontend" / "dist"
+        if configured:
+            candidates = (Path(configured),)
+        else:
+            candidates = (
+                Path(__file__).resolve().parents[3] / "frontend" / "dist",
+                Path(__file__).resolve().parents[1] / "ui" / "static",
+            )
     else:
-        candidate = Path(static_dir)
-    candidate = candidate.resolve()
-    return candidate if (candidate / "index.html").is_file() else None
+        candidates = (Path(static_dir),)
+    for candidate in candidates:
+        resolved = candidate.resolve()
+        if (resolved / "index.html").is_file():
+            return resolved
+    return None
+
+
+def _resolve_engineering_assets_dir() -> Path | None:
+    """Resolve the one packaged source of truth for engineering diagrams."""
+
+    candidate = Path(__file__).resolve().parents[1] / "ui" / "assets"
+    return candidate if candidate.is_dir() else None
 
 
 def _mount_compiled_spa(app: FastAPI, static_dir: Path) -> None:
     assets_dir = static_dir / "assets"
     if assets_dir.is_dir():
         app.mount("/assets", StaticFiles(directory=assets_dir), name="frontend-assets")
+
+    engineering_assets_dir = _resolve_engineering_assets_dir()
+    if engineering_assets_dir is not None:
+        # React references these files through this route; it never owns a
+        # second copy of the qualified engineering asset set.
+        app.mount(
+            "/engineering-assets",
+            StaticFiles(directory=engineering_assets_dir),
+            name="engineering-assets",
+        )
 
     @app.get("/", include_in_schema=False)
     def compiled_root() -> FileResponse:
@@ -116,11 +142,22 @@ def serve(
     host: str = DEFAULT_HOST,
     port: int = DEFAULT_PORT,
     static_dir: str | Path | None = None,
+    open_browser: bool = False,
 ) -> None:
     """Run the local release-like server, loopback-bound by default."""
 
     import uvicorn
 
+    if open_browser:
+        import threading
+        import webbrowser
+
+        browser_host = "127.0.0.1" if host in {"0.0.0.0", "::"} else host
+        threading.Timer(
+            0.8,
+            webbrowser.open,
+            args=(f"http://{browser_host}:{port}/",),
+        ).start()
     uvicorn.run(create_app(static_dir=static_dir), host=host, port=port)
 
 
@@ -129,9 +166,10 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--host", default=DEFAULT_HOST)
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--static-dir", type=Path, default=None)
+    parser.add_argument("--open-browser", action="store_true")
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = _parse_args()
-    serve(host=args.host, port=args.port, static_dir=args.static_dir)
+    serve(host=args.host, port=args.port, static_dir=args.static_dir, open_browser=args.open_browser)
