@@ -243,7 +243,7 @@ separately; none is replaced by deleted historical mockups.
 | Installed runtime | fresh isolated-wheel HTTP smoke | PASS; current root bundle, health, methods, and engineering asset |
 | Windows rebuilt launcher | `run_app.ps1` live smoke | PASS; root HTTP 200, health `ok`, seven methods |
 | Streamlit compatibility | `run_streamlit.ps1` live health smoke | PASS; `/_stcore/health` 200/`ok` |
-| CI | PR #141 GitHub Actions `R1 qualification` workflow | Required after the final remediation commit and push; the PR body/final evidence records the exact green run |
+| CI | PR #141 GitHub Actions `R1 qualification` workflow | PASS; exact-head run [33379564855](https://github.com/bokoboss/hcm-calculator/actions/runs/33379564855) for the final remediation commit, all four required jobs green |
 
 The release candidate preserves Python numerical authority, qualified engine
 behavior, method identifiers/contracts, Project v2/fingerprint semantics,
@@ -279,4 +279,5 @@ built as `hcm_calculator-0.9.0-py3-none-any.whl` (1,988,879 bytes), SHA-256
 Its isolated installed runtime served `/` with HTTP 200, `/api/v1/health`
 with HTTP 200, exposed seven methods, and served the new packaged bundle with
 the Thai presentation label. The final exact-head CI run for this micro-fix is
-reported in the closeout below and must be green in all four required jobs.
+[33379564855](https://github.com/bokoboss/hcm-calculator/actions/runs/33379564855),
+green in all four required jobs.
