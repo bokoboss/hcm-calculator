@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "provider": "astral-sh/python-build-standalone",
+  "release_tag": "20260814",
+  "release_url": "https://github.com/astral-sh/python-build-standalone/releases/tag/20260814",
+  "release_commit": "38d35dcf0e212ca02eed8ebc11d0c92906387d56",
+  "python_version": "3.12.14",
+  "platform": "windows",
+  "architecture": "x86_64",
+  "target_triple": "x86_64-pc-windows-msvc",
+  "distribution_flavor": "install_only",
+  "distribution_linkage": "shared",
+  "asset_name": "cpython-3.12.14+20260814-x86_64-pc-windows-msvc-install_only.tar.gz",
+  "asset_url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260814/cpython-3.12.14%2B20260814-x86_64-pc-windows-msvc-install_only.tar.gz",
+  "archive_format": "tar.gz",
+  "sha256": "7330282b47cd43a66b702d39078d2e5a88e580cee351d82f95045f21f5ee042a",
+  "selection_basis": "Astral shared Windows x86_64 install-only build; the non-stripped archive preserves signed runtime DLLs and is the compatible redistribution choice."
+}

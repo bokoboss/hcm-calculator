@@ -33,3 +33,7 @@ local_references/
 .tmp/
 .codex-feature.index
 output/
+
+# Internal portable distribution build outputs (never commit runtime payloads)
+.tmp/internal-portable/
+output/internal-portable/
