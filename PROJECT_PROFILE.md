@@ -5,14 +5,14 @@
 - Repository URL: https://github.com/bokoboss/hcm-calculator
 - Authoritative local path: `D:\R&D\hcm-calculator`
 - Primary branch: `main`
-- Phase 3 branch: `codex/application-rebuild-phase-3-release`
+- Phase 3 delivery branch: `codex/application-rebuild-phase-3-release`
+- Internal portable distribution branch: `codex/internal-portable-distribution`
 - Package/application version: `0.9.0`
 
 ## Current accepted baseline and release state
-- Authoritative remote `main` at Phase 3 preflight: `da64a662094458738f8c9cae7213bcf04a6f5007`.
+- Authoritative remote `main` at Issue #142 preflight: `28c1a76ad379c332a5c50fc756bdcdf6975cd957`.
 - Accepted Phase 2 implementation ancestor: `868c00616b6cb3b74308777c4753e1af80bb863e`.
-- Phase 3 is an implementation candidate carried by PR #141; it is not merged
-  or accepted until the owner completes ChatGPT application-rebuild acceptance.
+- Phase 3 / PR #141 is merged and accepted in `main`.
 - The rebuilt React/FastAPI launcher is the intended normal installed-use path.
   Streamlit remains available as the qualified compatibility path.
 - The owner-authorized stale local `.agent/` and `mockups/` paths were removed
@@ -60,7 +60,19 @@ python -m build --wheel
 Normal installed use serves the compiled SPA from the Python distribution and
 does not require Node or Vite at runtime. The Phase 3 qualification record
 contains the release-like wheel, isolated-runtime, launcher, and browser
-evidence for PR #141.
+evidence for the accepted PR #141.
+
+The internal portable Windows x64 distribution is an additional path tracked
+by Issue #142. Its developer-side build command is:
+
+```text
+.\scripts\build_internal_portable.ps1
+```
+
+The builder pins CPython 3.12.14 from Astral, vendors only the normal Python
+runtime dependency closure, and writes its ignored output under
+`.tmp/internal-portable/`. Company-machine acceptance remains pending human
+UAT until a representative Windows device supplies evidence.
 
 ## Architecture and invariants
 - Accepted R0 architecture: React + TypeScript + Vite -> FastAPI -> a
@@ -114,12 +126,12 @@ rebuilt launcher. Detailed evidence is maintained in
   FastAPI with no Node/Vite runtime dependency.
 - Deterministic 1920, 1366, 1024, and 390 px evidence, browser UAT, wheel,
   isolated runtime, and both Windows launcher results are indexed in the Phase
-  3 qualification record. PR #141 remains an unmerged candidate pending the
-  final GitHub CI pass and owner product/visual acceptance.
+  3 qualification record. PR #141 is accepted; portable distribution evidence
+  is recorded separately in `docs/distribution/internal_portable_distribution_qualification.md`.
 
 ## Validation and release policy
-- Every change goes through a reviewable PR; PR #141 links the Phase 3 work to
-  Issue #139 with `Closes #139` and is intentionally not merged by this task.
+- Every change goes through a reviewable PR. Issue #142 tracks the internal
+  portable distribution and does not authorize changing qualified HCM behavior.
 - Release claims require objective local and CI evidence, including the full
   pytest suite, frontend tests/build, full Playwright coverage, package/runtime
   smoke, both launchers, OpenAPI drift, compileall, and diff checks.
