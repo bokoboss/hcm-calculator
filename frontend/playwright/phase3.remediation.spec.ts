@@ -150,7 +150,7 @@ test.describe('Phase 3 remediation journeys', () => {
     await expect(page.locator('[data-slot="warning-panel"]')).toBeVisible();
     await expect(page.locator('[data-slot="capacity-failure-panel"]')).toHaveCount(0);
     await expect(page.locator('[data-slot="result-hero"] .result-value')).toHaveText('E');
-    await expect(page.getByTestId('workflow-results')).toContainText('Maximum desirable merge influence-area flow is exceeded');
+    await expect(page.locator('[data-slot="warning-panel"]')).toContainText('Merge influence-area flow exceeds the maximum desirable level.');
     await expect(page.getByTestId('workflow-results')).not.toContainText('Not predicted in this state');
     await capture(page, 'phase3-remediation-merge-warning-state.png');
 
@@ -179,7 +179,7 @@ test.describe('Phase 3 remediation journeys', () => {
     await expect(page.locator('[data-slot="warning-panel"]')).toBeVisible();
     await expect(page.locator('[data-slot="capacity-failure-panel"]')).toHaveCount(0);
     await expect(page.locator('[data-slot="result-hero"] .result-value')).toHaveText('E');
-    await expect(page.getByTestId('workflow-results')).toContainText('Maximum desirable diverge influence-area flow is exceeded');
+    await expect(page.locator('[data-slot="warning-panel"]')).toContainText('Diverge influence-area flow exceeds the maximum desirable level.');
     await expect(page.getByTestId('workflow-results')).not.toContainText('Not predicted in this state');
     await capture(page, 'phase3-remediation-diverge-warning-state.png');
 

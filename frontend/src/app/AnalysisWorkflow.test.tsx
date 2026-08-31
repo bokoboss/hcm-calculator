@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type { WorkflowCalculationResponse } from '../api/types';
 import { AppShell } from '../components/primitives';
 import { I18nProvider } from '../i18n';
-import { ResultPanel } from './AnalysisWorkflow';
+import { translate } from '../i18n/catalog';
+import { facilityEnumLabel, formatInputValue, ResultPanel, validationMessage, warningSummary } from './AnalysisWorkflow';
 
 const capacityFailureResult: WorkflowCalculationResponse = {
   method_id: 'multilane_segment',
@@ -69,5 +70,47 @@ describe('result metric availability', () => {
 
     expect(screen.getAllByText('ไม่คาดการณ์ในสถานะนี้')).toHaveLength(2);
     expect(screen.getByText('ในสถานะนี้จะไม่คาดการณ์ความเร็วและความหนาแน่น')).toBeInTheDocument();
+  });
+});
+
+describe('final presentation remediation', () => {
+  it('formats numeric inputs for display without changing their calculation values', () => {
+    expect(formatInputValue({ key: 'lane_width', kind: 'number' }, 3.6576000000000004)).toBe('3.658');
+    expect(formatInputValue({ key: 'peak_hour_factor', kind: 'number' }, 0.9499999999999998)).toBe('0.95');
+    expect(formatInputValue({ key: 'freeway_lanes', kind: 'integer' }, 3)).toBe('3');
+  });
+
+  it('maps Facility values and validation presentation without exposing backend identifiers', () => {
+    expect(facilityEnumLabel('segment_type', 'passing_constrained', (key) => translate('en', key))).toBe('Passing constrained');
+    expect(facilityEnumLabel('passing_lane_role', 'downstream_affected', (key) => translate('th', key))).toBe('ได้รับผลจากช่วงต้นทาง');
+    const message = validationMessage(
+      { code: 'invalid_input', field: 'rows[0].access_point_density', message: 'access_point_density must be a finite numeric value.', message_key: 'api.invalid_input' },
+      [],
+      { rows: [{ segment_id: 1, segment_name: 'Approach', access_point_density: null }] },
+      (key, values) => translate('en', key, values),
+    );
+    expect(message).toBe('Review Approach — Access-point density and enter a valid value.');
+    expect(message).not.toContain('access_point_density');
+  });
+
+  it('selects a deterministic localized warning summary while raw engine evidence remains unchanged', () => {
+    const warningResult: WorkflowCalculationResponse = {
+      ...capacityFailureResult,
+      method_id: 'merge_segment',
+      calculation_state: { ...capacityFailureResult.calculation_state, presentation_state: 'valid_current_result_with_warning' },
+      result: {
+        ...capacityFailureResult.result,
+        outputs: { maximum_desirable_influence_flow_exceeded: true },
+        warnings: ['Maximum desirable merge influence-area flow is exceeded; this is an interpretation warning, not automatic LOS F.'],
+      },
+      presentation: {
+        ...capacityFailureResult.presentation,
+        capacity: { failure: false },
+        warning: 'Maximum desirable merge influence-area flow is exceeded; this is an interpretation warning, not automatic LOS F.',
+        evidence: { maximum_desirable_influence_flow_exceeded: true },
+      },
+    };
+    expect(warningSummary(warningResult, (key) => translate('th', key))).toContain('เกินระดับที่พึงประสงค์สูงสุด');
+    expect(warningResult.result.warnings[0]).toContain('Maximum desirable merge influence-area flow');
   });
 });

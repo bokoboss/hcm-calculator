@@ -1,6 +1,7 @@
 import {
   cloneElement,
   isValidElement,
+  useEffect,
   useId,
   useState,
   type ChangeEvent,
@@ -344,6 +345,7 @@ export function InputWithUnit({
   'aria-required': ariaRequired,
   required = false,
   onBlur,
+  formatValue,
 }: {
   id: string;
   unit: string;
@@ -359,21 +361,44 @@ export function InputWithUnit({
   'aria-required'?: boolean | 'false' | 'true';
   required?: boolean;
   onBlur?: () => void;
+  formatValue?: (value: string | number | undefined) => string;
 }): ReactElement {
+  const rawValue = value === undefined ? '' : String(value);
+  const formattedValue = formatValue?.(value) ?? rawValue;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(formattedValue);
+  useEffect(() => {
+    if (!editing) setDraft(formattedValue);
+  }, [editing, formattedValue]);
+  const displayedValue = formatValue && !editing ? formattedValue : editing ? draft : value;
   return (
     <div className="input-unit" data-slot="input-with-unit">
       <input
         id={id}
         type={type}
-        value={value}
-        onChange={onChange}
+        value={displayedValue}
+        onFocus={() => {
+          if (formatValue) {
+            setEditing(true);
+          }
+        }}
+        onChange={(event) => {
+          if (formatValue) {
+            setEditing(true);
+            setDraft(event.target.value);
+          }
+          onChange?.(event);
+        }}
         placeholder={placeholder}
         disabled={disabled}
         required={required || undefined}
         aria-invalid={invalid ? 'true' : ariaInvalid || undefined}
         aria-describedby={describedBy ?? ariaDescribedBy}
         aria-required={ariaRequired || undefined}
-        onBlur={onBlur}
+        onBlur={() => {
+          if (formatValue) setEditing(false);
+          onBlur?.();
+        }}
       />
       <span className="unit-label" aria-hidden="true">{unit}</span>
     </div>

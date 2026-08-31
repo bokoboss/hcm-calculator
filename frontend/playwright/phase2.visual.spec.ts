@@ -53,7 +53,7 @@ test('captures the deterministic Phase 2 reference set', async ({ page }) => {
 
   await page.locator('.workflow-toolbar button').click();
   await selectMethod(page, 'two_lane_facility');
-  await expect(page.getByTestId('facility-input-1-lane_width')).toHaveValue(/3\.6576/);
+  await expect(page.getByTestId('facility-input-1-lane_width')).toHaveValue('3.658');
   await capture(page, '07-facility-grid.png');
   await page.getByTestId('facility-input-1-peak_hour_factor').fill('0');
   await page.getByRole('button', { name: 'Calculate', exact: true }).click();

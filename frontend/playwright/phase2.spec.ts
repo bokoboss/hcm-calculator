@@ -177,8 +177,8 @@ test.describe('Phase 2 representative workflows', () => {
     await page.goto('/');
     await page.getByRole('button', { name: 'New Analysis' }).first().click();
     await page.getByTestId('method-card-two_lane_facility').getByRole('button', { name: 'Start analysis' }).click();
-    await expect(page.getByTestId('facility-input-1-lane_width')).toHaveValue(/3\.6576/);
-    await expect(page.getByTestId('facility-input-1-shoulder_width')).toHaveValue(/1\.8288/);
+    await expect(page.getByTestId('facility-input-1-lane_width')).toHaveValue('3.658');
+    await expect(page.getByTestId('facility-input-1-shoulder_width')).toHaveValue('1.829');
 
     await page.getByTestId('facility-input-1-peak_hour_factor').fill('0');
     await page.getByTestId('facility-input-1-peak_hour_factor').blur();

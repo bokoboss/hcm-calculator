@@ -21,6 +21,7 @@ import type {
   WorkflowStartingValuesResponse,
   WorkflowTemplatesResponse,
   WorkflowValidationResponse,
+  ValidationIssue,
 } from '../api/types';
 import { useI18n } from '../i18n';
 import {
@@ -64,6 +65,71 @@ function valueForInput(value: unknown): string | number {
   return value === null || value === undefined ? '' : String(value);
 }
 
+type Translate = (key: string, values?: Record<string, string | number>) => string;
+
+function inputPrecision(field: Pick<WorkflowField, 'key' | 'kind'>): number | null {
+  if (field.kind === 'text' || field.kind === 'json' || field.kind === 'boolean' || field.kind === 'choice') return null;
+  if (field.kind === 'integer' || /(?:^|_)(?:lanes|lane_count|number_of_lanes|count)(?:_|$)/.test(field.key) || /(?:volume|veh_h)$/.test(field.key)) return 0;
+  if (field.key === 'peak_hour_factor') return 3;
+  if (/(?:percent|grade)/.test(field.key)) return 2;
+  if (/(?:length|width|clearance|density|speed|radius)/.test(field.key)) return 3;
+  return 4;
+}
+
+export function formatInputValue(field: Pick<WorkflowField, 'key' | 'kind'>, value: unknown): string {
+  if (value === null || value === undefined) return '';
+  const precision = inputPrecision(field);
+  if (precision === null || typeof value !== 'number' || !Number.isFinite(value)) return String(value);
+  const rounded = Number(value.toFixed(precision));
+  return new Intl.NumberFormat('en-US', { useGrouping: false, maximumFractionDigits: precision }).format(rounded);
+}
+
+function FacilityInput({
+  value,
+  field,
+  onChange,
+  onBlur,
+  ...props
+}: {
+  value: unknown;
+  field: Pick<WorkflowField, 'key' | 'kind'>;
+  onChange: (value: string) => void;
+  onBlur: () => void;
+  id?: string;
+  type: 'text' | 'number';
+  readOnly: boolean;
+  'aria-readonly': boolean;
+  'aria-label': string;
+  'aria-invalid'?: 'true';
+  'data-testid': string;
+}): ReactElement {
+  const formatted = formatInputValue(field, value);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(formatted);
+  useEffect(() => {
+    if (!editing) setDraft(formatted);
+  }, [editing, formatted]);
+  return (
+    <input
+      {...props}
+      value={editing ? draft : formatted}
+      onFocus={() => {
+        if (!props.readOnly) {
+          setEditing(true);
+        }
+      }}
+      onChange={(event) => {
+        setDraft(event.target.value);
+        onChange(event.target.value);
+      }}
+      onBlur={() => {
+        setEditing(false);
+        onBlur();
+      }}
+    />
+  );
+}
+
 function parseInput(field: WorkflowField, value: string): unknown {
   if (!value.trim()) return null;
   if (field.kind === 'integer' || field.kind === 'number') return Number(value);
@@ -82,6 +148,10 @@ function valueForField(field: WorkflowField, value: unknown): string | number {
   if (field.kind === 'json') return value === null || value === undefined ? '' : JSON.stringify(value, null, 2);
   if (field.kind === 'boolean') return value === true ? 'true' : value === false ? 'false' : '';
   return valueForInput(value);
+}
+
+function rawControlValue(value: unknown): string | number {
+  return typeof value === 'string' || typeof value === 'number' ? value : '';
 }
 
 function unitFor(field: WorkflowField, unitSystem: UnitSystem): string {
@@ -173,7 +243,7 @@ export function ResultPanel({
           state={stale ? 'stale' : handoff ? 'handoff' : capacityFailure ? 'capacity' : showWarning ? 'warning' : 'current'}
           supporting={answer.source}
         />
-        {stale ? <StaleResultPanel /> : handoff ? <HandoffPanel /> : capacityFailure ? <CapacityFailurePanel metricsUnavailable={metricsUnavailable} /> : showWarning ? <WarningPanel message={result.presentation.warning} /> : null}
+        {stale ? <StaleResultPanel /> : handoff ? <HandoffPanel /> : capacityFailure ? <CapacityFailurePanel metricsUnavailable={metricsUnavailable} /> : showWarning ? <WarningPanel message={warningSummary(result, t)} /> : null}
         {handoff && result.presentation.handoff?.reason ? <p className="handoff-reason">{String(result.presentation.handoff.reason)}</p> : null}
         <div className="metric-grid">
           {keyMetrics.map((metric) => (
@@ -193,6 +263,48 @@ export function ResultPanel({
         </div>
     </section>
   );
+}
+
+function rawWarnings(result: WorkflowCalculationResponse): string[] {
+  return Array.from(new Set([
+    ...result.result.warnings,
+    ...(result.presentation.warning ? [result.presentation.warning] : []),
+  ]));
+}
+
+export function warningSummary(result: WorkflowCalculationResponse, translate: Translate): string {
+  const maximumDesirableExceeded = result.presentation.evidence.maximum_desirable_influence_flow_exceeded === true
+    || result.result.outputs.maximum_desirable_influence_flow_exceeded === true;
+  if (result.calculation_state.presentation_state === 'valid_current_result_with_warning' && maximumDesirableExceeded) {
+    if (result.method_id === 'merge_segment') return translate('warning.merge.maximum_desirable_flow');
+    if (result.method_id === 'diverge_segment') return translate('warning.diverge.maximum_desirable_flow');
+  }
+  return translate('state.warning_supporting');
+}
+
+export function facilityEnumLabel(field: string, value: unknown, translate: Translate): string {
+  const enumKeys: Record<string, Record<string, string>> = {
+    segment_type: {
+      passing_constrained: 'two_lane_segment.option.passing_constrained',
+      passing_zone: 'two_lane_segment.option.passing_zone',
+      passing_lane: 'two_lane_segment.option.passing_lane',
+    },
+    terrain_type: {
+      level: 'two_lane_segment.option.level',
+      mountainous: 'two_lane_segment.option.mountainous',
+    },
+    horizontal_alignment: {
+      straight: 'two_lane_segment.option.straight',
+      horizontal_curves: 'two_lane_segment.option.horizontal_curves',
+    },
+    passing_lane_role: {
+      none: 'facility.option.passing_lane_role.none',
+      passing_lane: 'facility.option.passing_lane_role.passing_lane',
+      downstream_affected: 'facility.option.passing_lane_role.downstream_affected',
+    },
+  };
+  const key = enumKeys[field]?.[String(value)];
+  return key ? translate(key) : translate('facility.unknown_template_value');
 }
 
 function scopeFor(method: MethodDefinition, translate: (key: string) => string): string {
@@ -236,7 +348,7 @@ function DetailedResultSection({
       <DetailsDisclosure title={t('result.evidence_title')}>
         <div className="evidence-grid">
           <div><span className="section-label">{t('result.assumptions')}</span><ul>{result.result.assumptions.map((item) => <li key={item}>{item}</li>)}</ul></div>
-          <div><span className="section-label">{t('result.warnings')}</span><ul>{result.result.warnings.length ? result.result.warnings.map((item) => <li key={item}>{item}</li>) : <li>{t('result.no_warnings')}</li>}</ul></div>
+          <div><span className="section-label">{t('result.warnings')}</span><ul>{rawWarnings(result).length ? rawWarnings(result).map((item) => <li key={item}>{item}</li>) : <li>{t('result.no_warnings')}</li>}</ul></div>
           <div><span className="section-label">{t('result.fingerprint')}</span><code>{result.calculation_fingerprint}</code></div>
         </div>
       </DetailsDisclosure>
@@ -708,7 +820,7 @@ function MultilaneForm({
               const hint = field.key === 'access_point_density' ? t('multilane.access_density_hint') : undefined;
               return (
                 <Field key={field.key} id={`multilane-${field.key}`} label={t(field.label_key)} required={Boolean(field.required || field.required_if)} hint={hint} error={fieldErrors.get(field.key)} onBlur={() => onFieldTouch(field.key)}>
-                  {(controlProps) => <InputWithUnit {...controlProps} type={field.kind === 'text' ? 'text' : 'number'} unit={unitFor(field, unitSystem)} value={valueForInput(inputs[field.key])} onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(field.key, parseInput(field, event.target.value))} />}
+                  {(controlProps) => <InputWithUnit {...controlProps} type={field.kind === 'text' ? 'text' : 'number'} unit={unitFor(field, unitSystem)} value={rawControlValue(inputs[field.key])} formatValue={field.kind === 'text' ? undefined : (value) => formatInputValue(field, value)} onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(field.key, parseInput(field, event.target.value))} />}
                 </Field>
               );
             })}
@@ -816,7 +928,7 @@ function Phase3Form({
                 const id = `${methodId}-${field.key}`;
                 return (
                   <Field key={field.key} id={id} label={t(field.label_key)} required={required} error={fieldErrors.get(field.key)} onBlur={() => onFieldTouch(field.key)}>
-                    {(controlProps) => <InputWithUnit {...controlProps} type={field.kind === 'text' ? 'text' : 'number'} unit={unitFor(field, unitSystem)} value={valueForField(field, inputs[field.key])} onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(field.key, parseInput(field, event.target.value))} />}
+                    {(controlProps) => <InputWithUnit {...controlProps} type={field.kind === 'text' ? 'text' : 'number'} unit={unitFor(field, unitSystem)} value={rawControlValue(inputs[field.key])} formatValue={field.kind === 'text' ? undefined : (value) => formatInputValue(field, value)} onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(field.key, parseInput(field, event.target.value))} />}
                   </Field>
                 );
               })}
@@ -831,7 +943,7 @@ function Phase3Form({
   );
 }
 
-function FacilityForm({
+export function FacilityForm({
   templates,
   starting,
   inputs,
@@ -892,21 +1004,25 @@ function FacilityForm({
                   if (column === 'opposing_direction_volume_veh_h' && row.segment_type !== 'passing_zone') {
                     return <td key={column}><span className="locked-cell" aria-label={`${t(`facility.col.${column}`)} — ${t('facility.not_applicable')}`}>—</span></td>;
                   }
-                  if (column === 'segment_type' || column === 'terrain_type' || column === 'passing_lane_role' || column === 'segment_id') {
+                  if (column === 'segment_type' || column === 'terrain_type' || column === 'horizontal_alignment' || column === 'passing_lane_role') {
+                    return <td key={column}><span className="locked-cell">{facilityEnumLabel(column, row[column], t)}</span></td>;
+                  }
+                  if (column === 'segment_id') {
                     return <td key={column}><span className="locked-cell">{String(row[column] ?? '—')}</span></td>;
                   }
                   return (
                     <td key={column}>
-                      <input
+                      <FacilityInput
                         data-testid={`facility-input-${row.segment_id}-${column}`}
                         type={column === 'segment_name' ? 'text' : 'number'}
-                        value={valueForInput(row[column])}
+                        value={row[column]}
+                        field={starting.fields.find((candidate) => candidate.key === column) ?? { key: column, kind: column === 'segment_name' ? 'text' : 'number' }}
                         readOnly={!isEditable}
                         aria-readonly={!isEditable}
                         aria-label={`${t(`facility.col.${column}`)} ${row.segment_id}`}
                         aria-invalid={fieldErrors.has(`rows[${rowIndex}].${column}`) ? 'true' : undefined}
                         onBlur={() => onFieldTouch(`rows[${rowIndex}].${column}`)}
-                        onChange={(event) => updateRow(rowIndex, column, event.target.value)}
+                        onChange={(value) => updateRow(rowIndex, column, value)}
                       />
                       {fieldErrors.get(`rows[${rowIndex}].${column}`) ? <span className="field-error">{fieldErrors.get(`rows[${rowIndex}].${column}`)}</span> : null}
                     </td>
@@ -950,14 +1066,14 @@ export function FacilityResultPanel({
     <div className="workflow-results" data-testid="workflow-results">
       <EngineeringSection title={t('result.facility_section_title')} description={t('result.facility_section_description')}>
         <ResultHero label={t('result.facility_level_of_service')} value={answer.available && answer.value ? answer.value : t('result.not_calculated')} state={stale ? 'stale' : capacityFailure ? 'capacity' : showWarning ? 'warning' : 'current'} supporting={answer.source} />
-        {stale ? <StaleResultPanel /> : capacityFailure ? <CapacityFailurePanel metricsUnavailable={metricsUnavailable} /> : showWarning ? <WarningPanel message={result.presentation.warning} /> : null}
+        {stale ? <StaleResultPanel /> : capacityFailure ? <CapacityFailurePanel metricsUnavailable={metricsUnavailable} /> : showWarning ? <WarningPanel message={warningSummary(result, t)} /> : null}
         <div className="metric-grid">
           {result.presentation.metrics.map((metric) => <MetricCard key={metric.key} label={t(`result.metric.${metric.key}`)} value={metricDisplayValue(metric, t)} unit={metric.unit ?? undefined} />)}
         </div>
         <div className="critical-callout"><strong>{t('result.critical_segment')}</strong><span>{String(result.presentation.capacity.critical_segment_id ?? t('result.not_calculated'))}</span></div>
         <div className="table-scroll" role="region" aria-label={t('result.segment_results')} tabIndex={0}>
           <table className="result-table"><thead><tr><th>{t('facility.col.segment_id')}</th><th>{t('facility.col.segment_type')}</th><th>{t('result.segment_speed')}</th><th>{t('result.segment_density')}</th><th>{t('result.level_of_service')}</th></tr></thead><tbody>
-            {segments.map((segment) => <tr key={String(segment.segment_id)}><td>{String(segment.segment_id)}</td><td>{String(segment.segment_type)}</td><td>{segment.average_speed === null || segment.average_speed === undefined ? t('result.not_calculated') : `${Number(segment.average_speed).toFixed(1)} ${String(segment.average_speed_unit)}`}</td><td>{segment.follower_density === null || segment.follower_density === undefined ? t('result.not_calculated') : `${Number(segment.follower_density).toFixed(1)} ${String(segment.follower_density_unit)}`}</td><td><StatusBadge tone={segment.level_of_service === 'F' ? 'capacity' : 'current'}>{String(segment.level_of_service ?? t('result.not_calculated'))}</StatusBadge></td></tr>)}
+            {segments.map((segment) => <tr key={String(segment.segment_id)}><td>{String(segment.segment_id)}</td><td>{facilityEnumLabel('segment_type', segment.segment_type, t)}</td><td>{segment.average_speed === null || segment.average_speed === undefined ? t('result.not_calculated') : `${Number(segment.average_speed).toFixed(1)} ${String(segment.average_speed_unit)}`}</td><td>{segment.follower_density === null || segment.follower_density === undefined ? t('result.not_calculated') : `${Number(segment.follower_density).toFixed(1)} ${String(segment.follower_density_unit)}`}</td><td><StatusBadge tone={segment.level_of_service === 'F' ? 'capacity' : 'current'}>{String(segment.level_of_service ?? t('result.not_calculated'))}</StatusBadge></td></tr>)}
           </tbody></table>
         </div>
         <div className="result-actions">
@@ -968,7 +1084,7 @@ export function FacilityResultPanel({
         </div>
       </EngineeringSection>
       <DetailsDisclosure title={t('result.evidence_title')}>
-        <div className="evidence-grid"><div><span className="section-label">{t('result.assumptions')}</span><ul>{result.result.assumptions.map((item) => <li key={item}>{item}</li>)}</ul></div><div><span className="section-label">{t('result.warnings')}</span><ul>{result.result.warnings.length ? result.result.warnings.map((item) => <li key={item}>{item}</li>) : <li>{t('result.no_warnings')}</li>}</ul></div><div><span className="section-label">{t('result.fingerprint')}</span><code>{result.calculation_fingerprint}</code></div></div>
+        <div className="evidence-grid"><div><span className="section-label">{t('result.assumptions')}</span><ul>{result.result.assumptions.map((item) => <li key={item}>{item}</li>)}</ul></div><div><span className="section-label">{t('result.warnings')}</span><ul>{rawWarnings(result).length ? rawWarnings(result).map((item) => <li key={item}>{item}</li>) : <li>{t('result.no_warnings')}</li>}</ul></div><div><span className="section-label">{t('result.fingerprint')}</span><code>{result.calculation_fingerprint}</code></div></div>
       </DetailsDisclosure>
     </div>
   );
@@ -989,6 +1105,46 @@ function ResultPlaceholder({
       <div className="result-inspector-heading"><div><span className="section-label">{t('result.inspector_label')}</span><h2 id="result-inspector-title" tabIndex={-1}>{ready ? t('status.ready_to_calculate') : t('result.not_calculated')}</h2></div>{exampleValues ? <StatusBadge tone="neutral">{t('workflow.example_values')}</StatusBadge> : null}</div>
       <p>{ready ? t('result.ready_supporting') : t('result.missing_supporting', { count: requiredCount })}</p>
     </section>
+  );
+}
+
+function validationFieldLabel(issue: ValidationIssue, fields: WorkflowField[], inputs: DisplayedInputs, translate: Translate): string {
+  if (!issue.field) return translate('validation.input');
+  const rowMatch = issue.field.match(/^rows\[(\d+)\]\.(.+)$/);
+  if (rowMatch) {
+    const rowIndex = Number(rowMatch[1]);
+    const row = Array.isArray(inputs.rows) ? inputs.rows[rowIndex] as FacilityRow | undefined : undefined;
+    const segment = row?.segment_name || translate('validation.segment_number', { number: rowIndex + 1 });
+    return translate('validation.facility_field', {
+      segment,
+      field: translate(`facility.col.${rowMatch[2]}`),
+    });
+  }
+  const field = fields.find((candidate) => candidate.key === issue.field);
+  return field ? translate(field.label_key) : translate('validation.input');
+}
+
+export function validationMessage(issue: ValidationIssue, fields: WorkflowField[], inputs: DisplayedInputs, translate: Translate): string {
+  const field = validationFieldLabel(issue, fields, inputs, translate);
+  if (issue.code === 'unsupported_scope') return translate('validation.outside_qualified_scope', { field });
+  if (issue.code === 'invalid_template') return translate('api.invalid_template');
+  return translate('validation.invalid_value', { field });
+}
+
+function ValidationAuditEvidence({ issues }: { issues: ValidationIssue[] }): ReactElement | null {
+  const { t } = useI18n();
+  if (!issues.length) return null;
+  return (
+    <DetailsDisclosure title={t('validation.technical_title')}>
+      <dl className="technical-facts validation-audit-evidence">
+        {issues.map((issue, index) => (
+          <div key={`${issue.code}-${issue.field ?? 'workflow'}-${index}`}>
+            <dt>{t('validation.technical_issue')}</dt>
+            <dd><code>{issue.code}</code><code>{issue.field ?? '—'}</code><code>{issue.message}</code></dd>
+          </div>
+        ))}
+      </dl>
+    </DetailsDisclosure>
   );
 }
 
@@ -1315,14 +1471,15 @@ export function AnalysisWorkflow({ method, onBack, onDirtyChange, onProjectSaved
     }
     return isFacility ? undefined : `${isMultilane ? 'multilane' : method.method_id}-${field}`;
   };
+  const validationFields = starting?.fields ?? templates?.fields ?? [];
   const allFieldErrors = new Map(
     (validation?.errors ?? [])
       .filter((issue) => issue.field)
-      .map((issue) => [issue.field as string, issue.message]),
+      .map((issue) => [issue.field as string, validationMessage(issue, validationFields, inputs, t)]),
   );
   const fieldErrors = new Map([...allFieldErrors].filter(([field]) => submitAttempted || touchedFields.has(field)));
   const errors = submitAttempted
-    ? (validation?.errors.map((issue) => ({ message: issue.message, targetId: targetIdForIssue(issue.field) })) ?? [])
+    ? (validation?.errors.map((issue) => ({ message: validationMessage(issue, validationFields, inputs, t), targetId: targetIdForIssue(issue.field) })) ?? [])
     : [];
   useEffect(() => {
     if (!focusValidationRequest || !focusValidationRef.current || !errors.length) return undefined;
@@ -1360,6 +1517,7 @@ export function AnalysisWorkflow({ method, onBack, onDirtyChange, onProjectSaved
       {templates && starting && isFacility ? <div className="facility-workspace">
         <FacilityForm templates={templates} starting={starting} inputs={inputs} unitSystem={unitSystem} onUnitSystem={changeUnitSystem} onTemplate={changeTemplate} fieldErrors={fieldErrors} onFieldTouch={markFieldTouched} onChange={(rows) => updateInputs({ rows })} />
         <ErrorSummary errors={errors} />
+        {submitAttempted ? <ValidationAuditEvidence issues={validation?.errors ?? []} /> : null}
         {!result ? <ReadinessBar ready={Boolean(validation?.valid)} requiredCount={requiredCount} disabled={working} working={activeOperation === 'calculate'} actionLabel={t('action.calculate')} onAction={handleCalculate} /> : null}
         {result ? <FacilityResultPanel result={result} stale={isStale} workingAction={activeOperation} onExport={handleExport} onSave={handleSave} onRecalculate={handleCalculate} saveLabel={onScenarioResultSaved ? t('action.save_scenario') : undefined} /> : <ResultPlaceholder ready={Boolean(validation?.valid)} requiredCount={requiredCount} exampleValues={exampleResult} />}
       </div> : null}
@@ -1370,6 +1528,7 @@ export function AnalysisWorkflow({ method, onBack, onDirtyChange, onProjectSaved
               ? <MultilaneForm templates={templates} starting={starting} inputs={inputs} unitSystem={unitSystem} onUnitSystem={changeUnitSystem} onTemplate={changeTemplate} fieldErrors={fieldErrors} sectionIssues={sectionIssues} onFieldTouch={markFieldTouched} onChange={onChangeFromForm} />
               : <Phase3Form methodId={method.method_id} templates={templates} starting={starting} inputs={inputs} unitSystem={unitSystem} onUnitSystem={changeUnitSystem} onTemplate={changeTemplate} fieldErrors={fieldErrors} sectionIssues={sectionIssues} onFieldTouch={markFieldTouched} onChange={onChangeFromForm} />}
             <ErrorSummary errors={errors} />
+            {submitAttempted ? <ValidationAuditEvidence issues={validation?.errors ?? []} /> : null}
             {!result ? <ReadinessBar ready={Boolean(validation?.valid)} requiredCount={requiredCount} disabled={working} working={activeOperation === 'calculate'} actionLabel={t('action.calculate')} onAction={handleCalculate} /> : <ReadinessBar ready={!isStale} showAction={false} statusLabel={isStale ? t('state.stale_title') : t('status.result_current')} />}
           </div>
           <div className="workflow-result-inspector" ref={resultInspectorRef} tabIndex={-1}>

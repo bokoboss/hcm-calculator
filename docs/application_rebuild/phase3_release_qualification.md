@@ -85,6 +85,45 @@ unchanged.
 - English/Thai catalog parity, responsive layout, and narrow-screen overflow
   are covered by browser tests and committed visual evidence.
 
+## Final bounded presentation remediation (F-01 / F-02 / F-03)
+
+The final remediation is deliberately presentation-only. It does not change
+Python calculations, qualified inputs, normalized inputs, method identity,
+Project v2, fingerprints, exports, or current/stale semantics.
+
+- **F-01 — presentation mapping:** all 16 rendered Facility columns now have
+  exact English/Thai catalog labels. Facility segment, terrain, alignment, and
+  passing-lane values use deterministic display mappings; Facility result rows
+  use the same localized segment labels. Normal validation summaries use a
+  localized, human-readable field label, while raw code/path/message remain in
+  collapsed technical validation evidence. Merge/Diverge maximum-desirable
+  warnings select a local summary from method, result state, and the qualified
+  evidence flag; the original Python warning remains unchanged in collapsed
+  audit evidence.
+- **F-02 — display precision:** numeric controls hold the original numerical
+  payload and use a local display/draft string only. Counts, PHF, percentages,
+  dimensions, speeds, and other numeric fields apply their own practical
+  precision; focused edits retain a natural draft and submit the exact edited
+  number. Rendering or unit conversion cannot alter a request or make a
+  result stale.
+- **F-03 — Facility identity:** the ordered Facility table now freezes both
+  Segment ID and Segment name with explicit widths/offsets, opaque hover-aware
+  backgrounds, header/cell layering, divider shadow, and visible focused
+  controls. Horizontal scrolling remains inside the table.
+
+Focused Chromium regression coverage captured and manually reviewed the
+following evidence:
+
+- [Facility EN, 1366 left](visual-reference/final-facility-en-1366-left.png)
+- [Facility EN, 1366 far right](visual-reference/final-facility-en-1366-right.png)
+- [Facility EN, 1024 far right](visual-reference/final-facility-en-1024-right.png)
+- [Facility TH, 1366](visual-reference/final-facility-th-1366.png)
+- [Readable validation recovery](visual-reference/final-validation-readable.png)
+- [Thai Merge warning and audit evidence](visual-reference/final-th-warning.png)
+- [Converted segment values](visual-reference/final-converted-segment-values.png)
+- [Converted Facility values](visual-reference/final-converted-facility-values.png)
+- [Thai mobile result and Export, 390 px](visual-reference/final-th-mobile-result-export-390.png)
+
 ## Qualified engineering assets
 
 The rebuilt UI serves one packaged source of truth from `src/hcmcalc/ui/assets`
@@ -121,7 +160,7 @@ journeys, and the whole-product workstation UAT. The final run was:
 
 ```text
 pnpm --dir frontend exec playwright test --project=chromium --workers=1 --reporter=line
-30 passed
+33 passed
 ```
 
 The pass covers direct routes and chooser navigation; browser Back/Forward and
@@ -167,11 +206,11 @@ separately; none is replaced by deleted historical mockups.
   `src/hcmcalc/ui/static` before the wheel build. The package entrypoint and
   its two hashed React assets are therefore current without Node/Vite at
   runtime.
-- Fresh wheel: `hcm_calculator-0.9.0-py3-none-any.whl`, 1,986,776 bytes,
+- Fresh wheel: `hcm_calculator-0.9.0-py3-none-any.whl`, 1,988,735 bytes,
   SHA-256
-  `1e934b418cf26dc0a0e749b0c2a867adf42fde2e6a0e57456c452a15cf9aa6dc`.
-  Its compiled-SPA entries are `index.html`, `index-CMd6T3Zt.css`, and
-  `index-BC_o5WcY.js`, alongside the required packaged engineering assets.
+  `528457DCA4D0DD1D4692400F94D854FC03CE87BC9D9B58C4843C73250431AAD9`.
+  Its active compiled-SPA entries are `index.html`, `index-DC0yBpQe.css`, and
+  `index-3qy3sA1p.js`, alongside the required packaged engineering assets.
 - A fresh isolated Python 3.12 wheel runtime served `/` with HTTP 200, the
   current packaged bundle, health `ok`, seven methods, and a packaged Weaving
   image from a loopback-only API.
@@ -196,9 +235,9 @@ separately; none is replaced by deleted historical mockups.
 | Generated API types | `pnpm --dir frontend run generate:api` then `git diff --exit-code -- frontend/src/api/openapi.d.ts` | PASS |
 | Diff hygiene | `git diff --check` | PASS |
 | Frontend types | `pnpm --dir frontend run typecheck` | PASS |
-| Frontend units | `pnpm --dir frontend run test` | **17 passed** across 7 files |
-| Frontend build | `pnpm --dir frontend run build` | PASS; Vite emitted 359.83 kB JS / 36.58 kB CSS |
-| Browser/UAT | `pnpm --dir frontend exec playwright test --project=chromium --workers=1 --reporter=line` | **30 passed** |
+| Frontend units | `pnpm --dir frontend run test` | **21 passed** across 7 files |
+| Frontend build | `pnpm --dir frontend run build` | PASS; Vite emitted 366.89 kB JS / 37.36 kB CSS |
+| Browser/UAT | `pnpm --dir frontend exec playwright test --project=chromium --workers=1 --reporter=line` | **33 passed** |
 | Packaged SPA resource test | `python -m pytest tests/unit/test_package_assets.py` | **3 passed** |
 | Wheel | fresh wheel to the temporary release-qualification directory | PASS; SHA above |
 | Installed runtime | fresh isolated-wheel HTTP smoke | PASS; current root bundle, health, methods, and engineering asset |

@@ -42,4 +42,28 @@ describe('localization catalog', () => {
     expect(translate('en', 'new_analysis.available_count', { count: 0 })).toContain('0');
     expect(translate('en', 'missing.key')).toBe('missing.key');
   });
+
+  it('provides every rendered Facility column and remediation label in both locales', () => {
+    const facilityColumns = [
+      'segment_id', 'segment_name', 'segment_type', 'segment_length', 'posted_speed',
+      'analysis_direction_volume_veh_h', 'opposing_direction_volume_veh_h', 'peak_hour_factor',
+      'heavy_vehicle_percent', 'terrain_type', 'grade_percent', 'horizontal_alignment',
+      'lane_width', 'shoulder_width', 'access_point_density', 'passing_lane_role',
+    ];
+    const remediationKeys = [
+      ...facilityColumns.map((column) => `facility.col.${column}`),
+      'facility.option.passing_lane_role.none',
+      'facility.option.passing_lane_role.passing_lane',
+      'facility.option.passing_lane_role.downstream_affected',
+      'warning.merge.maximum_desirable_flow',
+      'warning.diverge.maximum_desirable_flow',
+      'validation.invalid_value',
+      'validation.outside_qualified_scope',
+    ];
+    for (const key of remediationKeys) {
+      expect(catalogs.en[key]).toBeTruthy();
+      expect(catalogs.th[key]).toBeTruthy();
+      expect(translate('th', key)).not.toBe(key);
+    }
+  });
 });
