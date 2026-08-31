@@ -4,7 +4,7 @@ import type { WorkflowCalculationResponse } from '../api/types';
 import { AppShell } from '../components/primitives';
 import { I18nProvider } from '../i18n';
 import { translate } from '../i18n/catalog';
-import { facilityEnumLabel, formatInputValue, ResultPanel, validationMessage, warningSummary } from './AnalysisWorkflow';
+import { facilityEnumLabel, facilityTemplateLabel, formatInputValue, ResultPanel, validationMessage, warningSummary } from './AnalysisWorkflow';
 
 const capacityFailureResult: WorkflowCalculationResponse = {
   method_id: 'multilane_segment',
@@ -91,6 +91,12 @@ describe('final presentation remediation', () => {
     );
     expect(message).toBe('Review Approach — Access-point density and enter a valid value.');
     expect(message).not.toContain('access_point_density');
+  });
+
+  it('maps both qualified Facility template IDs through the active locale', () => {
+    expect(facilityTemplateLabel('level_example_3', 'backend label', (key) => translate('en', key))).toBe('Facility template — Chapter 26 Example 3');
+    expect(facilityTemplateLabel('mountainous_example_4', 'backend label', (key) => translate('th', key))).toBe('แม่แบบสิ่งอำนวยความสะดวก — ตัวอย่างบทที่ 26 ข้อ 4');
+    expect(facilityTemplateLabel('unknown_template', 'backend label', (key) => translate('th', key))).toBe('backend label');
   });
 
   it('selects a deterministic localized warning summary while raw engine evidence remains unchanged', () => {

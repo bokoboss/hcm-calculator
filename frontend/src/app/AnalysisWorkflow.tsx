@@ -307,6 +307,15 @@ export function facilityEnumLabel(field: string, value: unknown, translate: Tran
   return key ? translate(key) : translate('facility.unknown_template_value');
 }
 
+export function facilityTemplateLabel(templateId: string, fallback: string, translate: Translate): string {
+  const keyByTemplateId: Record<string, string> = {
+    level_example_3: 'facility.template.level_example_3',
+    mountainous_example_4: 'facility.template.mountainous_example_4',
+  };
+  const key = keyByTemplateId[templateId];
+  return key ? translate(key) : fallback;
+}
+
 function scopeFor(method: MethodDefinition, translate: (key: string) => string): string {
   const scopeKey = method.name_key.replace(/\.name$/, '.scope');
   const translated = translate(scopeKey);
@@ -982,7 +991,7 @@ export function FacilityForm({
       <div className="workflow-controls">
         <Field id="facility-template" label={t('workflow.facility_template')} required>
           <select id="facility-template" value={starting.template_id} onChange={(event) => onTemplate(event.target.value)}>
-            {templates.templates.map((template) => <option value={template.template_id} key={template.template_id}>{template.label}</option>)}
+            {templates.templates.map((template) => <option value={template.template_id} key={template.template_id}>{facilityTemplateLabel(template.template_id, template.label, t)}</option>)}
           </select>
         </Field>
         <Field id="facility-unit-system" label={t('workflow.unit_system')} required>

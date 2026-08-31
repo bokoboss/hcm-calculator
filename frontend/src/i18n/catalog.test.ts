@@ -55,6 +55,8 @@ describe('localization catalog', () => {
       'facility.option.passing_lane_role.none',
       'facility.option.passing_lane_role.passing_lane',
       'facility.option.passing_lane_role.downstream_affected',
+      'facility.template.level_example_3',
+      'facility.template.mountainous_example_4',
       'warning.merge.maximum_desirable_flow',
       'warning.diverge.maximum_desirable_flow',
       'validation.invalid_value',

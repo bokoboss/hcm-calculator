@@ -235,9 +235,9 @@ separately; none is replaced by deleted historical mockups.
 | Generated API types | `pnpm --dir frontend run generate:api` then `git diff --exit-code -- frontend/src/api/openapi.d.ts` | PASS |
 | Diff hygiene | `git diff --check` | PASS |
 | Frontend types | `pnpm --dir frontend run typecheck` | PASS |
-| Frontend units | `pnpm --dir frontend run test` | **21 passed** across 7 files |
-| Frontend build | `pnpm --dir frontend run build` | PASS; Vite emitted 366.89 kB JS / 37.36 kB CSS |
-| Browser/UAT | `pnpm --dir frontend exec playwright test --project=chromium --workers=1 --reporter=line` | **33 passed** |
+| Frontend units | `pnpm --dir frontend run test` | **22 passed** across 7 files |
+| Frontend build | `pnpm --dir frontend run build` | PASS; Vite emitted 367.59 kB JS / 37.36 kB CSS |
+| Browser/UAT | `pnpm --dir frontend exec playwright test --project=chromium --workers=1 --reporter=line` | **34 passed** |
 | Packaged SPA resource test | `python -m pytest tests/unit/test_package_assets.py` | **3 passed** |
 | Wheel | fresh wheel to the temporary release-qualification directory | PASS; SHA above |
 | Installed runtime | fresh isolated-wheel HTTP smoke | PASS; current root bundle, health, methods, and engineering asset |
@@ -249,3 +249,34 @@ The release candidate preserves Python numerical authority, qualified engine
 behavior, method identifiers/contracts, Project v2/fingerprint semantics,
 handoff versus capacity distinctions, no-rerun imports/exports/compare, and
 Streamlit compatibility. It does not claim methodology or scope expansion.
+
+## F-01 localization micro-remediation closeout
+
+After the targeted independent closure review identified one remaining Thai
+Facility selector label, the selector now maps only the qualified template IDs
+`level_example_3` and `mountainous_example_4` through presentation catalog keys.
+The exact labels are:
+
+- English: `Facility template — Chapter 26 Example 3`
+- Thai: `แม่แบบสิ่งอำนวยความสะดวก — ตัวอย่างบทที่ 26 ข้อ 3`
+- English: `Facility template — Chapter 26 Example 4`
+- Thai: `แม่แบบสิ่งอำนวยความสะดวก — ตัวอย่างบทที่ 26 ข้อ 4`
+
+The underlying IDs, Python metadata labels, source/basis/evidence, numerical
+inputs, calculations, fingerprints, Project v2 semantics, exports, and warning
+or capacity states are unchanged. Focused unit coverage is **22 passed** and
+the focused Facility localization Chromium test is **1 passed**. The full
+serial Chromium suite is **34 passed**.
+
+Fresh visual evidence:
+
+- [Facility template selector, English, 1366px](visual-reference/final-facility-template-en.png)
+- [Facility template selector, Thai, 1366px](visual-reference/final-facility-template-th.png)
+
+The synchronized package bundle is `index-hlbGBPYR.js`. A fresh wheel was
+built as `hcm_calculator-0.9.0-py3-none-any.whl` (1,988,879 bytes), SHA-256
+`0B0B9C17FA2EDA60ADC7C7EA45603A38FA06C68517DCA13237B00A163BB7252D`.
+Its isolated installed runtime served `/` with HTTP 200, `/api/v1/health`
+with HTTP 200, exposed seven methods, and served the new packaged bundle with
+the Thai presentation label. The final exact-head CI run for this micro-fix is
+reported in the closeout below and must be green in all four required jobs.
