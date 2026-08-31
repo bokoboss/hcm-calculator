@@ -81,7 +81,9 @@ def prune_stale_record_entries(app_root: Path) -> list[str]:
                 kept.append(row)
                 continue
             relative = PurePosixPath(row[0])
-            candidate = (record.parent / Path(*relative.parts)).resolve()
+            # pip writes RECORD paths relative to the installation root,
+            # rather than relative to the containing .dist-info directory.
+            candidate = (app_root / Path(*relative.parts)).resolve()
             try:
                 candidate.relative_to(app_root)
             except ValueError:
