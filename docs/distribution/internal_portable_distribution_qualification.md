@@ -1,7 +1,7 @@
 # Internal Portable Distribution Qualification
 
-Status: implementation and local qualification in progress. Company-machine
-UAT status: **PENDING HUMAN UAT**.
+Status: implementation and local qualification complete. Company-machine UAT
+status: **PENDING HUMAN UAT**.
 
 This record covers GitHub Issue [#142](https://github.com/bokoboss/hcm-calculator/issues/142)
 and the additional internal portable distribution path. It does not change HCM
@@ -14,9 +14,10 @@ developer/source launchers.
 - Accepted source baseline: `28c1a76ad379c332a5c50fc756bdcdf6975cd957`
 - Implementation branch: `codex/internal-portable-distribution`
 - Artifact version: `0.9.0`
-- Artifact source commit: recorded in `runtime/RUNTIME-PROVENANCE.json`
-- Final repository HEAD at record closeout: recorded below after the final
-  qualification-document commit.
+- Artifact source commit: `99d594cd0c536e0f0c8853ae3bc612ea9d02ecab`
+- Final repository HEAD at record closeout: the commit that adds this
+  qualification-document closeout; the exact SHA is reported with the PR
+  because this document cannot embed its own Git object ID.
 
 ## Runtime provenance
 
@@ -35,7 +36,11 @@ developer/source launchers.
 
 - Build command: `.\scripts\build_internal_portable.ps1`
 - Final ZIP: `HCM-Calculator-v0.9.0-Internal-Windows-x64.zip`
-- ZIP path/size/SHA-256: recorded from the final local build below.
+- ZIP path: `.tmp/internal-portable/HCM-Calculator-v0.9.0-Internal-Windows-x64.zip`
+- ZIP size: `22,257,538` bytes
+- ZIP SHA-256: `6c1ad5a11119d3adcbb30cece3186ad7d1b0f607d9fab7c0cb374db0c1f0aae6`
+- Two independent clean builds produced identical staged file sets (3,117
+  files), `SHA256SUMS.txt`, and ZIP SHA-256 values.
 - ZIP payload is generated under an ignored `.tmp/internal-portable/` path and
   is not committed or uploaded as a public GitHub artifact.
 - ZIP container metadata is normalized by the deterministic ZIP helper; the
@@ -71,7 +76,7 @@ HCM-Calculator-v0.9.0-Internal-Windows-x64/
   installed into `app`.
 - The builder generates `DEPENDENCY-INVENTORY.json` from staged distribution
   metadata, including versions, license metadata, project URLs, and practical
-  license-file copies.
+  license-file copies (15 third-party license files copied in the final stage).
 - `licenses/PYTHON-LICENSE.txt` is copied from the bundled runtime.
 - `licenses/THIRD-PARTY-NOTICES.txt` records the observed metadata. No legal
   review or legal-compliance claim is made.
@@ -80,15 +85,15 @@ HCM-Calculator-v0.9.0-Internal-Windows-x64/
 
 | Gate | Result | Evidence |
 |---|---|---|
-| G1 deterministic build | Pending local closeout | Two-build normalized staged-file comparison and `SHA256SUMS.txt` |
-| G2 no Python/Node prerequisite | Pending local closeout | Bundled `runtime/python.exe`; minimal PATH smoke |
-| G3 offline execution | Pending local closeout | Loopback smoke with external proxy blocked |
-| G4 seven-method smoke | Pending local closeout | Bundled-runtime API smoke against the accepted reference identities/values |
-| G5 save/load/export | Pending local closeout | Project v2 current/stale/recalculate and CSV/XLSX/Markdown/JSON smoke |
-| G6 isolation/security | Pending local closeout | Explicit 127.0.0.1 launcher/API and no package-manager runtime path |
-| G7 artifact hygiene | Pending local closeout | ZIP inventory and validator exclusion checks |
-| G8 provenance/licenses | Pending local closeout | Runtime provenance, inventory, notices, checksums |
-| G9 normal regression | Pending local closeout | Python, API/OpenAPI, compileall, frontend, Playwright, diff checks |
+| G1 deterministic build | PASS | Two independent clean builds matched at 3,117 staged files, `SHA256SUMS.txt`, and ZIP SHA-256 `6c1ad5a1…` |
+| G2 no Python/Node prerequisite | PASS | Bundled `runtime/python.exe` 3.12.14; launcher and validator used `PATH=C:\Windows\System32` |
+| G3 offline execution | PASS | Packaged smoke completed with external proxies blocked and loopback proxy bypassed |
+| G4 seven-method smoke | PASS | Bundled-runtime API smoke matched all seven accepted engine identities, LOS values, and numeric evidence below |
+| G5 save/load/export | PASS | Project v2 current/stale/recalculate plus CSV/XLSX/Markdown/JSON exports; exports reported `recalculated=false` |
+| G6 isolation/security | PASS locally | Launcher/API bound to `127.0.0.1:8765`; no install, elevation, registry/PATH, firewall, service, or unrelated-process termination |
+| G7 artifact hygiene | PASS | ZIP validator found no source-control, test, cache, Node/Vite, Streamlit, credential, or package-manager payloads |
+| G8 provenance/licenses | PASS | Exact runtime pin, SHA-256 provenance, dependency inventory, 15 third-party license copies, notices, and checksums |
+| G9 normal regression | PARTIAL — known baseline limitation | 1,162 pytest pass; OpenAPI snapshot, compileall, frontend typecheck/unit/build pass; Playwright 33 passed/1 failed on an existing error-summary expectation |
 | G10 company-machine UAT | **PENDING HUMAN UAT** | No representative company-machine evidence is available in this environment |
 
 Portable validation must report `runtime/python.exe` as `sys.executable` and
@@ -97,20 +102,53 @@ binds the application to `127.0.0.1:8765`; it does not modify registry/PATH,
 install a service, create firewall rules, elevate privileges, or kill unrelated
 processes.
 
+Seven-method smoke results:
+
+| Method | Engine identity | LOS | Numeric evidence |
+|---|---|---|---|
+| Two-Lane Segment | `hcm7_ch15_two_lane_motorized` | D | follower density `10.08622955622713` |
+| Two-Lane Facility | `hcm7_ch15_two_lane_motorized` | C | facility follower density `7.286363636363637` |
+| Multilane Segment | `hcm7_multilane_los` | C | density `18.08754208754209` |
+| Basic Freeway Segment | `hcm7_basic_freeway_segment` | C | density `18.776944117286437` |
+| Weaving Segment | `hcm7_v70_freeway_weaving_segment` | C | density `26.284440902466354` |
+| Merge Segment | `hcm7_v70_freeway_merge_segment` | D | density `28.166583333333328` |
+| Diverge Segment | `hcm7_v70_freeway_diverge_segment` | D | density `31.1264773844` |
+
+Local regression detail:
+
+- `python -m pytest`: `1162 passed`.
+- `python -m compileall -q src tests scripts`: pass.
+- `python scripts/check_openapi_contract.py`: snapshot matches FastAPI.
+- Frontend typecheck, 7 frontend unit files / 22 tests, and production build:
+  pass.
+- Full Playwright suite: 33 passed, 1 failed. The failure is the existing
+  `frontend/playwright/phase3.final-remediation.spec.ts` expectation for an
+  error-summary message after invalid access-point-density input; no frontend
+  source or test was changed for this portable-only issue.
+- Final extracted ZIP validation from a path containing spaces, offline and
+  with no Python/Node on `PATH`: pass. Direct `.bat` launcher smoke returned
+  health `ok` and seven discoverable methods, then stopped cleanly with no
+  listener left on port 8765.
+
 ## Closeout values
 
-To be filled from the clean build and regression run:
-
-- Artifact build source commit: `PENDING`
-- Final repository HEAD: `PENDING`
-- ZIP size: `PENDING`
-- ZIP SHA-256: `PENDING`
-- Bundled `sys.executable`: `PENDING`
-- Seven-method result table: `PENDING`
-- Save/load/export result: `PENDING`
-- Offline/no-Python/no-Node result: `PENDING`
-- Artifact hygiene result: `PENDING`
-- CI run/status: `PENDING`
+- Artifact build source commit: `99d594cd0c536e0f0c8853ae3bc612ea9d02ecab`
+- Final repository HEAD: the closeout-document commit; exact SHA is reported
+  in the PR/agent closeout.
+- ZIP size: `22,257,538` bytes
+- ZIP SHA-256: `6c1ad5a11119d3adcbb30cece3186ad7d1b0f607d9fab7c0cb374db0c1f0aae6`
+- Bundled `sys.executable`: `runtime/python.exe` (CPython `3.12.14`, AMD64)
+- Seven-method result table: all seven pass; see the table above.
+- Save/load/export result: Project v2 current → stale → recalculated current;
+  CSV/XLSX/Markdown/JSON exports pass without recalculation.
+- Offline/no-Python/no-Node result: pass in validator and extracted path with
+  spaces; direct launcher health/method smoke also pass.
+- Artifact hygiene result: pass; 3,117 files and 15 copied third-party license
+  files, with no forbidden payloads.
+- CI run/status: recorded after PR creation; no merge is authorized here.
 - Company-machine UAT: **PENDING HUMAN UAT**
-- Known warnings: unsigned/unapproved executables may be blocked by corporate
-  endpoint policy; if observed, record the exact policy message and contact IT.
+- Known warnings: Starlette deprecation warnings are emitted by the qualified
+  application dependency; the existing Playwright baseline failure remains
+  documented above; unsigned/unapproved executables may be blocked by
+  corporate endpoint policy. If observed, record the exact policy message and
+  contact IT.
