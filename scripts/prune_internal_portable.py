@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import csv
 from pathlib import Path
+from pathlib import PurePosixPath
 
 
 TEST_DIRECTORY_NAMES = {"test", "tests"}
@@ -63,6 +65,42 @@ def prune(app_root: Path) -> list[str]:
     return sorted(removed)
 
 
+def prune_stale_record_entries(app_root: Path) -> list[str]:
+    """Remove RECORD rows for files intentionally absent from the stage."""
+
+    app_root = app_root.resolve()
+    changed: list[str] = []
+    for record in sorted(app_root.rglob("RECORD")):
+        if not record.parent.name.endswith(".dist-info"):
+            continue
+        rows = list(csv.reader(record.read_text(encoding="utf-8").splitlines()))
+        kept: list[list[str]] = []
+        removed = False
+        for row in rows:
+            if not row or not row[0]:
+                kept.append(row)
+                continue
+            relative = PurePosixPath(row[0])
+            candidate = (record.parent / Path(*relative.parts)).resolve()
+            try:
+                candidate.relative_to(app_root)
+            except ValueError:
+                exists_in_stage = False
+            else:
+                exists_in_stage = candidate.is_file()
+            if exists_in_stage:
+                kept.append(row)
+            else:
+                removed = True
+        if not removed:
+            continue
+        with record.open("w", encoding="utf-8", newline="") as handle:
+            writer = csv.writer(handle, lineterminator="\n")
+            writer.writerows(kept)
+        changed.append(record.relative_to(app_root).as_posix())
+    return changed
+
+
 def prune_runtime(runtime_root: Path) -> list[str]:
     runtime_root = runtime_root.resolve()
     if not runtime_root.is_dir():
@@ -106,6 +144,10 @@ def main() -> int:
     print(f"Pruned {len(removed)} package test payload entries from {args.app_root.resolve()}")
     for relative in removed:
         print(f"  removed {relative}")
+    record_files = prune_stale_record_entries(args.app_root)
+    print(f"Pruned stale RECORD entries from {len(record_files)} distribution metadata files")
+    for relative in record_files:
+        print(f"  updated {relative}")
     if args.runtime_root:
         runtime_removed = prune_runtime(args.runtime_root)
         print(
