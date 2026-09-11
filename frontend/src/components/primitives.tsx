@@ -20,6 +20,19 @@ export type MethodNavigationId =
   | 'merge_segment'
   | 'diverge_segment';
 
+function isIpv4Loopback(hostname: string): boolean {
+  const octets = hostname.split('.');
+  return octets.length === 4 && Number(octets[0]) === 127 && octets.every((octet) => /^\d+$/.test(octet) && Number(octet) <= 255);
+}
+
+export function runtimeStatusKey(hostname: string): 'status.local_runtime' | 'status.vercel_runtime' | 'status.hosted_runtime' {
+  const host = hostname.toLowerCase();
+  if (host === 'localhost' || host.endsWith('.localhost') || isIpv4Loopback(host) || host === '::1' || host === '[::1]' || host === '0.0.0.0') {
+    return 'status.local_runtime';
+  }
+  return host.endsWith('.vercel.app') ? 'status.vercel_runtime' : 'status.hosted_runtime';
+}
+
 export function AppHeader({
 }: Record<string, never>): ReactElement {
   const { locale, setLocale, t } = useI18n();
@@ -153,7 +166,7 @@ export function SidebarNavigation({
   );
 }
 
-export function StatusBar({ apiConnected }: { apiConnected: boolean }): ReactElement {
+export function StatusBar({ apiConnected, hostname = window.location.hostname }: { apiConnected: boolean; hostname?: string }): ReactElement {
   const { t } = useI18n();
   return (
     <footer className="status-bar" data-slot="status-bar" aria-live="polite">
@@ -161,7 +174,7 @@ export function StatusBar({ apiConnected }: { apiConnected: boolean }): ReactEle
       <span className="status-divider" aria-hidden="true" />
       <span className="status-item">{apiConnected ? t('status.api_connected') : t('status.api_unavailable')}</span>
       <span className="status-spacer" />
-      <span className="status-item">{t('status.local_runtime')}</span>
+      <span className="status-item">{t(runtimeStatusKey(hostname))}</span>
     </footer>
   );
 }
