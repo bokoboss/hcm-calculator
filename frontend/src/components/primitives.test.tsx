@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import {
   AppShell,
+  AppHeader,
   CapacityFailurePanel,
   ChoiceGroup,
   DetailsDisclosure,
@@ -13,12 +14,32 @@ import {
   PageHeader,
   ReadinessBar,
   ResultHero,
+  StatusBar,
   StaleResultPanel,
   WarningPanel,
+  runtimeStatusKey,
 } from './primitives';
 import { I18nProvider } from '../i18n';
 
 describe('R0 shared design-system primitives', () => {
+  it('classifies runtime hosts without build-time configuration', () => {
+    expect(runtimeStatusKey('localhost')).toBe('status.local_runtime');
+    expect(runtimeStatusKey('127.0.0.1')).toBe('status.local_runtime');
+    expect(runtimeStatusKey('::1')).toBe('status.local_runtime');
+    expect(runtimeStatusKey('hcm-calculator-bice.vercel.app')).toBe('status.vercel_runtime');
+    expect(runtimeStatusKey('example.company.com')).toBe('status.hosted_runtime');
+  });
+
+  it('renders the hostname-derived runtime label in both locales', () => {
+    window.localStorage.clear();
+    render(<I18nProvider><AppHeader /><StatusBar apiConnected hostname="hcm-calculator-bice.vercel.app" /></I18nProvider>);
+
+    expect(screen.getByText('Hosted / Vercel')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Thai' }));
+    expect(screen.getByText('โฮสต์ / Vercel')).toBeInTheDocument();
+    window.localStorage.clear();
+  });
+
   it('renders semantic shell landmarks and skip target', () => {
     render(<I18nProvider><AppShell activePage="home" onNavigate={() => undefined} apiConnected>{<PageHeader title="Home" />}</AppShell></I18nProvider>);
     expect(screen.getAllByRole('banner')).toHaveLength(2);

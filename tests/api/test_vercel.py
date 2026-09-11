@@ -1,5 +1,6 @@
 import importlib
 from pathlib import Path
+import re
 import tomllib
 
 from fastapi.testclient import TestClient
@@ -35,7 +36,8 @@ def test_vercel_adapter_keeps_routes_and_reports_preview_identity(monkeypatch) -
     assert root.status_code == 200
     assert '<div id="root"></div>' in root.text
     assert client.get("/reference/methods/multilane_segment").status_code == 200
-    assert client.get("/assets/index-hlbGBPYR.js").status_code == 200
+    asset = re.search(r'(?:src|href)="(/assets/[^\"]+)"', root.text)
+    assert asset and client.get(asset.group(1)).status_code == 200
     assert client.get("/engineering-assets/ramp_influence/merge_right_on_ramp.svg").status_code == 200
     missing_api = client.get("/api/v1/not-a-route")
     assert missing_api.status_code == 404
