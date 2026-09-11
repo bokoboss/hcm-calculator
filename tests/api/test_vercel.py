@@ -7,12 +7,13 @@ from fastapi.testclient import TestClient
 from hcmcalc.api.vercel import app
 
 
-def test_vercel_entrypoint_targets_installed_package() -> None:
+def test_vercel_entrypoint_targets_source_adapter() -> None:
     with (Path(__file__).parents[2] / "pyproject.toml").open("rb") as file:
         entrypoint = tomllib.load(file)["tool"]["vercel"]["entrypoint"]
     module, name = entrypoint.split(":")
 
-    assert module == "hcmcalc.api.vercel"
+    assert module == "vercel_app"
+    assert (Path(__file__).parents[2] / f"{module}.py").is_file()
     assert getattr(importlib.import_module(module), name) is app
 
 
