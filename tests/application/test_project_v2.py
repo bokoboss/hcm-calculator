@@ -166,6 +166,33 @@ def test_project_v2_rejects_drifted_result_identity_and_current_without_result()
         load_project(missing_result)
 
 
+def test_project_v2_marks_pre_saf_capacity_correction_result_stale_without_engine_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workflow = workflow_for_method("basic_freeway_segment")
+    starting = workflow.starting_values("BF-CH26-001", "imperial")
+    snapshot = workflow.calculate(
+        template_id="BF-CH26-001",
+        unit_system="imperial",
+        displayed_inputs=starting["displayed_inputs"],
+    )
+    project = save_analysis_to_project(snapshot, project_name="Basic Freeway correction")
+    old_project = deepcopy(project)
+    old_project["analyses"][0]["scenarios"][0]["result"]["engine_result"]["outputs"].pop(
+        "calculation_revision"
+    )
+
+    def fail_if_called(*args: object, **kwargs: object) -> None:
+        raise AssertionError("loading a pre-correction project must not run the engine")
+
+    monkeypatch.setattr(phase3_services, "run_manual_freeway", fail_if_called)
+    loaded = load_project(old_project)
+
+    scenario = loaded["analyses"][0]["scenarios"][0]
+    assert scenario["result"] is None
+    assert scenario["result_status"] == "stale"
+
+
 def test_legacy_multilane_project_migrates_and_discards_mismatched_result_without_engine_call(monkeypatch: pytest.MonkeyPatch) -> None:
     snapshot = calculated_snapshot()
     legacy = create_manual_multilane_project_payload(

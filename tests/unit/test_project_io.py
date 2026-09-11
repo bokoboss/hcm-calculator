@@ -811,6 +811,22 @@ def test_manual_freeway_phase_10_load_invalidates_pre_phase_10_result() -> None:
     assert loaded["display_result"] is None
 
 
+def test_manual_freeway_load_invalidates_pre_saf_capacity_correction_result() -> None:
+    displayed = freeway_preset_ui_inputs("BF-CH26-001", "imperial")
+    result = result_to_dict(
+        run_manual_freeway(load_freeway_preset("BF-CH26-001")["inputs"])
+    )
+    result["outputs"].pop("calculation_revision")
+    payload = create_manual_freeway_project_payload(
+        "BF-CH26-001", "imperial", displayed, result=result
+    )
+
+    loaded = load_manual_freeway_project_json(json.dumps(payload))
+
+    assert loaded["calculation_result"] is None
+    assert loaded["display_result"] is None
+
+
 def test_multilane_legacy_payload_uses_ffs_source_and_discards_unverified_result() -> None:
     displayed = multilane_template_ui_inputs("MLH-CH26-004-EB", "imperial") | {
         "ffs_source": "measured", "free_flow_speed": 60.0,

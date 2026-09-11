@@ -6,6 +6,12 @@ The engine supports one direction and one uninterrupted Basic Freeway Segment un
 
 The supported adjusted FFS range is 55--75 mi/h. Capacity is Equation 12-6, capped at 2,400 pc/h/ln, and CAF is applied once by Equation 12-8. SAF is applied once to FFS by Equation 12-5. Both default to 1.0 for base conditions. User-entered values are limited to `(0, 1]` as project governance, not represented as universally HCM-calibrated values; each needs provenance. The supported provenance values are `hcm_base_conditions`, `chapter_26_driver_population`, and `project_local_calibration`.
 
+## Chapter 12 correction and changed-output inventory
+
+The [HCM7 December 2022 corrections](https://hcmvolume4.org/wp-content/uploads/2024/10/HCM7-corrections-clarifications-updates-12-2022.pdf) correct the Chapter 12 ordering: base capacity uses the original FFS before SAF, adjusted capacity applies CAF to that base capacity, and the breakpoint uses adjusted FFS with CAF squared. The engine records this revision as `hcm7_ch12_december_2022_correction`; pre-revision saved results are loaded as stale and are not recalculated during load.
+
+The checked-in `BF-CH26-001` reference case uses SAF = CAF = 1.0, so its expected output is unchanged. Non-unity regression coverage verifies the four SAF/CAF combinations, the exact measured-FFS case (65 mi/h, SAF 0.950, CAF 0.939: base capacity 2,350 and adjusted capacity 2,206.65 pc/h/ln), Metric UI normalization, and the near-capacity LOS/status null behavior. No checked-in Basic Freeway preset or Chapter 26 fixture uses a non-unity pair.
+
 Chapter 26 Exhibit 26-9 is implemented as a driver-population category that requires its paired SAF/CAF values and provenance. The historical demand-flow driver-population factor is not applied: Chapter 26 states that the unified Chapter 12 procedure replaces it with the paired FFS and capacity adjustments. The retained `driver_population_factor = 1.0` result field is an audit compatibility marker only.
 
 ## Heavy vehicles and grade boundary

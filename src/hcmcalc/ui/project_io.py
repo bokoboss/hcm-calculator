@@ -8,6 +8,7 @@ from typing import Any
 
 from hcmcalc import __version__
 from hcmcalc.core import HCMCalcError
+from hcmcalc.freeway.method import BASIC_FREEWAY_CALCULATION_REVISION
 from hcmcalc.ui.curve_editor import validate_curve_setup
 from hcmcalc.ui.manual_facility import (
     FACILITY_TEMPLATES,
@@ -1047,6 +1048,7 @@ def _discard_stale_freeway_result(
         and isinstance(result, dict)
         and result.get("method") == FREEWAY_METHOD
         and outputs.get("method_version") == "phase_9_engine"
+        and outputs.get("calculation_revision") == BASIC_FREEWAY_CALCULATION_REVISION
     ):
         _mark_load_status(payload, "result_current")
         return

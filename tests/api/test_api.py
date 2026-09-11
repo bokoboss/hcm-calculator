@@ -1,9 +1,11 @@
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
 from hcmcalc.api.main import DEFAULT_HOST, create_app
+from hcmcalc.ui.units import MILES_TO_KILOMETERS
 
 
 def test_health_is_typed_and_exposes_no_engine_behavior() -> None:
@@ -164,6 +166,83 @@ def test_phase3_api_exposes_templates_readiness_and_calculation(
     assert payload["result"]["method"] == engine_method
     assert payload["calculation_state"]["has_result"] is True
     assert payload["audit"]
+
+
+def test_basic_freeway_metric_nonunity_result_round_trips_through_project_api() -> None:
+    client = TestClient(create_app())
+    starting = client.get(
+        "/api/v1/analyses/basic_freeway_segment/starting-values",
+        params={"template_id": "BF-CH26-001", "unit_system": "metric"},
+    ).json()
+    displayed_inputs = dict(starting["displayed_inputs"])
+    displayed_inputs.update(
+        {
+            "ffs_source": "measured",
+            "free_flow_speed": 65.0 * MILES_TO_KILOMETERS,
+            "base_free_flow_speed": None,
+            "lane_width": None,
+            "right_side_lateral_clearance": None,
+            "total_ramp_density": None,
+            "speed_adjustment_factor": 0.95,
+            "capacity_adjustment_factor": 0.939,
+            "speed_adjustment_factor_source": "project_local_calibration",
+            "capacity_adjustment_factor_source": "project_local_calibration",
+        }
+    )
+    request = {
+        "template_id": "BF-CH26-001",
+        "unit_system": "metric",
+        "displayed_inputs": displayed_inputs,
+    }
+
+    calculated = client.post(
+        "/api/v1/analyses/basic_freeway_segment/calculate", json=request
+    )
+    assert calculated.status_code == 200
+    snapshot = calculated.json()
+    outputs = snapshot["result"]["outputs"]
+    assert outputs["free_flow_speed_before_saf_mph"] == 65.0
+    assert outputs["adjusted_free_flow_speed_mph"] == 61.75
+    assert outputs["capacity_pc_h_ln"] == 2350.0
+    assert outputs["adjusted_capacity_pc_h_ln"] == 2206.65
+
+    saved = client.post(
+        "/api/v1/projects/from-analysis",
+        json={"project_name": "Basic Freeway Metric correction", "analysis_snapshot": snapshot},
+    )
+    assert saved.status_code == 200
+    project = saved.json()["project"]
+    analysis = project["analyses"][0]
+    scenario = analysis["scenarios"][0]
+    assert scenario["result_status"] == "current"
+
+    old_project = deepcopy(project)
+    old_project["analyses"][0]["scenarios"][0]["result"]["engine_result"]["outputs"].pop(
+        "calculation_revision"
+    )
+    loaded = client.post("/api/v1/projects/validate", json={"project": old_project})
+    assert loaded.status_code == 200
+    stale_project = loaded.json()["project"]
+    stale_scenario = stale_project["analyses"][0]["scenarios"][0]
+    assert stale_scenario["result"] is None
+    assert stale_scenario["result_status"] == "stale"
+
+    refreshed = client.post(
+        "/api/v1/projects/record-result",
+        json={
+            "project": stale_project,
+            "analysis_id": analysis["analysis_id"],
+            "scenario_id": scenario["scenario_id"],
+            "analysis_snapshot": snapshot,
+        },
+    )
+    assert refreshed.status_code == 200
+    refreshed_scenario = refreshed.json()["project"]["analyses"][0]["scenarios"][0]
+    assert refreshed_scenario["result_status"] == "current"
+    assert (
+        refreshed_scenario["result"]["engine_result"]["outputs"]["capacity_pc_h_ln"]
+        == 2350.0
+    )
 
 
 def test_phase2_facility_api_rejects_locked_context_and_returns_segment_evidence() -> None:
