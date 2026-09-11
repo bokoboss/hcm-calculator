@@ -26,6 +26,13 @@ from .validation import reject_unsupported_scope_keys, validate_inputs
 from hcmcalc.multilane.coefficients import PCE_TRUCK_PERCENT_COLUMNS, SPECIFIC_GRADE_PCE
 
 
+BASIC_FREEWAY_CALCULATION_REVISION = "hcm7_ch12_december_2022_correction"
+BASIC_FREEWAY_CHAPTER_12_CORRECTION_REFERENCE = (
+    "HCM7 Chapter 12 December 2022 correction: "
+    "https://hcmvolume4.org/wp-content/uploads/2024/10/HCM7-corrections-clarifications-updates-12-2022.pdf"
+)
+
+
 class BasicFreewaySegmentMethod:
     """Run one-direction, one-segment Basic Freeway Segment calculations."""
 
@@ -71,7 +78,8 @@ class BasicFreewaySegmentMethod:
         adjusted_ffs = adjusted_free_flow_speed(
             free_flow_speed_before_saf, parsed.speed_adjustment_factor
         )
-        capacity = basic_freeway_capacity(adjusted_ffs)
+        # HCM7 December 2022 correction: base capacity uses pre-SAF FFS.
+        capacity = basic_freeway_capacity(free_flow_speed_before_saf)
         adjusted_capacity = adjusted_capacity_pc_h_ln(
             capacity, parsed.capacity_adjustment_factor
         )
@@ -114,6 +122,7 @@ class BasicFreewaySegmentMethod:
         assumptions = [
             "One-direction, one-segment uninterrupted-flow Basic Freeway Segment analysis.",
             "Chapter 26 driver population is represented by the reported SAF/CAF pair; no legacy demand-flow factor is applied.",
+            "Chapter 12 correction uses pre-SAF FFS for base capacity, applies CAF to that capacity, and uses adjusted FFS with CAF squared for the breakpoint.",
             "General-purpose lanes only; no ramps, weaving, merge/diverge, managed lanes, work zones, reliability, or facility workflow.",
             "Heavy-vehicle PCE uses the reported Chapter 12 general-terrain, specific-grade, or external-override path.",
         ]
@@ -140,6 +149,7 @@ class BasicFreewaySegmentMethod:
             "HCM7 Eq. 12-1 and Exhibit 12-6",
             "HCM7 Eq. 12-2; Exhibits 12-20 and 12-21",
             "HCM7 Eq. 12-5, Eq. 12-6, Eq. 12-8",
+            BASIC_FREEWAY_CHAPTER_12_CORRECTION_REFERENCE,
             "HCM7 Eq. 12-9 and Eq. 12-10; Exhibits 12-25 through 12-28",
             "HCM7 Chapter 26 Exhibit 26-9 driver-population SAF/CAF guidance",
             "HCM7 Eq. 12-11; Exhibit 12-15",
@@ -147,6 +157,7 @@ class BasicFreewaySegmentMethod:
         ]
         outputs = {
             "calculation_type": "basic_freeway_segment_v0_1",
+            "calculation_revision": BASIC_FREEWAY_CALCULATION_REVISION,
             "method_version": "phase_9_engine",
             "calculation_contract": "hcm7_basic_freeway_one_direction_one_segment_phase_9",
             "support_status": "supported_basic_freeway_segment_v0_1",
@@ -288,16 +299,16 @@ def adjusted_free_flow_speed(free_flow_speed_mph: float, speed_adjustment_factor
     return ffs
 
 
-def basic_freeway_capacity(adjusted_ffs_mph: float) -> float:
-    """HCM7 Eq. 12-6, capped by Exhibit 12-4."""
+def basic_freeway_capacity(base_ffs_mph: float) -> float:
+    """HCM7 Eq. 12-6 base capacity, capped by Exhibit 12-4."""
 
-    _finite(adjusted_ffs_mph, "adjusted FFS")
-    if not FREEWAY_MIN_FFS_MPH <= adjusted_ffs_mph <= FREEWAY_MAX_FFS_MPH:
+    _finite(base_ffs_mph, "base FFS")
+    if not FREEWAY_MIN_FFS_MPH <= base_ffs_mph <= FREEWAY_MAX_FFS_MPH:
         raise UnsupportedScopeError(
-            "Basic Freeway Segment FFS must be between 55 and 75 mi/h."
+            "Basic Freeway Segment base FFS must be between 55 and 75 mi/h."
         )
     return min(
-        2200.0 + 10.0 * (adjusted_ffs_mph - 50.0),
+        2200.0 + 10.0 * (base_ffs_mph - 50.0),
         FREEWAY_MAX_CAPACITY_PC_H_LN,
     )
 
@@ -571,7 +582,10 @@ def _intermediate_values(outputs: dict[str, Any]) -> list[IntermediateValue]:
         "total_ramp_density_adjustment_mph": "HCM7 Eq. 12-2",
         "speed_adjustment_factor": "HCM7 Eq. 12-5",
         "adjusted_free_flow_speed_mph": "HCM7 Eq. 12-5",
-        "capacity_pc_h_ln": "HCM7 Eq. 12-6; Exhibit 12-4",
+        "capacity_pc_h_ln": (
+            "HCM7 Eq. 12-6; Exhibit 12-4 using pre-SAF FFS per the "
+            "December 2022 Chapter 12 correction"
+        ),
         "capacity_adjustment_factor": "HCM7 Eq. 12-8",
         "adjusted_capacity_pc_h_ln": "HCM7 Eq. 12-8",
         "breakpoint_flow_rate_pc_h_ln": "HCM7 Exhibit 12-6",

@@ -17,6 +17,7 @@ from uuid import uuid4
 
 from hcmcalc.application.registry import get_analysis_definition
 from hcmcalc.application.workflow_state import calculation_input_fingerprint, snapshot_input_fingerprint
+from hcmcalc.freeway.method import BASIC_FREEWAY_CALCULATION_REVISION
 
 
 PROJECT_SCHEMA_VERSION = "2.0"
@@ -669,7 +670,10 @@ def _legacy_result_is_compatible(
     output_identity = {
         "two_lane_segment": {},
         "multilane_segment": {},
-        "basic_freeway_segment": {"method_version": "phase_9_engine"},
+        "basic_freeway_segment": {
+            "method_version": "phase_9_engine",
+            "calculation_revision": BASIC_FREEWAY_CALCULATION_REVISION,
+        },
         "weaving_segment": {
             "method_name": definition.engine_method_identifier,
             "method_version": definition.method_version,
@@ -714,7 +718,10 @@ def _engine_result_identity_matches(
     if not isinstance(outputs, Mapping):
         return False
     expected_output_identity = {
-        "basic_freeway_segment": {"method_version": "phase_9_engine"},
+        "basic_freeway_segment": {
+            "method_version": "phase_9_engine",
+            "calculation_revision": BASIC_FREEWAY_CALCULATION_REVISION,
+        },
         "weaving_segment": {
             "method_name": "hcm7_v70_freeway_weaving_segment",
             "method_version": "hcm_7_0",
@@ -836,8 +843,32 @@ def _validated_copy(project: Mapping[str, Any]) -> dict[str, Any]:
     if not isinstance(project, Mapping):
         raise ProjectFileError("Project must be an object.")
     document = _json_ready(dict(project))
+    _discard_outdated_basic_freeway_results(document)
     _validate_v2(document)
     return document
+
+
+def _discard_outdated_basic_freeway_results(document: dict[str, Any]) -> None:
+    """Mark pre-correction Basic Freeway results stale without recalculation."""
+
+    for analysis in document.get("analyses", []):
+        if not isinstance(analysis, Mapping) or analysis.get("method_id") != "basic_freeway_segment":
+            continue
+        for scenario in analysis.get("scenarios", []):
+            if not isinstance(scenario, dict):
+                continue
+            result = scenario.get("result")
+            engine_result = result.get("engine_result") if isinstance(result, Mapping) else None
+            outputs = engine_result.get("outputs") if isinstance(engine_result, Mapping) else None
+            if (
+                isinstance(engine_result, Mapping)
+                and engine_result.get("method") == "hcm7_basic_freeway_segment"
+                and isinstance(outputs, Mapping)
+                and outputs.get("method_version") == "phase_9_engine"
+                and outputs.get("calculation_revision") != BASIC_FREEWAY_CALCULATION_REVISION
+            ):
+                scenario["result"] = None
+                scenario["result_status"] = "stale"
 
 
 def _validate_v2(document: Mapping[str, Any]) -> None:

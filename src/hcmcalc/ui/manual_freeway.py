@@ -10,7 +10,7 @@ from hcmcalc.freeway import BasicFreewaySegmentMethod
 from hcmcalc.freeway.validation import DRIVER_POPULATION_FACTORS
 from hcmcalc.ui.input_contracts import reject_unknown_keys, require_finite_number
 from hcmcalc.ui.runtime_resources import load_packaged_yaml
-from hcmcalc.ui.units import MILES_TO_KILOMETERS
+from hcmcalc.ui.units import FEET_TO_METERS, MILES_TO_KILOMETERS
 
 
 FIXTURE_FILENAME = "freeway_example_inputs.yaml"
@@ -107,11 +107,11 @@ def freeway_engine_inputs_to_ui(
         "base_free_flow_speed": _optional_scaled_value(
             inputs.get("base_free_flow_speed_mph"), speed_factor
         ),
-        "lane_width": _optional_scaled_value(inputs.get("lane_width_ft"), 0.3048)
+        "lane_width": _optional_scaled_value(inputs.get("lane_width_ft"), FEET_TO_METERS)
         if metric
         else inputs.get("lane_width_ft"),
         "right_side_lateral_clearance": _optional_scaled_value(
-            inputs.get("right_side_lateral_clearance_ft"), 0.3048
+            inputs.get("right_side_lateral_clearance_ft"), FEET_TO_METERS
         )
         if metric
         else inputs.get("right_side_lateral_clearance_ft"),
@@ -145,7 +145,7 @@ def freeway_ui_inputs_to_engine(
     metric = _normalize_unit_system(unit_system) == "metric"
     speed_factor = 1.0 / MILES_TO_KILOMETERS if metric else 1.0
     length_factor = 1.0 / MILES_TO_KILOMETERS if metric else 1.0
-    width_factor = 1.0 / 0.3048 if metric else 1.0
+    width_factor = 1.0 / FEET_TO_METERS if metric else 1.0
     ramp_density_factor = MILES_TO_KILOMETERS if metric else 1.0
     ffs_source = values["ffs_source"]
     pce_mode = values.get("pce_mode", "internal")

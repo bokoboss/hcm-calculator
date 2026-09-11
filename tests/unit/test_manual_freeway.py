@@ -15,7 +15,7 @@ from hcmcalc.ui.manual_freeway import (
     load_freeway_preset,
     run_manual_freeway,
 )
-from hcmcalc.ui.units import MILES_TO_KILOMETERS
+from hcmcalc.ui.units import FEET_TO_METERS, MILES_TO_KILOMETERS
 from hcmcalc.ui.workflow_state import normalized_input_fingerprint
 
 
@@ -64,9 +64,20 @@ def test_freeway_metric_template_loading_round_trips_to_engine_inputs() -> None:
     assert displayed["base_free_flow_speed"] == pytest.approx(
         75.4 * MILES_TO_KILOMETERS
     )
+    assert displayed["lane_width"] == pytest.approx(11.0 * FEET_TO_METERS)
+    assert displayed["right_side_lateral_clearance"] == pytest.approx(2.0 * FEET_TO_METERS)
     assert displayed["total_ramp_density"] == pytest.approx(4.0 / MILES_TO_KILOMETERS)
     normalized = freeway_ui_inputs_to_engine(displayed, preset_inputs, "metric")
     assert normalized["driver_population_category"] == "regular"
+    assert normalized["lane_width_ft"] == pytest.approx(11.0)
+    assert normalized["right_side_lateral_clearance_ft"] == pytest.approx(2.0)
+    assert normalized_input_fingerprint(normalized) == normalized_input_fingerprint(
+        freeway_ui_inputs_to_engine(
+            freeway_preset_ui_inputs("BF-CH26-001", "imperial"),
+            preset_inputs,
+            "imperial",
+        )
+    )
     assert result_to_dict(run_manual_freeway(normalized)) == result_to_dict(
         run_manual_freeway(preset_inputs)
     )
@@ -93,6 +104,8 @@ def test_freeway_metric_outputs_convert_speed_and_density_only() -> None:
     }
     assert display["capacity"]["value"] == result["outputs"]["capacity_pc_h_ln"]
     assert display["capacity"]["unit"] == "pc/h/ln"
+    assert display["demand_flow_rate"]["value"] == result["outputs"]["demand_flow_rate_pc_h_ln"]
+    assert display["demand_flow_rate"]["unit"] == "pc/h/ln"
 
 
 def test_freeway_display_preserves_absent_above_capacity_speed_and_density() -> None:
@@ -125,6 +138,37 @@ def test_freeway_metric_and_imperial_modes_produce_equivalent_engine_results() -
     metric_result = result_to_dict(run_manual_freeway(metric_inputs))
 
     assert imperial_result == metric_result
+
+
+def test_freeway_metric_nonunity_adjustments_preserve_corrected_engine_result() -> None:
+    preset_inputs = load_freeway_preset("BF-CH26-001")["inputs"]
+    engine_inputs = preset_inputs | {
+        "ffs_source": "measured",
+        "free_flow_speed_mph": 65.0,
+        "base_free_flow_speed_mph": None,
+        "lane_width_ft": None,
+        "right_side_lateral_clearance_ft": None,
+        "total_ramp_density_per_mi": None,
+        "speed_adjustment_factor": 0.95,
+        "capacity_adjustment_factor": 0.939,
+        "speed_adjustment_factor_source": "project_local_calibration",
+        "capacity_adjustment_factor_source": "project_local_calibration",
+    }
+    metric_displayed = freeway_engine_inputs_to_ui(engine_inputs, "metric")
+    normalized_metric = freeway_ui_inputs_to_engine(
+        metric_displayed, preset_inputs, "metric"
+    )
+    normalized_imperial = freeway_ui_inputs_to_engine(
+        freeway_engine_inputs_to_ui(engine_inputs, "imperial"), preset_inputs, "imperial"
+    )
+
+    metric_result = result_to_dict(run_manual_freeway(normalized_metric))
+    imperial_result = result_to_dict(run_manual_freeway(normalized_imperial))
+
+    assert metric_displayed["free_flow_speed"] == pytest.approx(65.0 * MILES_TO_KILOMETERS)
+    assert metric_result == imperial_result
+    assert metric_result["outputs"]["capacity_pc_h_ln"] == pytest.approx(2350.0)
+    assert metric_result["outputs"]["adjusted_capacity_pc_h_ln"] == pytest.approx(2206.65)
 
 
 def test_unit_or_preset_switch_clears_stored_freeway_result() -> None:
