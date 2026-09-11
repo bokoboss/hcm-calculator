@@ -35,5 +35,15 @@ ui = [
 testpaths = ["tests"]
 pythonpath = ["src"]
 
+[tool.vercel]
+# Vercel resolves custom module paths from the repository root; the `src.`
+# prefix is intentional for this package's src-layout.
+entrypoint = "src.hcmcalc.api.vercel:app"
+
+[tool.vercel.fastapi.static]
+# The adapter adds traceability middleware; retain CDN promotion for the
+# existing FastAPI StaticFiles mounts.
+cdn = true
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/hcmcalc"]
