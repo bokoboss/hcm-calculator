@@ -196,11 +196,59 @@ def test_saf_caf_matrix_uses_pre_saf_capacity_and_adjusted_breakpoint(
     assert outputs["breakpoint_flow_rate_pc_h_ln"] == pytest.approx(expected_breakpoint)
 
 
-def test_corrected_capacity_preserves_near_capacity_status_and_null_outputs() -> None:
-    baseline = BasicFreewaySegmentMethod().calculate(
-        _inputs() | {"demand_volume_veh_h": 6050.0}
-    ).outputs
-    corrected = BasicFreewaySegmentMethod().calculate(
+def test_corrected_capacity_changes_near_capacity_status_for_same_inputs() -> None:
+    case = _inputs() | {
+        "demand_volume_veh_h": 5945.0,
+        "speed_adjustment_factor": 0.95,
+        "capacity_adjustment_factor": 0.939,
+        "speed_adjustment_factor_source": "project_local_calibration",
+        "capacity_adjustment_factor_source": "project_local_calibration",
+    }
+
+    # Independently recompute Eq. 12-9 inputs for the level-terrain PCE = 2.0.
+    heavy_vehicle_factor = 1.0 / (
+        1.0
+        + case["heavy_vehicle_percent"] / 100.0 * (2.0 - 1.0)
+    )
+    demand_flow = case["demand_volume_veh_h"] / (
+        case["peak_hour_factor"] * case["number_of_lanes"] * heavy_vehicle_factor
+    )
+    old_defective_capacity = (
+        2200.0 + 10.0 * (case["free_flow_speed_mph"] * case["speed_adjustment_factor"] - 50.0)
+    ) * case["capacity_adjustment_factor"]
+    corrected_capacity = (
+        2200.0 + 10.0 * (case["free_flow_speed_mph"] - 50.0)
+    ) * case["capacity_adjustment_factor"]
+    old_status = {
+        "demand_exceeds_capacity": demand_flow > old_defective_capacity,
+        "level_of_service": "F" if demand_flow > old_defective_capacity else None,
+        "speed_available": demand_flow <= old_defective_capacity,
+        "density_available": demand_flow <= old_defective_capacity,
+    }
+
+    assert demand_flow == pytest.approx(2190.263157894737)
+    assert old_defective_capacity == pytest.approx(2176.1325)
+    assert corrected_capacity == pytest.approx(2206.65)
+    assert old_defective_capacity < demand_flow < corrected_capacity
+    assert old_status == {
+        "demand_exceeds_capacity": True,
+        "level_of_service": "F",
+        "speed_available": False,
+        "density_available": False,
+    }
+
+    outputs = BasicFreewaySegmentMethod().calculate(case).outputs
+
+    assert outputs["demand_flow_rate_pc_h_ln"] == pytest.approx(demand_flow)
+    assert outputs["adjusted_capacity_pc_h_ln"] == pytest.approx(corrected_capacity)
+    assert outputs["demand_exceeds_capacity"] is False
+    assert outputs["mean_speed_mph"] is not None
+    assert outputs["density_pc_mi_ln"] is not None
+    assert outputs["level_of_service"] != "F"
+
+
+def test_nonunity_above_capacity_preserves_los_f_without_speed_or_density() -> None:
+    outputs = BasicFreewaySegmentMethod().calculate(
         _inputs()
         | {
             "demand_volume_veh_h": 6050.0,
@@ -211,13 +259,11 @@ def test_corrected_capacity_preserves_near_capacity_status_and_null_outputs() ->
         }
     ).outputs
 
-    assert baseline["demand_exceeds_capacity"] is False
-    assert baseline["mean_speed_mph"] is not None
-    assert baseline["level_of_service"] != "F"
-    assert corrected["demand_exceeds_capacity"] is True
-    assert corrected["mean_speed_mph"] is None
-    assert corrected["density_pc_mi_ln"] is None
-    assert corrected["level_of_service"] == "F"
+    assert outputs["demand_flow_rate_pc_h_ln"] > outputs["adjusted_capacity_pc_h_ln"]
+    assert outputs["demand_exceeds_capacity"] is True
+    assert outputs["level_of_service"] == "F"
+    assert outputs["mean_speed_mph"] is None
+    assert outputs["density_pc_mi_ln"] is None
 
 
 @pytest.mark.parametrize("field", ["speed_adjustment_factor", "capacity_adjustment_factor"])

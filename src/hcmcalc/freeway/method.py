@@ -299,16 +299,16 @@ def adjusted_free_flow_speed(free_flow_speed_mph: float, speed_adjustment_factor
     return ffs
 
 
-def basic_freeway_capacity(adjusted_ffs_mph: float) -> float:
+def basic_freeway_capacity(base_ffs_mph: float) -> float:
     """HCM7 Eq. 12-6 base capacity, capped by Exhibit 12-4."""
 
-    _finite(adjusted_ffs_mph, "adjusted FFS")
-    if not FREEWAY_MIN_FFS_MPH <= adjusted_ffs_mph <= FREEWAY_MAX_FFS_MPH:
+    _finite(base_ffs_mph, "base FFS")
+    if not FREEWAY_MIN_FFS_MPH <= base_ffs_mph <= FREEWAY_MAX_FFS_MPH:
         raise UnsupportedScopeError(
-            "Basic Freeway Segment FFS must be between 55 and 75 mi/h."
+            "Basic Freeway Segment base FFS must be between 55 and 75 mi/h."
         )
     return min(
-        2200.0 + 10.0 * (adjusted_ffs_mph - 50.0),
+        2200.0 + 10.0 * (base_ffs_mph - 50.0),
         FREEWAY_MAX_CAPACITY_PC_H_LN,
     )
 
