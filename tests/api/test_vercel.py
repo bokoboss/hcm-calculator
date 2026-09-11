@@ -1,6 +1,19 @@
+import importlib
+from pathlib import Path
+import tomllib
+
 from fastapi.testclient import TestClient
 
 from hcmcalc.api.vercel import app
+
+
+def test_vercel_entrypoint_targets_installed_package() -> None:
+    with (Path(__file__).parents[2] / "pyproject.toml").open("rb") as file:
+        entrypoint = tomllib.load(file)["tool"]["vercel"]["entrypoint"]
+    module, name = entrypoint.split(":")
+
+    assert module == "hcmcalc.api.vercel"
+    assert getattr(importlib.import_module(module), name) is app
 
 
 def test_vercel_adapter_keeps_routes_and_reports_preview_identity(monkeypatch) -> None:
