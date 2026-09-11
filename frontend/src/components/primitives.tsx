@@ -20,9 +20,14 @@ export type MethodNavigationId =
   | 'merge_segment'
   | 'diverge_segment';
 
+function isIpv4Loopback(hostname: string): boolean {
+  const octets = hostname.split('.');
+  return octets.length === 4 && Number(octets[0]) === 127 && octets.every((octet) => /^\d+$/.test(octet) && Number(octet) <= 255);
+}
+
 export function runtimeStatusKey(hostname: string): 'status.local_runtime' | 'status.vercel_runtime' | 'status.hosted_runtime' {
   const host = hostname.toLowerCase();
-  if (host === 'localhost' || host.endsWith('.localhost') || host === '127.0.0.1' || host === '::1' || host === '[::1]' || host === '0.0.0.0') {
+  if (host === 'localhost' || host.endsWith('.localhost') || isIpv4Loopback(host) || host === '::1' || host === '[::1]' || host === '0.0.0.0') {
     return 'status.local_runtime';
   }
   return host.endsWith('.vercel.app') ? 'status.vercel_runtime' : 'status.hosted_runtime';

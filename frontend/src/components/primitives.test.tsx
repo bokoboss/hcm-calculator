@@ -25,6 +25,10 @@ describe('R0 shared design-system primitives', () => {
   it('classifies runtime hosts without build-time configuration', () => {
     expect(runtimeStatusKey('localhost')).toBe('status.local_runtime');
     expect(runtimeStatusKey('127.0.0.1')).toBe('status.local_runtime');
+    expect(runtimeStatusKey('127.0.0.2')).toBe('status.local_runtime');
+    expect(runtimeStatusKey('127.255.255.254')).toBe('status.local_runtime');
+    expect(runtimeStatusKey('127.example.com')).toBe('status.hosted_runtime');
+    expect(runtimeStatusKey('128.0.0.1')).toBe('status.hosted_runtime');
     expect(runtimeStatusKey('::1')).toBe('status.local_runtime');
     expect(runtimeStatusKey('hcm-calculator-bice.vercel.app')).toBe('status.vercel_runtime');
     expect(runtimeStatusKey('example.company.com')).toBe('status.hosted_runtime');
