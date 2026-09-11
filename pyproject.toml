@@ -35,5 +35,8 @@ ui = [
 testpaths = ["tests"]
 pythonpath = ["src"]
 
+[tool.vercel]
+entrypoint = "hcmcalc.api.vercel:app"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/hcmcalc"]
