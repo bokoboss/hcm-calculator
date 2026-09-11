@@ -8,8 +8,10 @@ from typing import Sequence
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.responses import Response
+from starlette.types import Scope
 
 from hcmcalc import __version__
 from hcmcalc.api.routes.health import router as health_router
@@ -21,6 +23,17 @@ from hcmcalc.api.routes.projects import router as projects_router
 API_VERSION = "v1"
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
+SPA_SHELL_CACHE_CONTROL = "no-store"
+HASHED_ASSET_CACHE_CONTROL = "public, max-age=31536000, immutable"
+
+
+class _HashedAssetStaticFiles(StaticFiles):
+    """Serve content-hashed frontend assets with a long immutable cache policy."""
+
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = HASHED_ASSET_CACHE_CONTROL
+        return response
 
 
 def create_app(
@@ -104,10 +117,23 @@ def _resolve_engineering_assets_dir() -> Path | None:
     return candidate if candidate.is_dir() else None
 
 
+def _spa_shell_response(index_path: Path) -> HTMLResponse:
+    """Return the SPA shell without validators that can survive a deployment swap."""
+
+    return HTMLResponse(
+        index_path.read_text(encoding="utf-8"),
+        headers={"Cache-Control": SPA_SHELL_CACHE_CONTROL},
+    )
+
+
 def _mount_compiled_spa(app: FastAPI, static_dir: Path) -> None:
     assets_dir = static_dir / "assets"
     if assets_dir.is_dir():
-        app.mount("/assets", StaticFiles(directory=assets_dir), name="frontend-assets")
+        app.mount(
+            "/assets",
+            _HashedAssetStaticFiles(directory=assets_dir),
+            name="frontend-assets",
+        )
 
     engineering_assets_dir = _resolve_engineering_assets_dir()
     if engineering_assets_dir is not None:
@@ -119,12 +145,14 @@ def _mount_compiled_spa(app: FastAPI, static_dir: Path) -> None:
             name="engineering-assets",
         )
 
+    index_path = static_dir / "index.html"
+
     @app.get("/", include_in_schema=False)
-    def compiled_root() -> FileResponse:
-        return FileResponse(static_dir / "index.html", media_type="text/html")
+    def compiled_root() -> HTMLResponse:
+        return _spa_shell_response(index_path)
 
     @app.get("/{path:path}", include_in_schema=False)
-    def compiled_spa_fallback(path: str) -> FileResponse:
+    def compiled_spa_fallback(path: str) -> HTMLResponse:
         """Serve the SPA entry for client-side routes.
 
         API and asset routes are registered before this fallback.  The R1 shell
@@ -134,7 +162,7 @@ def _mount_compiled_spa(app: FastAPI, static_dir: Path) -> None:
 
         if path == "api" or path.startswith("api/"):
             raise HTTPException(status_code=404, detail="API route not found")
-        return FileResponse(static_dir / "index.html", media_type="text/html")
+        return _spa_shell_response(index_path)
 
 
 def serve(
