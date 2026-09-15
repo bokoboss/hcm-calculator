@@ -145,7 +145,6 @@ def freeway_ui_inputs_to_engine(
     metric = _normalize_unit_system(unit_system) == "metric"
     speed_factor = 1.0 / MILES_TO_KILOMETERS if metric else 1.0
     length_factor = 1.0 / MILES_TO_KILOMETERS if metric else 1.0
-    width_factor = 1.0 / FEET_TO_METERS if metric else 1.0
     ramp_density_factor = MILES_TO_KILOMETERS if metric else 1.0
     ffs_source = values["ffs_source"]
     pce_mode = values.get("pce_mode", "internal")
@@ -178,7 +177,7 @@ def freeway_ui_inputs_to_engine(
         "analysis_type": preset_inputs["analysis_type"],
         "direction": preset_inputs["direction"],
         "number_of_lanes": int(values["number_of_lanes"]),
-        "segment_length_mi": _rounded(float(values["segment_length"]) * length_factor),
+        "segment_length_mi": float(values["segment_length"]) * length_factor,
         "demand_volume_veh_h": float(values["demand_volume_veh_h"]),
         "peak_hour_factor": float(values["peak_hour_factor"]),
         "heavy_vehicle_percent": float(values["heavy_vehicle_percent"]),
@@ -195,27 +194,29 @@ def freeway_ui_inputs_to_engine(
         ),
         "ffs_source": ffs_source,
         "free_flow_speed_mph": (
-            _rounded(float(values["free_flow_speed"]) * speed_factor)
+            float(values["free_flow_speed"]) * speed_factor
             if ffs_source == "measured"
             else None
         ),
         "base_free_flow_speed_mph": (
-            _rounded(float(values["base_free_flow_speed"]) * speed_factor)
+            float(values["base_free_flow_speed"]) * speed_factor
             if ffs_source == "estimated"
             else None
         ),
         "lane_width_ft": (
-            _rounded(float(values["lane_width"]) * width_factor)
+            (float(values["lane_width"]) / FEET_TO_METERS
+             if metric else float(values["lane_width"]))
             if ffs_source == "estimated"
             else None
         ),
         "right_side_lateral_clearance_ft": (
-            _rounded(float(values["right_side_lateral_clearance"]) * width_factor)
+            (float(values["right_side_lateral_clearance"]) / FEET_TO_METERS
+             if metric else float(values["right_side_lateral_clearance"]))
             if ffs_source == "estimated"
             else None
         ),
         "total_ramp_density_per_mi": (
-            _rounded(float(values["total_ramp_density"]) * ramp_density_factor)
+            float(values["total_ramp_density"]) * ramp_density_factor
             if ffs_source == "estimated"
             else None
         ),
@@ -332,9 +333,3 @@ def _optional_scaled_value(value: Any, factor: float) -> float | None:
     if value is None:
         return None
     return float(value) * factor
-
-
-def _rounded(value: float) -> float:
-    """Remove insignificant binary conversion noise before exact guardrails."""
-
-    return round(value, 10)

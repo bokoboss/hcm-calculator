@@ -267,27 +267,27 @@ def multilane_ui_inputs_to_engine(
         **template_inputs,
         "number_of_lanes": int(values["number_of_lanes"]),
         "segment_length_ft": (
-            _rounded(float(values["segment_length"]) * 1000.0 / FEET_TO_METERS)
+            float(values["segment_length"]) * 1000.0 / FEET_TO_METERS
             if metric
             else float(values["segment_length"])
         ),
         "posted_speed_limit_mph": (
-            _rounded(float(values["posted_speed_limit"]) / MILES_TO_KILOMETERS)
+            float(values["posted_speed_limit"]) * (1.0 / MILES_TO_KILOMETERS)
             if metric
             else float(values["posted_speed_limit"])
         ) if ffs_source == "estimated" else None,
         "lane_width_ft": (
-            _rounded(float(values["lane_width"]) / FEET_TO_METERS)
+            float(values["lane_width"]) / FEET_TO_METERS
             if metric
             else float(values["lane_width"])
         ) if ffs_source == "estimated" else None,
         "roadside_lateral_clearance_ft": (
-            _rounded(float(values["roadside_lateral_clearance"]) / FEET_TO_METERS)
+            float(values["roadside_lateral_clearance"]) / FEET_TO_METERS
             if metric
             else float(values["roadside_lateral_clearance"])
         ) if ffs_source == "estimated" else None,
         "access_point_density_per_mi": (
-            _rounded(float(values["access_point_density"]) * MILES_TO_KILOMETERS)
+            float(values["access_point_density"]) * MILES_TO_KILOMETERS
             if metric
             else float(values["access_point_density"])
         ) if ffs_source == "estimated" else None,
@@ -302,7 +302,7 @@ def multilane_ui_inputs_to_engine(
     }
     engine_inputs["ffs_source"] = ffs_source
     engine_inputs["free_flow_speed_mph"] = (
-        _rounded(float(values["free_flow_speed"]) / MILES_TO_KILOMETERS)
+        float(values["free_flow_speed"]) * (1.0 / MILES_TO_KILOMETERS)
         if metric and ffs_source == "measured"
         else float(values["free_flow_speed"])
         if ffs_source == "measured"
@@ -314,7 +314,7 @@ def multilane_ui_inputs_to_engine(
         else None
     )
     engine_inputs["left_side_lateral_clearance_ft"] = (
-        _rounded(float(values["left_side_lateral_clearance"]) / FEET_TO_METERS)
+        float(values["left_side_lateral_clearance"]) / FEET_TO_METERS
         if metric and ffs_source == "estimated" and values.get("median_type") == "divided"
         else float(values["left_side_lateral_clearance"])
         if ffs_source == "estimated" and values.get("median_type") == "divided"
@@ -445,9 +445,3 @@ def _normalize_unit_system(unit_system: str) -> str:
     if normalized not in SUPPORTED_UNIT_SYSTEMS:
         raise ValueError("unit_system must be metric or imperial.")
     return normalized
-
-
-def _rounded(value: float) -> float:
-    """Remove insignificant binary conversion noise before exact guardrails."""
-
-    return round(value, 10)
