@@ -49,7 +49,7 @@ async function calculateWithInputs(page: Page, methodId: string, values: Record<
 test.describe('Phase 3 whole-product workstation UAT', () => {
   test.setTimeout(60_000);
 
-  test('captures the launcher, chooser, Method Guide, and persisted locale', async ({ page }) => {
+  test('captures the launcher, chooser, HCM Analysis Handbook, and persisted locale', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'HCM Calculator' })).toBeVisible();
@@ -69,8 +69,9 @@ test.describe('Phase 3 whole-product workstation UAT', () => {
     await expect(page.getByTestId('method-card-weaving_segment')).toBeVisible();
     await capture(page, 'phase3-ux-new-analysis-1920.png');
 
-    await page.getByRole('button', { name: 'Method Guide' }).first().click();
-    await expect(page.getByRole('heading', { name: 'Method Guide' })).toBeVisible();
+    await page.getByRole('button', { name: 'Analysis guide' }).first().click();
+    await expect(page.getByRole('heading', { name: 'HCM Analysis Handbook' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Choose the right workflow' })).toBeVisible();
     await expect(page.getByTestId('reference-multilane_segment')).toBeVisible();
     await capture(page, 'phase3-ux-method-guide-1920.png');
   });
