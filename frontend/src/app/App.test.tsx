@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import type { MethodDefinition } from '../api/types';
 import { I18nProvider } from '../i18n';
 import { MethodCard, ReferencePage } from './App';
@@ -50,24 +50,48 @@ describe('MethodCard actionability boundary', () => {
 
 
 describe('ReferencePage analysis handbook', () => {
-  it('turns a supported method into actionable selection, preparation, output, and limit guidance', () => {
+  it('renders one substantive method article instead of a stacked method directory', () => {
     const twoLaneMethod: MethodDefinition = {
       ...method,
       method_id: 'two_lane_segment',
       input_contract: 'phase_5_product_integration',
     };
+    const basicFreewayMethod: MethodDefinition = {
+      ...method,
+      method_id: 'basic_freeway_segment',
+      family: 'freeways',
+      name_key: 'method.basic_freeway_segment.name',
+      description_key: 'method.basic_freeway_segment.description',
+      method_identifier: 'hcm7_basic_freeway_segment',
+      engine_method_identifier: 'hcm7_basic_freeway_segment',
+      input_contract: 'phase_10_product_integration',
+      hcm_chapter: '12',
+      chapter_reference: 'HCM 7th Edition Chapter 12',
+    };
+    const onReferenceSelect = vi.fn();
+
     render(
       <I18nProvider>
-        <ReferencePage methods={[twoLaneMethod]} loading={false} onSelect={() => undefined} />
+        <ReferencePage
+          methods={[twoLaneMethod, basicFreewayMethod]}
+          loading={false}
+          selectedMethodId="two_lane_segment"
+          onReferenceSelect={onReferenceSelect}
+          onSelect={() => undefined}
+        />
       </I18nProvider>,
     );
 
     expect(screen.getByRole('heading', { name: 'HCM Analysis Handbook' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Choose the right workflow' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Prepare these inputs' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'What you get' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Important limits' })).toBeInTheDocument();
-    expect(screen.getAllByText(/One two-lane, two-way highway segment/)).toHaveLength(2);
-    expect(screen.getByRole('button', { name: 'Start analysis' })).toBeEnabled();
+    expect(screen.getByTestId('reference-two_lane_segment')).toBeVisible();
+    expect(screen.queryByTestId('reference-basic_freeway_segment')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Key inputs and concepts' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'How the method works' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Read the results' })).toBeInTheDocument();
+    expect(screen.getByText('Follower density')).toBeInTheDocument();
+    expect(screen.getByText(/Convert observed directional volumes to analysis flow rates/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Basic Freeway Segment/ }));
+    expect(onReferenceSelect).toHaveBeenCalledWith('basic_freeway_segment');
   });
 });

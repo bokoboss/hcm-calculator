@@ -71,8 +71,13 @@ test.describe('Phase 3 whole-product workstation UAT', () => {
 
     await page.getByRole('button', { name: 'Analysis guide' }).first().click();
     await expect(page.getByRole('heading', { name: 'HCM Analysis Handbook' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Choose the right workflow' })).toBeVisible();
-    await expect(page.getByTestId('reference-multilane_segment')).toBeVisible();
+    await expect(page.getByTestId('reference-two_lane_segment')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Key inputs and concepts' })).toBeVisible();
+    await page.locator('.handbook-method-nav').getByRole('button', { name: /Weaving Segment/ }).click();
+    await expect(page).toHaveURL(/\/reference\/weaving_segment$/);
+    await expect(page.getByTestId('reference-weaving_segment').getByText('LS and LMAX')).toBeVisible();
+    await expect(page.getByTestId('reference-two_lane_segment')).toHaveCount(0);
+    await assertNoGlobalHorizontalOverflow(page);
     await capture(page, 'phase3-ux-method-guide-1920.png');
   });
 

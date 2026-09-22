@@ -47,7 +47,9 @@ function routeFromLocation(state: HcmHistoryState = {}): RouteTarget {
     return { page: 'new-analysis', methodId: state.methodId ?? null, scenarioEdit: state.scenarioEdit };
   }
   if (path === '/project' || path.startsWith('/project/')) return { page: 'project', methodId: null, scenarioEdit: null };
-  if (path === '/reference' || path.startsWith('/reference/')) return { page: 'reference', methodId: null, scenarioEdit: null };
+  const referenceMatch = path.match(/^\/reference\/([^/]+)$/);
+  if (referenceMatch) return { page: 'reference', methodId: decodeURIComponent(referenceMatch[1]), scenarioEdit: null };
+  if (path === '/reference') return { page: 'reference', methodId: null, scenarioEdit: null };
   return { page: 'home', methodId: null, scenarioEdit: null };
 }
 
@@ -56,6 +58,7 @@ function pathForRoute(route: RouteTarget): string {
   if (route.page === 'new-analysis' && route.methodId) return `/analysis/${route.methodId}`;
   if (route.page === 'new-analysis') return '/new-analysis';
   if (route.page === 'project') return '/project';
+  if (route.page === 'reference' && route.methodId) return `/reference/${encodeURIComponent(route.methodId)}`;
   if (route.page === 'reference') return '/reference';
   return '/';
 }
@@ -196,10 +199,14 @@ function NewAnalysisPage({
 export function ReferencePage({
   methods,
   loading,
+  selectedMethodId,
+  onReferenceSelect,
   onSelect,
 }: {
   methods: MethodDefinition[];
   loading: boolean;
+  selectedMethodId: string | null;
+  onReferenceSelect: (methodId: string) => void;
   onSelect: (methodId: string) => void;
 }): ReactElement {
   const { t } = useI18n();
@@ -207,6 +214,7 @@ export function ReferencePage({
     const spec = methodGuideSpecs[method.method_id];
     return spec ? [{ method, spec }] : [];
   });
+  const selected = guidedMethods.find(({ method }) => method.method_id === selectedMethodId) ?? guidedMethods[0];
 
   return (
     <div className="page-stack method-guide-page">
@@ -214,97 +222,149 @@ export function ReferencePage({
       {loading ? <ScopeNotice title={t('new_analysis.loading_title')}>{t('status.loading')}</ScopeNotice> : null}
       {!loading && !guidedMethods.length ? <ScopeNotice title={t('status.no_methods')} tone="warning">{t('reference.api_error')}</ScopeNotice> : null}
 
-      <EngineeringSection title={t('reference.choose_title')} description={t('reference.choose_description')}>
-        <div className="handbook-choice-grid" role="list" aria-label={t('reference.choose_title')}>
-          {guidedMethods.map(({ method, spec }) => (
-            <a className="handbook-choice-card" href={`#method-guide-${method.method_id}`} key={method.method_id} role="listitem">
-              <span className="method-family">{t(`method.${method.family}`)}</span>
-              <strong>{t(method.name_key)}</strong>
-              <span>{t(spec.decisionKey)}</span>
-            </a>
-          ))}
-        </div>
-      </EngineeringSection>
+      {selected ? (
+        <div className="handbook-workspace">
+          <nav className="handbook-method-nav" aria-label={t('reference.choose_title')}>
+            <div className="handbook-method-nav-heading">
+              <strong>{t('reference.choose_title')}</strong>
+              <span>{t('reference.choose_description')}</span>
+            </div>
+            {guidedMethods.map(({ method, spec }) => {
+              const active = method.method_id === selected.method.method_id;
+              return (
+                <button
+                  className={`handbook-method-nav-item${active ? ' handbook-method-nav-item-active' : ''}`}
+                  type="button"
+                  aria-current={active ? 'page' : undefined}
+                  onClick={() => onReferenceSelect(method.method_id)}
+                  key={method.method_id}
+                >
+                  <span className="method-family">{t(`method.${method.family}`)}</span>
+                  <strong>{t(method.name_key)}</strong>
+                  <small>{t(spec.decisionKey)}</small>
+                </button>
+              );
+            })}
+          </nav>
 
-      <ScopeNotice title={t('reference.selection_rule_title')} tone="neutral">
-        {t('reference.selection_rule')}
-      </ScopeNotice>
-
-      <div className="handbook-list">
-        {guidedMethods.map(({ method, spec }) => {
-          const module = getFrontendModule(method.method_id);
-          const actionabilityStatus = getMethodActionabilityStatus(method, module);
-          const actionable = isMethodActionable(method, module);
-          const unavailableLabel: Record<Exclude<MethodActionabilityStatus, 'actionable'>, string> = {
-            engineering_unavailable: t('new_analysis.engineering_unavailable'),
-            not_delivered: t('new_analysis.reference_only'),
-            contract_mismatch: t('new_analysis.engineering_unavailable'),
-          };
-          return (
-            <article className="handbook-method" id={`method-guide-${method.method_id}`} key={method.method_id} data-testid={`reference-${method.method_id}`}>
-              <header className="handbook-method-header">
-                <div>
-                  <p className="method-family">{t(`method.${method.family}`)}</p>
-                  <h2>{t(method.name_key)}</h2>
-                  <p className="handbook-method-summary">{t(spec.decisionKey)}</p>
-                </div>
-                <div className="handbook-method-badges" aria-label={t('reference.qualified_basis')}>
-                  <span>{method.hcm_edition}</span>
-                  <span>{method.supported_unit_systems.join(' / ')}</span>
-                </div>
-              </header>
-
-              <div className="handbook-when-grid">
-                <section className="handbook-callout handbook-callout-use">
-                  <h3>{t('reference.use_when')}</h3>
-                  <p>{t(spec.useKey)}</p>
-                </section>
-                <section className="handbook-callout handbook-callout-avoid">
-                  <h3>{t('reference.avoid_when')}</h3>
-                  <p>{t(spec.avoidKey)}</p>
-                </section>
+          <article className="handbook-article" data-testid={`reference-${selected.method.method_id}`}>
+            <header className="handbook-article-header">
+              <div>
+                <p className="method-family">{t(`method.${selected.method.family}`)}</p>
+                <h2>{t(selected.method.name_key)}</h2>
+                <p className="handbook-article-lead">{t(selected.spec.overviewKey)}</p>
               </div>
-
-              <div className="handbook-detail-grid">
-                <section>
-                  <h3>{t('reference.prepare_title')}</h3>
-                  <ul>{spec.prepareKeys.map((key) => <li key={key}>{t(key)}</li>)}</ul>
-                </section>
-                <section>
-                  <h3>{t('reference.outputs_title')}</h3>
-                  <ul>{spec.outputKeys.map((key) => <li key={key}>{t(key)}</li>)}</ul>
-                </section>
-                <section>
-                  <h3>{t('reference.limits_title')}</h3>
-                  <ul>{spec.limitKeys.map((key) => <li key={key}>{t(key)}</li>)}</ul>
-                </section>
+              <div className="handbook-method-badges" aria-label={t('reference.qualified_basis')}>
+                <span>{selected.method.hcm_edition}</span>
+                <span>{selected.method.supported_unit_systems.join(' / ')}</span>
               </div>
+            </header>
 
-              <dl className="reference-facts handbook-facts">
-                <div><dt>{t('reference.chapter')}</dt><dd>{method.chapter_reference}</dd></div>
-                <div><dt>{t('reference.scope')}</dt><dd>{scopeFor(method, t)}</dd></div>
-                <div><dt>{t('reference.units')}</dt><dd>{method.supported_unit_systems.join(' / ')}</dd></div>
+            <div className="handbook-when-grid">
+              <section className="handbook-callout handbook-callout-use">
+                <h3>{t('reference.use_when')}</h3>
+                <p>{t(selected.spec.useKey)}</p>
+              </section>
+              <section className="handbook-callout handbook-callout-avoid">
+                <h3>{t('reference.avoid_when')}</h3>
+                <p>{t(selected.spec.avoidKey)}</p>
+              </section>
+            </div>
+
+            <section className="handbook-section">
+              <div className="handbook-section-heading">
+                <span>01</span>
+                <div><h3>{t('reference.prepare_title')}</h3><p>{t('reference.prepare_description')}</p></div>
+              </div>
+              <ul className="handbook-checklist">
+                {selected.spec.prepareKeys.map((key) => <li key={key}>{t(key)}</li>)}
+              </ul>
+            </section>
+
+            <section className="handbook-section">
+              <div className="handbook-section-heading">
+                <span>02</span>
+                <div><h3>{t('reference.key_inputs_title')}</h3><p>{t('reference.key_inputs_description')}</p></div>
+              </div>
+              <dl className="handbook-glossary">
+                {selected.spec.glossaryItems.map((item) => (
+                  <div key={item.termKey}>
+                    <dt>{t(item.termKey)}</dt>
+                    <dd>{t(item.descriptionKey)}</dd>
+                  </div>
+                ))}
               </dl>
+            </section>
 
+            <section className="handbook-section">
+              <div className="handbook-section-heading">
+                <span>03</span>
+                <div><h3>{t('reference.workflow_title')}</h3><p>{t('reference.workflow_description')}</p></div>
+              </div>
+              <ol className="handbook-steps">
+                {selected.spec.stepKeys.map((key, index) => (
+                  <li key={key}><span>{index + 1}</span><p>{t(key)}</p></li>
+                ))}
+              </ol>
+            </section>
+
+            <section className="handbook-section">
+              <div className="handbook-section-heading">
+                <span>04</span>
+                <div><h3>{t('reference.results_title')}</h3><p>{t('reference.results_description')}</p></div>
+              </div>
+              <div className="handbook-results-grid">
+                <div>
+                  <h4>{t('reference.outputs_title')}</h4>
+                  <ul>{selected.spec.outputKeys.map((key) => <li key={key}>{t(key)}</li>)}</ul>
+                </div>
+                <div>
+                  <h4>{t('reference.interpretation_title')}</h4>
+                  <ul>{selected.spec.interpretationKeys.map((key) => <li key={key}>{t(key)}</li>)}</ul>
+                </div>
+              </div>
+            </section>
+
+            <section className="handbook-section">
+              <div className="handbook-section-heading">
+                <span>05</span>
+                <div><h3>{t('reference.limits_title')}</h3><p>{t('reference.limits_description')}</p></div>
+              </div>
+              <ul className="handbook-limit-list">
+                {selected.spec.limitKeys.map((key) => <li key={key}>{t(key)}</li>)}
+              </ul>
+            </section>
+
+            <section className="handbook-source-card">
+              <h3>{t('reference.source_title')}</h3>
+              <dl className="reference-facts handbook-facts">
+                <div><dt>{t('reference.chapter')}</dt><dd>{selected.method.chapter_reference}</dd></div>
+                <div><dt>{t('reference.scope')}</dt><dd>{scopeFor(selected.method, t)}</dd></div>
+                <div><dt>{t('reference.units')}</dt><dd>{selected.method.supported_unit_systems.join(' / ')}</dd></div>
+              </dl>
               <div className="reference-actions">
-                <button className="button button-primary" type="button" disabled={!isMethodRouteEligible(method, module)} onClick={() => onSelect(method.method_id)}>
+                <button
+                  className="button button-primary"
+                  type="button"
+                  disabled={!isMethodRouteEligible(selected.method, getFrontendModule(selected.method.method_id))}
+                  onClick={() => onSelect(selected.method.method_id)}
+                >
                   {t('action.start_analysis')}
                 </button>
-                {!actionable ? <StatusBadge tone={actionabilityStatus === 'contract_mismatch' ? 'warning' : 'neutral'}>{unavailableLabel[actionabilityStatus as Exclude<MethodActionabilityStatus, 'actionable'>]}</StatusBadge> : null}
               </div>
+            </section>
 
-              <DetailsDisclosure title={t('reference.technical_title')}>
-                <dl className="technical-facts">
-                  <div><dt>{t('reference.method_identifier')}</dt><dd><code>{method.method_identifier}</code></dd></div>
-                  <div><dt>{t('reference.engine_identifier')}</dt><dd><code>{method.engine_method_identifier}</code></dd></div>
-                  <div><dt>{t('reference.method_version')}</dt><dd><code>{method.method_version}</code></dd></div>
-                  <div><dt>{t('reference.contract')}</dt><dd><code>{method.input_contract}</code></dd></div>
-                </dl>
-              </DetailsDisclosure>
-            </article>
-          );
-        })}
-      </div>
+            <DetailsDisclosure title={t('reference.technical_title')}>
+              <dl className="technical-facts">
+                <div><dt>{t('reference.method_identifier')}</dt><dd><code>{selected.method.method_identifier}</code></dd></div>
+                <div><dt>{t('reference.engine_identifier')}</dt><dd><code>{selected.method.engine_method_identifier}</code></dd></div>
+                <div><dt>{t('reference.method_version')}</dt><dd><code>{selected.method.method_version}</code></dd></div>
+                <div><dt>{t('reference.contract')}</dt><dd><code>{selected.method.input_contract}</code></dd></div>
+              </dl>
+            </DetailsDisclosure>
+          </article>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -415,7 +475,7 @@ export function App(): ReactElement {
   }, [scenarioEdit, t, workflowDirty]);
 
   const navigate = (nextPage: PageId) => requestNavigation({ page: nextPage, methodId: null, scenarioEdit: null });
-  const referenceMethod = () => requestNavigation({ page: 'reference', methodId: null, scenarioEdit: null });
+  const referenceMethod = (methodId = '') => requestNavigation({ page: 'reference', methodId: methodId || null, scenarioEdit: null });
   const selectMethod = (methodId: MethodNavigationId | string) => requestNavigation({ page: 'new-analysis', methodId, scenarioEdit: null });
   const editScenario = (methodId: string, context: ScenarioEditContext) => requestNavigation({ page: 'new-analysis', methodId, scenarioEdit: context });
 
@@ -437,7 +497,7 @@ export function App(): ReactElement {
       {page === 'new-analysis' && selectedMethod ? <AnalysisWorkflow method={selectedMethod} initialScenario={scenarioEdit ?? undefined} onDirtyChange={setWorkflowDirty} onBack={backFromWorkflow} onScenarioResultSaved={scenarioEdit ? saveEditedScenario : undefined} onProjectSaved={(savedProject) => { setProject(savedProject); commitRoute({ page: 'project', methodId: null, scenarioEdit: null }); }} /> : null}
       {page === 'new-analysis' && !selectedMethod ? <NewAnalysisPage methods={methods} loading={loading} onReference={referenceMethod} onSelect={selectMethod} /> : null}
       {page === 'project' ? <ProjectWorkspace project={project} methods={methods} onProjectChange={setProject} onNewAnalysis={() => navigate('new-analysis')} onEditScenario={editScenario} /> : null}
-      {page === 'reference' ? <ReferencePage methods={methods} loading={loading} onSelect={selectMethod} /> : null}
+      {page === 'reference' ? <ReferencePage methods={methods} loading={loading} selectedMethodId={selectedMethodId} onReferenceSelect={referenceMethod} onSelect={selectMethod} /> : null}
     </AppShell>
   );
 }

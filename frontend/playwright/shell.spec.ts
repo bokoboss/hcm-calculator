@@ -14,12 +14,21 @@ test('release-like Python-served shell exposes safe discovery and localization',
 
   await page.getByRole('button', { name: 'Analysis guide' }).first().click();
   await expect(page.getByRole('heading', { name: 'HCM Analysis Handbook' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Choose the right workflow' })).toBeVisible();
-  await expect(page.getByTestId('reference-multilane_segment')).toBeVisible();
-  await expect(page.getByTestId('reference-weaving_segment').getByRole('heading', { name: 'Prepare these inputs' })).toBeVisible();
+  await expect(page.getByTestId('reference-two_lane_segment')).toBeVisible();
+  await expect(page.getByTestId('reference-basic_freeway_segment')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Key inputs and concepts' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'How the method works' })).toBeVisible();
+
+  await page.goto('/reference/weaving_segment');
+  await expect(page).toHaveURL(/\/reference\/weaving_segment$/);
+  const weavingGuide = page.getByTestId('reference-weaving_segment');
+  await expect(weavingGuide).toBeVisible();
+  await expect(weavingGuide.getByText('LS and LMAX')).toBeVisible();
+  await expect(weavingGuide.getByText(/LS ≥ LMAX is not a poor weaving LOS/)).toBeVisible();
 
   await page.getByRole('button', { name: 'Thai' }).click();
   await expect(page.getByRole('heading', { name: 'คู่มือการวิเคราะห์ HCM' })).toBeVisible();
+  await expect(page.getByTestId('reference-weaving_segment').getByText('LS และ LMAX')).toBeVisible();
   await page.getByRole('button', { name: 'อังกฤษ' }).click();
   await expect(page.getByRole('heading', { name: 'HCM Analysis Handbook' })).toBeVisible();
 });
