@@ -73,7 +73,7 @@ test.describe('Phase 3 whole-product workstation UAT', () => {
     await expect(page.getByRole('heading', { name: 'HCM Analysis Handbook' })).toBeVisible();
     await expect(page.getByTestId('reference-two_lane_segment')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Key inputs and concepts' })).toBeVisible();
-    await page.getByRole('button', { name: /Freeway Weaving Segment/ }).click();
+    await page.getByRole('button', { name: /Weaving Segment/ }).click();
     await expect(page).toHaveURL(/\/reference\/weaving_segment$/);
     await expect(page.getByTestId('reference-weaving_segment').getByText('LS and LMAX')).toBeVisible();
     await expect(page.getByTestId('reference-two_lane_segment')).toHaveCount(0);
