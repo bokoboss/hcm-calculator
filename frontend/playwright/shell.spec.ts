@@ -12,12 +12,14 @@ test('release-like Python-served shell exposes safe discovery and localization',
   await expect(methodButtons).toHaveCount(7);
   expect(await methodButtons.evaluateAll((buttons) => buttons.filter((button) => !(button as HTMLButtonElement).disabled))).toHaveLength(7);
 
-  await page.getByRole('button', { name: 'Method Guide' }).first().click();
-  await expect(page.getByRole('heading', { name: 'Method Guide' })).toBeVisible();
+  await page.getByRole('button', { name: 'Analysis guide' }).first().click();
+  await expect(page.getByRole('heading', { name: 'HCM Analysis Handbook' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Choose the right workflow' })).toBeVisible();
   await expect(page.getByTestId('reference-multilane_segment')).toBeVisible();
+  await expect(page.getByTestId('reference-weaving_segment').getByRole('heading', { name: 'Prepare these inputs' })).toBeVisible();
 
   await page.getByRole('button', { name: 'Thai' }).click();
-  await expect(page.getByRole('heading', { name: 'คู่มือวิธี' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'คู่มือการวิเคราะห์ HCM' })).toBeVisible();
   await page.getByRole('button', { name: 'อังกฤษ' }).click();
-  await expect(page.getByRole('heading', { name: 'Method Guide' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'HCM Analysis Handbook' })).toBeVisible();
 });
