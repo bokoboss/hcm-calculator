@@ -3,6 +3,7 @@ import { fetchMethods, recordProjectResult } from '../api/client';
 import type { MethodDefinition, WorkflowCalculationResponse } from '../api/types';
 import { AnalysisWorkflow, type ScenarioEditContext } from './AnalysisWorkflow';
 import { ProjectWorkspace } from './ProjectWorkspace';
+import { methodGuideSpecs } from './methodGuideContent';
 import {
   getActionableMethods,
   getFrontendModule,
@@ -192,7 +193,7 @@ function NewAnalysisPage({
   );
 }
 
-function ReferencePage({
+export function ReferencePage({
   methods,
   loading,
   onSelect,
@@ -202,12 +203,35 @@ function ReferencePage({
   onSelect: (methodId: string) => void;
 }): ReactElement {
   const { t } = useI18n();
+  const guidedMethods = methods.flatMap((method) => {
+    const spec = methodGuideSpecs[method.method_id];
+    return spec ? [{ method, spec }] : [];
+  });
+
   return (
     <div className="page-stack method-guide-page">
       <PageHeader eyebrow={t('reference.eyebrow')} title={t('reference.title')} description={t('reference.description')} />
       {loading ? <ScopeNotice title={t('new_analysis.loading_title')}>{t('status.loading')}</ScopeNotice> : null}
-      <div className="reference-list">
-        {methods.map((method) => {
+      {!loading && !guidedMethods.length ? <ScopeNotice title={t('status.no_methods')} tone="warning">{t('reference.api_error')}</ScopeNotice> : null}
+
+      <EngineeringSection title={t('reference.choose_title')} description={t('reference.choose_description')}>
+        <div className="handbook-choice-grid" role="list" aria-label={t('reference.choose_title')}>
+          {guidedMethods.map(({ method, spec }) => (
+            <a className="handbook-choice-card" href={`#method-guide-${method.method_id}`} key={method.method_id} role="listitem">
+              <span className="method-family">{t(`method.${method.family}`)}</span>
+              <strong>{t(method.name_key)}</strong>
+              <span>{t(spec.decisionKey)}</span>
+            </a>
+          ))}
+        </div>
+      </EngineeringSection>
+
+      <ScopeNotice title={t('reference.selection_rule_title')} tone="neutral">
+        {t('reference.selection_rule')}
+      </ScopeNotice>
+
+      <div className="handbook-list">
+        {guidedMethods.map(({ method, spec }) => {
           const module = getFrontendModule(method.method_id);
           const actionabilityStatus = getMethodActionabilityStatus(method, module);
           const actionable = isMethodActionable(method, module);
@@ -217,24 +241,63 @@ function ReferencePage({
             contract_mismatch: t('new_analysis.engineering_unavailable'),
           };
           return (
-            <article className="reference-row" id={`method-guide-${method.method_id}`} key={method.method_id} data-testid={`reference-${method.method_id}`}>
-              <div className="reference-row-title">
-                <p className="method-family">{t(`method.${method.family}`)}</p>
-                <h2>{t(method.name_key)}</h2>
-                <p><strong>{t('new_analysis.use_for')}</strong> {t(method.description_key)}</p>
+            <article className="handbook-method" id={`method-guide-${method.method_id}`} key={method.method_id} data-testid={`reference-${method.method_id}`}>
+              <header className="handbook-method-header">
+                <div>
+                  <p className="method-family">{t(`method.${method.family}`)}</p>
+                  <h2>{t(method.name_key)}</h2>
+                  <p className="handbook-method-summary">{t(spec.decisionKey)}</p>
+                </div>
+                <div className="handbook-method-badges" aria-label={t('reference.qualified_basis')}>
+                  <span>{method.hcm_edition}</span>
+                  <span>{method.supported_unit_systems.join(' / ')}</span>
+                </div>
+              </header>
+
+              <div className="handbook-when-grid">
+                <section className="handbook-callout handbook-callout-use">
+                  <h3>{t('reference.use_when')}</h3>
+                  <p>{t(spec.useKey)}</p>
+                </section>
+                <section className="handbook-callout handbook-callout-avoid">
+                  <h3>{t('reference.avoid_when')}</h3>
+                  <p>{t(spec.avoidKey)}</p>
+                </section>
               </div>
-              <dl className="reference-facts">
+
+              <div className="handbook-detail-grid">
+                <section>
+                  <h3>{t('reference.prepare_title')}</h3>
+                  <ul>{spec.prepareKeys.map((key) => <li key={key}>{t(key)}</li>)}</ul>
+                </section>
+                <section>
+                  <h3>{t('reference.outputs_title')}</h3>
+                  <ul>{spec.outputKeys.map((key) => <li key={key}>{t(key)}</li>)}</ul>
+                </section>
+                <section>
+                  <h3>{t('reference.limits_title')}</h3>
+                  <ul>{spec.limitKeys.map((key) => <li key={key}>{t(key)}</li>)}</ul>
+                </section>
+              </div>
+
+              <dl className="reference-facts handbook-facts">
                 <div><dt>{t('reference.chapter')}</dt><dd>{method.chapter_reference}</dd></div>
                 <div><dt>{t('reference.scope')}</dt><dd>{scopeFor(method, t)}</dd></div>
                 <div><dt>{t('reference.units')}</dt><dd>{method.supported_unit_systems.join(' / ')}</dd></div>
               </dl>
+
               <div className="reference-actions">
-                <button className="button button-primary" type="button" disabled={!isMethodRouteEligible(method, module)} onClick={() => onSelect(method.method_id)}>{t('action.start_analysis')}</button>
+                <button className="button button-primary" type="button" disabled={!isMethodRouteEligible(method, module)} onClick={() => onSelect(method.method_id)}>
+                  {t('action.start_analysis')}
+                </button>
                 {!actionable ? <StatusBadge tone={actionabilityStatus === 'contract_mismatch' ? 'warning' : 'neutral'}>{unavailableLabel[actionabilityStatus as Exclude<MethodActionabilityStatus, 'actionable'>]}</StatusBadge> : null}
               </div>
+
               <DetailsDisclosure title={t('reference.technical_title')}>
                 <dl className="technical-facts">
                   <div><dt>{t('reference.method_identifier')}</dt><dd><code>{method.method_identifier}</code></dd></div>
+                  <div><dt>{t('reference.engine_identifier')}</dt><dd><code>{method.engine_method_identifier}</code></dd></div>
+                  <div><dt>{t('reference.method_version')}</dt><dd><code>{method.method_version}</code></dd></div>
                   <div><dt>{t('reference.contract')}</dt><dd><code>{method.input_contract}</code></dd></div>
                 </dl>
               </DetailsDisclosure>
