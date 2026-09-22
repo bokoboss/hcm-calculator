@@ -67,7 +67,7 @@ describe('ReferencePage analysis handbook', () => {
     expect(screen.getByRole('heading', { name: 'Prepare these inputs' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'What you get' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Important limits' })).toBeInTheDocument();
-    expect(screen.getByText(/One two-lane, two-way highway segment/)).toBeInTheDocument();
+    expect(screen.getAllByText(/One two-lane, two-way highway segment/)).toHaveLength(2);
     expect(screen.getByRole('button', { name: 'Start analysis' })).toBeEnabled();
   });
 });
