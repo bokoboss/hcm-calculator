@@ -71,4 +71,22 @@ describe('localization catalog', () => {
       expect(translate('th', key)).not.toBe(key);
     }
   });
+
+  it('discloses Thailand traffic-side scope without changing engineering terms', () => {
+    expect(translate('en', 'multilane.right_clearance')).toBe('Roadside lateral clearance');
+    expect(translate('en', 'multilane.left_clearance')).toContain('HCM source term');
+    expect(translate('en', 'basic_freeway.right_side_lateral_clearance')).toContain('HCM source term');
+    expect(translate('en', 'weaving.right_side_lateral_clearance')).toContain('HCM source term');
+    expect(translate('en', 'ramp.right_side_lateral_clearance')).toContain('HCM source term');
+    expect(translate('en', 'weaving.reference_caption')).toContain('origin/destination movement codes');
+    expect(translate('en', 'method.merge_segment.scope')).toContain('left-side/LHT mirroring is not qualified');
+    expect(translate('en', 'method.diverge_segment.scope')).toContain('left-side/LHT mirroring is not qualified');
+
+    expect(translate('th', 'multilane.right_clearance')).toBe('ระยะเคลียร์ข้างทาง');
+    expect(translate('th', 'multilane.left_clearance')).toContain('คำศัพท์ต้นฉบับ HCM');
+    expect(translate('th', 'basic_freeway.right_side_lateral_clearance')).toContain('คำศัพท์ต้นฉบับ HCM');
+    expect(translate('th', 'weaving.reference_caption')).toContain('ไม่ใช่รหัสตำแหน่งช่องจราจรด้านซ้าย/ขวา');
+    expect(translate('th', 'method.merge_segment.scope')).toContain('ยังไม่ผ่านการรับรอง');
+  });
+
 });

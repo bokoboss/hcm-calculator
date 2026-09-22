@@ -594,7 +594,7 @@ def _ramp_report(
     report["selected_validation_preset"] = preset_id
     report["support_scope"] = (
         f"Qualified HCM 7.0 isolated one-lane right-side freeway {movement.lower()} segment only; "
-        "HCM 7.1 and adjacent-ramp contexts are known but unavailable."
+        "left-side/LHT mirroring is not qualified. HCM 7.1 and adjacent-ramp contexts are known but unavailable."
     )
     report["normalized_engine_inputs_summary"] = _input_records(
         (audit_record or {}).get("normalized_engine_inputs", {}), "imperial"
@@ -720,7 +720,11 @@ def _localized_report(report: dict[str, Any], locale: str | None) -> dict[str, A
         for row in localized.get(section, []):
             label = row.get("label")
             if isinstance(label, str):
-                row["label"] = field_label(label.lower().replace(" ", "_"), active_locale) if label.replace(" ", "_").isalnum() else label
+                source_label_key = _SOURCE_SIDE_REPORT_LABEL_KEYS_BY_ENGLISH.get(label)
+                if source_label_key:
+                    row["label"] = translate(source_label_key, active_locale)
+                else:
+                    row["label"] = field_label(label.lower().replace(" ", "_"), active_locale) if label.replace(" ", "_").isalnum() else label
             if row.get("value") is None:
                 row["value"] = translate("status.not_predicted", active_locale)
     for row in localized.get("segment_results", []):
@@ -1052,5 +1056,21 @@ def _markdown_cell(value: Any) -> str:
     return str(_cell(value) if value is not None else "").replace("|", r"\|").replace("\n", " ")
 
 
+_SOURCE_SIDE_REPORT_LABEL_KEYS = {
+    "roadside_lateral_clearance": "report.field.roadside_lateral_clearance",
+    "roadside_lateral_clearance_ft": "report.field.roadside_lateral_clearance",
+    "left_side_lateral_clearance": "report.field.left_side_lateral_clearance",
+    "left_side_lateral_clearance_ft": "report.field.left_side_lateral_clearance",
+    "right_side_lateral_clearance": "report.field.right_side_lateral_clearance",
+    "right_side_lateral_clearance_ft": "report.field.right_side_lateral_clearance",
+}
+_SOURCE_SIDE_REPORT_LABEL_KEYS_BY_ENGLISH = {
+    translate(key, "en"): key for key in set(_SOURCE_SIDE_REPORT_LABEL_KEYS.values())
+}
+
+
 def _label(value: str) -> str:
+    source_label_key = _SOURCE_SIDE_REPORT_LABEL_KEYS.get(str(value))
+    if source_label_key:
+        return translate(source_label_key, "en")
     return str(value).replace("_", " ").strip().title()
