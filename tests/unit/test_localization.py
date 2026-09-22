@@ -155,3 +155,34 @@ def test_streamlit_locale_switch_is_presentation_only() -> None:
     assert app.selectbox[2].label == "เครื่องคำนวณ"
     app.selectbox[0].set_value("en").run(timeout=30)
     assert not app.exception
+
+
+def test_thailand_source_side_disclosures_are_presentation_only() -> None:
+    assert translate("multilane.right_clearance", "en", unit="ft").startswith("Roadside lateral clearance")
+    assert "HCM source term" in translate("multilane.left_clearance", "en", unit="ft")
+    assert "HCM source term" in translate("freeway.right_clearance", "en", unit="ft")
+    assert "origin/destination movement codes" in translate("weaving.movement_caption", "en")
+    assert "Left-side/LHT mirroring" in translate("ramp.fixed_scope", "en")
+
+    assert "คำศัพท์ต้นฉบับ HCM" in translate("multilane.left_clearance", "th", unit="m")
+    assert "คำศัพท์ต้นฉบับ HCM" in translate("freeway.right_clearance", "th", unit="m")
+    assert "ไม่ใช่ตำแหน่งช่องจราจรด้านซ้าย/ขวา" in translate("weaving.movement_caption", "th")
+    assert "ยังไม่ผ่านการรับรอง" in translate("ramp.fixed_scope", "th")
+
+    result = _freeway_result()
+    english_report = build_report(
+        "manual_basic_freeway_v0",
+        result,
+        "imperial",
+        inputs={"right_side_lateral_clearance": 6.0},
+        locale="en",
+    )
+    thai_report = build_report(
+        "manual_basic_freeway_v0",
+        result,
+        "imperial",
+        inputs={"right_side_lateral_clearance": 6.0},
+        locale="th",
+    )
+    assert english_report["inputs_summary"][0]["label"] == "Right-side lateral clearance (HCM source term)"
+    assert thai_report["inputs_summary"][0]["label"] == "ระยะเคลียร์ด้านขวา (คำศัพท์ต้นฉบับ HCM)"
