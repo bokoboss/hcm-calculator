@@ -158,14 +158,14 @@ def test_streamlit_locale_switch_is_presentation_only() -> None:
 
 
 def test_thailand_source_side_disclosures_are_presentation_only() -> None:
-    assert translate("multilane.right_clearance", "en").startswith("Roadside lateral clearance")
-    assert "HCM source term" in translate("multilane.left_clearance", "en")
-    assert "HCM source term" in translate("freeway.right_clearance", "en")
+    assert translate("multilane.right_clearance", "en", unit="ft").startswith("Roadside lateral clearance")
+    assert "HCM source term" in translate("multilane.left_clearance", "en", unit="ft")
+    assert "HCM source term" in translate("freeway.right_clearance", "en", unit="ft")
     assert "origin/destination movement codes" in translate("weaving.movement_caption", "en")
     assert "Left-side/LHT mirroring" in translate("ramp.fixed_scope", "en")
 
-    assert "คำศัพท์ต้นฉบับ HCM" in translate("multilane.left_clearance", "th")
-    assert "คำศัพท์ต้นฉบับ HCM" in translate("freeway.right_clearance", "th")
+    assert "คำศัพท์ต้นฉบับ HCM" in translate("multilane.left_clearance", "th", unit="m")
+    assert "คำศัพท์ต้นฉบับ HCM" in translate("freeway.right_clearance", "th", unit="m")
     assert "ไม่ใช่ตำแหน่งช่องจราจรด้านซ้าย/ขวา" in translate("weaving.movement_caption", "th")
     assert "ยังไม่ผ่านการรับรอง" in translate("ramp.fixed_scope", "th")
 
