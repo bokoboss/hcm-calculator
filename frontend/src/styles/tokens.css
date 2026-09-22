@@ -351,6 +351,32 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .technical-facts dd { min-width: 0; margin: 0; }
 .technical-facts code { overflow-wrap: anywhere; color: var(--navy); font-size: 11px; }
 
+.handbook-choice-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(245px, 1fr)); gap: 12px; }
+.handbook-choice-card { display: grid; gap: 6px; min-height: 132px; padding: 15px; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; color: var(--text); text-decoration: none; }
+.handbook-choice-card:hover { border-color: #8bbde2; background: var(--blue-soft); }
+.handbook-choice-card strong { color: var(--navy); font-size: 15px; line-height: 1.3; }
+.handbook-choice-card > span:last-child { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.handbook-list { display: grid; gap: 18px; }
+.handbook-method { display: grid; gap: 18px; padding: 20px; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; scroll-margin-top: 18px; }
+.handbook-method-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.handbook-method-header h2 { margin: 5px 0 6px; color: var(--navy); font-size: 21px; line-height: 1.25; }
+.handbook-method-summary { max-width: 720px; margin: 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
+.handbook-method-badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; }
+.handbook-method-badges span { border: 1px solid var(--border); border-radius: 999px; padding: 5px 8px; background: var(--soft); color: var(--navy); font-size: 10px; font-weight: 800; white-space: nowrap; }
+.handbook-when-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.handbook-callout { min-width: 0; padding: 14px 15px; border: 1px solid var(--border); border-left-width: 4px; border-radius: var(--radius); }
+.handbook-callout h3, .handbook-detail-grid h3 { margin: 0 0 7px; color: var(--navy); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
+.handbook-callout p { margin: 0; color: var(--text); font-size: 13px; line-height: 1.55; }
+.handbook-callout-use { border-left-color: var(--green); background: var(--green-soft); }
+.handbook-callout-avoid { border-left-color: var(--amber); background: var(--amber-soft); }
+.handbook-detail-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.handbook-detail-grid > section { min-width: 0; padding: 15px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--soft); }
+.handbook-detail-grid ul { display: grid; gap: 8px; margin: 0; padding-left: 18px; color: var(--text); font-size: 12px; line-height: 1.5; }
+.handbook-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 14px 0 0; border-top: 1px solid var(--border); }
+.handbook-facts div { display: block; }
+.handbook-facts dt { margin-bottom: 4px; }
+.handbook-facts dd { font-size: 12px; line-height: 1.5; }
+
 .workflow-page { max-width: 1360px; }
 .facility-workflow { max-width: none; }
 .workflow-toolbar { padding-bottom: 2px; }
@@ -411,12 +437,18 @@ html[lang="th"] .button, html[lang="th"] .field-label, html[lang="th"] .section-
 
 @media (max-width: 900px) {
   .app-header { min-height: 56px; }
+  .handbook-method-header { flex-direction: column; }
+  .handbook-method-badges { justify-content: flex-start; }
+  .handbook-detail-grid { grid-template-columns: 1fr; }
+  .handbook-facts { grid-template-columns: 1fr; }
   .reference-row { grid-template-columns: 1fr; }
   .reference-row > .reference-actions, .reference-row > .details-disclosure { grid-column: auto; }
   .readiness-bar { bottom: 8px; }
 }
 
 @media (max-width: 700px) {
+  .handbook-choice-grid, .handbook-when-grid { grid-template-columns: 1fr; }
+  .handbook-method { padding: 16px; }
   .home-method-list div { grid-template-columns: 1fr; gap: 3px; }
   .availability-summary .button { width: 100%; margin-left: 0; text-align: left; }
   .result-inspector-surface .metric-grid { grid-template-columns: 1fr; }
