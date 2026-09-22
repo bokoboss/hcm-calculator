@@ -203,9 +203,10 @@ export function ReferencePage({
   onSelect: (methodId: string) => void;
 }): ReactElement {
   const { t } = useI18n();
-  const guidedMethods = methods
-    .map((method) => ({ method, spec: methodGuideSpecs[method.method_id] }))
-    .filter((item): item is { method: MethodDefinition; spec: NonNullable<typeof item.spec> } => Boolean(item.spec));
+  const guidedMethods = methods.flatMap((method) => {
+    const spec = methodGuideSpecs[method.method_id];
+    return spec ? [{ method, spec }] : [];
+  });
 
   return (
     <div className="page-stack method-guide-page">
