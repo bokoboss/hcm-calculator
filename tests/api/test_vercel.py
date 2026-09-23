@@ -1,4 +1,5 @@
 import importlib
+import json
 from pathlib import Path
 import re
 import tomllib
@@ -6,6 +7,7 @@ import tomllib
 from fastapi.testclient import TestClient
 
 from hcmcalc.api.vercel import app
+from scripts.build_hosted_frontend import _sync_frontend_dist
 
 
 def test_vercel_entrypoint_targets_source_adapter() -> None:
@@ -42,3 +44,41 @@ def test_vercel_adapter_keeps_routes_and_reports_preview_identity(monkeypatch) -
     missing_api = client.get("/api/v1/not-a-route")
     assert missing_api.status_code == 404
     assert missing_api.headers["content-type"].startswith("application/json")
+
+
+def test_vercel_build_command_rebuilds_hosted_frontend() -> None:
+    config_path = Path(__file__).parents[2] / "vercel.json"
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+
+    assert config["framework"] == "fastapi"
+    assert config["buildCommand"] == "python scripts/build_hosted_frontend.py"
+
+
+def test_hosted_frontend_sync_replaces_stale_packaged_bundle(tmp_path: Path) -> None:
+    dist = tmp_path / "dist"
+    assets = dist / "assets"
+    assets.mkdir(parents=True)
+    (assets / "index-NEW123.js").write_text("console.log('new')", encoding="utf-8")
+    (assets / "index-NEW123.css").write_text("body{}", encoding="utf-8")
+    (dist / "index.html").write_text(
+        '<div id="root"></div>'
+        '<script type="module" src="/assets/index-NEW123.js"></script>'
+        '<link rel="stylesheet" href="/assets/index-NEW123.css">',
+        encoding="utf-8",
+    )
+
+    target = tmp_path / "static"
+    old_assets = target / "assets"
+    old_assets.mkdir(parents=True)
+    (old_assets / "index-OLD999.js").write_text("stale", encoding="utf-8")
+    (target / "index.html").write_text(
+        '<div id="root"></div><script src="/assets/index-OLD999.js"></script>',
+        encoding="utf-8",
+    )
+
+    _sync_frontend_dist(dist, target)
+
+    assert (target / "assets" / "index-NEW123.js").is_file()
+    assert (target / "assets" / "index-NEW123.css").is_file()
+    assert not (target / "assets" / "index-OLD999.js").exists()
+    assert "index-NEW123.js" in (target / "index.html").read_text(encoding="utf-8")
