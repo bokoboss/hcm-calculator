@@ -1,6 +1,6 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
-async function expectNoGlobalHorizontalOverflow(page: Parameters<typeof test>[0]['page']): Promise<void> {
+async function expectNoGlobalHorizontalOverflow(page: Page): Promise<void> {
   const overflow = await page.evaluate(() => ({
     document: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     body: document.body.scrollWidth - document.body.clientWidth,
