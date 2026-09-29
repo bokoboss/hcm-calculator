@@ -86,27 +86,19 @@ html[lang="th"] .home-page {
   line-height: 1.55;
 }
 
-/* Home: turn the landing page into a three-task command surface while keeping
-   method coverage and audit context subordinate. */
+/* Home: three explicit task entry points, followed by secondary method coverage. */
 .home-page {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: stretch;
-  gap: 18px;
   max-width: 1240px;
 }
 
-.home-page > .page-header,
-.home-page > .scope-notice {
-  grid-column: 1 / -1;
-}
-
 .home-actions {
-  display: contents;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
 }
 
-.home-actions > .engineering-section,
-.home-page > .engineering-section {
+.home-actions > .engineering-section {
   min-height: 220px;
   box-shadow: 0 6px 18px rgb(20 32 51 / 5%);
 }
@@ -116,46 +108,39 @@ html[lang="th"] .home-page {
   background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
 }
 
-.home-page .engineering-section > .section-body {
+.home-actions .engineering-section > .section-body {
   display: flex;
   flex-direction: column;
   min-height: 152px;
 }
 
-.home-page .engineering-section .button {
+.home-actions .engineering-section .button {
   align-self: flex-start;
   margin-top: auto;
 }
 
-.home-page > .engineering-section .button-link {
-  order: -1;
-  margin: 0 0 14px;
-  border: 1px solid var(--border-strong);
-  padding: 8px 11px;
-  color: var(--navy);
-  text-decoration: none;
-  background: #fff;
+.home-methods-section {
+  box-shadow: none;
 }
 
-.home-page > .engineering-section .button-link:hover {
-  border-color: var(--blue);
-  background: var(--blue-soft);
+.home-methods-section > .section-body {
+  padding-top: 14px;
+  padding-bottom: 14px;
 }
 
 .home-method-list {
-  margin-top: 2px;
-  margin-bottom: 0;
+  margin: 0;
 }
 
 .home-method-list div {
-  grid-template-columns: minmax(88px, .28fr) 1fr;
-  gap: 10px;
+  grid-template-columns: minmax(105px, .22fr) 1fr;
+  gap: 12px;
   padding-bottom: 8px;
   font-size: 12px;
 }
 
 .home-page > .scope-notice {
-  margin-top: 2px;
+  margin-top: -2px;
   font-size: 12px;
   opacity: .92;
 }
@@ -205,8 +190,39 @@ html[lang="th"] .home-page {
   padding: 15px 16px;
 }
 
+.handbook-section-nav {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border);
+  background: rgb(255 255 255 / 96%);
+  backdrop-filter: blur(8px);
+  scrollbar-width: thin;
+}
+
+.handbook-section-nav a {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 6px 9px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.handbook-section-nav a:hover,
+.handbook-section-nav a:focus-visible {
+  color: var(--navy);
+  background: var(--blue-soft);
+}
+
 .handbook-section {
   gap: 16px;
+  scroll-margin-top: 54px;
   border: 0;
   border-radius: 0;
   padding: 24px 28px;
@@ -284,26 +300,25 @@ html[lang="th"] .home-page {
 }
 
 @media (max-width: 1000px) {
-  .home-page {
+  .home-actions {
     grid-template-columns: 1fr;
   }
 
-  .home-page > .page-header,
-  .home-page > .scope-notice {
-    grid-column: auto;
-  }
-
-  .home-actions > .engineering-section,
-  .home-page > .engineering-section {
+  .home-actions > .engineering-section {
     min-height: 0;
   }
 
-  .home-page .engineering-section > .section-body {
+  .home-actions .engineering-section > .section-body {
     min-height: 0;
   }
 }
 
 @media (max-width: 700px) {
+  .handbook-section-nav {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
   .handbook-article-header,
   .handbook-section,
   .handbook-source-card {
