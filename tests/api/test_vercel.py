@@ -54,6 +54,15 @@ def test_vercel_build_command_rebuilds_hosted_frontend() -> None:
     assert config["buildCommand"] == "python scripts/build_hosted_frontend.py"
 
 
+def test_frontend_workspace_explicitly_allows_esbuild_install_script() -> None:
+    workspace = (
+        Path(__file__).parents[2] / "frontend" / "pnpm-workspace.yaml"
+    ).read_text(encoding="utf-8")
+
+    assert "allowBuilds:" in workspace
+    assert "esbuild: true" in workspace
+
+
 def test_hosted_frontend_sync_replaces_stale_packaged_bundle(tmp_path: Path) -> None:
     dist = tmp_path / "dist"
     assets = dist / "assets"
