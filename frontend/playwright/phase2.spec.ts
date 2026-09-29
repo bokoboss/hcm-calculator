@@ -277,13 +277,14 @@ test.describe('Phase 2 representative workflows', () => {
       mimeType: 'application/json',
       buffer: Buffer.from(JSON.stringify(legacyReference)),
     });
-    await expect(page.getByTestId('project-workspace')).toBeVisible();
-    await expect(page.getByText('Two-Lane Highway Segment', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('HCM 7th Edition Chapter 15', { exact: true }).first()).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Calculate scenario' })).toBeEnabled();
-    await expect(page.getByRole('button', { name: 'Edit scenario' })).toBeEnabled();
-    await expect(page.locator('.scenario-actions-menu > summary')).toBeVisible();
-    await page.getByRole('button', { name: 'Edit scenario' }).click();
+    const workspace = page.getByTestId('project-workspace');
+    await expect(workspace).toBeVisible();
+    await expect(workspace.getByText('Two-Lane Highway Segment', { exact: true }).first()).toBeVisible();
+    await expect(workspace.getByText('HCM 7th Edition Chapter 15', { exact: true }).first()).toBeVisible();
+    await expect(workspace.getByRole('button', { name: 'Calculate scenario' })).toBeEnabled();
+    await expect(workspace.getByRole('button', { name: 'Edit scenario' })).toBeEnabled();
+    await expect(workspace.locator('.scenario-actions-menu > summary')).toBeVisible();
+    await workspace.getByRole('button', { name: 'Edit scenario' }).click();
     await expect(page.getByTestId('workflow-two_lane_segment')).toBeVisible();
     await expect(page.getByTestId('phase3-form-two_lane_segment')).toBeVisible();
   });

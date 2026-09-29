@@ -1,0 +1,343 @@
+/* UX polish: reduce navigation noise, improve reading comfort, and make the
+   handbook/home surfaces read as task-oriented engineering workspaces. */
+
+/* Contextual method navigation: method shortcuts belong to Analysis, not every
+   workspace page. The reference page has its own method navigator. */
+.desktop-method-nav,
+.mobile-method-nav {
+  display: none;
+}
+
+@media (min-width: 901px) {
+  .app-sidebar nav:has(> .nav-item:nth-of-type(3).nav-item-active) .desktop-method-nav,
+  .app-sidebar nav:has(.nav-method-item.nav-item-active):not(:has(> .nav-item:nth-of-type(4).nav-item-active)) .desktop-method-nav {
+    display: block;
+  }
+}
+
+@media (max-width: 900px) {
+  .app-sidebar nav:has(> .nav-item:nth-of-type(3).nav-item-active) .mobile-method-nav,
+  .app-sidebar nav:has(.nav-method-item.nav-item-active):not(:has(> .nav-item:nth-of-type(4).nav-item-active)) .mobile-method-nav {
+    display: block;
+  }
+}
+
+/* Readability: retain compact workstation density without 10 px body-like text. */
+.sidebar-group-label,
+.method-family,
+.eyebrow,
+.section-label,
+.summary-kicker,
+.result-label,
+.brand-kicker {
+  font-size: 11px;
+}
+
+.nav-item,
+.nav-method-item {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.status-bar,
+.locale-switcher,
+.locale-switcher button {
+  font-size: 12px;
+}
+
+.method-meta dt,
+.reference-facts dt,
+.status-badge,
+.handbook-method-badges span,
+.handbook-method-nav-item small {
+  font-size: 11px;
+}
+
+.method-meta dd,
+.reference-facts dd,
+.technical-facts dt,
+.technical-facts code,
+.handbook-method-nav-heading span,
+.handbook-section-heading p,
+.handbook-glossary dt,
+.handbook-glossary dd,
+.handbook-results-grid h4,
+.handbook-results-grid ul {
+  font-size: 12px;
+}
+
+.page-description,
+.section-heading p,
+.method-card > p,
+.handbook-article-lead,
+.handbook-callout p,
+.handbook-checklist,
+.handbook-limit-list,
+.handbook-steps p {
+  line-height: 1.6;
+}
+
+html[lang="th"] .nav-item,
+html[lang="th"] .method-family,
+html[lang="th"] .sidebar-group-label,
+html[lang="th"] .handbook-method-nav-item,
+html[lang="th"] .handbook-article,
+html[lang="th"] .home-page {
+  line-height: 1.55;
+}
+
+/* Home: three explicit task entry points, followed by secondary method coverage. */
+.home-page {
+  max-width: 1240px;
+}
+
+.home-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+
+.home-actions > .engineering-section {
+  min-height: 220px;
+  box-shadow: 0 6px 18px rgb(20 32 51 / 5%);
+}
+
+.home-actions > .engineering-section:first-child {
+  border-color: #a9c9e2;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+}
+
+.home-actions .engineering-section > .section-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 152px;
+}
+
+.home-actions .engineering-section .button {
+  align-self: flex-start;
+  margin-top: auto;
+}
+
+.home-methods-section {
+  box-shadow: none;
+}
+
+.home-methods-section > .section-body {
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.home-method-list {
+  margin: 0;
+}
+
+.home-method-list div {
+  grid-template-columns: minmax(105px, .22fr) 1fr;
+  gap: 12px;
+  padding-bottom: 8px;
+  font-size: 12px;
+}
+
+.home-page > .scope-notice {
+  margin-top: -2px;
+  font-size: 12px;
+  opacity: .92;
+}
+
+/* Handbook: one editorial article, not a stack of cards. */
+.handbook-workspace {
+  gap: 22px;
+}
+
+.handbook-method-nav {
+  border-color: var(--border-strong);
+  box-shadow: none;
+}
+
+.handbook-method-nav-item {
+  padding: 11px 12px;
+}
+
+.handbook-method-nav-item-active {
+  border-color: transparent;
+  background: var(--blue-soft);
+  box-shadow: inset 3px 0 0 var(--blue);
+}
+
+.handbook-article {
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+.handbook-article-header {
+  border: 0;
+  border-radius: 0;
+  padding: 26px 28px 22px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+}
+
+.handbook-when-grid {
+  gap: 12px;
+  padding: 0 28px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.handbook-callout {
+  padding: 15px 16px;
+}
+
+.handbook-section-nav {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border);
+  background: rgb(255 255 255 / 96%);
+  backdrop-filter: blur(8px);
+  scrollbar-width: thin;
+}
+
+.handbook-section-nav a {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 6px 9px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.handbook-section-nav a:hover,
+.handbook-section-nav a:focus-visible {
+  color: var(--navy);
+  background: var(--blue-soft);
+}
+
+.handbook-section {
+  gap: 16px;
+  scroll-margin-top: 54px;
+  border: 0;
+  border-radius: 0;
+  padding: 24px 28px;
+  background: #fff;
+}
+
+.handbook-section + .handbook-section {
+  border-top: 1px solid var(--border);
+}
+
+.handbook-section-heading > span {
+  background: var(--blue-soft);
+  color: var(--navy);
+  border: 1px solid #a9c9e2;
+}
+
+.handbook-glossary {
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+}
+
+.handbook-glossary > div {
+  padding: 13px 4px;
+}
+
+.handbook-results-grid > div {
+  border: 0;
+  border-left: 3px solid #bfd8eb;
+  border-radius: 0;
+  padding: 12px 15px;
+  background: var(--soft);
+}
+
+.handbook-limit-list {
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 0;
+  border-radius: 0;
+}
+
+.handbook-source-card {
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  padding: 22px 28px;
+}
+
+.handbook-article > .details-disclosure {
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+}
+
+.handbook-article > .details-disclosure .disclosure-trigger {
+  padding: 16px 28px;
+}
+
+.handbook-article > .details-disclosure .disclosure-content {
+  padding: 0 28px 24px;
+}
+
+/* General hierarchy refinements. */
+.button {
+  min-height: 38px;
+}
+
+.page-stack {
+  gap: 24px;
+}
+
+.section-heading h2 {
+  font-size: 14px;
+  letter-spacing: .06em;
+}
+
+@media (max-width: 1000px) {
+  .home-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .home-actions > .engineering-section {
+    min-height: 0;
+  }
+
+  .home-actions .engineering-section > .section-body {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 700px) {
+  .handbook-section-nav {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .handbook-article-header,
+  .handbook-section,
+  .handbook-source-card {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .handbook-when-grid {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .handbook-article > .details-disclosure .disclosure-trigger {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+
+  .handbook-article > .details-disclosure .disclosure-content {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+}

@@ -149,12 +149,14 @@ function HomePage({
         <EngineeringSection title={t('home.project_title')} description={t('home.project_description')}>
           <button className="button button-secondary" type="button" onClick={() => onNavigate('project')}>{t('action.open_workspace')}</button>
         </EngineeringSection>
+        <EngineeringSection title={t('reference.title')} description={t('reference.result_supporting')}>
+          <button className="button button-secondary" type="button" onClick={() => onNavigate('reference')}>{t('action.method_guide')}</button>
+        </EngineeringSection>
       </div>
-      <EngineeringSection title={t('home.methods_title')} description={t('home.methods_description')}>
+      <EngineeringSection className="home-methods-section" title={t('home.methods_title')} description={t('home.methods_description')}>
         <div className="home-method-list">
           {groups.map(([family, familyMethods]) => <div key={family}><strong>{t(`method.${family}`)}</strong><span>{familyMethods.map((method) => t(method.name_key)).join(' · ')}</span></div>)}
         </div>
-        <button className="button button-link" type="button" onClick={() => onNavigate('reference')}>{t('action.method_guide')}</button>
       </EngineeringSection>
       <ScopeNotice title={t('home.audit_title')} tone="neutral">{t('home.audit_note')}</ScopeNotice>
     </div>
@@ -215,6 +217,7 @@ export function ReferencePage({
     return spec ? [{ method, spec }] : [];
   });
   const selected = guidedMethods.find(({ method }) => method.method_id === selectedMethodId) ?? guidedMethods[0];
+  const sectionId = (section: string) => selected ? `guide-${selected.method.method_id}-${section}` : section;
 
   return (
     <div className="page-stack method-guide-page">
@@ -271,7 +274,15 @@ export function ReferencePage({
               </section>
             </div>
 
-            <section className="handbook-section">
+            <nav className="handbook-section-nav" aria-label={t('reference.title')}>
+              <a href={`#${sectionId('prepare')}`}>{t('reference.prepare_title')}</a>
+              <a href={`#${sectionId('inputs')}`}>{t('reference.key_inputs_title')}</a>
+              <a href={`#${sectionId('workflow')}`}>{t('reference.workflow_title')}</a>
+              <a href={`#${sectionId('results')}`}>{t('reference.results_title')}</a>
+              <a href={`#${sectionId('limits')}`}>{t('reference.limits_title')}</a>
+            </nav>
+
+            <section className="handbook-section" id={sectionId('prepare')}>
               <div className="handbook-section-heading">
                 <span>01</span>
                 <div><h3>{t('reference.prepare_title')}</h3><p>{t('reference.prepare_description')}</p></div>
@@ -281,7 +292,7 @@ export function ReferencePage({
               </ul>
             </section>
 
-            <section className="handbook-section">
+            <section className="handbook-section" id={sectionId('inputs')}>
               <div className="handbook-section-heading">
                 <span>02</span>
                 <div><h3>{t('reference.key_inputs_title')}</h3><p>{t('reference.key_inputs_description')}</p></div>
@@ -296,7 +307,7 @@ export function ReferencePage({
               </dl>
             </section>
 
-            <section className="handbook-section">
+            <section className="handbook-section" id={sectionId('workflow')}>
               <div className="handbook-section-heading">
                 <span>03</span>
                 <div><h3>{t('reference.workflow_title')}</h3><p>{t('reference.workflow_description')}</p></div>
@@ -308,7 +319,7 @@ export function ReferencePage({
               </ol>
             </section>
 
-            <section className="handbook-section">
+            <section className="handbook-section" id={sectionId('results')}>
               <div className="handbook-section-heading">
                 <span>04</span>
                 <div><h3>{t('reference.results_title')}</h3><p>{t('reference.results_description')}</p></div>
@@ -325,7 +336,7 @@ export function ReferencePage({
               </div>
             </section>
 
-            <section className="handbook-section">
+            <section className="handbook-section" id={sectionId('limits')}>
               <div className="handbook-section-heading">
                 <span>05</span>
                 <div><h3>{t('reference.limits_title')}</h3><p>{t('reference.limits_description')}</p></div>
