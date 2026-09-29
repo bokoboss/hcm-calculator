@@ -1,0 +1,8 @@
+packages:
+  - "."
+
+# pnpm 11 blocks dependency lifecycle scripts in CI unless they are explicitly
+# approved. Vite depends on esbuild, whose install script selects/verifies the
+# platform binary required for the production build.
+allowBuilds:
+  esbuild: true
