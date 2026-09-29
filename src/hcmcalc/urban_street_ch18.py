@@ -48,6 +48,7 @@ _EXTERNAL_FIELDS = {
     "source_method_note",
     "hcm_edition_note",
     "direction",
+    "control_type",
     "through_movement_id",
     "analysis_period_min",
     "scenario_note",
@@ -64,6 +65,7 @@ class ExternalThroughPerformance:
     source_method_note: str
     hcm_edition_note: str
     direction: str
+    control_type: str
     through_movement_id: str
     analysis_period_min: int
     scenario_note: str
@@ -325,11 +327,11 @@ def _validate_inputs(inputs: UrbanStreetSegmentInputs) -> None:
             raise HCMCalcError(f"{name} must be between 0 and 1.")
     for delay in inputs.access_point_delays_s_veh:
         _finite_number("access point delay", delay, minimum=0.0)
-    if (
-        inputs.subject_side_access_count + inputs.opposing_side_access_count > 0
-        and not inputs.access_point_delays_s_veh
-    ):
+    access_count = inputs.subject_side_access_count + inputs.opposing_side_access_count
+    if access_count and not inputs.access_point_delays_s_veh:
         raise HCMCalcError("Explicit qualified access point delays are required when access points exist.")
+    if not access_count and inputs.access_point_delays_s_veh:
+        raise HCMCalcError("Access point delays must be empty when no access points exist.")
 
     for name, value in (
         ("demand_balanced", inputs.demand_balanced),
@@ -362,8 +364,21 @@ def _validate_inputs(inputs: UrbanStreetSegmentInputs) -> None:
         _nonempty_text(name, value)
 
     external = inputs.external_through
-    for name in ("source_class", "source_tool", "source_method_note", "hcm_edition_note", "direction", "through_movement_id", "scenario_note"):
+    for name in (
+        "source_class",
+        "source_tool",
+        "source_method_note",
+        "hcm_edition_note",
+        "direction",
+        "control_type",
+        "through_movement_id",
+        "scenario_note",
+    ):
         _nonempty_text("external_through." + name, getattr(external, name))
+    if external.control_type != inputs.control_type:
+        raise HCMCalcError(
+            "External through control type must match the segment boundary control type."
+        )
     if external.direction != inputs.subject_direction:
         raise HCMCalcError("External through direction must match subject direction.")
     if external.through_movement_id != inputs.through_movement_id:
@@ -371,7 +386,7 @@ def _validate_inputs(inputs: UrbanStreetSegmentInputs) -> None:
     if external.analysis_period_min != inputs.analysis_period_min:
         raise HCMCalcError("External through analysis period must match the segment period.")
     _positive_integer("external_through.analysis_period_min", external.analysis_period_min)
-    _finite_number("v_th_veh_h", external.v_th_veh_h, minimum=0.0, strict=True)
+    _finite_number("v_th_veh_h", external.v_th_veh_h, minimum=0.0)
     _finite_number("c_th_veh_h", external.c_th_veh_h, minimum=0.0, strict=True)
     _finite_number("d_t_s_veh", external.d_t_s_veh, minimum=0.0)
     # Validate the accepted table domain before returning any qualified result.

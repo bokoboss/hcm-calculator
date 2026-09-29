@@ -40,6 +40,7 @@ def example_inputs():
             "source_method_note": "HCM 7 Chapter 30 Example Problem 1",
             "hcm_edition_note": "HCM 7.0",
             "direction": "eastbound",
+            "control_type": "signalized",
             "through_movement_id": "EB_TH",
             "analysis_period_min": 15,
             "scenario_note": "Chapter 30 Example Problem 1",
@@ -161,6 +162,10 @@ def test_access_delays_and_d_other_are_explicit_and_added_once():
     no_access["access_point_delays_s_veh"] = []
     assert UrbanStreetSegmentMethod().calculate(no_access).outputs["total_access_delay_s_veh"] == 0.0
 
+    no_access["access_point_delays_s_veh"] = [0.193]
+    with pytest.raises(HCMCalcError, match="must be empty"):
+        UrbanStreetSegmentMethod().calculate(no_access)
+
 
 @pytest.mark.parametrize(
     "field,value",
@@ -211,6 +216,38 @@ def test_external_provenance_must_match_subject_direction_and_analysis_period():
     values["external_through"]["direction"] = "westbound"
     with pytest.raises(HCMCalcError, match="direction"):
         UrbanStreetSegmentMethod().calculate(values)
+
+
+def test_external_control_type_is_required_and_must_match_signalized_boundary():
+    values = example_inputs()
+    values["external_through"].pop("control_type")
+    with pytest.raises(HCMCalcError, match="control_type"):
+        UrbanStreetSegmentMethod().calculate(values)
+
+    values = example_inputs()
+    values["external_through"]["control_type"] = "stop_controlled"
+    with pytest.raises(HCMCalcError, match="control type"):
+        UrbanStreetSegmentMethod().calculate(values)
+
+
+def test_external_through_movement_id_must_match_segment():
+    matching = UrbanStreetSegmentMethod().calculate(example_inputs()).outputs
+    assert matching["through_v_c"] == pytest.approx(968 / 1848)
+
+    values = example_inputs()
+    values["external_through"]["through_movement_id"] = "EB_LEFT"
+    with pytest.raises(HCMCalcError, match="movement"):
+        UrbanStreetSegmentMethod().calculate(values)
+
+
+def test_zero_external_through_demand_is_accepted_and_los_uses_speed():
+    values = example_inputs()
+    values["external_through"]["v_th_veh_h"] = 0.0
+
+    outputs = UrbanStreetSegmentMethod().calculate(values).outputs
+
+    assert outputs["through_v_c"] == 0.0
+    assert outputs["level_of_service"] == "C"
 
 
 @pytest.mark.parametrize(
