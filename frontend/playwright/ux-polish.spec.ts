@@ -21,12 +21,12 @@ test('UX polish keeps method shortcuts contextual and improves reading hierarchy
   await expect(page.locator('.home-actions .engineering-section')).toHaveCount(3);
   await expect(page.locator('.home-methods-section')).toHaveCount(1);
   await expect(page.locator('.home-actions')).toHaveCSS('display', 'grid');
-  expect(Number.parseFloat(await page.locator('.method-family').first().evaluate((node) => getComputedStyle(node).fontSize))).toBeGreaterThanOrEqual(11);
 
   await page.getByRole('button', { name: 'New Analysis' }).first().click();
   await expect(page.getByRole('heading', { name: 'New Analysis' })).toBeVisible();
   await expect(twoLaneShortcuts.nth(0)).toBeVisible();
   await expect(twoLaneShortcuts.nth(1)).toBeHidden();
+  expect(Number.parseFloat(await page.locator('.method-family').first().evaluate((node) => getComputedStyle(node).fontSize))).toBeGreaterThanOrEqual(11);
 
   await page.getByRole('button', { name: 'HCM Analysis Guide' }).click();
   await expect(page.getByRole('heading', { name: 'HCM Analysis Handbook' })).toBeVisible();
