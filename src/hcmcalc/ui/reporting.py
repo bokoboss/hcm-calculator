@@ -29,7 +29,7 @@ from hcmcalc.ui.manual_ramp_influence import (
     MANUAL_MERGE_PROJECT_TYPE,
     ramp_display_outputs,
 )
-from hcmcalc.ui.units import MILES_TO_KILOMETERS, display_outputs
+from hcmcalc.ui.units import FEET_TO_METERS, MILES_TO_KILOMETERS, display_outputs
 from hcmcalc.ui.i18n import field_label, normalize_locale, translate
 
 
@@ -43,6 +43,7 @@ SUPPORTED_CALCULATION_TYPES = {
     "manual_freeway_weaving_segment_v1",
     MANUAL_MERGE_PROJECT_TYPE,
     MANUAL_DIVERGE_PROJECT_TYPE,
+    "manual_urban_street_segment_v1",
 }
 SUPPORTED_EXPORT_FORMATS = {"csv", "xlsx", "markdown", "json"}
 
@@ -124,6 +125,10 @@ def build_report(
         report = _weaving_report(
             result, outputs, unit_system, inputs, audit_record, template_id, timestamp
         )
+    elif calculation_type == "manual_urban_street_segment_v1":
+        report = _urban_street_report(
+            result, outputs, unit_system, inputs, audit_record, template_id, timestamp
+        )
     else:
         report = _ramp_report(
             calculation_type, result, outputs, unit_system, inputs, audit_record, template_id, timestamp
@@ -171,8 +176,9 @@ def report_filename(report: dict[str, Any], extension: str) -> str:
         "manual_freeway_weaving_segment_v1": "weaving_segment",
         MANUAL_MERGE_PROJECT_TYPE: "merge_segment",
         MANUAL_DIVERGE_PROJECT_TYPE: "diverge_segment",
+        "manual_urban_street_segment_v1": "urban_street_segment",
     }[calculation_type]
-    chapter = "14" if calculation_type in {MANUAL_MERGE_PROJECT_TYPE, MANUAL_DIVERGE_PROJECT_TYPE} else "13" if calculation_type == "manual_freeway_weaving_segment_v1" else "15"
+    chapter = "18" if calculation_type == "manual_urban_street_segment_v1" else "14" if calculation_type in {MANUAL_MERGE_PROJECT_TYPE, MANUAL_DIVERGE_PROJECT_TYPE} else "13" if calculation_type == "manual_freeway_weaving_segment_v1" else "15"
     return f"hcm_ch{chapter}_{workflow}_report_{timestamp:%Y%m%d_%H%M%S}.{extension}"
 
 
@@ -338,6 +344,91 @@ def _single_segment_report(
         audit_record=audit_record,
         limitations=SINGLE_SEGMENT_LIMITATIONS,
     )
+
+
+def _urban_street_report(
+    result: dict[str, Any],
+    outputs: dict[str, Any],
+    unit_system: str,
+    inputs: Any,
+    audit_record: dict[str, Any] | None,
+    template_id: str | None,
+    timestamp: str,
+) -> dict[str, Any]:
+    metric = unit_system == "metric"
+    speed_factor = MILES_TO_KILOMETERS if metric else 1.0
+    speed_unit = "km/h" if metric else "mi/h"
+    length_factor = FEET_TO_METERS if metric else 1.0
+    length_unit = "m" if metric else "ft"
+    summary = [
+        {"label": "Level of service", "value": outputs["level_of_service"], "unit": None},
+        {"label": f"Travel speed ({speed_unit})", "value": outputs["travel_speed_mph"] * speed_factor, "unit": speed_unit},
+        {"label": f"Running speed ({speed_unit})", "value": outputs["running_speed_mph"] * speed_factor, "unit": speed_unit},
+        {"label": "Through v/c", "value": outputs["through_v_c"], "unit": "ratio"},
+        {"label": "Running time", "value": outputs["running_time_s"], "unit": "s"},
+        {"label": "Total travel time", "value": outputs["total_travel_time_s"], "unit": "s"},
+        {"label": f"Base free-flow speed ({speed_unit})", "value": outputs["base_free_flow_speed_mph"] * speed_factor, "unit": speed_unit},
+    ]
+    report = _base_report(
+        title="HCM7 Chapter 18 Urban Street Segment Report",
+        report_type="HCM Chapter 18 bounded signalized segment calculation report",
+        calculation_type="manual_urban_street_segment_v1",
+        unit_system=unit_system,
+        timestamp=timestamp,
+        inputs=_urban_street_input_records(inputs or {}),
+        results=summary,
+        segment_results=[{
+            f"Segment length ({length_unit})": outputs["segment_length_ft"] * length_factor,
+            f"Travel speed ({speed_unit})": outputs["travel_speed_mph"] * speed_factor,
+            f"Running speed ({speed_unit})": outputs["running_speed_mph"] * speed_factor,
+            "Through v/c": outputs["through_v_c"],
+            "Level of service": outputs["level_of_service"],
+        }],
+        result=result,
+        audit_record=audit_record,
+        limitations=[
+            "Bounded HCM 7 signalized 15-minute motorized segment workflow; maximum segment length is 2 mi.",
+            "HCM right-hand-traffic reference only; Thailand/LHT qualification is deferred.",
+            "Downstream through demand, capacity, delay, and source qualification are external inputs.",
+        ],
+    )
+    provenance = outputs.get("external_through_provenance", {})
+    if isinstance(provenance, dict):
+        report["audit_summary"].extend(
+            {"label": f"external_through_provenance.{key}", "value": value, "unit": None}
+            for key, value in provenance.items()
+        )
+    report["selected_validated_template"] = template_id
+    report["support_scope"] = "HCM 7.0 Chapter 18; signalized 15-minute RHT-reference segment only."
+    report["normalized_engine_inputs_summary"] = _urban_street_input_records(inputs or {})
+    return report
+
+
+def _urban_street_input_records(inputs: Any) -> list[dict[str, Any]]:
+    if not isinstance(inputs, dict):
+        raise ReportingError("Urban Street report inputs must be an object.")
+    records: list[dict[str, Any]] = []
+    for key, value in inputs.items():
+        if key == "external_through" and isinstance(value, dict):
+            records.extend(
+                {"label": f"external_through.{child_key}", "value": child_value, "unit": _urban_input_unit(child_key)}
+                for child_key, child_value in value.items()
+            )
+        else:
+            records.append({"label": key, "value": value, "unit": _urban_input_unit(key)})
+    return records
+
+
+def _urban_input_unit(key: str) -> str | None:
+    if key.endswith("_ft"):
+        return "ft (HCM-native)"
+    if key.endswith("_mph"):
+        return "mi/h (HCM-native)"
+    if key.endswith("_veh_h"):
+        return "veh/h"
+    if key.endswith("_s_veh") or key == "access_point_delays_s_veh":
+        return "s/veh"
+    return None
 
 
 def _facility_report(
@@ -1011,6 +1102,11 @@ def _validate_result(calculation_type: str, result: dict[str, Any] | None) -> No
             "ramp_flow_pc_h",
             "adjusted_v12_pc_h",
             "maximum_desirable_influence_flow_exceeded",
+        },
+        "manual_urban_street_segment_v1": {
+            "level_of_service", "travel_speed_mph", "running_speed_mph",
+            "base_free_flow_speed_mph", "through_v_c", "running_time_s",
+            "total_travel_time_s", "external_through_provenance",
         },
     }
     required = required_by_type[calculation_type]

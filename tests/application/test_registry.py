@@ -22,6 +22,7 @@ from hcmcalc.ramp_influence.diverge.v7_0.method import HCM70DivergeSegmentMethod
 from hcmcalc.ramp_influence.merge.v7_0.method import HCM70MergeSegmentMethod
 from hcmcalc.ui import project_io
 from hcmcalc.weaving.v7_0.method import HCM70WeavingSegmentMethod
+from hcmcalc.urban_street_ch18 import UrbanStreetSegmentMethod
 
 
 EXPECTED_METHOD_IDS = {
@@ -32,6 +33,7 @@ EXPECTED_METHOD_IDS = {
     "weaving_segment",
     "merge_segment",
     "diverge_segment",
+    "urban_street_segment",
 }
 
 
@@ -78,13 +80,19 @@ AUTHORITATIVE_METHOD_CONTRACTS = {
         "input_contract": project_io.ramp_calculation_contract("diverge"),
         "project_type": project_io.ramp_project_type("diverge"),
     },
+    "urban_street_segment": {
+        "engine_method_identifier": UrbanStreetSegmentMethod.method_name,
+        "method_identifier": "hcm7_urban_street_segment",
+        "input_contract": "hcm7_ch18_bounded_signalized_15min_rht_reference_v1",
+        "project_type": "manual_urban_street_segment_v1",
+    },
 }
 
 
 def test_backend_registry_contains_all_current_methods_with_stable_identity() -> None:
     definitions = list_analysis_definitions()
     assert {definition.method_id for definition in definitions} == EXPECTED_METHOD_IDS
-    assert len({definition.method_identifier for definition in definitions}) == 7
+    assert len({definition.method_identifier for definition in definitions}) == 8
     assert all(definition.engineering_available if hasattr(definition, "engineering_available") else True for definition in definitions)
     assert all(definition.supported_unit_systems == ("metric", "imperial") for definition in definitions)
     assert all(definition.name_key.startswith("method.") for definition in definitions)

@@ -130,6 +130,7 @@ def _canonical_project_normalized_inputs(
         "weaving_segment",
         "merge_segment",
         "diverge_segment",
+        "urban_street_segment",
     }:
         return deepcopy(dict(supplied_normalized_inputs))
     if not isinstance(template_id, str) or not template_id:
@@ -706,6 +707,7 @@ def _engine_result_identity_matches(
         "weaving_segment": "hcm_7_0_weaving_segment_operational_v1",
         "merge_segment": "hcm7_v70_chapter_14_isolated_right_side_one_lane_merge_operational",
         "diverge_segment": "hcm7_v70_chapter_14_isolated_right_side_one_lane_diverge_operational",
+        "urban_street_segment": "hcm7_ch18_bounded_signalized_15min_rht_reference_v1",
     }.get(method_id)
     if expected_contract is None:
         return False
@@ -713,6 +715,8 @@ def _engine_result_identity_matches(
         "result_contract_version" in engine_result
         and engine_result["result_contract_version"] != expected_contract
     ):
+        return False
+    if method_id == "urban_street_segment" and engine_result.get("result_contract_version") != expected_contract:
         return False
     outputs = engine_result.get("outputs")
     if not isinstance(outputs, Mapping):
@@ -734,7 +738,16 @@ def _engine_result_identity_matches(
             "method_name": "hcm7_v70_freeway_diverge_segment",
             "method_version": "hcm_7_0",
         },
+        "urban_street_segment": {
+            "calculation_type": "urban_street_segment_ch18_v0_1",
+            "support_status": "supported_bounded_hcm7_signalized_15min",
+        },
     }.get(method_id, {})
+    if method_id == "urban_street_segment" and any(
+        outputs.get(field) != expected
+        for field, expected in expected_output_identity.items()
+    ):
+        return False
     return all(
         outputs.get(field) in (None, expected)
         for field, expected in expected_output_identity.items()

@@ -18,7 +18,7 @@ def test_health_is_typed_and_exposes_no_engine_behavior() -> None:
     assert "application_version" in payload
 
 
-def test_method_discovery_returns_all_seven_backend_definitions() -> None:
+def test_method_discovery_returns_all_eight_backend_definitions() -> None:
     client = TestClient(create_app())
     response = client.get("/api/v1/methods")
     assert response.status_code == 200
@@ -32,6 +32,7 @@ def test_method_discovery_returns_all_seven_backend_definitions() -> None:
         "weaving_segment",
         "merge_segment",
         "diverge_segment",
+        "urban_street_segment",
     }
     assert all(method["engineering_available"] for method in payload["methods"])
     assert all("frontend" not in method for method in payload["methods"])

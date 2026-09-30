@@ -207,6 +207,27 @@ _ANALYSIS_DEFINITIONS: tuple[AnalysisDefinition, ...] = (
         scope_summary_keys=("method.diverge_segment.scope",),
         legacy_workflow="manual_diverge",
     ),
+    AnalysisDefinition(
+        method_id="urban_street_segment",
+        family="urban_streets",
+        name_key="method.urban_street_segment.name",
+        description_key="method.urban_street_segment.description",
+        method_identifier="hcm7_urban_street_segment",
+        engine_method_identifier="urban_street_segment_ch18_v0_1",
+        method_version="hcm_7_0_bounded_v1",
+        input_contract="hcm7_ch18_bounded_signalized_15min_rht_reference_v1",
+        project_type="manual_urban_street_segment_v1",
+        hcm_edition="HCM 7.0",
+        hcm_chapter="18",
+        chapter_reference="HCM 7.0 Chapter 18; Chapter 30 Example Problem 1",
+        supported_unit_systems=_COMMON_UNITS,
+        availability="qualified_bounded",
+        capabilities=("segment", "audit", "external_through_performance"),
+        scope_summary_keys=(
+            "method.urban_street_segment.scope.bounded_signalized_15min",
+            "method.urban_street_segment.scope.rht_reference",
+        ),
+    ),
 )
 
 

@@ -164,6 +164,17 @@ def _error_issue(exc: Exception, *, field: str | None = None) -> dict[str, Any]:
             "entry_side", "exit_side", "number_of_weaving_lanes",
             "freeway_lanes", "ramp_demand_veh_h", "freeway_demand_veh_h",
             "geometry_notes", "geometry_source", "pce_mode",
+            "segment_length", "upstream_intersection_width", "signal_control_spacing",
+            "through_lane_count", "subject_direction", "through_movement_id",
+            "posted_speed_limit", "s_calib", "restrictive_median_proportion",
+            "curb_proportion", "parking_proportion", "subject_side_access_count",
+            "opposing_side_access_count", "v_m_veh_h", "access_point_delays_s_veh",
+            "d_other_s_veh", "analysis_period_min", "control_type", "demand_balanced",
+            "demand_adjustments_resolved", "capacity_effects_resolved", "spillback_present",
+            "external_source_class", "external_source_tool", "external_source_method_note",
+            "external_hcm_edition_note", "external_direction", "external_control_type",
+            "external_through_movement_id", "external_analysis_period_min",
+            "external_scenario_note", "v_th_veh_h", "c_th_veh_h", "d_t_s_veh",
         ):
             if candidate in str(exc):
                 issue_field = candidate
@@ -1022,6 +1033,10 @@ def workflow_for_method(method_id: str) -> Any:
         from hcmcalc.application.phase3_workflows import Phase3Workflow
 
         return Phase3Workflow(method_id)
+    if method_id == "urban_street_segment":
+        from hcmcalc.application.urban_street_workflow import UrbanStreetWorkflow
+
+        return UrbanStreetWorkflow()
     _definition(method_id)
     raise AssertionError("unreachable")
 
@@ -1135,6 +1150,12 @@ def export_current_workflow(
         raise StaleResultError("The supplied result is not current for these displayed inputs.")
     if result.get("method") != workflow.definition.engine_method_identifier:
         raise StaleResultError("The supplied result method identity does not match the worksheet.")
+    if method_id == "urban_street_segment" and (
+        result.get("result_contract_version") != workflow.definition.input_contract
+        or result["outputs"].get("calculation_type") != workflow.definition.engine_method_identifier
+        or result["outputs"].get("support_status") != "supported_bounded_hcm7_signalized_15min"
+    ):
+        raise StaleResultError("The supplied Chapter 18 result identity is incompatible with the worksheet.")
     try:
         report = build_report(
             workflow.definition.project_type,
