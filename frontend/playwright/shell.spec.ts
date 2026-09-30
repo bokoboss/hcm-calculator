@@ -9,8 +9,11 @@ test('release-like Python-served shell exposes safe discovery and localization',
   await expect(page.getByRole('heading', { name: 'New Analysis' })).toBeVisible();
   await expect(page.getByText('7 calculation methods available')).toBeVisible();
   const methodButtons = page.getByRole('button', { name: 'Start analysis' });
-  await expect(methodButtons).toHaveCount(7);
+  await expect(methodButtons).toHaveCount(8);
   expect(await methodButtons.evaluateAll((buttons) => buttons.filter((button) => !(button as HTMLButtonElement).disabled))).toHaveLength(7);
+  const chapter18Card = page.getByTestId('method-card-urban_street_segment');
+  await expect(chapter18Card.getByText('Reference only')).toBeVisible();
+  await expect(chapter18Card.getByRole('button', { name: 'Start analysis' })).toBeDisabled();
 
   await page.getByRole('button', { name: 'Analysis guide' }).first().click();
   await expect(page.getByRole('heading', { name: 'HCM Analysis Handbook' })).toBeVisible();
