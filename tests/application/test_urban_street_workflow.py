@@ -4,6 +4,8 @@ import pytest
 
 from hcmcalc.application.project import (
     ProjectFileError,
+    compare_scenarios,
+    duplicate_scenario,
     load_project,
     project_to_json,
     record_result,
@@ -118,6 +120,67 @@ def test_workflow_dispatch_and_starters_are_available():
         "blank_custom",
     }
     assert workflow.starting_values(TEMPLATE_ID, "imperial")["validation_status"] == "reference_fixture"
+
+
+def test_public_field_metadata_uses_text_and_bounded_choice_types():
+    fields = {field["key"]: field for field in workflow_for_method(METHOD_ID).templates()["fields"]}
+    for key in (
+        "subject_direction", "through_movement_id", "external_source_class",
+        "external_source_tool", "external_source_method_note",
+        "external_hcm_edition_note", "external_direction",
+        "external_through_movement_id", "external_scenario_note",
+    ):
+        assert fields[key]["kind"] == "text"
+    for key in ("control_type", "external_control_type"):
+        assert fields[key]["kind"] == "choice"
+        assert fields[key]["options"] == ["signalized"]
+    assert fields["segment_length"]["kind"] == "number"
+    assert fields["v_th_veh_h"]["kind"] == "number"
+    assert fields["through_lane_count"]["kind"] == "integer"
+    assert fields["external_analysis_period_min"]["kind"] == "integer"
+    assert fields["demand_balanced"]["kind"] == "boolean"
+    assert fields["spillback_present"]["kind"] == "boolean"
+    assert fields["access_point_delays_s_veh"]["kind"] == "number_list"
+
+
+def test_chapter18_project_comparison_reports_canonical_current_output_deltas_without_rerun(monkeypatch):
+    base = _chapter18_snapshot()
+    project = save_analysis_to_project(base, project_name="Chapter 18 comparison")
+    analysis = project["analyses"][0]
+    left = analysis["scenarios"][0]
+    duplicated = duplicate_scenario(
+        project,
+        analysis_id=analysis["analysis_id"],
+        scenario_id=left["scenario_id"],
+        scenario_name="Curb alternative",
+    )
+    right = duplicated["analyses"][0]["scenarios"][1]
+    changed_inputs = deepcopy(base["displayed_inputs"])
+    changed_inputs["curb_proportion"] = 0.71
+    changed = _chapter18_snapshot(displayed=changed_inputs)
+    current = record_result(
+        duplicated,
+        analysis_id=analysis["analysis_id"],
+        scenario_id=right["scenario_id"],
+        snapshot=changed,
+    )
+
+    assert left["result_status"] == "current"
+    assert current["analyses"][0]["scenarios"][1]["result_status"] == "current"
+    assert left["result"]["engine_result"]["outputs"]["level_of_service"] == current["analyses"][0]["scenarios"][1]["result"]["engine_result"]["outputs"]["level_of_service"]
+
+    monkeypatch.setattr(ch18.UrbanStreetSegmentMethod, "calculate", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("comparison reran engine")))
+    comparison = compare_scenarios(
+        current,
+        analysis_id=analysis["analysis_id"],
+        left_scenario_id=left["scenario_id"],
+        right_scenario_id=right["scenario_id"],
+    )
+    deltas = {delta["key"]: delta for delta in comparison["numeric_deltas"]}
+    assert comparison["los_grade_transition"]["changed"] is False
+    assert comparison["recalculated"] is False
+    assert "travel_speed_mph" in deltas
+    assert deltas["travel_speed_mph"]["left"] != deltas["travel_speed_mph"]["right"]
 
 
 def test_project_canonicalization_recovers_chapter_18_inputs_without_calculation():

@@ -91,15 +91,23 @@ def _example_inputs(unit: str) -> dict[str, Any]:
 def _field_schema() -> list[dict[str, Any]]:
     lengths = {"segment_length", "upstream_intersection_width", "signal_control_spacing"}
     speeds = {"posted_speed_limit", "s_calib"}
-    choices = {"subject_direction", "through_movement_id", "control_type"}
+    text_fields = {
+        "subject_direction", "through_movement_id", "external_source_class",
+        "external_source_tool", "external_source_method_note",
+        "external_hcm_edition_note", "external_direction",
+        "external_through_movement_id", "external_scenario_note",
+    }
+    choices = {"control_type", "external_control_type"}
     result = []
     for key in DISPLAY_FIELDS:
-        kind = "choice" if key in choices else "boolean" if key in {
+        kind = "text" if key in text_fields else "choice" if key in choices else "boolean" if key in {
             "demand_balanced", "demand_adjustments_resolved", "capacity_effects_resolved", "spillback_present"
         } else "integer" if key in {
             "through_lane_count", "subject_side_access_count", "opposing_side_access_count", "analysis_period_min", "external_analysis_period_min"
         } else "number"
         field = {"key": key, "kind": kind, "required": True}
+        if key in choices:
+            field["options"] = ["signalized"]
         if key in lengths:
             field.update(unit_metric="m", unit_imperial="ft")
         elif key in speeds:

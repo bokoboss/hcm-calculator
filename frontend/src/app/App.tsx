@@ -86,6 +86,7 @@ export function MethodCard({
 }): ReactElement {
   const { t } = useI18n();
   const module = frontendModule ?? getFrontendModule(method.method_id);
+  const hasMethodGuide = Boolean(methodGuideSpecs[method.method_id]);
   const actionabilityStatus = getMethodActionabilityStatus(method, module);
   const actionable = isMethodActionable(method, module);
   const routeEligible = isMethodRouteEligible(method, module);
@@ -118,9 +119,9 @@ export function MethodCard({
         >
           {t('action.start_analysis')}
         </button>
-        <button className="button button-link" type="button" onClick={() => onReference(method.method_id)}>
+        {hasMethodGuide ? <button className="button button-link" type="button" onClick={() => onReference(method.method_id)}>
           {t('action.method_guide')}
-        </button>
+        </button> : null}
       </div>
     </article>
   );
@@ -216,7 +217,9 @@ export function ReferencePage({
     const spec = methodGuideSpecs[method.method_id];
     return spec ? [{ method, spec }] : [];
   });
-  const selected = guidedMethods.find(({ method }) => method.method_id === selectedMethodId) ?? guidedMethods[0];
+  const selected = selectedMethodId
+    ? guidedMethods.find(({ method }) => method.method_id === selectedMethodId)
+    : guidedMethods[0];
   const sectionId = (section: string) => selected ? `guide-${selected.method.method_id}-${section}` : section;
 
   return (
@@ -224,6 +227,7 @@ export function ReferencePage({
       <PageHeader eyebrow={t('reference.eyebrow')} title={t('reference.title')} description={t('reference.description')} />
       {loading ? <ScopeNotice title={t('new_analysis.loading_title')}>{t('status.loading')}</ScopeNotice> : null}
       {!loading && !guidedMethods.length ? <ScopeNotice title={t('status.no_methods')} tone="warning">{t('reference.api_error')}</ScopeNotice> : null}
+      {!loading && selectedMethodId && !selected ? <ScopeNotice title={t('reference.title')} tone="neutral">{t('reference.guide_unavailable')}</ScopeNotice> : null}
 
       {selected ? (
         <div className="handbook-workspace">

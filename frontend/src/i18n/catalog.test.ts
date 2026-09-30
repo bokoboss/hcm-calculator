@@ -89,4 +89,26 @@ describe('localization catalog', () => {
     expect(translate('th', 'method.merge_segment.scope')).toContain('ยังไม่ผ่านการรับรอง');
   });
 
+  it('localizes bounded Chapter 18 discovery metadata without leaking catalog keys', () => {
+    const keys = [
+      'method.urban_streets',
+      'method.urban_street_segment.name',
+      'method.urban_street_segment.description',
+      'method.urban_street_segment.scope',
+    ];
+    for (const locale of ['en', 'th'] as const) {
+      for (const key of keys) {
+        expect(catalogs[locale][key]).toBeTruthy();
+        expect(translate(locale, key)).not.toBe(key);
+      }
+      expect(translate(locale, 'method.urban_street_segment.description')).toContain('15');
+      expect(translate(locale, 'method.urban_street_segment.scope')).toContain('RHT');
+      expect(translate(locale, 'method.urban_street_segment.scope')).toContain('LHT');
+    }
+    expect(translate('en', 'method.urban_street_segment.scope')).toContain('signalized');
+    expect(translate('en', 'method.urban_street_segment.scope')).toMatch(/bounded/i);
+    expect(translate('th', 'method.urban_street_segment.scope')).toContain('สัญญาณไฟ');
+    expect(translate('th', 'method.urban_street_segment.scope')).toContain('ขอบเขตจำกัด');
+  });
+
 });

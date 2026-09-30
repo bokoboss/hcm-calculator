@@ -1012,6 +1012,8 @@ def _comparison_keys(left: Mapping[str, Any], right: Mapping[str, Any]) -> list[
         "average_speed_mph", "facility_average_speed_mph",
         "demand_flow_rate_pc_h_ln", "capacity_pc_h_ln",
         "facility_percent_followers", "demand_capacity_ratio",
+        "travel_speed_mph", "running_speed_mph", "through_v_c",
+        "running_time_s", "total_travel_time_s",
     )
     return [key for key in preferred if key in left and key in right]
 

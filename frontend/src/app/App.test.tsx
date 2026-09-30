@@ -1,7 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MethodDefinition } from '../api/types';
-import { I18nProvider } from '../i18n';
+import { I18nProvider, useI18n } from '../i18n';
 import { MethodCard, ReferencePage } from './App';
 
 const method: MethodDefinition = {
@@ -25,6 +25,30 @@ const method: MethodDefinition = {
   legacy_workflow: 'manual_single_segment',
 };
 
+const chapter18Method: MethodDefinition = {
+  ...method,
+  method_id: 'urban_street_segment',
+  family: 'urban_streets',
+  name_key: 'method.urban_street_segment.name',
+  description_key: 'method.urban_street_segment.description',
+  method_identifier: 'hcm7_urban_street_segment',
+  engine_method_identifier: 'urban_street_segment_ch18_v0_1',
+  input_contract: 'hcm7_ch18_bounded_signalized_15min_rht_reference_v1',
+  hcm_chapter: '18',
+  chapter_reference: 'HCM 7.0 Chapter 18; Chapter 30 Example Problem 1',
+  scope_summary_keys: [
+    'method.urban_street_segment.scope.bounded_signalized_15min',
+    'method.urban_street_segment.scope.rht_reference',
+  ],
+};
+
+beforeEach(() => window.localStorage.setItem('hcmcalc.locale', 'en'));
+
+function LocaleButtons() {
+  const { setLocale } = useI18n();
+  return <><button onClick={() => setLocale('en')}>Switch to English</button><button onClick={() => setLocale('th')}>Switch to Thai</button></>;
+}
+
 describe('MethodCard actionability boundary', () => {
   it('keeps Start analysis disabled for a delivered module with an incompatible contract', () => {
     render(
@@ -45,6 +69,56 @@ describe('MethodCard actionability boundary', () => {
 
     expect(screen.getByRole('button', { name: 'Start analysis' })).toBeDisabled();
     expect(screen.getByText('Engineering support unavailable')).toBeInTheDocument();
+  });
+
+  it('keeps Chapter 18 reference-only and hides its missing method guide action', () => {
+    render(
+      <I18nProvider>
+        <MethodCard method={chapter18Method} onReference={() => undefined} onSelect={() => undefined} />
+      </I18nProvider>,
+    );
+
+    const card = screen.getByTestId('method-card-urban_street_segment');
+    expect(within(card).getByRole('button', { name: 'Start analysis' })).toBeDisabled();
+    expect(within(card).queryByRole('button', { name: 'Analysis guide' })).not.toBeInTheDocument();
+  });
+
+  it('keeps method guides available for supported methods', () => {
+    const supportedMethod = { ...method, method_id: 'two_lane_segment' };
+    const onReference = vi.fn();
+    render(
+      <I18nProvider>
+        <MethodCard method={supportedMethod} onReference={onReference} onSelect={() => undefined} />
+      </I18nProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Analysis guide' }));
+    expect(onReference).toHaveBeenCalledWith('two_lane_segment');
+  });
+
+  it('renders localized Chapter 18 reference metadata without raw keys in English and Thai', () => {
+    render(
+      <I18nProvider>
+        <LocaleButtons />
+        <MethodCard method={chapter18Method} onReference={() => undefined} onSelect={() => undefined} />
+      </I18nProvider>,
+    );
+    const card = screen.getByTestId('method-card-urban_street_segment');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to English' }));
+    expect(within(card).getByText('Urban Street Segment')).toBeInTheDocument();
+    expect(card.textContent).not.toContain('method.urban_street_segment.name');
+    expect(card.textContent).not.toContain('method.urban_streets');
+    expect(card.textContent).toContain('15-minute');
+    expect(card.textContent).toContain('RHT');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to Thai' }));
+    expect(within(card).getByText('ช่วงถนนเขตเมือง')).toBeInTheDocument();
+    expect(card.textContent).not.toContain('method.urban_street_segment.name');
+    expect(card.textContent).not.toContain('method.urban_streets');
+    expect(card.textContent).toContain('15 นาที');
+    expect(card.textContent).toContain('RHT');
+    expect(card.textContent).toContain('LHT');
   });
 });
 
@@ -94,4 +168,24 @@ describe('ReferencePage analysis handbook', () => {
     fireEvent.click(screen.getByRole('button', { name: /Basic Freeway Segment/ }));
     expect(onReferenceSelect).toHaveBeenCalledWith('basic_freeway_segment');
   });
+
+  it.each(['urban_street_segment', 'unknown_method'])(
+    'does not fall back to another guide for selected unguided method %s',
+    (selectedMethodId) => {
+      render(
+        <I18nProvider>
+          <ReferencePage
+            methods={[{ ...method, method_id: 'two_lane_segment' }, chapter18Method]}
+            loading={false}
+            selectedMethodId={selectedMethodId}
+            onReferenceSelect={() => undefined}
+            onSelect={() => undefined}
+          />
+        </I18nProvider>,
+      );
+
+      expect(screen.queryByTestId('reference-two_lane_segment')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('reference-urban_street_segment')).not.toBeInTheDocument();
+    },
+  );
 });
