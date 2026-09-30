@@ -274,3 +274,23 @@ def test_access_counts_and_qualified_delays_are_required(field):
     values.pop(field)
     with pytest.raises(HCMCalcError, match=field):
         UrbanStreetSegmentMethod().calculate(values)
+
+
+def test_segment_at_hcm_two_mile_limit_is_supported():
+    values = example_inputs()
+    values["segment_length_ft"] = 10_560.0
+    values["signal_control_spacing_ft"] = 10_560.0
+
+    outputs = UrbanStreetSegmentMethod().calculate(values).outputs
+
+    assert outputs["segment_length_ft"] == 10_560.0
+    assert outputs["support_status"] == "supported_bounded_hcm7_signalized_15min"
+
+
+def test_segment_above_hcm_two_mile_limit_is_rejected():
+    values = example_inputs()
+    values["segment_length_ft"] = 10_560.001
+    values["signal_control_spacing_ft"] = 10_560.001
+
+    with pytest.raises(HCMCalcError, match="2 mi|10,560"):
+        UrbanStreetSegmentMethod().calculate(values)

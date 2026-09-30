@@ -16,6 +16,7 @@ LOS_THRESHOLDS_MPH = {
     "E": (8.0, 9.0, 11.0, 12.0, 14.0, 15.0, 17.0),
 }
 LOS_BFFS_COLUMNS_MPH = (25.0, 30.0, 35.0, 40.0, 45.0, 50.0, 55.0)
+MAX_SEGMENT_LENGTH_FT = 10_560.0  # HCM 7 Chapter 18 upper applicability limit: 2 mi.
 
 _INPUT_FIELDS = {
     "segment_length_ft",
@@ -312,6 +313,8 @@ def _validate_inputs(inputs: UrbanStreetSegmentInputs) -> None:
     )
     for name, value, minimum, strict in numeric:
         _finite_number(name, value, minimum=minimum, strict=strict)
+    if inputs.segment_length_ft > MAX_SEGMENT_LENGTH_FT:
+        raise HCMCalcError("Chapter 18 segment length cannot exceed 2 mi (10,560 ft).")
     if inputs.upstream_intersection_width_ft >= inputs.segment_length_ft:
         raise HCMCalcError("upstream_intersection_width_ft must be less than segment_length_ft.")
     _positive_integer("through_lane_count", inputs.through_lane_count)
