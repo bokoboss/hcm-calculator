@@ -12,7 +12,7 @@ test('release-like Python-served shell exposes safe discovery and localization',
   await expect(methodButtons).toHaveCount(8);
   expect(await methodButtons.evaluateAll((buttons) => buttons.filter((button) => !(button as HTMLButtonElement).disabled))).toHaveLength(7);
   const chapter18Card = page.getByTestId('method-card-urban_street_segment');
-  await expect(chapter18Card.getByText('Reference only')).toBeVisible();
+  await expect(chapter18Card.getByText('Reference only', { exact: true })).toBeVisible();
   await expect(chapter18Card.getByRole('button', { name: 'Start analysis' })).toBeDisabled();
 
   await page.getByRole('button', { name: 'Analysis guide' }).first().click();
