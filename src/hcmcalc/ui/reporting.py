@@ -7,6 +7,7 @@ from copy import deepcopy
 import json
 from datetime import datetime, timezone
 from io import BytesIO, StringIO
+import re
 from typing import Any
 
 from openpyxl import Workbook
@@ -1000,7 +1001,7 @@ class _SafeCsvWriter:
         self._writer = writer
 
     def writerow(self, values: Any) -> None:
-        self._writer.writerow([_spreadsheet_cell(value) for value in values])
+        self._writer.writerow([_formula_safe_cell(value) for value in values])
 
 
 def _markdown_key_value_table(records: list[dict[str, Any]]) -> list[str]:
@@ -1185,13 +1186,24 @@ def _cell(value: Any) -> Any:
 
 
 def _append_spreadsheet_row(worksheet: Any, values: list[Any]) -> None:
-    worksheet.append([_spreadsheet_cell(value) for value in values])
+    worksheet.append([_xlsx_cell(value) for value in values])
 
 
-def _spreadsheet_cell(value: Any) -> Any:
+def _formula_safe_cell(value: Any) -> Any:
     cell = _cell(value)
     if isinstance(cell, str) and cell.lstrip().startswith(("=", "+", "-", "@")):
         return "'" + cell
+    return cell
+
+
+def _xlsx_cell(value: Any) -> Any:
+    cell = _formula_safe_cell(value)
+    if isinstance(cell, str):
+        return re.sub(
+            r"[\x00-\x08\x0B\x0C\x0E-\x1F]",
+            lambda match: f"\\u{ord(match[0]):04X}",
+            cell,
+        )
     return cell
 
 

@@ -342,6 +342,84 @@ def test_spreadsheet_exports_neutralize_formula_like_text_without_mutating_other
     assert report == original_report
 
 
+@pytest.mark.parametrize("control", ("\u0000", "\u0001", "\u0008", "\u000b", "\u000c", "\u000e", "\u001f"))
+def test_xlsx_escapes_xml_illegal_controls_without_mutating_report(control):
+    report = _single_report()
+    value = f"before{control}after"
+    report["warnings"] = [value]
+    original = deepcopy(report)
+
+    workbook = load_workbook(BytesIO(export_report(report, "xlsx")))
+    exported = next(
+        cell
+        for sheet in workbook.worksheets
+        for row in sheet.iter_rows()
+        for cell in row
+        if cell.value == f"before\\u{ord(control):04X}after"
+    )
+
+    assert exported.data_type == "s"
+    assert control not in exported.value
+    assert report == original
+
+
+@pytest.mark.parametrize("control", ("\t", "\n", "\r"))
+def test_xlsx_preserves_xml_allowed_controls(control):
+    report = _single_report()
+    value = f"before{control}after"
+    report["warnings"] = [value]
+    expected = value.replace("\r", "\n") if control == "\r" else value
+
+    workbook = load_workbook(BytesIO(export_report(report, "xlsx")))
+    exported = next(
+        cell
+        for sheet in workbook.worksheets
+        for row in sheet.iter_rows()
+        for cell in row
+        if cell.value == expected
+    )
+
+    assert exported.data_type == "s"
+    assert exported.value == expected
+    assert r"\u000D" not in exported.value
+
+
+def test_xlsx_formula_neutralization_precedes_xml_control_escaping():
+    report = _single_report()
+    value = "=HCS\u000b7"
+    report["warnings"] = [value]
+
+    workbook = load_workbook(BytesIO(export_report(report, "xlsx")), data_only=False)
+    exported = next(
+        cell
+        for sheet in workbook.worksheets
+        for row in sheet.iter_rows()
+        for cell in row
+        if cell.value == r"'=HCS\u000B7"
+    )
+
+    assert exported.data_type == "s"
+    assert "\u000b" not in exported.value
+    assert not exported.value.lstrip().startswith(("=", "+", "-", "@"))
+
+
+def test_xlsx_only_control_escaping_preserves_json_markdown_csv_and_source():
+    report = _single_report()
+    value = "HCS\u000b7"
+    report["warnings"] = [value]
+    original = deepcopy(report)
+
+    csv_cells = [cell for row in csv.reader(StringIO(export_report(report, "csv"))) for cell in row]
+    json_report = json.loads(export_report(report, "json"))
+    markdown = export_report(report, "markdown")
+
+    assert value in csv_cells
+    assert json_report["warnings"] == [value]
+    assert value in markdown
+    assert r"HCS\u000B7" not in markdown
+    assert report == original
+
+
 @pytest.mark.parametrize("line_ending", ("\r", "\n", "\r\n"))
 def test_markdown_exports_normalize_line_endings_in_dynamic_text_without_mutating_source(line_ending):
     report = _single_report()

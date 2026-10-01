@@ -621,6 +621,75 @@ def test_spreadsheet_exports_neutralize_chapter18_provenance_without_mutating_so
     assert xlsx_output["calculation_fingerprint"] == source_fingerprint
 
 
+def test_current_chapter18_xlsx_escapes_xml_illegal_provenance_without_rerunning(monkeypatch):
+    workflow = workflow_for_method(METHOD_ID)
+    displayed = workflow.starting_values(TEMPLATE_ID, "imperial")["displayed_inputs"]
+    displayed["external_source_tool"] = "HCS\u000b7"
+    snapshot = workflow.calculate(
+        template_id=TEMPLATE_ID,
+        unit_system="imperial",
+        displayed_inputs=displayed,
+    )
+    original_displayed = deepcopy(displayed)
+    original_normalized = deepcopy(snapshot["normalized_inputs"])
+    original_result = deepcopy(snapshot["result"])
+    original_calculation_fingerprint = snapshot["calculation_fingerprint"]
+    original_snapshot_fingerprint = snapshot["input_snapshot_fingerprint"]
+    monkeypatch.setattr(
+        ch18.UrbanStreetSegmentMethod,
+        "calculate",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("export reran engine")),
+    )
+
+    def export(format_name):
+        return export_current_workflow(
+            METHOD_ID,
+            template_id=TEMPLATE_ID,
+            unit_system="imperial",
+            displayed_inputs=displayed,
+            calculation_fingerprint=original_calculation_fingerprint,
+            input_snapshot_fingerprint=original_snapshot_fingerprint,
+            result=snapshot["result"],
+            export_format=format_name,
+        )
+
+    exported = export("xlsx")
+    workbook = load_workbook(BytesIO(base64.b64decode(exported["content_base64"])))
+    provenance = next(
+        row[1]
+        for row in workbook["Inputs"].iter_rows()
+        if row[0].value == "external_source_tool"
+    )
+
+    assert provenance.value == r"HCS\u000B7"
+    assert provenance.data_type == "s"
+    assert "\u000b" not in provenance.value
+    assert displayed == original_displayed
+    assert snapshot["normalized_inputs"] == original_normalized
+    assert snapshot["result"] == original_result
+    assert exported["calculation_fingerprint"] == original_calculation_fingerprint
+    assert snapshot["input_snapshot_fingerprint"] == original_snapshot_fingerprint
+    assert exported["recalculated"] is False
+
+    csv_export = export("csv")
+    json_export = export("json")
+    markdown_export = export("markdown")
+    csv_cells = [cell for row in csv.reader(StringIO(csv_export["content"])) for cell in row]
+    json_inputs = json.loads(json_export["content"])["inputs_summary"]
+
+    raw_provenance = "HCS\u000b7"
+    json_provenance = next(
+        item["value"] for item in json_inputs if item["label"] == "external_source_tool"
+    )
+    assert raw_provenance in csv_cells
+    assert json_provenance == raw_provenance
+    assert raw_provenance in markdown_export["content"]
+    assert r"HCS\u000B7" not in markdown_export["content"]
+    assert displayed == original_displayed
+    assert snapshot["normalized_inputs"] == original_normalized
+    assert snapshot["result"] == original_result
+
+
 def test_export_rejects_stale_inputs_and_tampered_chapter18_result_identity():
     snapshot = _chapter18_snapshot()
     changed = deepcopy(snapshot["displayed_inputs"])
