@@ -132,6 +132,32 @@ class UrbanStreetSegmentInputs:
         )
 
 
+def _free_flow_speed_components(
+    inputs: UrbanStreetSegmentInputs,
+) -> tuple[float, float, int, float, float, float, float, float, float, float, float]:
+    length = inputs.segment_length_ft
+    link_length = length - inputs.upstream_intersection_width_ft
+    lanes = inputs.through_lane_count
+    access_density = 5280.0 * (
+        inputs.subject_side_access_count + inputs.opposing_side_access_count
+    ) / link_length
+    s0 = 25.6 + 0.47 * inputs.posted_speed_limit_mph
+    f_cs = (
+        1.5 * inputs.restrictive_median_proportion
+        - 0.47 * inputs.curb_proportion
+        - 3.7 * inputs.curb_proportion * inputs.restrictive_median_proportion
+    )
+    f_a = -0.078 * access_density / lanes
+    f_pk = -3.0 * inputs.parking_proportion
+    s_fo = inputs.s_calib_mph + s0 + f_cs + f_a + f_pk
+    f_l = min(
+        1.0,
+        1.02 - 4.7 * (s_fo - 19.5) / max(inputs.signal_control_spacing_ft, 400.0),
+    )
+    s_f = max(s_fo * f_l, inputs.posted_speed_limit_mph)
+    return length, link_length, lanes, access_density, s0, f_cs, f_a, f_pk, s_fo, f_l, s_f
+
+
 class UrbanStreetSegmentMethod:
     """HCM 7 signalized-boundary segment calculation for the qualified scope."""
 
@@ -142,27 +168,10 @@ class UrbanStreetSegmentMethod:
         inputs = UrbanStreetSegmentInputs.from_mapping(values)
         _validate_inputs(inputs)
 
-        length = inputs.segment_length_ft
-        link_length = length - inputs.upstream_intersection_width_ft
-        lanes = inputs.through_lane_count
+        length, link_length, lanes, access_density, s0, f_cs, f_a, f_pk, s_fo, f_l, s_f = (
+            _free_flow_speed_components(inputs)
+        )
         external = inputs.external_through
-        access_density = 5280.0 * (
-            inputs.subject_side_access_count + inputs.opposing_side_access_count
-        ) / link_length
-        s0 = 25.6 + 0.47 * inputs.posted_speed_limit_mph
-        f_cs = (
-            1.5 * inputs.restrictive_median_proportion
-            - 0.47 * inputs.curb_proportion
-            - 3.7 * inputs.curb_proportion * inputs.restrictive_median_proportion
-        )
-        f_a = -0.078 * access_density / lanes
-        f_pk = -3.0 * inputs.parking_proportion
-        s_fo = inputs.s_calib_mph + s0 + f_cs + f_a + f_pk
-        f_l = min(
-            1.0,
-            1.02 - 4.7 * (s_fo - 19.5) / max(inputs.signal_control_spacing_ft, 400.0),
-        )
-        s_f = max(s_fo * f_l, inputs.posted_speed_limit_mph)
         f_v = vehicle_proximity_factor(inputs.v_m_veh_h, lanes, s_f)
         access_delay = sum(inputs.access_point_delays_s_veh)
         running_time = (
@@ -378,17 +387,21 @@ def _validate_inputs(inputs: UrbanStreetSegmentInputs) -> None:
         "scenario_note",
     ):
         _nonempty_text("external_through." + name, getattr(external, name))
+    _positive_integer("external_through.analysis_period_min", external.analysis_period_min)
     if external.control_type != inputs.control_type:
         raise HCMCalcError(
-            "External through control type must match the segment boundary control type."
+            "external_through.control_type must match the segment boundary control type."
         )
     if external.direction != inputs.subject_direction:
-        raise HCMCalcError("External through direction must match subject direction.")
+        raise HCMCalcError("external_through.direction must match subject direction.")
     if external.through_movement_id != inputs.through_movement_id:
-        raise HCMCalcError("External through movement must match the subject through movement.")
+        raise HCMCalcError(
+            "external_through.through_movement_id must match the subject through movement."
+        )
     if external.analysis_period_min != inputs.analysis_period_min:
-        raise HCMCalcError("External through analysis period must match the segment period.")
-    _positive_integer("external_through.analysis_period_min", external.analysis_period_min)
+        raise HCMCalcError(
+            "external_through.analysis_period_min must match the segment period."
+        )
     _finite_number("v_th_veh_h", external.v_th_veh_h, minimum=0.0)
     _finite_number("c_th_veh_h", external.c_th_veh_h, minimum=0.0, strict=True)
     _finite_number("d_t_s_veh", external.d_t_s_veh, minimum=0.0)
@@ -404,6 +417,8 @@ def _validate_inputs(inputs: UrbanStreetSegmentInputs) -> None:
         - 3.0 * inputs.parking_proportion
     )
     interpolated_los_thresholds(base_speed)
+    _, _, lanes, _, _, _, _, _, _, _, free_flow_speed = _free_flow_speed_components(inputs)
+    vehicle_proximity_factor(inputs.v_m_veh_h, lanes, free_flow_speed)
 
 
 def _finite_number(name: str, value: Any, *, minimum: float | None = None, strict: bool = False) -> float:

@@ -1,5 +1,6 @@
 from copy import deepcopy
 
+import pytest
 from fastapi.testclient import TestClient
 
 from hcmcalc.api.main import create_app
@@ -81,3 +82,79 @@ def test_generic_api_chapter18_workflow_and_project_contract():
     changed = stale.json()["project"]["analyses"][0]["scenarios"][0]
     assert changed["result_status"] == "stale"
     assert changed["result"] is None
+
+
+@pytest.mark.parametrize("field", ["segment_length", "posted_speed_limit"])
+def test_nonnumeric_scaled_fields_return_structured_validation_and_calculation_errors(field):
+    client = TestClient(create_app(), raise_server_exceptions=False)
+    displayed = client.get(
+        f"/api/v1/analyses/{METHOD}/starting-values",
+        params={"template_id": TEMPLATE, "unit_system": "imperial"},
+    ).json()["displayed_inputs"]
+    displayed[field] = "abc"
+    request = {"template_id": TEMPLATE, "unit_system": "imperial", "displayed_inputs": displayed}
+
+    validation = client.post(f"/api/v1/analyses/{METHOD}/validate", json=request)
+    assert validation.status_code == 200
+    assert validation.json()["valid"] is False
+    assert validation.json()["errors"][0]["field"] == field
+
+    calculated = client.post(f"/api/v1/analyses/{METHOD}/calculate", json=request)
+    assert calculated.status_code == 422
+    assert calculated.json()["detail"]["code"] == "invalid_input"
+    assert calculated.json()["detail"]["details"]["field"] == field
+
+
+def test_export_normalization_maps_nonnumeric_scaled_field_to_422():
+    client = TestClient(create_app(), raise_server_exceptions=False)
+    displayed = client.get(
+        f"/api/v1/analyses/{METHOD}/starting-values",
+        params={"template_id": TEMPLATE, "unit_system": "imperial"},
+    ).json()["displayed_inputs"]
+    calculated = client.post(
+        f"/api/v1/analyses/{METHOD}/calculate",
+        json={"template_id": TEMPLATE, "unit_system": "imperial", "displayed_inputs": displayed},
+    ).json()
+    invalid = deepcopy(displayed)
+    invalid["segment_length"] = "abc"
+    response = client.post(
+        f"/api/v1/analyses/{METHOD}/export",
+        json={
+            "template_id": TEMPLATE,
+            "unit_system": "imperial",
+            "displayed_inputs": invalid,
+            "calculation_fingerprint": calculated["calculation_fingerprint"],
+            "input_snapshot_fingerprint": calculated["input_snapshot_fingerprint"],
+            "result": calculated["result"],
+            "export_format": "json",
+        },
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"]["details"]["field"] == "segment_length"
+
+
+@pytest.mark.parametrize(
+    ("display_field", "value"),
+    [
+        ("external_source_tool", None),
+        ("external_direction", "westbound"),
+        ("external_control_type", "unsignalized"),
+        ("external_analysis_period_min", 30),
+        ("v_th_veh_h", "abc"),
+    ],
+)
+def test_validation_maps_external_engine_errors_to_displayed_fields(display_field, value):
+    client = TestClient(create_app())
+    displayed = client.get(
+        f"/api/v1/analyses/{METHOD}/starting-values",
+        params={"template_id": TEMPLATE, "unit_system": "imperial"},
+    ).json()["displayed_inputs"]
+    displayed[display_field] = value
+
+    response = client.post(
+        f"/api/v1/analyses/{METHOD}/validate",
+        json={"template_id": TEMPLATE, "unit_system": "imperial", "displayed_inputs": displayed},
+    )
+    assert response.status_code == 200
+    assert response.json()["valid"] is False
+    assert response.json()["errors"][0]["field"] == display_field

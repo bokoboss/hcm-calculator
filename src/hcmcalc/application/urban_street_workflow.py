@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from math import isfinite
 from typing import Any, Mapping
 
 from hcmcalc.application.registry import get_analysis_definition
@@ -201,14 +202,14 @@ class UrbanStreetWorkflow:
         length_factor = 1 / FEET_TO_METERS if unit == "metric" else 1.0
         speed_factor = 1 / MILES_TO_KILOMETERS if unit == "metric" else 1.0
         normalized = {
-            "segment_length_ft": _scaled(values.get("segment_length"), length_factor),
-            "upstream_intersection_width_ft": _scaled(values.get("upstream_intersection_width"), length_factor),
-            "signal_control_spacing_ft": _scaled(values.get("signal_control_spacing"), length_factor),
+            "segment_length_ft": _scaled("segment_length", values.get("segment_length"), length_factor),
+            "upstream_intersection_width_ft": _scaled("upstream_intersection_width", values.get("upstream_intersection_width"), length_factor),
+            "signal_control_spacing_ft": _scaled("signal_control_spacing", values.get("signal_control_spacing"), length_factor),
             "through_lane_count": values.get("through_lane_count"),
             "subject_direction": values.get("subject_direction"),
             "through_movement_id": values.get("through_movement_id"),
-            "posted_speed_limit_mph": _scaled(values.get("posted_speed_limit"), speed_factor),
-            "s_calib_mph": _scaled(values.get("s_calib"), speed_factor),
+            "posted_speed_limit_mph": _scaled("posted_speed_limit", values.get("posted_speed_limit"), speed_factor),
+            "s_calib_mph": _scaled("s_calib", values.get("s_calib"), speed_factor),
             "restrictive_median_proportion": values.get("restrictive_median_proportion"),
             "curb_proportion": values.get("curb_proportion"),
             "parking_proportion": values.get("parking_proportion"),
@@ -233,7 +234,9 @@ class UrbanStreetWorkflow:
             _validate_inputs(parsed)
         except Exception as exc:
             code = "unsupported_scope" if isinstance(exc, UnsupportedScopeError) else "invalid_input"
-            raise self._application_error(str(exc), code, f"api.{code}") from exc
+            field = _external_display_field(exc)
+            details = {"field": field} if field else None
+            raise self._application_error(str(exc), code, f"api.{code}", details) from exc
         from hcmcalc.application.workflows import _json_ready
 
         return _json_ready(normalized)
@@ -319,5 +322,28 @@ class UrbanStreetWorkflow:
         return ApplicationWorkflowError(message, code=code, message_key=message_key, details=details)
 
 
-def _scaled(value: Any, factor: float) -> Any:
-    return None if value is None else float(value) * factor
+def _scaled(field: str, value: Any, factor: float) -> Any:
+    if value is None:
+        return None
+    try:
+        if isinstance(value, bool):
+            raise ValueError("booleans are not numeric inputs")
+        scaled = float(value) * factor
+        if not isfinite(scaled):
+            raise ValueError("value is not finite")
+        return scaled
+    except (TypeError, ValueError, OverflowError) as exc:
+        from hcmcalc.application.workflows import ApplicationWorkflowError
+
+        raise ApplicationWorkflowError(
+            f"{field} must be a finite number.", details={"field": field}
+        ) from exc
+
+
+def _external_display_field(exc: Exception) -> str | None:
+    token = str(exc).partition(" ")[0].rstrip(".:,")
+    engine_field = token.rsplit(".", 1)[-1]
+    return next(
+        (display_field for display_field, name in EXTERNAL_FIELDS.items() if name == engine_field),
+        None,
+    )

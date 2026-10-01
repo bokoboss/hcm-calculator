@@ -1,4 +1,6 @@
 from copy import deepcopy
+from pathlib import Path
+import re
 
 import pytest
 
@@ -14,6 +16,7 @@ from hcmcalc.application.project import (
 )
 from hcmcalc.application.registry import get_analysis_definition, list_analysis_definitions
 from hcmcalc.application.workflows import (
+    ApplicationWorkflowError,
     StaleResultError,
     export_current_workflow,
     normalized_workflow_inputs,
@@ -141,6 +144,49 @@ def test_public_field_metadata_uses_text_and_bounded_choice_types():
     assert fields["demand_balanced"]["kind"] == "boolean"
     assert fields["spillback_present"]["kind"] == "boolean"
     assert fields["access_point_delays_s_veh"]["kind"] == "number_list"
+
+
+def test_advertised_chapter18_scope_keys_are_translated_in_both_catalogs():
+    definition = get_analysis_definition(METHOD_ID)
+    catalog_path = Path(__file__).resolve().parents[2] / "frontend" / "src" / "i18n" / "catalog.ts"
+    source = catalog_path.read_text(encoding="utf-8")
+    english = source.split("  en: {", 1)[1].split("  th: {", 1)[0]
+    thai = source.split("  th: {", 1)[1].rsplit("\n};", 1)[0]
+
+    for key in definition.scope_summary_keys:
+        for section in (english, thai):
+            match = re.search(rf"^\s*'{re.escape(key)}':\s*'([^']*)',?$", section, re.MULTILINE)
+            assert match is not None, key
+            assert match.group(1) and match.group(1) != key
+
+
+@pytest.mark.parametrize("field", ["segment_length", "posted_speed_limit"])
+def test_invalid_scaled_displayed_values_return_structured_application_errors(field):
+    workflow = workflow_for_method(METHOD_ID)
+    displayed = workflow.starting_values(TEMPLATE_ID, "imperial")["displayed_inputs"]
+    displayed[field] = "abc"
+
+    validation = workflow.validate(template_id=TEMPLATE_ID, unit_system="imperial", displayed_inputs=displayed)
+    assert validation["valid"] is False
+    assert validation["ready"] is False
+    assert validation["errors"][0]["code"] == "invalid_input"
+    assert validation["errors"][0]["field"] == field
+    with pytest.raises(ApplicationWorkflowError) as error:
+        workflow.calculate(template_id=TEMPLATE_ID, unit_system="imperial", displayed_inputs=displayed)
+    assert error.value.code == "invalid_input"
+    assert error.value.details == {"field": field}
+
+
+def test_validation_rejects_eq18_6_domain_before_calculation(monkeypatch):
+    workflow = workflow_for_method(METHOD_ID)
+    displayed = workflow.starting_values(TEMPLATE_ID, "imperial")["displayed_inputs"]
+    displayed["v_m_veh_h"] = 5000
+    monkeypatch.setattr(ch18.UrbanStreetSegmentMethod, "calculate", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("validation calculated")))
+
+    validation = workflow.validate(template_id=TEMPLATE_ID, unit_system="imperial", displayed_inputs=displayed)
+    assert validation["valid"] is False
+    assert validation["ready"] is False
+    assert validation["errors"][0]["code"] == "invalid_input"
 
 
 def test_chapter18_project_comparison_reports_canonical_current_output_deltas_without_rerun(monkeypatch):
