@@ -375,7 +375,7 @@ def _urban_street_report(
         calculation_type="manual_urban_street_segment_v1",
         unit_system=unit_system,
         timestamp=timestamp,
-        inputs=_urban_street_input_records(inputs or {}),
+        inputs=_displayed_urban_street_input_records(inputs or {}, unit_system),
         results=summary,
         segment_results=[{
             f"Segment length ({length_unit})": outputs["segment_length_ft"] * length_factor,
@@ -400,13 +400,41 @@ def _urban_street_report(
         )
     report["selected_validated_template"] = template_id
     report["support_scope"] = "HCM 7.0 Chapter 18; signalized 15-minute RHT-reference segment only."
-    report["normalized_engine_inputs_summary"] = _urban_street_input_records(inputs or {})
+    report["normalized_engine_inputs_summary"] = _normalized_urban_street_input_records(
+        outputs.get("input_summary")
+    )
     return report
 
 
-def _urban_street_input_records(inputs: Any) -> list[dict[str, Any]]:
+def _displayed_urban_street_input_records(
+    inputs: Any, unit_system: str
+) -> list[dict[str, Any]]:
     if not isinstance(inputs, dict):
-        raise ReportingError("Urban Street report inputs must be an object.")
+        raise ReportingError("Urban Street displayed inputs must be an object.")
+    metric = unit_system == "metric"
+    units = {
+        "segment_length": "m" if metric else "ft",
+        "upstream_intersection_width": "m" if metric else "ft",
+        "signal_control_spacing": "m" if metric else "ft",
+        "posted_speed_limit": "km/h" if metric else "mi/h",
+        "s_calib": "km/h" if metric else "mi/h",
+        "analysis_period_min": "min",
+        "external_analysis_period_min": "min",
+    }
+    records = []
+    for key, value in inputs.items():
+        unit = units.get(key)
+        if unit is None and key.endswith("_veh_h"):
+            unit = "veh/h"
+        elif unit is None and (key.endswith("_s_veh") or key == "access_point_delays_s_veh"):
+            unit = "s/veh"
+        records.append({"label": key, "value": value, "unit": unit})
+    return records
+
+
+def _normalized_urban_street_input_records(inputs: Any) -> list[dict[str, Any]]:
+    if not isinstance(inputs, dict):
+        raise ReportingError("Urban Street engine input summary must be an object.")
     records: list[dict[str, Any]] = []
     for key, value in inputs.items():
         if key == "external_through" and isinstance(value, dict):

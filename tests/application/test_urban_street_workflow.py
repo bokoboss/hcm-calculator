@@ -439,6 +439,104 @@ def test_current_result_exports_without_rerunning_and_preserves_external_provena
         assert "external_through_provenance" in exported["content"]
 
 
+@pytest.mark.parametrize("unit_system", ("metric", "imperial"))
+@pytest.mark.parametrize("export_format", ("json", "markdown", "csv", "xlsx"))
+def test_chapter18_reports_keep_displayed_and_normalized_sections_in_all_formats(
+    monkeypatch, unit_system, export_format
+):
+    workflow = workflow_for_method(METHOD_ID)
+    snapshot = workflow.calculate(
+        template_id=TEMPLATE_ID,
+        unit_system=unit_system,
+        displayed_inputs=workflow.starting_values(TEMPLATE_ID, unit_system)["displayed_inputs"],
+    )
+    assert snapshot["result"]["outputs"]["input_summary"] == snapshot["normalized_inputs"]
+    original_displayed = deepcopy(snapshot["displayed_inputs"])
+    monkeypatch.setattr(
+        ch18.UrbanStreetSegmentMethod,
+        "calculate",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("report reran engine")),
+    )
+    exported = export_current_workflow(
+        METHOD_ID,
+        template_id=TEMPLATE_ID,
+        unit_system=unit_system,
+        displayed_inputs=snapshot["displayed_inputs"],
+        calculation_fingerprint=snapshot["calculation_fingerprint"],
+        input_snapshot_fingerprint=snapshot["input_snapshot_fingerprint"],
+        result=snapshot["result"],
+        export_format=export_format,
+    )
+
+    length_unit, speed_unit = ("m", "km/h") if unit_system == "metric" else ("ft", "mi/h")
+    displayed_length = 548.64 if unit_system == "metric" else 1800
+    displayed_speed = 56.327040000000004 if unit_system == "metric" else 35
+    displayed_length_text = str(snapshot["displayed_inputs"]["segment_length"])
+    displayed_speed_text = str(snapshot["displayed_inputs"]["posted_speed_limit"])
+    normalized_length = snapshot["result"]["outputs"]["input_summary"]["segment_length_ft"]
+    if export_format == "json":
+        report = json.loads(exported["content"])
+        assert "inputs_summary" in report and "normalized_engine_inputs_summary" in report
+        displayed = {item["label"]: item for item in report["inputs_summary"]}
+        normalized = {item["label"]: item for item in report["normalized_engine_inputs_summary"]}
+        assert displayed["segment_length"] == {"label": "segment_length", "value": displayed_length, "unit": length_unit}
+        assert displayed["posted_speed_limit"]["value"] == pytest.approx(displayed_speed)
+        assert displayed["posted_speed_limit"]["unit"] == speed_unit
+        assert normalized["segment_length_ft"]["value"] == pytest.approx(1800)
+        assert normalized["segment_length_ft"]["unit"] == "ft (HCM-native)"
+        if unit_system == "metric":
+            assert displayed["segment_length"]["value"] == pytest.approx(548.64)
+            assert displayed["segment_length"]["unit"] == "m"
+            assert displayed["upstream_intersection_width"]["value"] == pytest.approx(15.24)
+            assert displayed["upstream_intersection_width"]["unit"] == "m"
+            assert displayed["signal_control_spacing"]["value"] == pytest.approx(548.64)
+            assert displayed["signal_control_spacing"]["unit"] == "m"
+            assert normalized["upstream_intersection_width_ft"]["value"] == pytest.approx(50)
+            assert normalized["signal_control_spacing_ft"]["value"] == pytest.approx(1800)
+            assert normalized["posted_speed_limit_mph"]["value"] == pytest.approx(35)
+            assert normalized["posted_speed_limit_mph"]["unit"] == "mi/h (HCM-native)"
+            assert displayed["external_source_tool"]["value"] == "HCM 7 Chapter 30 Example Problem 1"
+            assert normalized["external_through.source_tool"]["value"] == "HCM 7 Chapter 30 Example Problem 1"
+        assert set(displayed) != set(normalized)
+    elif export_format == "markdown":
+        text = exported["content"]
+        assert "## Key Inputs" in text and "## Normalized Engine Inputs" in text
+        assert f"| segment_length | {displayed_length_text} | {length_unit} |" in text
+        assert f"| posted_speed_limit | {displayed_speed_text} | {speed_unit} |" in text
+        assert f"| segment_length_ft | {normalized_length} | ft (HCM-native) |" in text
+    elif export_format == "csv":
+        rows = list(csv.reader(StringIO(exported["content"])))
+        assert ["Inputs"] in rows and ["Normalized Engine Inputs"] in rows
+        assert ["segment_length", displayed_length_text, length_unit] in rows
+        assert ["posted_speed_limit", displayed_speed_text, speed_unit] in rows
+        assert ["segment_length_ft", str(normalized_length), "ft (HCM-native)"] in rows
+    else:
+        workbook = load_workbook(BytesIO(base64.b64decode(exported["content_base64"])), data_only=False)
+        rows = list(workbook["Inputs"].values)
+        displayed_rows = {row[0]: row for row in rows if row[0] in {"segment_length", "posted_speed_limit"}}
+        assert displayed_rows["segment_length"][1] == pytest.approx(displayed_length)
+        assert displayed_rows["segment_length"][2] == length_unit
+        assert displayed_rows["posted_speed_limit"][1] == pytest.approx(displayed_speed)
+        assert displayed_rows["posted_speed_limit"][2] == speed_unit
+        normalized_heading = rows.index(("Normalized Engine Inputs", None, None))
+        assert rows[normalized_heading + 1] == ("Label", "Value", "Unit")
+        normalized_rows = rows[normalized_heading + 2:]
+        engine_length = next(row for row in normalized_rows if row[0] == "segment_length_ft")
+        assert engine_length[1] == pytest.approx(1800)
+        assert engine_length[2] == "ft (HCM-native)"
+
+    assert exported["recalculated"] is False
+    assert exported["calculation_fingerprint"] == snapshot["calculation_fingerprint"]
+    revalidated = workflow.validate(
+        template_id=TEMPLATE_ID,
+        unit_system=unit_system,
+        displayed_inputs=snapshot["displayed_inputs"],
+    )
+    assert revalidated["calculation_fingerprint"] == snapshot["calculation_fingerprint"]
+    assert revalidated["input_snapshot_fingerprint"] == snapshot["input_snapshot_fingerprint"]
+    assert snapshot["displayed_inputs"] == original_displayed
+
+
 def test_spreadsheet_exports_neutralize_chapter18_provenance_without_mutating_source_or_other_exports():
     workflow = workflow_for_method(METHOD_ID)
     displayed = workflow.starting_values(TEMPLATE_ID, "imperial")["displayed_inputs"]

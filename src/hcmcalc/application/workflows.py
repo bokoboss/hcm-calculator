@@ -1162,7 +1162,11 @@ def export_current_workflow(
             workflow.definition.project_type,
             dict(result),
             _normalize_unit_system(unit_system),
-            inputs=dict(normalized),
+            inputs=(
+                dict(effective_displayed)
+                if method_id == "urban_street_segment"
+                else dict(normalized)
+            ),
             template_id=template_id,
             generated_at=_now(),
         )
