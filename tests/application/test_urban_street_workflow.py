@@ -1,8 +1,13 @@
+import base64
+import csv
 from copy import deepcopy
+import json
+from io import BytesIO, StringIO
 from pathlib import Path
 import re
 
 import pytest
+from openpyxl import load_workbook
 
 from hcmcalc.application.project import (
     ProjectFileError,
@@ -187,6 +192,33 @@ def test_validation_rejects_eq18_6_domain_before_calculation(monkeypatch):
     assert validation["valid"] is False
     assert validation["ready"] is False
     assert validation["errors"][0]["code"] == "invalid_input"
+    assert validation["errors"][0]["field"] is None
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("control_type", "two_way_stop"),
+        ("analysis_period_min", 60),
+        ("demand_balanced", False),
+        ("demand_adjustments_resolved", False),
+        ("capacity_effects_resolved", False),
+        ("spillback_present", True),
+        ("access_point_delays_s_veh", [-0.1, 0.2]),
+        ("upstream_intersection_width", 1800),
+    ],
+)
+def test_validation_errors_identify_directly_offending_chapter18_display_field(field, value):
+    workflow = workflow_for_method(METHOD_ID)
+    displayed = workflow.starting_values(TEMPLATE_ID, "imperial")["displayed_inputs"]
+    displayed[field] = value
+
+    validation = workflow.validate(template_id=TEMPLATE_ID, unit_system="imperial", displayed_inputs=displayed)
+
+    assert validation["valid"] is False
+    assert validation["ready"] is False
+    assert validation["errors"][0]["code"] == "invalid_input"
+    assert validation["errors"][0]["field"] == field
 
 
 def test_chapter18_project_comparison_reports_canonical_current_output_deltas_without_rerun(monkeypatch):
@@ -405,6 +437,67 @@ def test_current_result_exports_without_rerunning_and_preserves_external_provena
     assert exported["content"] or exported["content_base64"]
     if export_format == "json":
         assert "external_through_provenance" in exported["content"]
+
+
+def test_spreadsheet_exports_neutralize_chapter18_provenance_without_mutating_source_or_other_exports():
+    workflow = workflow_for_method(METHOD_ID)
+    displayed = workflow.starting_values(TEMPLATE_ID, "imperial")["displayed_inputs"]
+    dangerous = {
+        "external_source_tool": '=WEBSERVICE("https://example.invalid")',
+        "external_source_method_note": "+SUM(1,1)",
+        "external_hcm_edition_note": "-1+1",
+        "external_scenario_note": "@SUM(A1:A2)",
+        "external_source_class": " \t=1+1",
+    }
+    displayed.update(dangerous)
+    original = deepcopy(displayed)
+    snapshot = workflow.calculate(template_id=TEMPLATE_ID, unit_system="imperial", displayed_inputs=displayed)
+    source_fingerprint = snapshot["calculation_fingerprint"]
+
+    def export(format_name):
+        return export_current_workflow(
+            METHOD_ID,
+            template_id=TEMPLATE_ID,
+            unit_system="imperial",
+            displayed_inputs=displayed,
+            calculation_fingerprint=snapshot["calculation_fingerprint"],
+            input_snapshot_fingerprint=snapshot["input_snapshot_fingerprint"],
+            result=snapshot["result"],
+            export_format=format_name,
+        )
+
+    csv_output = export("csv")
+    csv_cells = [cell for row in csv.reader(StringIO(csv_output["content"])) for cell in row]
+    for value in dangerous.values():
+        assert "'" + value in csv_cells
+
+    xlsx_output = export("xlsx")
+    workbook = load_workbook(BytesIO(base64.b64decode(xlsx_output["content_base64"])), data_only=False)
+    cells = [cell for sheet in workbook.worksheets for row in sheet.iter_rows() for cell in row]
+    for value in dangerous.values():
+        literal = next(cell for cell in cells if cell.value == "'" + value)
+        assert literal.data_type == "s"
+    assert any(cell.value == -0.329 and cell.data_type == "n" for cell in cells)
+
+    json_output = json.loads(export("json")["content"])
+    json_strings = []
+    def collect_strings(value):
+        if isinstance(value, dict):
+            for child in value.values():
+                collect_strings(child)
+        elif isinstance(value, list):
+            for child in value:
+                collect_strings(child)
+        elif isinstance(value, str):
+            json_strings.append(value)
+    collect_strings(json_output)
+    assert all(value in json_strings for value in dangerous.values())
+    markdown = export("markdown")["content"]
+    assert all(value in markdown for value in dangerous.values())
+    assert displayed == original
+    assert snapshot["calculation_fingerprint"] == source_fingerprint
+    assert csv_output["calculation_fingerprint"] == source_fingerprint
+    assert xlsx_output["calculation_fingerprint"] == source_fingerprint
 
 
 def test_export_rejects_stale_inputs_and_tampered_chapter18_result_identity():

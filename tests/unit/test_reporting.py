@@ -1,6 +1,8 @@
 import json
 import math
-from io import BytesIO
+import csv
+from copy import deepcopy
+from io import BytesIO, StringIO
 from pathlib import Path
 
 import pytest
@@ -285,6 +287,58 @@ def test_facility_report_exports_do_not_emit_inactive_opposing_nan() -> None:
     json.dumps(json.loads(exported_json), allow_nan=False)
     assert "nan" not in exported_json.lower()
     assert "nan" not in exported_csv.lower()
+
+
+def test_spreadsheet_exports_neutralize_formula_like_text_without_mutating_other_formats():
+    report = _single_report()
+    dangerous = [
+        '=WEBSERVICE("https://example.invalid")',
+        "+SUM(1,1)",
+        "-1+1",
+        "@SUM(A1:A2)",
+        " \t=1+1",
+        "\t+1+1",
+    ]
+    report["title"] = dangerous[0]
+    report["results_summary"][0]["value"] = dangerous[1]
+    report["inputs_summary"][0]["label"] = dangerous[2]
+    report["normalized_engine_inputs_summary"] = [
+        {"label": dangerous[3], "value": dangerous[3], "unit": dangerous[4]}
+    ]
+    report["segment_results"] = [{dangerous[2]: dangerous[4], "Numeric result": -0.329}]
+    report["assumptions"] = [dangerous[4]]
+    report["warnings"] = [dangerous[5]]
+    report["limitations"] = [dangerous[1]]
+    report["audit_summary"][0]["value"] = dangerous[0]
+    report["intermediate_values"] = [{"Component": dangerous[4], "Value": -0.329}]
+    original_report = deepcopy(report)
+
+    csv_rows = list(csv.reader(StringIO(export_report(report, "csv"))))
+    csv_cells = [cell for row in csv_rows for cell in row]
+    for value in dangerous:
+        assert "'" + value in csv_cells
+    assert -0.329 not in csv_cells
+    assert "-0.329" in csv_cells
+
+    workbook = load_workbook(BytesIO(export_report(report, "xlsx")), data_only=False)
+    workbook_cells = [cell for sheet in workbook.worksheets for row in sheet.iter_rows() for cell in row]
+    for cell in workbook_cells:
+        if isinstance(cell.value, str):
+            assert not cell.value.lstrip().startswith(("=", "+", "-", "@"))
+            assert cell.data_type != "f"
+    for value in dangerous:
+        literal = next(cell for cell in workbook_cells if cell.value == "'" + value)
+        assert literal.data_type == "s"
+    assert any(cell.value == -0.329 and cell.data_type == "n" for cell in workbook_cells)
+
+    json_report = json.loads(export_report(report, "json"))
+    assert json_report["title"] == dangerous[0]
+    assert json_report["results_summary"][0]["value"] == dangerous[1]
+    markdown = export_report(report, "markdown")
+    assert dangerous[0] in markdown
+    assert dangerous[1] in markdown
+    assert "'" + dangerous[0] not in markdown
+    assert report == original_report
 
 
 def test_multilane_metric_and_imperial_exports_use_selected_display_units() -> None:

@@ -158,3 +158,65 @@ def test_validation_maps_external_engine_errors_to_displayed_fields(display_fiel
     assert response.status_code == 200
     assert response.json()["valid"] is False
     assert response.json()["errors"][0]["field"] == display_field
+
+
+@pytest.mark.parametrize(
+    ("display_field", "value"),
+    [
+        ("control_type", "two_way_stop"),
+        ("analysis_period_min", 60),
+        ("demand_balanced", False),
+        ("demand_adjustments_resolved", False),
+        ("capacity_effects_resolved", False),
+        ("spillback_present", True),
+        ("access_point_delays_s_veh", [-0.1, 0.2]),
+        ("upstream_intersection_width", 1800),
+        ("upstream_intersection_width", 1801),
+        ("segment_length", 10561),
+    ],
+)
+def test_validation_maps_chapter18_preconditions_to_the_offending_display_field(display_field, value):
+    client = TestClient(create_app(), raise_server_exceptions=False)
+    displayed = client.get(
+        f"/api/v1/analyses/{METHOD}/starting-values",
+        params={"template_id": TEMPLATE, "unit_system": "imperial"},
+    ).json()["displayed_inputs"]
+    displayed[display_field] = value
+
+    response = client.post(
+        f"/api/v1/analyses/{METHOD}/validate",
+        json={"template_id": TEMPLATE, "unit_system": "imperial", "displayed_inputs": displayed},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["valid"] is False
+    assert body["ready"] is False
+    assert body["errors"][0]["code"] == "invalid_input"
+    assert body["errors"][0]["field"] == display_field
+
+
+@pytest.mark.parametrize(
+    ("changes", "expected_field"),
+    [
+        ({"access_point_delays_s_veh": []}, "access_point_delays_s_veh"),
+        ({"subject_side_access_count": 0, "opposing_side_access_count": 0}, "access_point_delays_s_veh"),
+        ({"demand_balanced": False, "demand_adjustments_resolved": False}, "demand_balanced"),
+    ],
+)
+def test_validation_attributes_access_delay_requirements_and_uses_flag_priority(changes, expected_field):
+    client = TestClient(create_app(), raise_server_exceptions=False)
+    displayed = client.get(
+        f"/api/v1/analyses/{METHOD}/starting-values",
+        params={"template_id": TEMPLATE, "unit_system": "imperial"},
+    ).json()["displayed_inputs"]
+    displayed.update(changes)
+
+    response = client.post(
+        f"/api/v1/analyses/{METHOD}/validate",
+        json={"template_id": TEMPLATE, "unit_system": "imperial", "displayed_inputs": displayed},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["valid"] is False
+    assert response.json()["errors"][0]["field"] == expected_field

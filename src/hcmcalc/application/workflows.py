@@ -151,7 +151,8 @@ def _json_ready(value: Any) -> Any:
 def _error_issue(exc: Exception, *, field: str | None = None) -> dict[str, Any]:
     details = getattr(exc, "details", {})
     issue_field = field or (details.get("field") if isinstance(details, Mapping) else None)
-    if issue_field is None:
+    has_explicit_field = isinstance(details, Mapping) and "field" in details
+    if issue_field is None and not has_explicit_field:
         for candidate in (
             "number_of_lanes", "segment_length", "demand_volume_veh_h",
             "peak_hour_factor", "heavy_vehicle_percent", "ffs_source",

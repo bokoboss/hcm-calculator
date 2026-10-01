@@ -45,6 +45,16 @@ EXTERNAL_FIELDS = {
     "c_th_veh_h": "c_th_veh_h",
     "d_t_s_veh": "d_t_s_veh",
 }
+_ENGINE_FIELD_TO_DISPLAY = {
+    **{field: field for field in DISPLAY_FIELDS if field not in EXTERNAL_FIELDS},
+    "segment_length_ft": "segment_length",
+    "upstream_intersection_width_ft": "upstream_intersection_width",
+    "signal_control_spacing_ft": "signal_control_spacing",
+    "posted_speed_limit_mph": "posted_speed_limit",
+    "s_calib_mph": "s_calib",
+    **{engine: display for display, engine in EXTERNAL_FIELDS.items() if display == engine},
+    **{f"external_through.{engine}": display for display, engine in EXTERNAL_FIELDS.items()},
+}
 
 
 def _example_inputs(unit: str) -> dict[str, Any]:
@@ -234,9 +244,8 @@ class UrbanStreetWorkflow:
             _validate_inputs(parsed)
         except Exception as exc:
             code = "unsupported_scope" if isinstance(exc, UnsupportedScopeError) else "invalid_input"
-            field = _external_display_field(exc)
-            details = {"field": field} if field else None
-            raise self._application_error(str(exc), code, f"api.{code}", details) from exc
+            field = _validation_display_field(exc, normalized)
+            raise self._application_error(str(exc), code, f"api.{code}", {"field": field}) from exc
         from hcmcalc.application.workflows import _json_ready
 
         return _json_ready(normalized)
@@ -340,10 +349,31 @@ def _scaled(field: str, value: Any, factor: float) -> Any:
         ) from exc
 
 
-def _external_display_field(exc: Exception) -> str | None:
+def _validation_display_field(exc: Exception, normalized: Mapping[str, Any]) -> str | None:
+    message = str(exc)
     token = str(exc).partition(" ")[0].rstrip(".:,")
-    engine_field = token.rsplit(".", 1)[-1]
-    return next(
-        (display_field for display_field, name in EXTERNAL_FIELDS.items() if name == engine_field),
-        None,
-    )
+    if token in _ENGINE_FIELD_TO_DISPLAY:
+        return _ENGINE_FIELD_TO_DISPLAY[token]
+    if message.startswith("Chapter 18 segment length cannot exceed"):
+        return "segment_length"
+    if message.startswith("The qualified Chapter 18 operational period"):
+        return "analysis_period_min"
+    if message.startswith("The qualified Chapter 18 boundary control"):
+        return "control_type"
+    if message.startswith("Unresolved spillback"):
+        return "spillback_present"
+    if message.startswith((
+        "access point delay ",
+        "Explicit qualified access point delays ",
+        "Access point delays ",
+    )):
+        return "access_point_delays_s_veh"
+    if message.startswith("Demand must be balanced/adjusted"):
+        return next((
+            field for field in (
+                "demand_balanced",
+                "demand_adjustments_resolved",
+                "capacity_effects_resolved",
+            ) if normalized.get(field) is False
+        ), None)
+    return None

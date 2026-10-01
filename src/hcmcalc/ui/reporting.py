@@ -186,7 +186,7 @@ def report_to_csv(report: dict[str, Any]) -> str:
     """Render report sections into a copy-ready CSV document."""
 
     output = StringIO(newline="")
-    writer = csv.writer(output)
+    writer = _SafeCsvWriter(csv.writer(output))
     writer.writerow([report["title"]])
     for key in (
         "report_type", "calculation_type", "method_identifier", "method_version",
@@ -281,8 +281,8 @@ def report_to_xlsx(report: dict[str, Any]) -> bytes:
     inputs = workbook.create_sheet(_report_text(report, "report.inputs", "Inputs")[:31])
     _append_key_values(inputs, report["inputs_summary"], report)
     if report.get("normalized_engine_inputs_summary"):
-        inputs.append([])
-        inputs.append([_report_text(report, "report.normalized_inputs", "Normalized Engine Inputs")])
+        _append_spreadsheet_row(inputs, [])
+        _append_spreadsheet_row(inputs, [_report_text(report, "report.normalized_inputs", "Normalized Engine Inputs")])
         _append_key_values(inputs, report["normalized_engine_inputs_summary"], report)
 
     segments = workbook.create_sheet(_report_text(report, "report.segment_results", "Segment Results")[:31])
@@ -294,16 +294,16 @@ def report_to_xlsx(report: dict[str, Any]) -> bytes:
         else "Assumptions Warnings Limits"
     )
     context = workbook.create_sheet(context_name[:31])
-    context.append([_report_text(report, "report.category", "Category"), _report_text(report, "report.text", "Text")])
+    _append_spreadsheet_row(context, [_report_text(report, "report.category", "Category"), _report_text(report, "report.text", "Text")])
     for key in ("assumptions", "warnings", "limitations"):
         for value in report[key]:
-            context.append([_label(key), value])
+            _append_spreadsheet_row(context, [_label(key), value])
 
     audit = workbook.create_sheet(_worksheet_title(_report_text(report, "report.audit", "Audit")))
     _append_key_values(audit, report["audit_summary"], report)
     if report.get("intermediate_values"):
-        audit.append([])
-        audit.append([_report_text(report, "report.intermediate_values", "Intermediate Values")])
+        _append_spreadsheet_row(audit, [])
+        _append_spreadsheet_row(audit, [_report_text(report, "report.intermediate_values", "Intermediate Values")])
         _append_table(audit, report["intermediate_values"])
 
     for worksheet in workbook.worksheets:
@@ -967,6 +967,14 @@ def _write_list_csv(writer: Any, heading: str, values: list[Any]) -> None:
         writer.writerow([_cell(value)])
 
 
+class _SafeCsvWriter:
+    def __init__(self, writer: Any) -> None:
+        self._writer = writer
+
+    def writerow(self, values: Any) -> None:
+        self._writer.writerow([_spreadsheet_cell(value) for value in values])
+
+
 def _markdown_key_value_table(records: list[dict[str, Any]]) -> list[str]:
     rows = [{"Item": record["label"], "Value": record.get("value"), "Unit": record.get("unit") or ""} for record in records]
     return _markdown_table(rows)
@@ -985,27 +993,27 @@ def _markdown_table(rows: list[dict[str, Any]]) -> list[str]:
 
 def _append_metadata(worksheet: Any, report: dict[str, Any]) -> None:
     for key in ("title", "report_type", "calculation_type", "unit_system", "generated_at"):
-        worksheet.append([_label(key), report[key]])
-    worksheet.append([])
+        _append_spreadsheet_row(worksheet, [_label(key), report[key]])
+    _append_spreadsheet_row(worksheet, [])
 
 
 def _append_key_values(worksheet: Any, records: list[dict[str, Any]], report: dict[str, Any]) -> None:
-    worksheet.append([
+    _append_spreadsheet_row(worksheet, [
         _report_text(report, "report.label", "Label"),
         _report_text(report, "report.value", "Value"),
         _report_text(report, "report.unit", "Unit"),
     ])
     for record in records:
-        worksheet.append([record["label"], _cell(record.get("value")), record.get("unit")])
+        _append_spreadsheet_row(worksheet, [record["label"], _cell(record.get("value")), record.get("unit")])
 
 
 def _append_table(worksheet: Any, rows: list[dict[str, Any]]) -> None:
     if not rows:
-        worksheet.append(["No rows"])
+        _append_spreadsheet_row(worksheet, ["No rows"])
         return
-    worksheet.append(list(rows[0]))
+    _append_spreadsheet_row(worksheet, list(rows[0]))
     for row in rows:
-        worksheet.append([_cell(value) for value in row.values()])
+        _append_spreadsheet_row(worksheet, [_cell(value) for value in row.values()])
 
 
 def _validate_result(calculation_type: str, result: dict[str, Any] | None) -> None:
@@ -1146,6 +1154,17 @@ def _cell(value: Any) -> Any:
     if isinstance(value, (dict, list)):
         return json.dumps(value, sort_keys=True)
     return value
+
+
+def _append_spreadsheet_row(worksheet: Any, values: list[Any]) -> None:
+    worksheet.append([_spreadsheet_cell(value) for value in values])
+
+
+def _spreadsheet_cell(value: Any) -> Any:
+    cell = _cell(value)
+    if isinstance(cell, str) and cell.lstrip().startswith(("=", "+", "-", "@")):
+        return "'" + cell
+    return cell
 
 
 def _markdown_cell(value: Any) -> str:
