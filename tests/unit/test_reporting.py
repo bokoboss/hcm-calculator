@@ -363,6 +363,24 @@ def test_xlsx_escapes_xml_illegal_controls_without_mutating_report(control):
     assert report == original
 
 
+@pytest.mark.parametrize("control", ("\ufffe", "\uffff", "\ud800", "\udfff"))
+def test_xlsx_escapes_xml_forbidden_unicode_values(control):
+    report = _single_report()
+    report["warnings"] = [f"before{control}after"]
+
+    workbook = load_workbook(BytesIO(export_report(report, "xlsx")))
+    exported = next(
+        cell
+        for sheet in workbook.worksheets
+        for row in sheet.iter_rows()
+        for cell in row
+        if cell.value == f"before\\u{ord(control):04X}after"
+    )
+
+    assert exported.data_type == "s"
+    assert control not in exported.value
+
+
 @pytest.mark.parametrize("control", ("\t", "\n", "\r"))
 def test_xlsx_preserves_xml_allowed_controls(control):
     report = _single_report()

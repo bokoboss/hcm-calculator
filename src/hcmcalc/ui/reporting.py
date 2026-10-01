@@ -1200,7 +1200,7 @@ def _xlsx_cell(value: Any) -> Any:
     cell = _formula_safe_cell(value)
     if isinstance(cell, str):
         return re.sub(
-            r"[\x00-\x08\x0B\x0C\x0E-\x1F]",
+            r"[\x00-\x08\x0B\x0C\x0E-\x1F\uD800-\uDFFF\uFFFE\uFFFF]",
             lambda match: f"\\u{ord(match[0]):04X}",
             cell,
         )
