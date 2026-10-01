@@ -4,7 +4,9 @@ import pytest
 
 from hcmcalc.core import HCMCalcError
 from hcmcalc.urban_street_ch18 import (
+    UrbanStreetSegmentInputs,
     UrbanStreetSegmentMethod,
+    _free_flow_speed_components,
     level_of_service,
     vehicle_proximity_factor,
 )
@@ -77,6 +79,38 @@ def test_chapter_30_example_problem_1_reproduces_reference_values():
     assert out["level_of_service"] == "C"
     assert result.method == "urban_street_segment_ch18_v0_1"
     assert all(value.source for value in result.intermediate_values)
+
+
+def test_engine_accepts_exact_exhibit_18_1_lower_bffs_boundary():
+    values = example_inputs()
+    values.update(
+        posted_speed_limit_mph=25.0,
+        s_calib_mph=-12.35,
+        restrictive_median_proportion=0.0,
+        curb_proportion=0.0,
+        parking_proportion=0.0,
+        subject_side_access_count=0,
+        opposing_side_access_count=0,
+        access_point_delays_s_veh=[],
+    )
+    parsed = UrbanStreetSegmentInputs.from_mapping(values)
+    components = _free_flow_speed_components(parsed)
+
+    assert components[8] == 25.0
+    result = UrbanStreetSegmentMethod().calculate(values)
+    assert result.outputs["base_free_flow_speed_mph"] == 25.0
+
+
+def test_engine_rejects_canonical_bffs_just_below_exhibit_18_1_domain():
+    values = example_inputs()
+    values["s_calib_mph"] = -15.77965142857143
+    canonical_bffs = _free_flow_speed_components(
+        UrbanStreetSegmentInputs.from_mapping(values)
+    )[8]
+
+    assert canonical_bffs == 24.999999999999996
+    with pytest.raises(HCMCalcError, match="25.*55"):
+        UrbanStreetSegmentMethod().calculate(values)
 
 
 def test_midsegment_flow_is_required_and_distinct_from_external_through_flow():

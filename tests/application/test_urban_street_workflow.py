@@ -195,6 +195,29 @@ def test_validation_rejects_eq18_6_domain_before_calculation(monkeypatch):
     assert validation["errors"][0]["field"] is None
 
 
+def test_validation_and_calculation_reject_same_below_25_bffs_starter_case():
+    workflow = workflow_for_method(METHOD_ID)
+    displayed = workflow.starting_values(TEMPLATE_ID, "imperial")["displayed_inputs"]
+    displayed["s_calib"] = -15.77965142857143
+
+    validation = workflow.validate(
+        template_id=TEMPLATE_ID,
+        unit_system="imperial",
+        displayed_inputs=displayed,
+    )
+    assert validation["valid"] is False
+    assert validation["ready"] is False
+    assert validation["errors"][0]["code"] == "invalid_input"
+
+    with pytest.raises(ApplicationWorkflowError) as error:
+        workflow.calculate(
+            template_id=TEMPLATE_ID,
+            unit_system="imperial",
+            displayed_inputs=displayed,
+        )
+    assert error.value.code == "invalid_input"
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     [

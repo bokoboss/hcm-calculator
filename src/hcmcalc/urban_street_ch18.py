@@ -405,19 +405,20 @@ def _validate_inputs(inputs: UrbanStreetSegmentInputs) -> None:
     _finite_number("v_th_veh_h", external.v_th_veh_h, minimum=0.0)
     _finite_number("c_th_veh_h", external.c_th_veh_h, minimum=0.0, strict=True)
     _finite_number("d_t_s_veh", external.d_t_s_veh, minimum=0.0)
-    # Validate the accepted table domain before returning any qualified result.
-    base_speed = inputs.s_calib_mph + 25.6 + 0.47 * inputs.posted_speed_limit_mph
-    link_length = inputs.segment_length_ft - inputs.upstream_intersection_width_ft
-    access_density = 5280.0 * (inputs.subject_side_access_count + inputs.opposing_side_access_count) / link_length
-    base_speed += (
-        1.5 * inputs.restrictive_median_proportion
-        - 0.47 * inputs.curb_proportion
-        - 3.7 * inputs.curb_proportion * inputs.restrictive_median_proportion
-        - 0.078 * access_density / inputs.through_lane_count
-        - 3.0 * inputs.parking_proportion
-    )
-    interpolated_los_thresholds(base_speed)
-    _, _, lanes, _, _, _, _, _, _, _, free_flow_speed = _free_flow_speed_components(inputs)
+    (
+        _,
+        _,
+        lanes,
+        _,
+        _,
+        _,
+        _,
+        _,
+        base_free_flow_speed,
+        _,
+        free_flow_speed,
+    ) = _free_flow_speed_components(inputs)
+    interpolated_los_thresholds(base_free_flow_speed)
     vehicle_proximity_factor(inputs.v_m_veh_h, lanes, free_flow_speed)
 
 
