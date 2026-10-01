@@ -4,6 +4,7 @@ import csv
 from copy import deepcopy
 from io import BytesIO, StringIO
 from pathlib import Path
+import re
 
 import pytest
 from openpyxl import load_workbook
@@ -339,6 +340,38 @@ def test_spreadsheet_exports_neutralize_formula_like_text_without_mutating_other
     assert dangerous[1] in markdown
     assert "'" + dangerous[0] not in markdown
     assert report == original_report
+
+
+@pytest.mark.parametrize("line_ending", ("\r", "\n", "\r\n"))
+def test_markdown_exports_normalize_line_endings_in_dynamic_text_without_mutating_source(line_ending):
+    report = _single_report()
+    injected = f"trusted{line_ending}# Approved"
+    report["title"] = injected
+    report["report_type"] = injected
+    report["method_identifier"] = injected
+    report["method_version"] = injected
+    report["inputs_summary"] = [{"label": injected, "value": injected, "unit": injected}]
+    report["normalized_engine_inputs_summary"] = [
+        {"label": injected, "value": injected, "unit": injected}
+    ]
+    report["results_summary"] = [{"label": injected, "value": injected, "unit": injected}]
+    report["segment_results"] = [{injected: injected}]
+    report["audit_summary"] = [{"label": injected, "value": injected, "unit": None}]
+    report["intermediate_values"] = [{"Value": injected}]
+    report["assumptions"] = [injected]
+    report["warnings"] = [injected]
+    report["limitations"] = [injected]
+    original = deepcopy(report)
+
+    markdown = export_report(report, "markdown")
+    json_report = json.loads(export_report(report, "json"))
+
+    assert "trusted # Approved" in markdown
+    assert not re.search(r"(?m)^# Approved$", markdown)
+    assert "\r" not in markdown
+    assert original["inputs_summary"][0]["value"] == injected
+    assert json_report["title"] == injected
+    assert report == original
 
 
 def test_multilane_metric_and_imperial_exports_use_selected_display_units() -> None:

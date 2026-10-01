@@ -1,8 +1,9 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as apiClient from '../api/client';
 import type { MethodDefinition } from '../api/types';
 import { I18nProvider, useI18n } from '../i18n';
-import { MethodCard, ReferencePage } from './App';
+import { App, MethodCard, ReferencePage } from './App';
 
 const method: MethodDefinition = {
   method_id: 'demo',
@@ -42,7 +43,67 @@ const chapter18Method: MethodDefinition = {
   ],
 };
 
-beforeEach(() => window.localStorage.setItem('hcmcalc.locale', 'en'));
+const multilaneMethod: MethodDefinition = {
+  ...method,
+  method_id: 'multilane_segment',
+  input_contract: 'phase_8',
+  engine_method_identifier: 'hcm7_multilane_los',
+  legacy_workflow: 'manual_multilane_v0',
+};
+
+beforeEach(() => {
+  window.localStorage.setItem('hcmcalc.locale', 'en');
+  window.history.replaceState({}, '', '/');
+  Object.defineProperty(HTMLElement.prototype, 'scrollTo', { configurable: true, value: () => undefined });
+});
+afterEach(() => vi.restoreAllMocks());
+
+describe('direct analysis route containment', () => {
+  it('replaces an ineligible Chapter 18 URL with the reference-only chooser', async () => {
+    window.history.replaceState({ hcmHistoryIndex: 4, methodId: 'urban_street_segment' }, '', '/analysis/urban_street_segment');
+    vi.spyOn(apiClient, 'fetchMethods').mockResolvedValue({ registry_version: 'test', methods: [chapter18Method] });
+
+    render(<I18nProvider><App /></I18nProvider>);
+
+    expect(await screen.findByRole('heading', { name: 'New Analysis' })).toBeVisible();
+    expect(await screen.findByTestId('method-card-urban_street_segment')).toBeVisible();
+    expect(window.location.pathname).toBe('/new-analysis');
+    expect(screen.queryByTestId('workflow-urban_street_segment')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Calculate' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('method-card-urban_street_segment')).toHaveTextContent('Reference only');
+  });
+
+  it('continues rendering a directly addressed delivered method workflow', async () => {
+    window.history.replaceState({ hcmHistoryIndex: 2, methodId: 'multilane_segment' }, '', '/analysis/multilane_segment');
+    vi.spyOn(apiClient, 'fetchMethods').mockResolvedValue({ registry_version: 'test', methods: [multilaneMethod] });
+
+    render(<I18nProvider><App /></I18nProvider>);
+
+    expect(await screen.findByTestId('workflow-multilane_segment')).toBeVisible();
+    expect(window.location.pathname).toBe('/analysis/multilane_segment');
+  });
+
+  it('contains restored scenario-edit state for an undelivered method', async () => {
+    window.history.replaceState({
+      hcmHistoryIndex: 6,
+      methodId: 'urban_street_segment',
+      scenarioEdit: {
+        analysisId: 'analysis-1',
+        scenarioId: 'scenario-1',
+        templateId: 'USS-CH30-EP1',
+        unitSystem: 'metric',
+        displayedInputs: {},
+      },
+    }, '', '/project/analysis/analysis-1/scenarios/scenario-1');
+    vi.spyOn(apiClient, 'fetchMethods').mockResolvedValue({ registry_version: 'test', methods: [chapter18Method] });
+
+    render(<I18nProvider><App /></I18nProvider>);
+
+    expect(await screen.findByTestId('method-card-urban_street_segment')).toBeVisible();
+    expect(window.location.pathname).toBe('/new-analysis');
+    expect(screen.queryByTestId('workflow-urban_street_segment')).not.toBeInTheDocument();
+  });
+});
 
 function LocaleButtons() {
   const { setLocale } = useI18n();

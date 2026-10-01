@@ -215,12 +215,12 @@ def report_to_markdown(report: dict[str, Any]) -> str:
     """Render a clean copy-ready Markdown report."""
 
     lines = [
-        f"# {report['title']}",
+        f"# {_markdown_inline_text(report['title'])}",
         "",
-        f"- **Calculation type:** {report['calculation_type']}",
-        f"- **Method:** {report['method_identifier']} ({report['method_version']})",
-        f"- **Unit system:** {report['unit_system']}",
-        f"- **Generated at:** {report['generated_at']}",
+        f"- **Calculation type:** {_markdown_inline_text(report['calculation_type'])}",
+        f"- **Method:** {_markdown_inline_text(report['method_identifier'])} ({_markdown_inline_text(report['method_version'])})",
+        f"- **Unit system:** {_markdown_inline_text(report['unit_system'])}",
+        f"- **Generated at:** {_markdown_inline_text(report['generated_at'])}",
         "",
         f"## {_report_text(report, 'report.summary', 'Summary Result')}",
         "",
@@ -247,7 +247,7 @@ def report_to_markdown(report: dict[str, Any]) -> str:
         (_report_text(report, "report.limitations", "Limitations"), "limitations"),
     ):
         values = report[key] or [f"No {heading.lower()} reported."]
-        lines.extend(["", f"## {heading}", "", *(f"- {value}" for value in values)])
+        lines.extend(["", f"## {heading}", "", *(f"- {_markdown_inline_text(value)}" for value in values)])
     lines.extend(
         [
             "",
@@ -1013,7 +1013,7 @@ def _markdown_table(rows: list[dict[str, Any]]) -> list[str]:
         return ["No rows reported."]
     headers = list(rows[0])
     return [
-        "| " + " | ".join(headers) + " |",
+        "| " + " | ".join(_markdown_cell(header) for header in headers) + " |",
         "| " + " | ".join("---" for _ in headers) + " |",
         *["| " + " | ".join(_markdown_cell(row.get(header)) for header in headers) + " |" for row in rows],
     ]
@@ -1196,7 +1196,11 @@ def _spreadsheet_cell(value: Any) -> Any:
 
 
 def _markdown_cell(value: Any) -> str:
-    return str(_cell(value) if value is not None else "").replace("|", r"\|").replace("\n", " ")
+    return _markdown_inline_text(_cell(value) if value is not None else "").replace("|", r"\|")
+
+
+def _markdown_inline_text(value: Any) -> str:
+    return str(value).replace("\r\n", " ").replace("\r", " ").replace("\n", " ")
 
 
 _SOURCE_SIDE_REPORT_LABEL_KEYS = {
