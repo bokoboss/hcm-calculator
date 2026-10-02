@@ -56,9 +56,9 @@ test.describe('Final bounded remediation evidence', () => {
     await page.locator('#multilane-access_point_density').fill('');
     await expect(page.locator('#multilane-access_point_density')).toHaveValue('');
     await page.getByRole('button', { name: 'Calculate', exact: true }).click();
-    const validationMessage = page.getByRole('alert').filter({ hasText: 'Access-point density' });
-    await expect(validationMessage).toBeVisible();
-    await expect(validationMessage).not.toContainText('access_point_density');
+    const validationMessage = page.getByText('Review Access-point density and enter a valid value.');
+    await expect(validationMessage.first()).toBeVisible();
+    await expect(page.getByTestId('multilane-form')).not.toContainText('access_point_density');
     await capture(page, 'final-validation-readable.png');
 
     await calculate(page, 'merge_segment', {
