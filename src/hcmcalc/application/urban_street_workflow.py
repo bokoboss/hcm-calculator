@@ -116,7 +116,12 @@ def _field_schema() -> list[dict[str, Any]]:
         } else "integer" if key in {
             "through_lane_count", "subject_side_access_count", "opposing_side_access_count", "analysis_period_min", "external_analysis_period_min"
         } else "number"
-        field = {"key": key, "kind": kind, "required": True}
+        field = {
+            "key": key,
+            "label_key": f"urban_street_segment.{key}",
+            "kind": kind,
+            "required": True,
+        }
         if key in choices:
             field["options"] = ["signalized"]
         if key in lengths:
@@ -154,8 +159,16 @@ class UrbanStreetWorkflow:
             ],
             "fields": _field_schema(),
             "groups": [
-                {"key": "segment", "field_keys": list(DISPLAY_FIELDS[:22])},
-                {"key": "external_through", "field_keys": list(DISPLAY_FIELDS[22:])},
+                {
+                    "key": "segment",
+                    "label_key": "urban_street_segment.group_segment",
+                    "field_keys": list(DISPLAY_FIELDS[:22]),
+                },
+                {
+                    "key": "external_through",
+                    "label_key": "urban_street_segment.group_external_through",
+                    "field_keys": list(DISPLAY_FIELDS[22:]),
+                },
             ],
             "branches": {"validation_without_calculation": True, "bounded": True},
             "scope_notes": [

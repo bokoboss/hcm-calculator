@@ -21,10 +21,34 @@ def test_generic_api_chapter18_workflow_and_project_contract():
 
     templates = client.get(f"/api/v1/analyses/{METHOD}/templates").json()
     assert {template["template_id"] for template in templates["templates"]} == {TEMPLATE, "blank_custom"}
+    fields_by_key = {field["key"]: field for field in templates["fields"]}
+    assert all(field.get("label_key") for field in fields_by_key.values())
+    assert {key: field["label_key"] for key, field in fields_by_key.items()} == {
+        key: f"urban_street_segment.{key}" for key in fields_by_key
+    }
+    assert all(group.get("key") and group.get("label_key") and group.get("field_keys") for group in templates["groups"])
     starting = client.get(
         f"/api/v1/analyses/{METHOD}/starting-values",
         params={"template_id": TEMPLATE, "unit_system": "imperial"},
     ).json()
+    assert {field["key"]: field["label_key"] for field in starting["fields"]} == {
+        field["key"]: field["label_key"] for field in templates["fields"]
+    }
+    assert [(group["key"], group["label_key"]) for group in starting["groups"]] == [
+        (group["key"], group["label_key"]) for group in templates["groups"]
+    ]
+    assert {key: value.get("kind") for key, value in fields_by_key.items()} == {
+        field["key"]: field["kind"] for field in starting["fields"]
+    }
+    assert {key: value.get("options") for key, value in fields_by_key.items() if "options" in value} == {
+        "control_type": ["signalized"],
+        "external_control_type": ["signalized"],
+    }
+    assert fields_by_key["segment_length"].get("unit_metric") == "m"
+    assert fields_by_key["segment_length"].get("unit_imperial") == "ft"
+    assert fields_by_key["posted_speed_limit"].get("unit_metric") == "km/h"
+    assert fields_by_key["posted_speed_limit"].get("unit_imperial") == "mi/h"
+    assert fields_by_key["access_point_delays_s_veh"].get("item_unit") == "s/veh"
     displayed = starting["displayed_inputs"]
     request = {"template_id": TEMPLATE, "unit_system": "imperial", "displayed_inputs": displayed}
     validation = client.post(f"/api/v1/analyses/{METHOD}/validate", json=request)
@@ -84,6 +108,16 @@ def test_generic_api_chapter18_workflow_and_project_contract():
     assert changed["result"] is None
 
 
+def test_chapter18_public_group_schema_has_stable_localization_identity():
+    client = TestClient(create_app())
+    templates = client.get(f"/api/v1/analyses/{METHOD}/templates").json()
+    groups = templates["groups"]
+    assert [(group["key"], group.get("label_key")) for group in groups] == [
+        ("segment", "urban_street_segment.group_segment"),
+        ("external_through", "urban_street_segment.group_external_through"),
+    ]
+
+
 @pytest.mark.parametrize("field", ["segment_length", "posted_speed_limit"])
 def test_nonnumeric_scaled_fields_return_structured_validation_and_calculation_errors(field):
     client = TestClient(create_app(), raise_server_exceptions=False)
@@ -131,6 +165,38 @@ def test_export_normalization_maps_nonnumeric_scaled_field_to_422():
     )
     assert response.status_code == 422
     assert response.json()["detail"]["details"]["field"] == "segment_length"
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("access_point_delays_s_veh", [1e308, 1e308]),
+        ("d_other_s_veh", 1e308),
+        ("v_th_veh_h", 1.7e308),
+    ],
+)
+def test_validation_rejects_nonfinite_derived_arithmetic(field, value):
+    client = TestClient(create_app())
+    displayed = client.get(
+        f"/api/v1/analyses/{METHOD}/starting-values",
+        params={"template_id": TEMPLATE, "unit_system": "imperial"},
+    ).json()["displayed_inputs"]
+    displayed[field] = value
+    if field == "d_other_s_veh":
+        displayed["d_t_s_veh"] = 1e308
+    elif field == "v_th_veh_h":
+        displayed["c_th_veh_h"] = 1e-308
+
+    response = client.post(
+        f"/api/v1/analyses/{METHOD}/validate",
+        json={"template_id": TEMPLATE, "unit_system": "imperial", "displayed_inputs": displayed},
+    )
+
+    body = response.json()
+    assert response.status_code == 200
+    assert body["valid"] is False
+    assert body["ready"] is False
+    assert body["errors"][0]["field"] == ("access_point_delays_s_veh" if field == "access_point_delays_s_veh" else None)
 
 
 @pytest.mark.parametrize(

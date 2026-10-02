@@ -132,6 +132,15 @@ class UrbanStreetSegmentInputs:
         )
 
 
+@dataclass(frozen=True)
+class _DerivedOperationalValues:
+    f_v: float
+    total_access_delay: float
+    running_time: float
+    total_travel_time: float
+    through_v_c: float
+
+
 def _free_flow_speed_components(
     inputs: UrbanStreetSegmentInputs,
 ) -> tuple[float, float, int, float, float, float, float, float, float, float, float]:
@@ -158,6 +167,45 @@ def _free_flow_speed_components(
     return length, link_length, lanes, access_density, s0, f_cs, f_a, f_pk, s_fo, f_l, s_f
 
 
+def _derived_operational_values(
+    inputs: UrbanStreetSegmentInputs,
+    *,
+    length: float,
+    lanes: int,
+    free_flow_speed: float,
+) -> _DerivedOperationalValues:
+    """Calculate the existing operational chain once for readiness and results."""
+    try:
+        external = inputs.external_through
+        f_v = vehicle_proximity_factor(inputs.v_m_veh_h, lanes, free_flow_speed)
+        total_access_delay = sum(inputs.access_point_delays_s_veh)
+        if not isfinite(total_access_delay):
+            raise HCMCalcError("access_point_delays_s_veh aggregate must be finite.")
+        running_time = (
+            (6.0 - 2.0) / (0.0025 * length)
+            + 3600.0 * length / (5280.0 * free_flow_speed) * f_v
+            + total_access_delay
+            + inputs.d_other_s_veh
+        )
+        if running_time <= 0 or not isfinite(running_time):
+            raise HCMCalcError("Computed running time must be finite and positive.")
+        total_travel_time = running_time + external.d_t_s_veh
+        if total_travel_time <= 0 or not isfinite(total_travel_time):
+            raise HCMCalcError("Computed travel time must be finite and positive.")
+        through_v_c = external.v_th_veh_h / external.c_th_veh_h
+        if not isfinite(through_v_c):
+            raise HCMCalcError("Computed through v/c must be finite.")
+        return _DerivedOperationalValues(
+            f_v=f_v,
+            total_access_delay=total_access_delay,
+            running_time=running_time,
+            total_travel_time=total_travel_time,
+            through_v_c=through_v_c,
+        )
+    except (OverflowError, ZeroDivisionError) as exc:
+        raise HCMCalcError("Derived Chapter 18 operational arithmetic must be finite.") from exc
+
+
 class UrbanStreetSegmentMethod:
     """HCM 7 signalized-boundary segment calculation for the qualified scope."""
 
@@ -172,22 +220,16 @@ class UrbanStreetSegmentMethod:
             _free_flow_speed_components(inputs)
         )
         external = inputs.external_through
-        f_v = vehicle_proximity_factor(inputs.v_m_veh_h, lanes, s_f)
-        access_delay = sum(inputs.access_point_delays_s_veh)
-        running_time = (
-            (6.0 - 2.0) / (0.0025 * length)
-            + 3600.0 * length / (5280.0 * s_f) * f_v
-            + access_delay
-            + inputs.d_other_s_veh
+        derived = _derived_operational_values(
+            inputs, length=length, lanes=lanes, free_flow_speed=s_f
         )
-        if running_time <= 0 or not isfinite(running_time):
-            raise HCMCalcError("Computed running time must be finite and positive.")
+        f_v = derived.f_v
+        access_delay = derived.total_access_delay
+        running_time = derived.running_time
         running_speed = 3600.0 * length / (5280.0 * running_time)
-        total_travel_time = running_time + external.d_t_s_veh
-        if total_travel_time <= 0 or not isfinite(total_travel_time):
-            raise HCMCalcError("Computed travel time must be finite and positive.")
+        total_travel_time = derived.total_travel_time
         travel_speed = 3600.0 * length / (5280.0 * total_travel_time)
-        through_v_c = external.v_th_veh_h / external.c_th_veh_h
+        through_v_c = derived.through_v_c
         los_thresholds = interpolated_los_thresholds(s_fo)
         los = level_of_service(travel_speed, s_fo, through_v_c)
 
@@ -405,27 +447,38 @@ def _validate_inputs(inputs: UrbanStreetSegmentInputs) -> None:
     _finite_number("v_th_veh_h", external.v_th_veh_h, minimum=0.0)
     _finite_number("c_th_veh_h", external.c_th_veh_h, minimum=0.0, strict=True)
     _finite_number("d_t_s_veh", external.d_t_s_veh, minimum=0.0)
-    (
-        _,
-        _,
-        lanes,
-        _,
-        _,
-        _,
-        _,
-        _,
-        base_free_flow_speed,
-        _,
-        free_flow_speed,
-    ) = _free_flow_speed_components(inputs)
+    try:
+        (
+            _,
+            _,
+            lanes,
+            _,
+            _,
+            _,
+            _,
+            _,
+            base_free_flow_speed,
+            _,
+            free_flow_speed,
+        ) = _free_flow_speed_components(inputs)
+    except (OverflowError, ZeroDivisionError) as exc:
+        raise HCMCalcError("Chapter 18 free-flow arithmetic could not be evaluated.") from exc
     interpolated_los_thresholds(base_free_flow_speed)
-    vehicle_proximity_factor(inputs.v_m_veh_h, lanes, free_flow_speed)
+    _derived_operational_values(
+        inputs, length=inputs.segment_length_ft, lanes=lanes,
+        free_flow_speed=free_flow_speed,
+    )
 
 
 def _finite_number(name: str, value: Any, *, minimum: float | None = None, strict: bool = False) -> float:
-    if isinstance(value, bool) or not isinstance(value, Real) or not isfinite(float(value)):
+    if isinstance(value, bool) or not isinstance(value, Real):
         raise HCMCalcError(f"{name} must be a finite number.")
-    number = float(value)
+    try:
+        number = float(value)
+    except (OverflowError, ValueError) as exc:
+        raise HCMCalcError(f"{name} must be a finite number.") from exc
+    if not isfinite(number):
+        raise HCMCalcError(f"{name} must be a finite number.")
     if minimum is not None and (number <= minimum if strict else number < minimum):
         bound = "greater than" if strict else "at least"
         raise HCMCalcError(f"{name} must be {bound} {minimum}.")

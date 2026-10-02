@@ -51,14 +51,14 @@ test.describe('Final bounded remediation evidence', () => {
     await capture(page, 'final-converted-facility-values.png');
   });
 
-  test('validation and operational warnings use localized normal-user summaries', async ({ page }) => {
+  test('validation and operational warnings use localized normal-user messages', async ({ page }) => {
     await page.goto('/analysis/multilane_segment');
     await page.locator('#multilane-access_point_density').fill('');
     await expect(page.locator('#multilane-access_point_density')).toHaveValue('');
     await page.getByRole('button', { name: 'Calculate', exact: true }).click();
-    const summary = page.locator('[data-slot="error-summary"]');
-    await expect(summary).toContainText('Access-point density');
-    await expect(summary).not.toContainText('access_point_density');
+    const validationMessage = page.getByRole('alert').filter({ hasText: 'Access-point density' });
+    await expect(validationMessage).toBeVisible();
+    await expect(validationMessage).not.toContainText('access_point_density');
     await capture(page, 'final-validation-readable.png');
 
     await calculate(page, 'merge_segment', {
