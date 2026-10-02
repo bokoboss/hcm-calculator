@@ -68,6 +68,11 @@ const comparisonVocabulary: Record<string, { labelKey: string; unit: string }> =
   capacity_pc_h_ln: { labelKey: 'result.metric.capacity', unit: 'pc/h/ln' },
   facility_percent_followers: { labelKey: 'result.metric.facility_percent_followers', unit: '%' },
   demand_capacity_ratio: { labelKey: 'result.metric.governing_vc', unit: 'ratio' },
+  travel_speed_mph: { labelKey: 'project.metric.travel_speed', unit: 'mi/h' },
+  running_speed_mph: { labelKey: 'project.metric.running_speed', unit: 'mi/h' },
+  through_v_c: { labelKey: 'project.metric.through_vc', unit: 'ratio' },
+  running_time_s: { labelKey: 'project.metric.running_time', unit: 's' },
+  total_travel_time_s: { labelKey: 'project.metric.total_travel_time', unit: 's' },
 };
 
 function displayValue(value: unknown): string {

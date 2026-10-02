@@ -49,6 +49,31 @@ async function calculateWithInputs(page: Page, methodId: string, values: Record<
 test.describe('Phase 3 whole-product workstation UAT', () => {
   test.setTimeout(60_000);
 
+  test('contains direct and restored routes for backend-only Chapter 18', async ({ page }) => {
+    await page.goto('/analysis/urban_street_segment');
+    await expect(page).toHaveURL(/\/new-analysis$/);
+    const chapter18 = page.getByTestId('method-card-urban_street_segment');
+    await expect(chapter18).toBeVisible();
+    await expect(chapter18).toContainText('Reference only');
+    await expect(page.getByTestId('workflow-urban_street_segment')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Calculate', exact: true })).toHaveCount(0);
+
+    await page.goto('/analysis/multilane_segment');
+    await expect(page.getByTestId('workflow-multilane_segment')).toBeVisible();
+    await page.evaluate(() => {
+      window.history.pushState({ methodId: 'urban_street_segment' }, '', '/analysis/urban_street_segment');
+      window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state }));
+    });
+    await expect(page).toHaveURL(/\/new-analysis$/);
+    await expect(page.getByTestId('workflow-urban_street_segment')).toHaveCount(0);
+    await page.goBack();
+    await expect(page).toHaveURL(/\/analysis\/multilane_segment$/);
+    await expect(page.getByTestId('workflow-multilane_segment')).toBeVisible();
+    await page.goForward();
+    await expect(page).toHaveURL(/\/new-analysis$/);
+    await expect(page.getByTestId('workflow-urban_street_segment')).toHaveCount(0);
+  });
+
   test('captures the launcher, chooser, HCM Analysis Handbook, and persisted locale', async ({ page }) => {
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.goto('/');

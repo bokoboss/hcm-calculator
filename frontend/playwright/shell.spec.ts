@@ -9,8 +9,11 @@ test('release-like Python-served shell exposes safe discovery and localization',
   await expect(page.getByRole('heading', { name: 'New Analysis' })).toBeVisible();
   await expect(page.getByText('7 calculation methods available')).toBeVisible();
   const methodButtons = page.getByRole('button', { name: 'Start analysis' });
-  await expect(methodButtons).toHaveCount(7);
+  await expect(methodButtons).toHaveCount(8);
   expect(await methodButtons.evaluateAll((buttons) => buttons.filter((button) => !(button as HTMLButtonElement).disabled))).toHaveLength(7);
+  const chapter18Card = page.getByTestId('method-card-urban_street_segment');
+  await expect(chapter18Card.getByText('Reference only', { exact: true })).toBeVisible();
+  await expect(chapter18Card.getByRole('button', { name: 'Start analysis' })).toBeDisabled();
 
   await page.getByRole('button', { name: 'Analysis guide' }).first().click();
   await expect(page.getByRole('heading', { name: 'HCM Analysis Handbook' })).toBeVisible();
@@ -31,4 +34,31 @@ test('release-like Python-served shell exposes safe discovery and localization',
   await expect(page.getByTestId('reference-weaving_segment').getByText('LS และ LMAX')).toBeVisible();
   await page.getByRole('button', { name: 'อังกฤษ' }).click();
   await expect(page.getByRole('heading', { name: 'HCM Analysis Handbook' })).toBeVisible();
+});
+
+test('backend-only Chapter 18 stays reference-only and localized without a false guide', async ({ page }) => {
+  await page.goto('/new-analysis');
+  const chapter18Card = page.getByTestId('method-card-urban_street_segment');
+  await expect(chapter18Card.getByRole('button', { name: 'Start analysis' })).toBeDisabled();
+  await expect(chapter18Card.getByRole('button', { name: 'Analysis guide' })).toHaveCount(0);
+  await expect(chapter18Card.getByText('Urban Street Segment')).toBeVisible();
+  await expect(chapter18Card.getByText(/Bounded signalized 15-minute segment/i)).toBeVisible();
+  await expect(chapter18Card).not.toContainText('method.urban_street_segment.name');
+  await expect(chapter18Card).not.toContainText('method.urban_streets');
+
+  await page.getByRole('button', { name: 'Thai' }).click();
+  await expect(chapter18Card.getByText('ช่วงถนนเขตเมือง')).toBeVisible();
+  await expect(chapter18Card).toContainText('สัญญาณไฟ 15 นาที');
+  await expect(chapter18Card).not.toContainText('method.urban_street_segment.name');
+  await expect(chapter18Card).not.toContainText('method.urban_streets');
+  await expect(chapter18Card).toContainText('RHT');
+  await expect(chapter18Card).toContainText('LHT');
+
+  await page.getByRole('button', { name: 'อังกฤษ' }).click();
+  await page.goto('/reference/urban_street_segment');
+  await expect(page.getByText('No method guide is available for this selection.')).toBeVisible();
+  await expect(page.getByTestId('reference-two_lane_segment')).toHaveCount(0);
+  await page.goto('/reference/unknown_method');
+  await expect(page.getByText('No method guide is available for this selection.')).toBeVisible();
+  await expect(page.getByTestId('reference-two_lane_segment')).toHaveCount(0);
 });

@@ -4,7 +4,10 @@ import pytest
 
 from hcmcalc.core import HCMCalcError
 from hcmcalc.urban_street_ch18 import (
+    UrbanStreetSegmentInputs,
     UrbanStreetSegmentMethod,
+    _free_flow_speed_components,
+    _validate_inputs,
     level_of_service,
     vehicle_proximity_factor,
 )
@@ -77,6 +80,38 @@ def test_chapter_30_example_problem_1_reproduces_reference_values():
     assert out["level_of_service"] == "C"
     assert result.method == "urban_street_segment_ch18_v0_1"
     assert all(value.source for value in result.intermediate_values)
+
+
+def test_engine_accepts_exact_exhibit_18_1_lower_bffs_boundary():
+    values = example_inputs()
+    values.update(
+        posted_speed_limit_mph=25.0,
+        s_calib_mph=-12.35,
+        restrictive_median_proportion=0.0,
+        curb_proportion=0.0,
+        parking_proportion=0.0,
+        subject_side_access_count=0,
+        opposing_side_access_count=0,
+        access_point_delays_s_veh=[],
+    )
+    parsed = UrbanStreetSegmentInputs.from_mapping(values)
+    components = _free_flow_speed_components(parsed)
+
+    assert components[8] == 25.0
+    result = UrbanStreetSegmentMethod().calculate(values)
+    assert result.outputs["base_free_flow_speed_mph"] == 25.0
+
+
+def test_engine_rejects_canonical_bffs_just_below_exhibit_18_1_domain():
+    values = example_inputs()
+    values["s_calib_mph"] = -15.77965142857143
+    canonical_bffs = _free_flow_speed_components(
+        UrbanStreetSegmentInputs.from_mapping(values)
+    )[8]
+
+    assert canonical_bffs == 24.999999999999996
+    with pytest.raises(HCMCalcError, match="25.*55"):
+        UrbanStreetSegmentMethod().calculate(values)
 
 
 def test_midsegment_flow_is_required_and_distinct_from_external_through_flow():
@@ -165,6 +200,37 @@ def test_access_delays_and_d_other_are_explicit_and_added_once():
     no_access["access_point_delays_s_veh"] = [0.193]
     with pytest.raises(HCMCalcError, match="must be empty"):
         UrbanStreetSegmentMethod().calculate(no_access)
+
+
+def test_validation_rejects_finite_access_delays_with_overflowing_total():
+    values = example_inputs()
+    values["access_point_delays_s_veh"] = [1e308, 1e308]
+    inputs = UrbanStreetSegmentInputs.from_mapping(values)
+
+    with pytest.raises(HCMCalcError, match="access_point_delays_s_veh"):
+        _validate_inputs(inputs)
+    with pytest.raises(HCMCalcError, match="access_point_delays_s_veh"):
+        UrbanStreetSegmentMethod().calculate(values)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"d_other_s_veh": 1e308, "external_through": {"d_t_s_veh": 1e308}},
+        {"external_through": {"v_th_veh_h": 1.7e308, "c_th_veh_h": 1e-308}},
+    ],
+)
+def test_validation_rejects_nonfinite_derived_travel_time_and_through_vc(changes):
+    values = example_inputs()
+    for key, value in changes.items():
+        if key == "external_through":
+            values[key].update(value)
+        else:
+            values[key] = value
+    inputs = UrbanStreetSegmentInputs.from_mapping(values)
+
+    with pytest.raises(HCMCalcError):
+        _validate_inputs(inputs)
 
 
 @pytest.mark.parametrize(
