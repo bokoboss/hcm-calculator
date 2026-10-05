@@ -67,7 +67,7 @@ The model-development material establishes:
 - lateral clearance measured from the outside through lane;
 - access observations tied to the roadside geometry of the RHT study sites.
 
-This evidence is interpreted as an outside-versus-median functional distinction, not as proof that the biological/behavioral effect is inherently tied to the word “right.”
+This evidence is interpreted as an outside-versus-median functional distinction, not as proof that the behavioral effect is inherently tied to the word “right.”
 
 ### Method-author terminology
 
