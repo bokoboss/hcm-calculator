@@ -34,6 +34,7 @@ EXPECTED_METHOD_IDS = {
     "merge_segment",
     "diverge_segment",
     "urban_street_segment",
+    "urban_street_segment_th_lht",
 }
 
 
@@ -86,13 +87,19 @@ AUTHORITATIVE_METHOD_CONTRACTS = {
         "input_contract": "hcm7_ch18_bounded_signalized_15min_rht_reference_v1",
         "project_type": "manual_urban_street_segment_v1",
     },
+    "urban_street_segment_th_lht": {
+        "engine_method_identifier": UrbanStreetSegmentMethod.method_name,
+        "method_identifier": "hcm7_urban_street_segment_th_lht",
+        "input_contract": "hcm7_ch18_bounded_signalized_15min_th_lht_semantic_v1",
+        "project_type": "manual_urban_street_segment_th_lht_v1",
+    },
 }
 
 
 def test_backend_registry_contains_all_current_methods_with_stable_identity() -> None:
     definitions = list_analysis_definitions()
     assert {definition.method_id for definition in definitions} == EXPECTED_METHOD_IDS
-    assert len({definition.method_identifier for definition in definitions}) == 8
+    assert len({definition.method_identifier for definition in definitions}) == 9
     assert all(definition.engineering_available if hasattr(definition, "engineering_available") else True for definition in definitions)
     assert all(definition.supported_unit_systems == ("metric", "imperial") for definition in definitions)
     assert all(definition.name_key.startswith("method.") for definition in definitions)

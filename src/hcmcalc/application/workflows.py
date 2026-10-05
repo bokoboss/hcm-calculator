@@ -1038,6 +1038,10 @@ def workflow_for_method(method_id: str) -> Any:
         from hcmcalc.application.urban_street_workflow import UrbanStreetWorkflow
 
         return UrbanStreetWorkflow()
+    if method_id == "urban_street_segment_th_lht":
+        from hcmcalc.application.urban_street_lht_workflow import ThailandLHTUrbanStreetWorkflow
+
+        return ThailandLHTUrbanStreetWorkflow()
     _definition(method_id)
     raise AssertionError("unreachable")
 
@@ -1151,8 +1155,8 @@ def export_current_workflow(
         raise StaleResultError("The supplied result is not current for these displayed inputs.")
     if result.get("method") != workflow.definition.engine_method_identifier:
         raise StaleResultError("The supplied result method identity does not match the worksheet.")
-    if method_id == "urban_street_segment" and (
-        result.get("result_contract_version") != workflow.definition.input_contract
+    if method_id in {"urban_street_segment", "urban_street_segment_th_lht"} and (
+        result.get("result_contract_version") != "hcm7_ch18_bounded_signalized_15min_rht_reference_v1"
         or result["outputs"].get("calculation_type") != workflow.definition.engine_method_identifier
         or result["outputs"].get("support_status") != "supported_bounded_hcm7_signalized_15min"
     ):
@@ -1164,7 +1168,7 @@ def export_current_workflow(
             _normalize_unit_system(unit_system),
             inputs=(
                 dict(effective_displayed)
-                if method_id == "urban_street_segment"
+                if method_id in {"urban_street_segment", "urban_street_segment_th_lht"}
                 else dict(normalized)
             ),
             template_id=template_id,

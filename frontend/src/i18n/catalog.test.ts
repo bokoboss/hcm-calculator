@@ -139,4 +139,44 @@ describe('localization catalog', () => {
     }
   });
 
+  it('localizes the complete Thailand/LHT reference-only method and public field contract', () => {
+    const fields = [
+      'segment_length', 'upstream_intersection_width', 'signal_control_spacing',
+      'through_lane_count', 'subject_direction', 'through_movement_id',
+      'posted_speed_limit', 's_calib', 'restrictive_median_proportion',
+      'kerbside_curb_proportion', 'kerbside_parking_proportion',
+      'subject_kerbside_access_count', 'opposing_kerbside_access_count',
+      'v_m_veh_h', 'access_point_delays_s_veh', 'd_other_s_veh',
+      'analysis_period_min', 'control_type', 'demand_balanced',
+      'demand_adjustments_resolved', 'capacity_effects_resolved', 'spillback_present',
+      'external_source_class', 'external_source_tool', 'external_source_method_note',
+      'external_hcm_edition_note', 'external_direction', 'external_control_type',
+      'external_through_movement_id', 'external_analysis_period_min',
+      'external_scenario_note', 'v_th_veh_h', 'c_th_veh_h', 'd_t_s_veh',
+      'calibration_status', 'calibration_source_note',
+    ];
+    const keys = [
+      'method.urban_street_segment_th_lht.name',
+      'method.urban_street_segment_th_lht.description',
+      'method.urban_street_segment_th_lht.scope',
+      'method.urban_street_segment_th_lht.scope.bounded_signalized_15min',
+      'method.urban_street_segment_th_lht.scope.th_lht_reference',
+      'method.urban_street_segment_th_lht.scope.reference_only',
+      ...fields.map((field) => `urban_street_segment_th_lht.${field}`),
+      'urban_street_segment_th_lht.calibration_status.hcm_reference_uncalibrated',
+      'urban_street_segment_th_lht.calibration_status.user_local_calibration',
+      'urban_street_segment_th_lht.group_segment',
+      'urban_street_segment_th_lht.group_external_through',
+    ];
+    for (const locale of ['en', 'th'] as const) {
+      for (const key of keys) {
+        expect(catalogs[locale][key], `${locale}:${key}`).toBeTruthy();
+        expect(translate(locale, key)).not.toBe(key);
+      }
+    }
+    expect(translate('en', 'urban_street_segment_th_lht.kerbside_curb_proportion')).toContain('outside roadside');
+    expect(translate('en', 'method.urban_street_segment_th_lht.scope')).toContain('not Thai empirical calibration');
+    expect(translate('th', 'method.urban_street_segment_th_lht.scope')).toContain('ทางซ้าย');
+  });
+
 });

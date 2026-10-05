@@ -45,6 +45,7 @@ SUPPORTED_CALCULATION_TYPES = {
     MANUAL_MERGE_PROJECT_TYPE,
     MANUAL_DIVERGE_PROJECT_TYPE,
     "manual_urban_street_segment_v1",
+    "manual_urban_street_segment_th_lht_v1",
 }
 SUPPORTED_EXPORT_FORMATS = {"csv", "xlsx", "markdown", "json"}
 
@@ -126,9 +127,10 @@ def build_report(
         report = _weaving_report(
             result, outputs, unit_system, inputs, audit_record, template_id, timestamp
         )
-    elif calculation_type == "manual_urban_street_segment_v1":
+    elif calculation_type in {"manual_urban_street_segment_v1", "manual_urban_street_segment_th_lht_v1"}:
         report = _urban_street_report(
-            result, outputs, unit_system, inputs, audit_record, template_id, timestamp
+            result, outputs, unit_system, inputs, audit_record, template_id, timestamp,
+            lht=calculation_type == "manual_urban_street_segment_th_lht_v1",
         )
     else:
         report = _ramp_report(
@@ -178,8 +180,9 @@ def report_filename(report: dict[str, Any], extension: str) -> str:
         MANUAL_MERGE_PROJECT_TYPE: "merge_segment",
         MANUAL_DIVERGE_PROJECT_TYPE: "diverge_segment",
         "manual_urban_street_segment_v1": "urban_street_segment",
+        "manual_urban_street_segment_th_lht_v1": "urban_street_segment_th_lht",
     }[calculation_type]
-    chapter = "18" if calculation_type == "manual_urban_street_segment_v1" else "14" if calculation_type in {MANUAL_MERGE_PROJECT_TYPE, MANUAL_DIVERGE_PROJECT_TYPE} else "13" if calculation_type == "manual_freeway_weaving_segment_v1" else "15"
+    chapter = "18" if calculation_type in {"manual_urban_street_segment_v1", "manual_urban_street_segment_th_lht_v1"} else "14" if calculation_type in {MANUAL_MERGE_PROJECT_TYPE, MANUAL_DIVERGE_PROJECT_TYPE} else "13" if calculation_type == "manual_freeway_weaving_segment_v1" else "15"
     return f"hcm_ch{chapter}_{workflow}_report_{timestamp:%Y%m%d_%H%M%S}.{extension}"
 
 
@@ -355,6 +358,8 @@ def _urban_street_report(
     audit_record: dict[str, Any] | None,
     template_id: str | None,
     timestamp: str,
+    *,
+    lht: bool = False,
 ) -> dict[str, Any]:
     metric = unit_system == "metric"
     speed_factor = MILES_TO_KILOMETERS if metric else 1.0
@@ -371,9 +376,9 @@ def _urban_street_report(
         {"label": f"Base free-flow speed ({speed_unit})", "value": outputs["base_free_flow_speed_mph"] * speed_factor, "unit": speed_unit},
     ]
     report = _base_report(
-        title="HCM7 Chapter 18 Urban Street Segment Report",
+        title=("HCM7 Chapter 18 Thailand/LHT Urban Street Segment Report" if lht else "HCM7 Chapter 18 Urban Street Segment Report"),
         report_type="HCM Chapter 18 bounded signalized segment calculation report",
-        calculation_type="manual_urban_street_segment_v1",
+        calculation_type=("manual_urban_street_segment_th_lht_v1" if lht else "manual_urban_street_segment_v1"),
         unit_system=unit_system,
         timestamp=timestamp,
         inputs=_displayed_urban_street_input_records(inputs or {}, unit_system),
@@ -387,11 +392,19 @@ def _urban_street_report(
         }],
         result=result,
         audit_record=audit_record,
-        limitations=[
-            "Bounded HCM 7 signalized 15-minute motorized segment workflow; maximum segment length is 2 mi.",
-            "HCM right-hand-traffic reference only; Thailand/LHT qualification is deferred.",
-            "Downstream through demand, capacity, delay, and source qualification are external inputs.",
-        ],
+        limitations=(
+            [
+                "Bounded HCM 7 signalized 15-minute motorized segment workflow; maximum segment length is 2 mi.",
+                "Thailand/LHT functional-role semantic adapter maps physical-left kerbside to HCM-reference outside-roadside roles for each travel direction.",
+                "HCM-reference coefficients; not Thai empirically calibrated by default.",
+                "Turn-side algorithms and planning access-delay procedures remain outside this qualified scope.",
+                "Downstream through demand, capacity, delay, and source qualification are external inputs.",
+            ] if lht else [
+                "Bounded HCM 7 signalized 15-minute motorized segment workflow; maximum segment length is 2 mi.",
+                "HCM right-hand-traffic reference only; Thailand/LHT qualification is deferred.",
+                "Downstream through demand, capacity, delay, and source qualification are external inputs.",
+            ]
+        ),
     )
     provenance = outputs.get("external_through_provenance", {})
     if isinstance(provenance, dict):
@@ -400,10 +413,37 @@ def _urban_street_report(
             for key, value in provenance.items()
         )
     report["selected_validated_template"] = template_id
-    report["support_scope"] = "HCM 7.0 Chapter 18; signalized 15-minute RHT-reference segment only."
+    report["support_scope"] = (
+        "HCM 7.0 Chapter 18; bounded signalized 15-minute Thailand/LHT functional-role adapter using HCM-reference coefficients."
+        if lht else "HCM 7.0 Chapter 18; signalized 15-minute RHT-reference segment only."
+    )
     report["normalized_engine_inputs_summary"] = _normalized_urban_street_input_records(
         outputs.get("input_summary")
     )
+    if lht:
+        displayed = inputs if isinstance(inputs, dict) else {}
+        status = displayed.get("calibration_status", "hcm_reference_uncalibrated")
+        report.update({
+            "method_identifier": "hcm7_urban_street_segment_th_lht",
+            "method_version": "hcm_7_0_bounded_th_lht_v1",
+            "input_contract": "hcm7_ch18_bounded_signalized_15min_th_lht_semantic_v1",
+            "engine_method_identifier": "urban_street_segment_ch18_v0_1",
+            "traffic_side": "left_hand_traffic",
+            "kerbside_physical_side": "left_for_each_travel_direction",
+            "calibration_status": status,
+            "calibration_source_note": displayed.get("calibration_source_note"),
+        })
+        report["audit_summary"].extend([
+            {"label": "traffic_side", "value": "left_hand_traffic", "unit": None},
+            {"label": "kerbside_physical_side", "value": "left_for_each_travel_direction", "unit": None},
+            {"label": "input_contract", "value": "hcm7_ch18_bounded_signalized_15min_th_lht_semantic_v1", "unit": None},
+            {"label": "calibration_status", "value": status, "unit": None},
+            {"label": "calibration_source_note", "value": displayed.get("calibration_source_note"), "unit": None},
+            {"label": "semantic_mapping.kerbside_curb_proportion", "value": "curb_proportion", "unit": None},
+            {"label": "semantic_mapping.kerbside_parking_proportion", "value": "parking_proportion", "unit": None},
+            {"label": "semantic_mapping.subject_kerbside_access_count", "value": "subject_side_access_count", "unit": None},
+            {"label": "semantic_mapping.opposing_kerbside_access_count", "value": "opposing_side_access_count", "unit": None},
+        ])
     return report
 
 
@@ -1143,6 +1183,11 @@ def _validate_result(calculation_type: str, result: dict[str, Any] | None) -> No
             "maximum_desirable_influence_flow_exceeded",
         },
         "manual_urban_street_segment_v1": {
+            "level_of_service", "travel_speed_mph", "running_speed_mph",
+            "base_free_flow_speed_mph", "through_v_c", "running_time_s",
+            "total_travel_time_s", "external_through_provenance",
+        },
+        "manual_urban_street_segment_th_lht_v1": {
             "level_of_service", "travel_speed_mph", "running_speed_mph",
             "base_free_flow_speed_mph", "through_v_c", "running_time_s",
             "total_travel_time_s", "external_through_provenance",

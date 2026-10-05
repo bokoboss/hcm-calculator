@@ -43,6 +43,21 @@ const chapter18Method: MethodDefinition = {
   ],
 };
 
+const chapter18LhtMethod: MethodDefinition = {
+  ...chapter18Method,
+  method_id: 'urban_street_segment_th_lht',
+  name_key: 'method.urban_street_segment_th_lht.name',
+  description_key: 'method.urban_street_segment_th_lht.description',
+  method_identifier: 'hcm7_urban_street_segment_th_lht',
+  input_contract: 'hcm7_ch18_bounded_signalized_15min_th_lht_semantic_v1',
+  project_type: 'manual_urban_street_segment_th_lht_v1',
+  chapter_reference: 'HCM 7.0 Chapter 18; Chapter 30 Example Problem 1; Thailand/LHT semantic qualification',
+  scope_summary_keys: [
+    'method.urban_street_segment_th_lht.scope.bounded_signalized_15min',
+    'method.urban_street_segment_th_lht.scope.th_lht_reference',
+  ],
+};
+
 const multilaneMethod: MethodDefinition = {
   ...method,
   method_id: 'multilane_segment',
@@ -71,6 +86,41 @@ describe('direct analysis route containment', () => {
     expect(screen.queryByTestId('workflow-urban_street_segment')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Calculate' })).not.toBeInTheDocument();
     expect(screen.getByTestId('method-card-urban_street_segment')).toHaveTextContent('Reference only');
+  });
+
+  it('contains the undelivered Thailand/LHT route and restored project edit state', async () => {
+    window.history.replaceState({ hcmHistoryIndex: 4, methodId: 'urban_street_segment_th_lht' }, '', '/analysis/urban_street_segment_th_lht');
+    vi.spyOn(apiClient, 'fetchMethods').mockResolvedValue({ registry_version: 'test', methods: [chapter18LhtMethod] });
+
+    render(<I18nProvider><App /></I18nProvider>);
+
+    expect(await screen.findByRole('heading', { name: 'New Analysis' })).toBeVisible();
+    expect(await screen.findByTestId('method-card-urban_street_segment_th_lht')).toBeVisible();
+    expect(window.location.pathname).toBe('/new-analysis');
+    expect(screen.queryByTestId('workflow-urban_street_segment_th_lht')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Calculate' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('method-card-urban_street_segment_th_lht')).toHaveTextContent('Reference only');
+  });
+
+  it('contains restored LHT scenario-edit state when no worksheet module exists', async () => {
+    window.history.replaceState({
+      hcmHistoryIndex: 6,
+      methodId: 'urban_street_segment_th_lht',
+      scenarioEdit: {
+        analysisId: 'analysis-lht',
+        scenarioId: 'scenario-lht',
+        templateId: 'USS-TH-LHT-CH30-EP1',
+        unitSystem: 'metric',
+        displayedInputs: {},
+      },
+    }, '', '/project/analysis/analysis-lht/scenarios/scenario-lht');
+    vi.spyOn(apiClient, 'fetchMethods').mockResolvedValue({ registry_version: 'test', methods: [chapter18LhtMethod] });
+
+    render(<I18nProvider><App /></I18nProvider>);
+
+    expect(await screen.findByTestId('method-card-urban_street_segment_th_lht')).toBeVisible();
+    expect(window.location.pathname).toBe('/new-analysis');
+    expect(screen.queryByTestId('workflow-urban_street_segment_th_lht')).not.toBeInTheDocument();
   });
 
   it('continues rendering a directly addressed delivered method workflow', async () => {

@@ -33,7 +33,7 @@ def test_generic_api_chapter18_workflow_and_project_contract():
     client = TestClient(create_app())
     catalog = client.get("/api/v1/methods")
     assert catalog.status_code == 200
-    assert len(catalog.json()["methods"]) == 8
+    assert len(catalog.json()["methods"]) == 9
     detail = client.get(f"/api/v1/methods/{METHOD}")
     assert detail.status_code == 200
     assert detail.json()["input_contract"] == "hcm7_ch18_bounded_signalized_15min_rht_reference_v1"
@@ -184,6 +184,81 @@ def test_export_normalization_maps_nonnumeric_scaled_field_to_422():
     )
     assert response.status_code == 422
     assert response.json()["detail"]["details"]["field"] == "segment_length"
+
+
+def test_thailand_lht_public_contract_api_project_and_all_current_exports():
+    client = TestClient(create_app())
+    method = "urban_street_segment_th_lht"
+    template = "USS-TH-LHT-CH30-EP1"
+    methods = client.get("/api/v1/methods").json()["methods"]
+    definition = next(item for item in methods if item["method_id"] == method)
+    assert definition["method_identifier"] == "hcm7_urban_street_segment_th_lht"
+    assert definition["input_contract"] == "hcm7_ch18_bounded_signalized_15min_th_lht_semantic_v1"
+    templates = client.get(f"/api/v1/analyses/{method}/templates").json()
+    fields = {field["key"]: field for field in templates["fields"]}
+    assert {item["template_id"] for item in templates["templates"]} == {template, "blank_custom"}
+    assert fields["calibration_status"]["options"] == ["hcm_reference_uncalibrated", "user_local_calibration"]
+    assert "curb_proportion" not in fields
+    starting = client.get(
+        f"/api/v1/analyses/{method}/starting-values",
+        params={"template_id": template, "unit_system": "imperial"},
+    ).json()
+    inputs = starting["displayed_inputs"]
+    request = {"template_id": template, "unit_system": "imperial", "displayed_inputs": inputs}
+    validated = client.post(f"/api/v1/analyses/{method}/validate", json=request)
+    assert validated.status_code == 200 and validated.json()["ready"] is True
+    snapshot_response = client.post(f"/api/v1/analyses/{method}/calculate", json=request)
+    assert snapshot_response.status_code == 200
+    snapshot = snapshot_response.json()
+    assert snapshot["method_identifier"] == definition["method_identifier"]
+    assert snapshot["normalized_inputs"]["curb_proportion"] == 0.70
+    assert snapshot["audit"]["traffic_side"] == "left_hand_traffic"
+    assert snapshot["audit"]["kerbside_physical_side"] == "left_for_each_travel_direction"
+
+    for export_format in ("json", "markdown", "csv", "xlsx"):
+        exported = client.post(
+            f"/api/v1/analyses/{method}/export",
+            json={**request, "calculation_fingerprint": snapshot["calculation_fingerprint"],
+                  "input_snapshot_fingerprint": snapshot["input_snapshot_fingerprint"],
+                  "result": snapshot["result"], "export_format": export_format},
+        )
+        assert exported.status_code == 200
+        assert exported.json()["recalculated"] is False
+        assert exported.json()["content"] or exported.json()["content_base64"]
+
+    project_response = client.post(
+        "/api/v1/projects/from-analysis",
+        json={"project_name": "Thailand LHT API", "analysis_snapshot": snapshot},
+    )
+    assert project_response.status_code == 200
+    project = project_response.json()["project"]
+    assert project["schema_version"] == "2.0"
+    opened = client.post("/api/v1/projects/validate", json={"project": project})
+    assert opened.status_code == 200
+    scenario = opened.json()["project"]["analyses"][0]["scenarios"][0]
+    assert scenario["result_status"] == "current"
+
+
+def test_thailand_lht_api_rejects_nontext_uncalibrated_source_note():
+    client = TestClient(create_app())
+    method = "urban_street_segment_th_lht"
+    template = "USS-TH-LHT-CH30-EP1"
+    displayed = client.get(
+        f"/api/v1/analyses/{method}/starting-values",
+        params={"template_id": template, "unit_system": "imperial"},
+    ).json()["displayed_inputs"]
+    displayed["calibration_source_note"] = {"unexpected": "object"}
+
+    response = client.post(
+        f"/api/v1/analyses/{method}/validate",
+        json={"template_id": template, "unit_system": "imperial", "displayed_inputs": displayed},
+    )
+
+    body = response.json()
+    assert response.status_code == 200
+    assert body["valid"] is False
+    assert body["ready"] is False
+    assert body["errors"][0]["field"] == "calibration_source_note"
 
 
 @pytest.mark.parametrize(
