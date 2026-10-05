@@ -88,21 +88,17 @@ describe('direct analysis route containment', () => {
     expect(screen.getByTestId('method-card-urban_street_segment')).toHaveTextContent('Reference only');
   });
 
-  it('contains the undelivered Thailand/LHT route and restored project edit state', async () => {
+  it('opens the delivered Thailand/LHT direct route', async () => {
     window.history.replaceState({ hcmHistoryIndex: 4, methodId: 'urban_street_segment_th_lht' }, '', '/analysis/urban_street_segment_th_lht');
     vi.spyOn(apiClient, 'fetchMethods').mockResolvedValue({ registry_version: 'test', methods: [chapter18LhtMethod] });
 
     render(<I18nProvider><App /></I18nProvider>);
 
-    expect(await screen.findByRole('heading', { name: 'New Analysis' })).toBeVisible();
-    expect(await screen.findByTestId('method-card-urban_street_segment_th_lht')).toBeVisible();
-    expect(window.location.pathname).toBe('/new-analysis');
-    expect(screen.queryByTestId('workflow-urban_street_segment_th_lht')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Calculate' })).not.toBeInTheDocument();
-    expect(screen.getByTestId('method-card-urban_street_segment_th_lht')).toHaveTextContent('Reference only');
+    expect(await screen.findByTestId('workflow-urban_street_segment_th_lht')).toBeVisible();
+    expect(window.location.pathname).toBe('/analysis/urban_street_segment_th_lht');
   });
 
-  it('contains restored LHT scenario-edit state when no worksheet module exists', async () => {
+  it('enters the LHT worksheet from restored scenario-edit history', async () => {
     window.history.replaceState({
       hcmHistoryIndex: 6,
       methodId: 'urban_street_segment_th_lht',
@@ -118,9 +114,8 @@ describe('direct analysis route containment', () => {
 
     render(<I18nProvider><App /></I18nProvider>);
 
-    expect(await screen.findByTestId('method-card-urban_street_segment_th_lht')).toBeVisible();
-    expect(window.location.pathname).toBe('/new-analysis');
-    expect(screen.queryByTestId('workflow-urban_street_segment_th_lht')).not.toBeInTheDocument();
+    expect(await screen.findByTestId('workflow-urban_street_segment_th_lht')).toBeVisible();
+    expect(window.location.pathname).toBe('/project/analysis/analysis-lht/scenarios/scenario-lht');
   });
 
   it('continues rendering a directly addressed delivered method workflow', async () => {

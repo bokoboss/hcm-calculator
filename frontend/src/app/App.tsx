@@ -113,7 +113,7 @@ export function MethodCard({
       </div>
       <p className="method-use"><strong>{t('new_analysis.use_for')}</strong> {t(method.description_key)}</p>
       <dl className="method-meta">
-        <div><dt>{t('reference.chapter')}</dt><dd>{method.chapter_reference}</dd></div>
+        <div><dt>{t('reference.chapter')}</dt><dd>{method.method_id === 'urban_street_segment_th_lht' ? t('urban_street_segment_th_lht.chapter_reference') : method.chapter_reference}</dd></div>
         <div><dt>{t('reference.scope')}</dt><dd>{scopeFor(method, t)}</dd></div>
       </dl>
       <div className="method-card-actions">
@@ -360,7 +360,7 @@ export function ReferencePage({
             <section className="handbook-source-card">
               <h3>{t('reference.source_title')}</h3>
               <dl className="reference-facts handbook-facts">
-                <div><dt>{t('reference.chapter')}</dt><dd>{selected.method.chapter_reference}</dd></div>
+                <div><dt>{t('reference.chapter')}</dt><dd>{selected.method.method_id === 'urban_street_segment_th_lht' ? t('urban_street_segment_th_lht.chapter_reference') : selected.method.chapter_reference}</dd></div>
                 <div><dt>{t('reference.scope')}</dt><dd>{scopeFor(selected.method, t)}</dd></div>
                 <div><dt>{t('reference.units')}</dt><dd>{selected.method.supported_unit_systems.join(' / ')}</dd></div>
               </dl>

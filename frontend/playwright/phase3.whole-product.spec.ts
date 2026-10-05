@@ -80,7 +80,7 @@ test.describe('Phase 3 whole-product workstation UAT', () => {
     await expect(page.getByRole('heading', { name: 'HCM Calculator' })).toBeVisible();
     await capture(page, 'phase3-ux-home-en-1920.png');
 
-    await page.getByRole('button', { name: 'Thai' }).click();
+    await page.getByRole('button', { name: 'Thai', exact: true }).click();
     await expect(page.locator('html')).toHaveAttribute('lang', 'th');
     await expect(page.getByRole('heading', { name: 'เครื่องคำนวณ HCM' })).toBeVisible();
     await capture(page, 'phase3-ux-home-th-1920.png');

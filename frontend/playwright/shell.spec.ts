@@ -7,16 +7,16 @@ test('release-like Python-served shell exposes safe discovery and localization',
 
   await page.getByRole('button', { name: 'New Analysis' }).first().click();
   await expect(page.getByRole('heading', { name: 'New Analysis' })).toBeVisible();
-  await expect(page.getByText('7 calculation methods available')).toBeVisible();
+  await expect(page.getByText('8 calculation methods available')).toBeVisible();
   const methodButtons = page.getByRole('button', { name: 'Start analysis' });
   await expect(methodButtons).toHaveCount(9);
-  expect(await methodButtons.evaluateAll((buttons) => buttons.filter((button) => !(button as HTMLButtonElement).disabled))).toHaveLength(7);
+  expect(await methodButtons.evaluateAll((buttons) => buttons.filter((button) => !(button as HTMLButtonElement).disabled))).toHaveLength(8);
   const chapter18Card = page.getByTestId('method-card-urban_street_segment');
   await expect(chapter18Card.getByText('Reference only', { exact: true })).toBeVisible();
   await expect(chapter18Card.getByRole('button', { name: 'Start analysis' })).toBeDisabled();
   const thailandChapter18Card = page.getByTestId('method-card-urban_street_segment_th_lht');
-  await expect(thailandChapter18Card.getByText('Reference only', { exact: true })).toBeVisible();
-  await expect(thailandChapter18Card.getByRole('button', { name: 'Start analysis' })).toBeDisabled();
+  await expect(thailandChapter18Card.getByRole('button', { name: 'Analysis guide' })).toBeVisible();
+  await expect(thailandChapter18Card.getByRole('button', { name: 'Start analysis' })).toBeEnabled();
 
   await page.getByRole('button', { name: 'Analysis guide' }).first().click();
   await expect(page.getByRole('heading', { name: 'HCM Analysis Handbook' })).toBeVisible();
@@ -32,7 +32,7 @@ test('release-like Python-served shell exposes safe discovery and localization',
   await expect(weavingGuide.getByText('LS and LMAX')).toBeVisible();
   await expect(weavingGuide.getByText(/LS ≥ LMAX is not a poor weaving LOS/)).toBeVisible();
 
-  await page.getByRole('button', { name: 'Thai' }).click();
+  await page.getByRole('button', { name: 'Thai', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'คู่มือการวิเคราะห์ HCM' })).toBeVisible();
   await expect(page.getByTestId('reference-weaving_segment').getByText('LS และ LMAX')).toBeVisible();
   await page.getByRole('button', { name: 'อังกฤษ' }).click();
@@ -44,7 +44,7 @@ test('backend-only Chapter 18 stays reference-only and localized without a false
   const chapter18Card = page.getByTestId('method-card-urban_street_segment');
   const thailandChapter18Card = page.getByTestId('method-card-urban_street_segment_th_lht');
   await expect(chapter18Card.getByRole('button', { name: 'Start analysis' })).toBeDisabled();
-  await expect(thailandChapter18Card.getByRole('button', { name: 'Start analysis' })).toBeDisabled();
+  await expect(thailandChapter18Card.getByRole('button', { name: 'Start analysis' })).toBeEnabled();
   await expect(chapter18Card.getByRole('button', { name: 'Analysis guide' })).toHaveCount(0);
   await expect(chapter18Card.getByText('Urban Street Segment')).toBeVisible();
   await expect(chapter18Card.getByText(/Bounded signalized 15-minute segment/i)).toBeVisible();
@@ -52,7 +52,7 @@ test('backend-only Chapter 18 stays reference-only and localized without a false
   await expect(chapter18Card).not.toContainText('method.urban_streets');
   await expect(thailandChapter18Card.getByRole('heading', { name: /Urban Street Segment — Thailand\/LHT/ })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Thai' }).click();
+  await page.getByRole('button', { name: 'Thai', exact: true }).click();
   await expect(chapter18Card.getByText('ช่วงถนนเขตเมือง')).toBeVisible();
   await expect(chapter18Card).toContainText('สัญญาณไฟ 15 นาที');
   await expect(thailandChapter18Card).toContainText('ทางซ้าย');

@@ -34,6 +34,7 @@ export interface WorkflowField {
   editable?: boolean;
   conditional?: string;
   unit?: string;
+  item_unit?: string;
   unit_metric?: string;
   unit_imperial?: string;
   options?: string[];

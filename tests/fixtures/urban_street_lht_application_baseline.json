@@ -1,0 +1,912 @@
+{
+  "method_id": "urban_street_segment_th_lht",
+  "method_identifier": "hcm7_urban_street_segment_th_lht",
+  "engine_method_identifier": "urban_street_segment_ch18_v0_1",
+  "method_version": "hcm_7_0_bounded_th_lht_v1",
+  "input_contract": "hcm7_ch18_bounded_signalized_15min_th_lht_semantic_v1",
+  "project_type": "manual_urban_street_segment_th_lht_v1",
+  "template_id": "USS-TH-LHT-CH30-EP1",
+  "unit_system": "metric",
+  "displayed_inputs": {
+    "segment_length": 548.64,
+    "upstream_intersection_width": 15.24,
+    "signal_control_spacing": 548.64,
+    "through_lane_count": 2,
+    "subject_direction": "eastbound",
+    "through_movement_id": "EB_TH",
+    "posted_speed_limit": 56.327040000000004,
+    "s_calib": 0.0,
+    "restrictive_median_proportion": 0,
+    "kerbside_curb_proportion": 0.7,
+    "kerbside_parking_proportion": 0,
+    "subject_kerbside_access_count": 4,
+    "opposing_kerbside_access_count": 4,
+    "v_m_veh_h": 1150,
+    "access_point_delays_s_veh": [
+      0.193,
+      0.194
+    ],
+    "d_other_s_veh": 0,
+    "analysis_period_min": 15,
+    "control_type": "signalized",
+    "demand_balanced": true,
+    "demand_adjustments_resolved": true,
+    "capacity_effects_resolved": true,
+    "spillback_present": false,
+    "external_source_class": "qualified_external_signal_analysis",
+    "external_source_tool": "HCM 7 Chapter 30 Example Problem 1",
+    "external_source_method_note": "HCM 7 Chapter 30 Example Problem 1",
+    "external_hcm_edition_note": "HCM 7.0",
+    "external_direction": "eastbound",
+    "external_control_type": "signalized",
+    "external_through_movement_id": "EB_TH",
+    "external_analysis_period_min": 15,
+    "external_scenario_note": "Chapter 30 Example Problem 1",
+    "v_th_veh_h": 968,
+    "c_th_veh_h": 1848,
+    "d_t_s_veh": 18.31,
+    "calibration_status": "hcm_reference_uncalibrated",
+    "calibration_source_note": null
+  },
+  "normalized_inputs": {
+    "segment_length_ft": 1799.9999999999998,
+    "upstream_intersection_width_ft": 49.99999999999999,
+    "signal_control_spacing_ft": 1799.9999999999998,
+    "through_lane_count": 2,
+    "subject_direction": "eastbound",
+    "through_movement_id": "EB_TH",
+    "posted_speed_limit_mph": 35.0,
+    "s_calib_mph": 0.0,
+    "restrictive_median_proportion": 0,
+    "curb_proportion": 0.7,
+    "parking_proportion": 0,
+    "subject_side_access_count": 4,
+    "opposing_side_access_count": 4,
+    "v_m_veh_h": 1150,
+    "access_point_delays_s_veh": [
+      0.193,
+      0.194
+    ],
+    "d_other_s_veh": 0,
+    "analysis_period_min": 15,
+    "control_type": "signalized",
+    "demand_balanced": true,
+    "demand_adjustments_resolved": true,
+    "capacity_effects_resolved": true,
+    "spillback_present": false,
+    "external_through": {
+      "source_class": "qualified_external_signal_analysis",
+      "source_tool": "HCM 7 Chapter 30 Example Problem 1",
+      "source_method_note": "HCM 7 Chapter 30 Example Problem 1",
+      "hcm_edition_note": "HCM 7.0",
+      "direction": "eastbound",
+      "control_type": "signalized",
+      "through_movement_id": "EB_TH",
+      "analysis_period_min": 15,
+      "scenario_note": "Chapter 30 Example Problem 1",
+      "v_th_veh_h": 968,
+      "c_th_veh_h": 1848,
+      "d_t_s_veh": 18.31
+    }
+  },
+  "calculation_fingerprint": "3ad2c549d5697e0a3ed35e4f21e1b387f1e58772ae630f15d33de5cc94e4d36c",
+  "input_snapshot_fingerprint": "4923e8d8d74cd8efcaa0a4169f187917bdcba662de811539fa50befde68c4379",
+  "calculation_state": {
+    "presentation_state": "valid_current_result",
+    "calculation_fingerprint": "3ad2c549d5697e0a3ed35e4f21e1b387f1e58772ae630f15d33de5cc94e4d36c",
+    "has_result": true,
+    "warnings": []
+  },
+  "result": {
+    "method": "urban_street_segment_ch18_v0_1",
+    "result_contract_version": "hcm7_ch18_bounded_signalized_15min_rht_reference_v1",
+    "facility_type": "urban_street_segment",
+    "outputs": {
+      "calculation_type": "urban_street_segment_ch18_v0_1",
+      "support_status": "supported_bounded_hcm7_signalized_15min",
+      "segment_length_ft": 1799.9999999999998,
+      "link_length_ft": 1749.9999999999998,
+      "s0_mph": 42.05,
+      "f_cs_mph": -0.32899999999999996,
+      "access_density_per_mi": 24.13714285714286,
+      "f_a_mph": -0.9413485714285715,
+      "f_pk_mph": -0.0,
+      "base_free_flow_speed_mph": 40.77965142857143,
+      "signal_control_spacing_ft": 1799.9999999999998,
+      "f_l": 0.9644364657142858,
+      "free_flow_speed_mph": 39.32938289683195,
+      "f_v": 1.0340281003419656,
+      "f_x": 1.0,
+      "l_1_s": 2.0,
+      "total_access_delay_s_veh": 0.387,
+      "d_other_s_veh": 0,
+      "running_time_s": 33.54271824932475,
+      "running_speed_mph": 36.58835035820132,
+      "external_through_delay_used_s_veh": 18.31,
+      "total_travel_time_s": 51.85271824932475,
+      "travel_speed_mph": 23.668435690711533,
+      "v_m_veh_h": 1150,
+      "v_th_veh_h": 968,
+      "c_th_veh_h": 1848,
+      "through_v_c": 0.5238095238095238,
+      "displayed_through_v_c": 0.52,
+      "los_speed_thresholds_mph": {
+        "A": 32.62372114285714,
+        "B": 27.467790857142855,
+        "C": 20.467790857142855,
+        "D": 16.31186057142857,
+        "E": 12.311860571428571
+      },
+      "level_of_service": "C",
+      "external_through_provenance": {
+        "source_class": "qualified_external_signal_analysis",
+        "source_tool": "HCM 7 Chapter 30 Example Problem 1",
+        "source_method_note": "HCM 7 Chapter 30 Example Problem 1",
+        "hcm_edition_note": "HCM 7.0",
+        "direction": "eastbound",
+        "control_type": "signalized",
+        "through_movement_id": "EB_TH",
+        "analysis_period_min": 15,
+        "scenario_note": "Chapter 30 Example Problem 1",
+        "v_th_veh_h": 968,
+        "c_th_veh_h": 1848,
+        "d_t_s_veh": 18.31
+      },
+      "input_summary": {
+        "segment_length_ft": 1799.9999999999998,
+        "upstream_intersection_width_ft": 49.99999999999999,
+        "signal_control_spacing_ft": 1799.9999999999998,
+        "through_lane_count": 2,
+        "subject_direction": "eastbound",
+        "through_movement_id": "EB_TH",
+        "posted_speed_limit_mph": 35.0,
+        "s_calib_mph": 0.0,
+        "restrictive_median_proportion": 0,
+        "curb_proportion": 0.7,
+        "parking_proportion": 0,
+        "subject_side_access_count": 4,
+        "opposing_side_access_count": 4,
+        "v_m_veh_h": 1150,
+        "access_point_delays_s_veh": [
+          0.193,
+          0.194
+        ],
+        "d_other_s_veh": 0,
+        "analysis_period_min": 15,
+        "control_type": "signalized",
+        "demand_balanced": true,
+        "demand_adjustments_resolved": true,
+        "capacity_effects_resolved": true,
+        "spillback_present": false,
+        "external_through": {
+          "source_class": "qualified_external_signal_analysis",
+          "source_tool": "HCM 7 Chapter 30 Example Problem 1",
+          "source_method_note": "HCM 7 Chapter 30 Example Problem 1",
+          "hcm_edition_note": "HCM 7.0",
+          "direction": "eastbound",
+          "control_type": "signalized",
+          "through_movement_id": "EB_TH",
+          "analysis_period_min": 15,
+          "scenario_note": "Chapter 30 Example Problem 1",
+          "v_th_veh_h": 968,
+          "c_th_veh_h": 1848,
+          "d_t_s_veh": 18.31
+        }
+      }
+    },
+    "intermediate_values": [
+      {
+        "name": "link_length_ft",
+        "value": 1749.9999999999998,
+        "units": "ft",
+        "source": "HCM7 Chapter 18 segment/link geometry"
+      },
+      {
+        "name": "s0_mph",
+        "value": 42.05,
+        "units": "mi/h",
+        "source": "HCM7 Exhibit 18-11"
+      },
+      {
+        "name": "f_cs_mph",
+        "value": -0.32899999999999996,
+        "units": "mi/h",
+        "source": "HCM7 Exhibit 18-11"
+      },
+      {
+        "name": "access_density_per_mi",
+        "value": 24.13714285714286,
+        "units": "points/mi",
+        "source": "HCM7 Exhibit 18-11; explicit counts"
+      },
+      {
+        "name": "f_a_mph",
+        "value": -0.9413485714285715,
+        "units": "mi/h",
+        "source": "HCM7 Exhibit 18-11"
+      },
+      {
+        "name": "f_pk_mph",
+        "value": -0.0,
+        "units": "mi/h",
+        "source": "HCM7 Exhibit 18-11"
+      },
+      {
+        "name": "base_free_flow_speed_mph",
+        "value": 40.77965142857143,
+        "units": "mi/h",
+        "source": "HCM7 Eq. 18-3"
+      },
+      {
+        "name": "f_l",
+        "value": 0.9644364657142858,
+        "units": "ratio",
+        "source": "HCM7 Eq. 18-4"
+      },
+      {
+        "name": "free_flow_speed_mph",
+        "value": 39.32938289683195,
+        "units": "mi/h",
+        "source": "HCM7 Eq. 18-5"
+      },
+      {
+        "name": "f_v",
+        "value": 1.0340281003419656,
+        "units": "ratio",
+        "source": "HCM7 Eq. 18-6; explicit v_m"
+      },
+      {
+        "name": "f_x",
+        "value": 1.0,
+        "units": "ratio",
+        "source": "HCM7 Eq. 18-8; signalized boundary"
+      },
+      {
+        "name": "l_1_s",
+        "value": 2.0,
+        "units": "s",
+        "source": "HCM7 Eq. 18-8; signalized boundary"
+      },
+      {
+        "name": "total_access_delay_s_veh",
+        "value": 0.387,
+        "units": "s/veh",
+        "source": "HCM7 Eq. 18-7; explicit supplied delays"
+      },
+      {
+        "name": "d_other_s_veh",
+        "value": 0,
+        "units": "s/veh",
+        "source": "Explicit supported other delay input"
+      },
+      {
+        "name": "running_time_s",
+        "value": 33.54271824932475,
+        "units": "s",
+        "source": "HCM7 Eqs. 18-7 and 18-8"
+      },
+      {
+        "name": "running_speed_mph",
+        "value": 36.58835035820132,
+        "units": "mi/h",
+        "source": "Segment length and running time"
+      },
+      {
+        "name": "external_through_delay_used_s_veh",
+        "value": 18.31,
+        "units": "s/veh",
+        "source": "Externally qualified final through delay"
+      },
+      {
+        "name": "total_travel_time_s",
+        "value": 51.85271824932475,
+        "units": "s",
+        "source": "Running time plus external final through delay, once"
+      },
+      {
+        "name": "travel_speed_mph",
+        "value": 23.668435690711533,
+        "units": "mi/h",
+        "source": "HCM7 Eq. 18-15"
+      },
+      {
+        "name": "through_v_c",
+        "value": 0.5238095238095238,
+        "units": "ratio",
+        "source": "HCM7 Exhibit 18-1; v_th/c_th"
+      },
+      {
+        "name": "level_of_service",
+        "value": "C",
+        "units": null,
+        "source": "HCM7 Exhibit 18-1"
+      }
+    ],
+    "assumptions": [
+      "HCM7 right-hand-traffic reference semantics; no Thailand/LHT qualification.",
+      "Demand balancing/adjustments and applicable capacity effects are externally resolved.",
+      "No unresolved spillback invalidates this 15-minute operational result.",
+      "Final signalized downstream through delay is external and consumed once.",
+      "Access-point delays are explicit qualified inputs; no planning estimate is used."
+    ],
+    "warnings": []
+  },
+  "presentation": {
+    "answer": {
+      "key": "level_of_service",
+      "value": "C",
+      "available": true,
+      "source": "HCM 7.0 Exhibit 18-1"
+    },
+    "metrics": [
+      {
+        "key": "travel_speed",
+        "value": 38.090654968232464,
+        "unit": "km/h",
+        "available": true,
+        "availability": "calculated",
+        "source": "HCM 7.0 Chapter 18; Eq. 18-15"
+      },
+      {
+        "key": "running_speed",
+        "value": 58.88324211886915,
+        "unit": "km/h",
+        "available": true,
+        "availability": "calculated",
+        "source": "HCM 7.0 Chapter 18; running time"
+      },
+      {
+        "key": "free_flow_speed",
+        "value": 63.29450638871913,
+        "unit": "km/h",
+        "available": true,
+        "availability": "calculated",
+        "source": "HCM 7.0 Chapter 18; Eq. 18-5"
+      },
+      {
+        "key": "base_free_flow_speed",
+        "value": 65.62848734866286,
+        "unit": "km/h",
+        "available": true,
+        "availability": "calculated",
+        "source": "HCM 7.0 Chapter 18; Eq. 18-3"
+      },
+      {
+        "key": "through_v_c",
+        "value": 0.5238095238095238,
+        "unit": "ratio",
+        "available": true,
+        "availability": "calculated",
+        "source": "HCM 7.0 Exhibit 18-1; v_th/c_th"
+      },
+      {
+        "key": "running_time",
+        "value": 33.54271824932475,
+        "unit": "s",
+        "available": true,
+        "availability": "calculated",
+        "source": "HCM 7.0 Chapter 18; Eqs. 18-7 and 18-8"
+      },
+      {
+        "key": "total_travel_time",
+        "value": 51.85271824932475,
+        "unit": "s",
+        "available": true,
+        "availability": "calculated",
+        "source": "Running time plus qualified external through delay"
+      }
+    ],
+    "capacity": {
+      "through_v_c": 0.5238095238095238,
+      "source": "HCM 7.0 Exhibit 18-1; v_th/c_th"
+    },
+    "warning": null,
+    "interpretations": [],
+    "evidence": {
+      "intermediate_values": [
+        {
+          "name": "link_length_ft",
+          "value": 1749.9999999999998,
+          "units": "ft",
+          "source": "HCM7 Chapter 18 segment/link geometry"
+        },
+        {
+          "name": "s0_mph",
+          "value": 42.05,
+          "units": "mi/h",
+          "source": "HCM7 Exhibit 18-11"
+        },
+        {
+          "name": "f_cs_mph",
+          "value": -0.32899999999999996,
+          "units": "mi/h",
+          "source": "HCM7 Exhibit 18-11"
+        },
+        {
+          "name": "access_density_per_mi",
+          "value": 24.13714285714286,
+          "units": "points/mi",
+          "source": "HCM7 Exhibit 18-11; explicit counts"
+        },
+        {
+          "name": "f_a_mph",
+          "value": -0.9413485714285715,
+          "units": "mi/h",
+          "source": "HCM7 Exhibit 18-11"
+        },
+        {
+          "name": "f_pk_mph",
+          "value": -0.0,
+          "units": "mi/h",
+          "source": "HCM7 Exhibit 18-11"
+        },
+        {
+          "name": "base_free_flow_speed_mph",
+          "value": 40.77965142857143,
+          "units": "mi/h",
+          "source": "HCM7 Eq. 18-3"
+        },
+        {
+          "name": "f_l",
+          "value": 0.9644364657142858,
+          "units": "ratio",
+          "source": "HCM7 Eq. 18-4"
+        },
+        {
+          "name": "free_flow_speed_mph",
+          "value": 39.32938289683195,
+          "units": "mi/h",
+          "source": "HCM7 Eq. 18-5"
+        },
+        {
+          "name": "f_v",
+          "value": 1.0340281003419656,
+          "units": "ratio",
+          "source": "HCM7 Eq. 18-6; explicit v_m"
+        },
+        {
+          "name": "f_x",
+          "value": 1.0,
+          "units": "ratio",
+          "source": "HCM7 Eq. 18-8; signalized boundary"
+        },
+        {
+          "name": "l_1_s",
+          "value": 2.0,
+          "units": "s",
+          "source": "HCM7 Eq. 18-8; signalized boundary"
+        },
+        {
+          "name": "total_access_delay_s_veh",
+          "value": 0.387,
+          "units": "s/veh",
+          "source": "HCM7 Eq. 18-7; explicit supplied delays"
+        },
+        {
+          "name": "d_other_s_veh",
+          "value": 0,
+          "units": "s/veh",
+          "source": "Explicit supported other delay input"
+        },
+        {
+          "name": "running_time_s",
+          "value": 33.54271824932475,
+          "units": "s",
+          "source": "HCM7 Eqs. 18-7 and 18-8"
+        },
+        {
+          "name": "running_speed_mph",
+          "value": 36.58835035820132,
+          "units": "mi/h",
+          "source": "Segment length and running time"
+        },
+        {
+          "name": "external_through_delay_used_s_veh",
+          "value": 18.31,
+          "units": "s/veh",
+          "source": "Externally qualified final through delay"
+        },
+        {
+          "name": "total_travel_time_s",
+          "value": 51.85271824932475,
+          "units": "s",
+          "source": "Running time plus external final through delay, once"
+        },
+        {
+          "name": "travel_speed_mph",
+          "value": 23.668435690711533,
+          "units": "mi/h",
+          "source": "HCM7 Eq. 18-15"
+        },
+        {
+          "name": "through_v_c",
+          "value": 0.5238095238095238,
+          "units": "ratio",
+          "source": "HCM7 Exhibit 18-1; v_th/c_th"
+        },
+        {
+          "name": "level_of_service",
+          "value": "C",
+          "units": null,
+          "source": "HCM7 Exhibit 18-1"
+        }
+      ],
+      "assumptions": [
+        "HCM7 right-hand-traffic reference semantics; no Thailand/LHT qualification.",
+        "Demand balancing/adjustments and applicable capacity effects are externally resolved.",
+        "No unresolved spillback invalidates this 15-minute operational result.",
+        "Final signalized downstream through delay is external and consumed once.",
+        "Access-point delays are explicit qualified inputs; no planning estimate is used."
+      ],
+      "external_through_provenance": {
+        "source_class": "qualified_external_signal_analysis",
+        "source_tool": "HCM 7 Chapter 30 Example Problem 1",
+        "source_method_note": "HCM 7 Chapter 30 Example Problem 1",
+        "hcm_edition_note": "HCM 7.0",
+        "direction": "eastbound",
+        "control_type": "signalized",
+        "through_movement_id": "EB_TH",
+        "analysis_period_min": 15,
+        "scenario_note": "Chapter 30 Example Problem 1",
+        "v_th_veh_h": 968,
+        "c_th_veh_h": 1848,
+        "d_t_s_veh": 18.31
+      },
+      "warnings": []
+    },
+    "workflow": {
+      "scope": "bounded_hcm7_signalized_15min_th_lht_hcm_reference",
+      "spillback_present": false
+    }
+  },
+  "audit": {
+    "calculation_type": "manual_urban_street_segment_th_lht_v1",
+    "method_identifier": "hcm7_urban_street_segment_th_lht",
+    "engine_method_identifier": "urban_street_segment_ch18_v0_1",
+    "method_version": "hcm_7_0_bounded_th_lht_v1",
+    "input_contract": "hcm7_ch18_bounded_signalized_15min_th_lht_semantic_v1",
+    "template_id": "USS-TH-LHT-CH30-EP1",
+    "unit_system": "metric",
+    "displayed_inputs": {
+      "segment_length": 548.64,
+      "upstream_intersection_width": 15.24,
+      "signal_control_spacing": 548.64,
+      "through_lane_count": 2,
+      "subject_direction": "eastbound",
+      "through_movement_id": "EB_TH",
+      "posted_speed_limit": 56.327040000000004,
+      "s_calib": 0.0,
+      "restrictive_median_proportion": 0,
+      "kerbside_curb_proportion": 0.7,
+      "kerbside_parking_proportion": 0,
+      "subject_kerbside_access_count": 4,
+      "opposing_kerbside_access_count": 4,
+      "v_m_veh_h": 1150,
+      "access_point_delays_s_veh": [
+        0.193,
+        0.194
+      ],
+      "d_other_s_veh": 0,
+      "analysis_period_min": 15,
+      "control_type": "signalized",
+      "demand_balanced": true,
+      "demand_adjustments_resolved": true,
+      "capacity_effects_resolved": true,
+      "spillback_present": false,
+      "external_source_class": "qualified_external_signal_analysis",
+      "external_source_tool": "HCM 7 Chapter 30 Example Problem 1",
+      "external_source_method_note": "HCM 7 Chapter 30 Example Problem 1",
+      "external_hcm_edition_note": "HCM 7.0",
+      "external_direction": "eastbound",
+      "external_control_type": "signalized",
+      "external_through_movement_id": "EB_TH",
+      "external_analysis_period_min": 15,
+      "external_scenario_note": "Chapter 30 Example Problem 1",
+      "v_th_veh_h": 968,
+      "c_th_veh_h": 1848,
+      "d_t_s_veh": 18.31,
+      "calibration_status": "hcm_reference_uncalibrated",
+      "calibration_source_note": null
+    },
+    "normalized_engine_inputs": {
+      "segment_length_ft": 1799.9999999999998,
+      "upstream_intersection_width_ft": 49.99999999999999,
+      "signal_control_spacing_ft": 1799.9999999999998,
+      "through_lane_count": 2,
+      "subject_direction": "eastbound",
+      "through_movement_id": "EB_TH",
+      "posted_speed_limit_mph": 35.0,
+      "s_calib_mph": 0.0,
+      "restrictive_median_proportion": 0,
+      "curb_proportion": 0.7,
+      "parking_proportion": 0,
+      "subject_side_access_count": 4,
+      "opposing_side_access_count": 4,
+      "v_m_veh_h": 1150,
+      "access_point_delays_s_veh": [
+        0.193,
+        0.194
+      ],
+      "d_other_s_veh": 0,
+      "analysis_period_min": 15,
+      "control_type": "signalized",
+      "demand_balanced": true,
+      "demand_adjustments_resolved": true,
+      "capacity_effects_resolved": true,
+      "spillback_present": false,
+      "external_through": {
+        "source_class": "qualified_external_signal_analysis",
+        "source_tool": "HCM 7 Chapter 30 Example Problem 1",
+        "source_method_note": "HCM 7 Chapter 30 Example Problem 1",
+        "hcm_edition_note": "HCM 7.0",
+        "direction": "eastbound",
+        "control_type": "signalized",
+        "through_movement_id": "EB_TH",
+        "analysis_period_min": 15,
+        "scenario_note": "Chapter 30 Example Problem 1",
+        "v_th_veh_h": 968,
+        "c_th_veh_h": 1848,
+        "d_t_s_veh": 18.31
+      }
+    },
+    "outputs": {
+      "calculation_type": "urban_street_segment_ch18_v0_1",
+      "support_status": "supported_bounded_hcm7_signalized_15min",
+      "segment_length_ft": 1799.9999999999998,
+      "link_length_ft": 1749.9999999999998,
+      "s0_mph": 42.05,
+      "f_cs_mph": -0.32899999999999996,
+      "access_density_per_mi": 24.13714285714286,
+      "f_a_mph": -0.9413485714285715,
+      "f_pk_mph": -0.0,
+      "base_free_flow_speed_mph": 40.77965142857143,
+      "signal_control_spacing_ft": 1799.9999999999998,
+      "f_l": 0.9644364657142858,
+      "free_flow_speed_mph": 39.32938289683195,
+      "f_v": 1.0340281003419656,
+      "f_x": 1.0,
+      "l_1_s": 2.0,
+      "total_access_delay_s_veh": 0.387,
+      "d_other_s_veh": 0,
+      "running_time_s": 33.54271824932475,
+      "running_speed_mph": 36.58835035820132,
+      "external_through_delay_used_s_veh": 18.31,
+      "total_travel_time_s": 51.85271824932475,
+      "travel_speed_mph": 23.668435690711533,
+      "v_m_veh_h": 1150,
+      "v_th_veh_h": 968,
+      "c_th_veh_h": 1848,
+      "through_v_c": 0.5238095238095238,
+      "displayed_through_v_c": 0.52,
+      "los_speed_thresholds_mph": {
+        "A": 32.62372114285714,
+        "B": 27.467790857142855,
+        "C": 20.467790857142855,
+        "D": 16.31186057142857,
+        "E": 12.311860571428571
+      },
+      "level_of_service": "C",
+      "external_through_provenance": {
+        "source_class": "qualified_external_signal_analysis",
+        "source_tool": "HCM 7 Chapter 30 Example Problem 1",
+        "source_method_note": "HCM 7 Chapter 30 Example Problem 1",
+        "hcm_edition_note": "HCM 7.0",
+        "direction": "eastbound",
+        "control_type": "signalized",
+        "through_movement_id": "EB_TH",
+        "analysis_period_min": 15,
+        "scenario_note": "Chapter 30 Example Problem 1",
+        "v_th_veh_h": 968,
+        "c_th_veh_h": 1848,
+        "d_t_s_veh": 18.31
+      },
+      "input_summary": {
+        "segment_length_ft": 1799.9999999999998,
+        "upstream_intersection_width_ft": 49.99999999999999,
+        "signal_control_spacing_ft": 1799.9999999999998,
+        "through_lane_count": 2,
+        "subject_direction": "eastbound",
+        "through_movement_id": "EB_TH",
+        "posted_speed_limit_mph": 35.0,
+        "s_calib_mph": 0.0,
+        "restrictive_median_proportion": 0,
+        "curb_proportion": 0.7,
+        "parking_proportion": 0,
+        "subject_side_access_count": 4,
+        "opposing_side_access_count": 4,
+        "v_m_veh_h": 1150,
+        "access_point_delays_s_veh": [
+          0.193,
+          0.194
+        ],
+        "d_other_s_veh": 0,
+        "analysis_period_min": 15,
+        "control_type": "signalized",
+        "demand_balanced": true,
+        "demand_adjustments_resolved": true,
+        "capacity_effects_resolved": true,
+        "spillback_present": false,
+        "external_through": {
+          "source_class": "qualified_external_signal_analysis",
+          "source_tool": "HCM 7 Chapter 30 Example Problem 1",
+          "source_method_note": "HCM 7 Chapter 30 Example Problem 1",
+          "hcm_edition_note": "HCM 7.0",
+          "direction": "eastbound",
+          "control_type": "signalized",
+          "through_movement_id": "EB_TH",
+          "analysis_period_min": 15,
+          "scenario_note": "Chapter 30 Example Problem 1",
+          "v_th_veh_h": 968,
+          "c_th_veh_h": 1848,
+          "d_t_s_veh": 18.31
+        }
+      }
+    },
+    "assumptions": [
+      "HCM7 right-hand-traffic reference semantics; no Thailand/LHT qualification.",
+      "Demand balancing/adjustments and applicable capacity effects are externally resolved.",
+      "No unresolved spillback invalidates this 15-minute operational result.",
+      "Final signalized downstream through delay is external and consumed once.",
+      "Access-point delays are explicit qualified inputs; no planning estimate is used."
+    ],
+    "intermediate_values": [
+      {
+        "name": "link_length_ft",
+        "value": 1749.9999999999998,
+        "units": "ft",
+        "source": "HCM7 Chapter 18 segment/link geometry"
+      },
+      {
+        "name": "s0_mph",
+        "value": 42.05,
+        "units": "mi/h",
+        "source": "HCM7 Exhibit 18-11"
+      },
+      {
+        "name": "f_cs_mph",
+        "value": -0.32899999999999996,
+        "units": "mi/h",
+        "source": "HCM7 Exhibit 18-11"
+      },
+      {
+        "name": "access_density_per_mi",
+        "value": 24.13714285714286,
+        "units": "points/mi",
+        "source": "HCM7 Exhibit 18-11; explicit counts"
+      },
+      {
+        "name": "f_a_mph",
+        "value": -0.9413485714285715,
+        "units": "mi/h",
+        "source": "HCM7 Exhibit 18-11"
+      },
+      {
+        "name": "f_pk_mph",
+        "value": -0.0,
+        "units": "mi/h",
+        "source": "HCM7 Exhibit 18-11"
+      },
+      {
+        "name": "base_free_flow_speed_mph",
+        "value": 40.77965142857143,
+        "units": "mi/h",
+        "source": "HCM7 Eq. 18-3"
+      },
+      {
+        "name": "f_l",
+        "value": 0.9644364657142858,
+        "units": "ratio",
+        "source": "HCM7 Eq. 18-4"
+      },
+      {
+        "name": "free_flow_speed_mph",
+        "value": 39.32938289683195,
+        "units": "mi/h",
+        "source": "HCM7 Eq. 18-5"
+      },
+      {
+        "name": "f_v",
+        "value": 1.0340281003419656,
+        "units": "ratio",
+        "source": "HCM7 Eq. 18-6; explicit v_m"
+      },
+      {
+        "name": "f_x",
+        "value": 1.0,
+        "units": "ratio",
+        "source": "HCM7 Eq. 18-8; signalized boundary"
+      },
+      {
+        "name": "l_1_s",
+        "value": 2.0,
+        "units": "s",
+        "source": "HCM7 Eq. 18-8; signalized boundary"
+      },
+      {
+        "name": "total_access_delay_s_veh",
+        "value": 0.387,
+        "units": "s/veh",
+        "source": "HCM7 Eq. 18-7; explicit supplied delays"
+      },
+      {
+        "name": "d_other_s_veh",
+        "value": 0,
+        "units": "s/veh",
+        "source": "Explicit supported other delay input"
+      },
+      {
+        "name": "running_time_s",
+        "value": 33.54271824932475,
+        "units": "s",
+        "source": "HCM7 Eqs. 18-7 and 18-8"
+      },
+      {
+        "name": "running_speed_mph",
+        "value": 36.58835035820132,
+        "units": "mi/h",
+        "source": "Segment length and running time"
+      },
+      {
+        "name": "external_through_delay_used_s_veh",
+        "value": 18.31,
+        "units": "s/veh",
+        "source": "Externally qualified final through delay"
+      },
+      {
+        "name": "total_travel_time_s",
+        "value": 51.85271824932475,
+        "units": "s",
+        "source": "Running time plus external final through delay, once"
+      },
+      {
+        "name": "travel_speed_mph",
+        "value": 23.668435690711533,
+        "units": "mi/h",
+        "source": "HCM7 Eq. 18-15"
+      },
+      {
+        "name": "through_v_c",
+        "value": 0.5238095238095238,
+        "units": "ratio",
+        "source": "HCM7 Exhibit 18-1; v_th/c_th"
+      },
+      {
+        "name": "level_of_service",
+        "value": "C",
+        "units": null,
+        "source": "HCM7 Exhibit 18-1"
+      }
+    ],
+    "external_through_provenance": {
+      "source_class": "qualified_external_signal_analysis",
+      "source_tool": "HCM 7 Chapter 30 Example Problem 1",
+      "source_method_note": "HCM 7 Chapter 30 Example Problem 1",
+      "hcm_edition_note": "HCM 7.0",
+      "direction": "eastbound",
+      "control_type": "signalized",
+      "through_movement_id": "EB_TH",
+      "analysis_period_min": 15,
+      "scenario_note": "Chapter 30 Example Problem 1",
+      "v_th_veh_h": 968,
+      "c_th_veh_h": 1848,
+      "d_t_s_veh": 18.31
+    },
+    "traffic_side": "left_hand_traffic",
+    "kerbside_physical_side": "left_for_each_travel_direction",
+    "calibration_status": "hcm_reference_uncalibrated",
+    "calibration_source_note": null,
+    "semantic_field_mappings": {
+      "kerbside_curb_proportion": "curb_proportion",
+      "kerbside_parking_proportion": "parking_proportion",
+      "subject_kerbside_access_count": "subject_side_access_count",
+      "opposing_kerbside_access_count": "opposing_side_access_count"
+    }
+  },
+  "method": {
+    "method_id": "urban_street_segment_th_lht",
+    "method_identifier": "hcm7_urban_street_segment_th_lht",
+    "input_contract": "hcm7_ch18_bounded_signalized_15min_th_lht_semantic_v1",
+    "method_version": "hcm_7_0_bounded_th_lht_v1"
+  },
+  "generated_at": "2026-10-05T09:45:35.918800+00:00"
+}

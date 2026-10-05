@@ -21,6 +21,7 @@ export type MethodActionabilityStatus =
  * method.  Actionability still requires the backend identity handshake.
  */
 export const frontendModuleRegistry: FrontendModuleRegistry = {
+  urban_street_segment_th_lht: { methodId: 'urban_street_segment_th_lht', status: 'delivered', moduleContract: 'hcm7_ch18_bounded_signalized_15min_th_lht_semantic_v1', route: '/analysis/urban_street_segment_th_lht' },
   two_lane_segment: { methodId: 'two_lane_segment', status: 'delivered', moduleContract: 'phase_5_product_integration', route: '/analysis/two_lane_segment' },
   two_lane_facility: { methodId: 'two_lane_facility', status: 'delivered', moduleContract: 'phase_5_product_integration', route: '/analysis/two_lane_facility' },
   multilane_segment: { methodId: 'multilane_segment', status: 'delivered', moduleContract: 'phase_8', route: '/analysis/multilane_segment' },

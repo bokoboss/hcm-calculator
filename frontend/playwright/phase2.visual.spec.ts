@@ -99,7 +99,7 @@ test('captures the deterministic Phase 2 reference set', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.locator('.workflow-toolbar button').click();
   await selectMethod(page, 'multilane_segment');
-  await page.getByRole('button', { name: 'Thai' }).click();
+  await page.getByRole('button', { name: 'Thai', exact: true }).click();
   await page.locator('[data-slot="readiness-bar"] button').click();
   await expect(page.getByTestId('workflow-results')).toBeVisible();
   await capture(page, '14-thai-multilane-result.png');

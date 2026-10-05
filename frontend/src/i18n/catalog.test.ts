@@ -161,7 +161,6 @@ describe('localization catalog', () => {
       'method.urban_street_segment_th_lht.scope',
       'method.urban_street_segment_th_lht.scope.bounded_signalized_15min',
       'method.urban_street_segment_th_lht.scope.th_lht_reference',
-      'method.urban_street_segment_th_lht.scope.reference_only',
       ...fields.map((field) => `urban_street_segment_th_lht.${field}`),
       'urban_street_segment_th_lht.calibration_status.hcm_reference_uncalibrated',
       'urban_street_segment_th_lht.calibration_status.user_local_calibration',

@@ -247,7 +247,6 @@ _ANALYSIS_DEFINITIONS: tuple[AnalysisDefinition, ...] = (
         scope_summary_keys=(
             "method.urban_street_segment_th_lht.scope.bounded_signalized_15min",
             "method.urban_street_segment_th_lht.scope.th_lht_reference",
-            "method.urban_street_segment_th_lht.scope.reference_only",
         ),
     ),
 )

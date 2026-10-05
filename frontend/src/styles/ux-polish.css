@@ -341,3 +341,14 @@ html[lang="th"] .home-page {
     padding-right: 18px;
   }
 }
+/* Shared numeric-list fields follow the form grid at every supported width. */
+.number-list-editor { min-width: 0; margin: 0; padding: 0; border: 0; }
+.number-list-editor legend { margin-bottom: .5rem; font-weight: 600; }
+.number-list-editor ol { list-style: none; margin: 0 0 .5rem; padding: 0; }
+.number-list-editor li { margin-bottom: .5rem; }
+.number-list-editor label { display: block; margin-bottom: .25rem; }
+.number-list-editor label span { color: var(--text-secondary); }
+.number-list-row { display: flex; align-items: center; gap: .5rem; }
+.number-list-row input { width: 100%; min-width: 0; flex: 1; }
+.number-list-row button { flex-shrink: 0; }
+.disclosure-content[hidden] { display: none; }
