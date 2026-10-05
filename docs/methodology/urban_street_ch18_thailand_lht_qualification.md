@@ -1,236 +1,221 @@
-# HCM 7 Chapter 18 — Thailand/LHT Qualification Boundary
+# HCM 7 Chapter 18 — Thailand/LHT Semantic Qualification
 
-Status: **NEEDS MORE EVIDENCE for a general Thailand/LHT semantic adapter. GO WITH CONDITIONS only for orientation-neutral behavior and a narrowly restricted side-neutral subset.**
+Status: **GO WITH CONDITIONS for a role-based Thailand/LHT semantic adapter over the accepted HCM-reference Chapter 18 kernel. This is an HCM-reference transfer, not Thai empirical calibration.**
 
 Parent authority: Issue #172  
 Research/qualification work package: Issue #179  
+Evidence-resolution follow-up: Issue #181  
 Accepted bounded engine: Issue #174 / PR #175  
 Accepted application integration: Issue #176 / PR #177  
 Baseline `main`: `e09042d6fba8bd7912801ee4615e548b98528d97`
 
 ## Decision
 
-Do **not** implement a general Thailand/LHT adapter that automatically maps the HCM Chapter 18 right-hand-side curb, parking, or access variables to the physical left/kerbside of a Thai street.
+The accepted Chapter 18 Python engine remains the single numerical authority and must not be mirrored, sign-changed, or recalibrated merely because Thailand uses left-hand traffic.
 
-The available evidence establishes Thailand's left-hand-traffic orientation and supports role-based LHT terminology in general traffic engineering, but the primary methodology evidence does **not** establish mirror equivalence for the calibrated Chapter 18 free-flow-speed model.
+Thailand/LHT support may proceed as a **functional-role semantic adapter** that maps the physical outside/kerbside and median-side roles of a Thai road into the source-native HCM-reference fields. The adapter must not claim that the HCM coefficients are empirically calibrated for Thailand.
 
-The accepted HCM numerical engine remains unchanged and retains its source-native HCM RHT-reference semantics.
+The accepted RHT-reference application contract remains immutable. Thailand/LHT therefore requires a new application/persistence identity and explicit audit of the physical-side-to-functional-role mapping.
 
-This research does qualify:
+The qualification remains bounded to the already accepted signalized 15-minute Chapter 18 workflow using explicit access-point delays and externally qualified downstream through performance. It does not authorize deferred turn-dependent Chapter 18/30 procedures.
 
-1. the Chapter 18 inputs that are genuinely traffic-side invariant;
-2. explicit external downstream performance for a correctly identified Thai/LHT through movement;
-3. a narrow side-neutral subset in which unresolved right-side terms have no numerical contribution;
-4. the evidence and validation required before broader Thailand/LHT support may be claimed.
+## Why functional-role mirroring is different from numerical mirroring
 
-## Why the earlier kerbside mapping is not accepted
+The HCM/NCHRP source uses physical right/left language because the development context is U.S. right-hand traffic. The relevant model structure, however, distinguishes the **outside/roadside edge** from the **median-side edge**:
 
-The project-wide Thailand/LHT crosswalk already requires primary methodology evidence before converting a side-specific HCM source term to the opposite physical side. Geometric intuition or a presentation mirror is not sufficient.
+- NCHRP Project 3-79 defines curb presence from the right side of the traveled way in its U.S. RHT calibration sites and states that left-side curb presence is represented through median type. In RHT operation, the right side is the outside/kerbside edge and the left side is the median-side edge.
+- The NCHRP calibration tables record parking on the right side and lateral clearance from the right edge of the outside through lane. This again ties the observed variable to the outside roadway edge in the RHT study context.
+- A later Bonneson working paper describing the HCM 2010 urban-street method summarizes the predictor as **outside curb presence**, which supports the functional-roadside interpretation rather than an intrinsic physical-right effect.
+- HCM directional access counts are defined on the right side of each direction of travel. For a two-way RHT street, those two direction-relative right sides represent the two outside roadsides. The current bounded Eq. 18-3 term uses their sum, so the numerical access-density effect is already symmetric across the two outside roadsides.
 
-The Chapter 18/NCHRP evidence confirms that the free-flow-speed coefficients are source-side specific:
+Therefore the adapter should mirror **physical geometry into the same functional role**. It must not mirror numbers blindly, swap unrelated source-side variables, or change coefficients.
 
-- HCM defines `p_curb` as the proportion of the segment with curb on the **right-hand side**;
-- HCM defines `N_ap,s` and `N_ap,o` using access-point approaches on the **right side** in the subject and opposing directions;
-- the parking adjustment uses on-street parking available on the **right-hand side**;
-- the model was calibrated from U.S. urban-street data.
+## Relation to prior Thailand-first work
 
-Most importantly, the NCHRP Project 3-79 final report used to develop the methodology states that curb presence is based on the **right-hand side of the traveled way**, while curb presence on the **left-hand side is represented through median type**. The calibration data tables record right-hand-side parking. For access, the calibration-site definition includes right-hand-side approaches plus left-side approaches only when they are accessible across the median; the later HCM canonical input expresses the directional counts as right-side approaches in the subject and opposing directions.
+This is consistent with the existing project approach rather than a special exception:
 
-Therefore changing a Thai input from physical right to physical left can change Eq. 18-3 and LOS for asymmetric streets. No metamorphic software test can prove that this methodological substitution is valid; such a test would only encode the assumption being tested.
+- Two-Lane Highway workflows are primarily analysis-direction/opposing-direction based; LHT presentation can mirror roadway schematics without changing the numerical kernel.
+- Multilane work already distinguishes functional roadside meaning from source-specific median-side terms. Functional roadside wording can be localized while unresolved source-side constructs remain explicit.
+- Merge/diverge remain different because the accepted Chapter 14 method itself is explicitly bounded to a right-side ramp geometry; that is a methodology/configuration change, not merely an outside-roadside role label.
 
-## Primary methodology evidence
+Chapter 18 curb/parking/access terms are closer to the functional-roadside case than to the Chapter 14 right-ramp case.
 
-### NCHRP Project 3-79
+## International-use interpretation
+
+HCM Chapter 1 explicitly recognizes international use of HCM methods while cautioning that most research/defaults are North American and that equations/procedures should be calibrated to local conditions where needed.
+
+That distinction matters here:
+
+1. **Traffic-side semantic mapping** answers which physical Thai roadside corresponds to the HCM functional outside/roadside role.
+2. **Thai empirical calibration** answers whether the HCM coefficients/defaults predict Thai behavior accurately enough.
+
+The first can be qualified without claiming the second.
+
+Malaysia provides useful corroboration: the U.S. HCM was historically used extensively in Malaysian highway design, while Malaysia later developed local capacity manuals because local behavior and traffic characteristics differed. Its LHT methodologies use the left/outside roadside for directional access concepts. This supports functional-side adaptation while reinforcing the need to distinguish reference-method use from local calibration.
+
+## Evidence
+
+### Primary methodology
 
 Bonneson, Pratt, and Vandehey, *Predicting the Performance of Automobile Traffic on Urban Streets*, Final Report, NCHRP Project 3-79, Texas Transportation Institute / TRB, January 2008.
 
-Author-hosted report index:
-https://sites.google.com/site/jbreportsandtools/home/reports/hcm
+The model-development material establishes:
 
-The report's free-flow-speed model development states, in substance:
+- U.S. calibration using right-side curb presence;
+- left-side curb represented through median type;
+- right-side/outside parking observations;
+- lateral clearance measured from the outside through lane;
+- access observations tied to the roadside geometry of the RHT study sites.
 
-- curb presence is represented by an indicator for a curb on the right-hand side of the traveled way;
-- left-side curb presence is represented through median type;
-- calibration-site access data include right-hand-side approaches and left-side approaches only where accessible across the median;
-- calibration-site parking data record parking on the right-hand side in the direction of travel.
+This evidence is interpreted as an outside-versus-median functional distinction, not as proof that the biological/behavioral effect is inherently tied to the word “right.”
 
-A later working paper by Bonneson describes the predictor at a high level as **outside curb presence**. That wording is consistent with a functional-roadside interpretation, but it is not an explicit statement that the calibrated Chapter 18 coefficient may be mirrored unchanged into an LHT system. It therefore remains supporting context rather than sufficient qualification evidence.
+### Method-author terminology
 
-This primary evidence is stronger than a generic LHT road-role analogy and blocks an automatic right-to-left coefficient transfer without further interpretation or validation.
+J. Bonneson, *Comparison of Urban Streets Methodologies in HCM 2000 and HCM 2010*, Working Paper 3, 2013, describes the HCM 2010 free-flow-speed procedure as using speed limit, median type, **outside curb presence**, access-point density, and number of lanes.
 
-### HCM Chapter 18
+This is important supporting evidence for the functional-roadside interpretation.
 
-The accepted local HCM 7 Chapter 18 research gate records the same source definitions in Exhibit 18-11 / Eq. 18-3:
+### HCM international-use guidance
 
-- `p_curb`: curb on right-hand side;
-- `N_ap,s`, `N_ap,o`: right-side access-point approaches;
-- `p_pk`: right-hand-side on-street parking.
+HCM 7 Chapter 1 states that the general methods have international value but their use outside North America requires emphasis on local calibration and recognition of differences in traffic composition, user behavior, geometrics, and control.
 
-The Chapter 18 model is a U.S.-calibrated empirical model, not a geometry-only identity.
+This supports keeping the numerical HCM-reference method available under explicit uncalibrated/local-calibration status rather than treating LHT alone as a reason to invent new coefficients.
 
-## External LHT evidence — useful but not sufficient for coefficient transfer
+### LHT corroboration
 
-### Thailand traffic side
+- Thailand Road Traffic Act establishes left-hand road operation.
+- Malaysian Highway Capacity Manual uses left-side/outside directional access concepts in LHT operation and documents why local calibration/research may be needed.
+- Austroads/NZTA guidance uses kerbside and median-side functional roles under LHT.
 
-Thailand Road Traffic Act Section 39, Royal Thai Police English reference, establishes left-hand road operation:
-https://www.royalthaipolice.go.th/downloads/laws/laws_03_05-07.pdf
+These sources are corroborating semantic evidence, not substitutes for Chapter 18 methodology authority or Thai empirical calibration.
 
-### Malaysian and Australasian evidence
+## Qualified mapping for the bounded Thailand/LHT adapter
 
-The Malaysian Highway Capacity Manual and Austroads/NZTA material support LHT concepts such as outer/kerbside and median-side roles. The Malaysian manual, for example, counts directional multilane access points on the left side in its own locally developed LHT methodology.
+The mapping is by **functional road-side role**, not by copying a physical right/left label.
 
-These sources show how LHT facilities are normally described. They do **not** establish that the U.S.-calibrated Chapter 18 right-side coefficients are unchanged when applied to the physical left side.
-
-- MHCM 2011: https://crr.kkr.gov.my/en/dokumen/umum/WK.1.2011.84
-- Austroads GTM Part 5: https://austroads.com.au/__data/assets/pdf_file/0023/342770/AGTM05-19_Guide_to_Traffic_Management_Part_5_Road_Management.pdf
-- NZTA keeping-left guidance: https://www.nzta.govt.nz/driving-skills/learn-to-drive/roadcode/general-road-code/about-driving/key-driving-skills/keeping-left
-
-## Thai empirical transferability evidence
-
-No Thai Chapter 18 calibration dataset or accepted coefficient set was identified.
-
-A 2024 Thai multilane-highway field study found material differences between measured Thai capacity and HCM 2010/2016 estimates for that facility. It is not a Chapter 18 study and does not provide a Chapter 18 correction factor, but it reinforces the need to avoid an unsupported “Thai-calibrated” claim.
-
-- Srisurin & Amprayn (2024), DOI `10.14456/easr.2024.70`.
-
-Bangkok signalized-intersection data also show that motorcycle composition can materially affect saturation flow and start-up lost time. This supports keeping downstream intersection capacity/delay externally qualified rather than adding an unvalidated Thai intersection model.
-
-- Nakatsuji, Hai, Taweesilp & Tanaboriboon (2001), “Effects of Motorcycle on Capacity of Signalized Intersections,” DOI `10.2208/journalip.18.935`.
-
-Neither source authorizes transferring Chapter 18 right-side curb/parking/access coefficients to the opposite side.
-
-## Qualification matrix
-
-| Concept | Thailand/LHT status | Required treatment |
+| Thailand/LHT displayed concept | Existing canonical engine field | Qualified treatment |
 |---|---|---|
-| Segment length | **Qualified orientation-neutral** | Unit conversion only. |
-| Upstream intersection width | **Qualified orientation-neutral** | Unit conversion only. |
-| Signal/control spacing | **Qualified orientation-neutral** | Unit conversion only. |
-| Through lane count | **Qualified orientation-neutral** | Preserve count. |
-| Subject direction / through movement identity | **Qualified directional identity** | Preserve explicit Thai/LHT movement identity; no mirroring. |
-| Posted speed | **Qualified orientation-neutral** | Unit conversion only. |
-| `S_calib` | **Orientation-neutral parameter, Thai calibration unresolved** | No Thailand default; explicit user/local evidence only if claimed. |
-| Restrictive-median proportion | **Qualified geometrically for the existing equation** | Preserve source definition; no side swap. |
-| `curb_proportion` | **UNRESOLVED / source-side-sensitive** | Retain HCM right-hand source semantics or fail closed for a Thailand/LHT semantic workflow. Do not substitute physical-left kerbside value automatically. |
-| `parking_proportion` | **UNRESOLVED / source-side-sensitive** | Same: no automatic right-to-left transfer. |
-| `subject_side_access_count` / `opposing_side_access_count` | **UNRESOLVED / source-side-sensitive** | Preserve canonical HCM source semantics; do not relabel Thai kerbside counts as equivalent without evidence. |
-| Explicit access-point delays | **Conditionally usable** | Must correspond to the actual physical Thai/LHT access geometry; however they do not by themselves remove the Eq. 18-3 access-density source-side issue. |
-| `v_m` | **Qualified direction-specific** | Preserve subject-direction meaning. |
-| External `v_th`, `c_th`, `d_t` | **Qualified as external boundary data** | Must describe the same Thai/LHT movement, period, and control; methodology/source must be auditable. |
-| `d_other` | **Conditionally orientation-neutral** | Use only when source/scope is valid and no hidden side reinterpretation is introduced. |
-| LOS thresholds / Eq. 18-6 / travel-time equations | **Qualified numerical kernel** | No traffic-side transformation; existing domain remains unchanged. |
+| Segment length | `segment_length_ft` | Orientation-neutral; unit conversion only. |
+| Upstream intersection width | `upstream_intersection_width_ft` | Orientation-neutral; unit conversion only. |
+| Signal/control spacing | `signal_control_spacing_ft` | Orientation-neutral; unit conversion only. |
+| Through lane count | `through_lane_count` | Orientation-neutral. |
+| Subject direction / through movement | existing identity fields | Preserve actual movement identity; no compass mirroring. |
+| Posted speed | `posted_speed_limit_mph` | Orientation-neutral; unit conversion only. |
+| Calibration adjustment | `s_calib_mph` | Numerically orientation-neutral; no Thai default is implied. |
+| Restrictive-median proportion | `restrictive_median_proportion` | Preserve median-role value. |
+| **Outside/kerbside curb proportion** — physical left in Thailand | `curb_proportion` | Map functional outside-roadside role 1:1; do not complement, negate, or transform the numerical value. |
+| **Outside/kerbside parking proportion** — physical left in Thailand | `parking_proportion` | Map functional outside-roadside role 1:1. |
+| Access count on the outside roadside for the subject direction — physical left in Thailand | `subject_side_access_count` | Preserve direction-relative outside-roadside identity. |
+| Access count on the outside roadside for the opposing direction — physical left in that opposing travel direction | `opposing_side_access_count` | Preserve direction-relative outside-roadside identity. |
+| Midsegment demand | `v_m_veh_h` | Direction-specific but orientation-neutral. |
+| Qualified per-access-point delays | `access_point_delays_s_veh` | Must represent the actual Thailand/LHT access geometry; no internal turn-side model is inferred. |
+| Other supported delay | `d_other_s_veh` | Orientation-neutral if source/scope is valid. |
+| Downstream through demand/capacity/delay | external `v_th_veh_h`, `c_th_veh_h`, `d_t_s_veh` | Must describe the same actual Thailand/LHT through movement, period, and control. |
 
-## Restricted side-neutral Thailand/LHT subset
+### Access-density consequence
 
-A narrowly bounded Thailand/LHT use can avoid the unresolved source-side transfer entirely when all Chapter 18 source-side terms have **zero numerical contribution**.
+The bounded engine uses `subject_side_access_count + opposing_side_access_count` in Eq. 18-3. Under either RHT or LHT, the intended semantic mapping is the outside roadside of each travel direction. Swapping labels without respecting direction would corrupt provenance, but the aggregate numerical density remains the sum of the two outside roadsides.
 
-The minimum safe conditions are:
+## Calibration status
 
-- `curb_proportion = 0`;
-- `parking_proportion = 0`;
-- `subject_side_access_count = 0`;
-- `opposing_side_access_count = 0`;
-- no access-point delay entries;
-- no deferred turn/access procedure is invoked;
-- downstream `v_th`, `c_th`, and `d_t` are externally qualified for the actual Thai/LHT through movement;
-- the workflow is explicitly labeled **HCM-reference / not Thai-calibrated** unless a separately documented local `S_calib` is supplied.
+Thailand/LHT semantic qualification is **not** empirical Thai calibration.
 
-Under these conditions, the unresolved right-versus-left variables do not affect the numerical path, so traffic-side mirroring is not required.
+Required auditable states:
 
-This subset is intentionally narrow and should not be marketed as general Thailand Chapter 18 support.
+- `hcm_reference_uncalibrated` — use the HCM-reference coefficients with Thailand/LHT functional-role mapping and an explicit disclosure that local empirical calibration has not been established;
+- `user_local_calibration` — operator supplies `S_calib` together with traceable local evidence/source notes;
+- any future accepted Thailand-specific calibration profile must receive its own version/identity and validation record.
 
-### Symmetric roadsides are not automatically accepted
+No Thailand default `S_calib`, motorcycle/PCE adjustment, capacity correction, or other coefficient change is qualified here.
 
-Even if left and right curb/parking proportions happen to be numerically equal, that coincidence does not validate the empirical transfer of coefficients. It may make one specific numerical result insensitive to the choice, but it does not qualify the method generally. Any such use remains HCM-reference rather than Thailand/LHT-qualified unless the side-sensitive model is separately evidenced.
+## Deferred/fail-closed LHT terms
 
-## Deferred/fail-closed scope
+This qualification does **not** authorize:
 
-The following remain unqualified:
-
-- automatic physical-left mapping for `p_curb`, `p_pk`, `N_ap,s`, or `N_ap,o`;
-- Exhibit 18-13 planning access-delay turn/bay adjustments;
-- `p_ap,lt` and opposing-side turn accessibility;
-- Chapter 30 §4 left/right access-delay reinterpretation;
-- internal lane-group aggregation where turn shares, storage, or bays require side interpretation;
+- Exhibit 18-13 planning access-delay turn-percentage/bay adjustments;
+- `p_ap,lt` or other turn-accessibility logic requiring a left/right maneuver reinterpretation;
+- automatic Chapter 30 §4 access-delay calculations;
+- internal lane-group aggregation where turn shares, storage, or bays require physical-side interpretation;
 - TWSC/YIELD/STOP conflict logic;
-- Thailand motorcycle/PCE/capacity corrections;
-- any Thailand default free-flow calibration.
+- Thailand-specific saturation-flow, PCE, motorcycle, or capacity factors;
+- a claim that the HCM-reference result is locally validated for Thailand.
 
-## Persistence and architecture decision
+The bounded signalized workflow can proceed because per-access-point delays and downstream through performance remain explicit/external.
 
-### Existing RHT contract remains immutable
+## Architecture decision
 
-The accepted application contract:
+### Preserve the numerical kernel
+
+Do not change equations or coefficients in `src/hcmcalc/urban_street_ch18.py` merely for LHT.
+
+### Preserve the accepted RHT contract
 
 `hcm7_ch18_bounded_signalized_15min_rht_reference_v1`
 
-must not change meaning. Existing Project v2 fingerprints/results remain tied to that identity.
+remains immutable for existing Project v2 records, result identities, and fingerprints.
 
-### Do not create the previously proposed general LHT method variant yet
+### New Thailand/LHT application identity
 
-The previously proposed identities such as:
+Architecture scrutiny should use a distinct application/persistence identity while reusing the same engine, for example:
 
-`urban_street_segment_th_lht`
+- `method_id`: `urban_street_segment_th_lht`
+- `family`: `urban_streets`
+- `method_identifier`: `hcm7_urban_street_segment_th_lht`
+- `engine_method_identifier`: `urban_street_segment_ch18_v0_1`
+- `method_version`: `hcm_7_0_bounded_th_lht_v1`
+- `input_contract`: `hcm7_ch18_bounded_signalized_15min_th_lht_semantic_v1`
+- `project_type`: `manual_urban_street_segment_th_lht_v1`
 
-must **not** be implemented as a general method while the source-side Eq. 18-3 terms remain unresolved. A new method identity would make the unsupported mapping look qualified merely by versioning it.
+The exact identity must be frozen before implementation acceptance.
 
-If the restricted side-neutral subset is later implemented, it requires a contract name that states that restriction explicitly rather than implying full LHT support.
+## Required adapter/audit semantics
 
-### Engine remains unchanged
+The Thailand/LHT contract should expose role-based displayed fields such as:
 
-No Chapter 18 equation or coefficient change is authorized.
+- `kerbside_curb_proportion`;
+- `kerbside_parking_proportion`;
+- `subject_kerbside_access_count`;
+- `opposing_kerbside_access_count`.
 
-## What evidence can unlock general Thailand/LHT support?
+Audit/report evidence must retain:
 
-At least one of the following is required:
+- traffic side = LHT;
+- displayed physical-side semantics (kerbside = physical left for each direction in Thailand);
+- canonical HCM-reference field mapping;
+- calibration status;
+- explicit external-through provenance;
+- no-rerun/current-result fingerprint guarantees.
 
-1. **Authoritative methodology interpretation** from TRB/HCM or the methodology authors explicitly establishing that the Chapter 18 right-side variables are intended as functional outside/kerbside variables and that the calibrated coefficients transfer unchanged under an LHT mirror; or
-2. **Thailand/LHT empirical validation/calibration** using representative urban-street free-flow-speed data and physical-side variables, sufficient to validate the transferred coefficients or estimate a separately versioned Thai model.
+Do not expose the RHT physical-right wording as if it were the Thai user-facing geometry.
 
-A software metamorphic test alone cannot supply this evidence.
+## Required verification strategy
 
-## Empirical-validation path if authoritative interpretation is unavailable
+No authoritative Thailand/LHT HCM Chapter 18 worked example was identified. Acceptance therefore combines the accepted HCM RHT fixture with semantic/metamorphic and asymmetric tests.
 
-A future Thailand study should, at minimum:
+1. **Role-mirror equivalence** — express the Chapter 30 Example Problem 1 using LHT functional-roadside inputs; normalization must yield the same canonical HCM-reference values and serialized numerical result as the accepted RHT fixture.
+2. **Asymmetric physical-side fixture** — deliberately give different kerbside and median-side physical conditions so the adapter fails if it reads the wrong side.
+3. **Access-direction provenance** — subject/opposing kerbside identities survive normalization even though Eq. 18-3 uses their sum.
+4. **Direction identity** — subject direction, external direction, movement, period, control, `v_m`, `v_th`, `c_th`, and `d_t` remain consistent.
+5. **RHT immutability** — existing RHT Project v2 records/fingerprints/results are byte/semantic stable.
+6. **Kernel invariance** — direct canonical engine inputs produce equivalent results before and after adding the adapter.
+7. **Calibration disclosure** — default LHT result is audibly `hcm_reference_uncalibrated`; no Thai-calibrated wording appears without evidence.
+8. **Fail-closed future scope** — no deferred turn-side procedure becomes enabled through the semantic adapter.
+9. **Full regression** — engine/application/Project/API/export/frontend suites remain green.
+10. **Fresh independent review** of the implementation before merge.
 
-- sample multiple urban street segments and directions across relevant speed limits, median conditions, lane counts, curb/parking conditions, and access densities;
-- measure free-flow speeds under the HCM low-volume definition;
-- record both physical-left and physical-right curb, parking, and access variables so alternative mappings can be tested;
-- document motorcycle/mixed-flow composition;
-- compare the source-right HCM model, kerbside-mirrored model, and locally recalibrated alternatives out of sample;
-- quantify bias/error and coefficient uncertainty;
-- preserve a validation set not used for calibration;
-- version any accepted Thai coefficient profile rather than changing the HCM-reference kernel silently.
+## Issue #181 role
 
-This is a methodology research project, not a UI localization task.
+Issue #181 remains useful, but it is no longer treated as a blocker to the semantic adapter. Its purpose is to strengthen the evidence base and determine whether a later release can claim stronger transferability or Thai-specific validation:
 
-## Required software tests after the methodology boundary is accepted
+- Track A: obtain an authoritative HCM/TRB/method-author clarification of outside/kerbside semantics and coefficient transfer;
+- Track B: perform Thailand/LHT empirical validation/calibration if higher local predictive validity is required.
 
-Even before general LHT support exists, software must prove that:
+An authoritative contrary interpretation would trigger re-evaluation of this qualification before a production release.
 
-1. the existing RHT contract and Project v2 fingerprints remain immutable;
-2. no Thailand/LHT flag silently changes `curb_proportion`, `parking_proportion`, or access counts;
-3. any restricted side-neutral contract rejects nonzero unresolved side-sensitive values;
-4. external Thai/LHT movement identity/provenance is retained correctly;
-5. the canonical Chapter 18 numerical engine remains serialized-equivalent for identical canonical inputs;
-6. deferred turn/access procedures remain unavailable.
+## Final verdict
 
-## Scrutiny result
+**GO WITH CONDITIONS** for a new Thailand/LHT **functional-role semantic adapter** over the existing bounded HCM Chapter 18 engine.
 
-**REPLAN for the previously proposed general role-mirrored adapter.**
+This authorizes semantic mapping of the outside/kerbside roadside from physical right under the HCM RHT reference to physical left under Thai LHT, while keeping the equations/coefficients unchanged and explicitly labeling the result as HCM-reference unless locally calibrated.
 
-The objective — safe Thailand/LHT use — remains valid, but the proposed automatic kerbside mapping crossed an evidence boundary. The revised direction is:
-
-- preserve the accepted RHT-reference kernel and contract;
-- qualify orientation-neutral pieces explicitly;
-- optionally implement only a clearly named restricted side-neutral Thailand/LHT contract;
-- keep general curb/parking/access-side mapping fail closed;
-- pursue authoritative clarification or Thai empirical validation before broader support.
-
-## Final research-gate verdict
-
-**NEEDS MORE EVIDENCE for general Thailand/LHT Chapter 18 support.**
-
-**GO WITH CONDITIONS for a restricted side-neutral subset** where unresolved right-side terms are zero and downstream through performance is externally qualified for the actual Thai/LHT movement.
-
-This result is intentionally conservative. It prevents a presentation/localization change from becoming an unvalidated methodology change.
+It does not authorize Thai empirical calibration claims, automatic turn-side algorithms, new Chapter 30 access-delay procedures, or expansion beyond the already bounded signalized 15-minute workflow.
