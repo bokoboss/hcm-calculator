@@ -10,6 +10,25 @@ METHOD = "urban_street_segment"
 TEMPLATE = "USS-CH30-EP1"
 
 
+@pytest.mark.parametrize("field_key", ("analysis_period_min", "external_analysis_period_min"))
+@pytest.mark.parametrize("endpoint", ("templates", "starting-values"))
+def test_analysis_period_field_units_are_minutes_in_public_schema(endpoint, field_key):
+    client = TestClient(create_app())
+    if endpoint == "templates":
+        fields = client.get(f"/api/v1/analyses/{METHOD}/templates").json()["fields"]
+    else:
+        fields = client.get(
+            f"/api/v1/analyses/{METHOD}/starting-values",
+            params={"template_id": TEMPLATE, "unit_system": "imperial"},
+        ).json()["fields"]
+    field = next(field for field in fields if field["key"] == field_key)
+
+    assert field["kind"] == "integer"
+    assert field.get("unit") == "min"
+    assert field["required"] is True
+    assert field["label_key"] == f"urban_street_segment.{field_key}"
+
+
 def test_generic_api_chapter18_workflow_and_project_contract():
     client = TestClient(create_app())
     catalog = client.get("/api/v1/methods")

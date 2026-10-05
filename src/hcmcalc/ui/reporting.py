@@ -449,6 +449,8 @@ def _normalized_urban_street_input_records(inputs: Any) -> list[dict[str, Any]]:
 
 
 def _urban_input_unit(key: str) -> str | None:
+    if key == "analysis_period_min":
+        return "min"
     if key.endswith("_ft"):
         return "ft (HCM-native)"
     if key.endswith("_mph"):

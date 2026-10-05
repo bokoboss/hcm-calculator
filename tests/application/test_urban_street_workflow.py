@@ -462,6 +462,27 @@ def test_current_result_exports_without_rerunning_and_preserves_external_provena
         assert "external_through_provenance" in exported["content"]
 
 
+@pytest.mark.parametrize(
+    "label", ("analysis_period_min", "external_through.analysis_period_min")
+)
+def test_normalized_chapter18_analysis_period_report_units_are_minutes(label):
+    snapshot = _chapter18_snapshot()
+    exported = export_current_workflow(
+        METHOD_ID,
+        template_id=TEMPLATE_ID,
+        unit_system="imperial",
+        displayed_inputs=snapshot["displayed_inputs"],
+        calculation_fingerprint=snapshot["calculation_fingerprint"],
+        input_snapshot_fingerprint=snapshot["input_snapshot_fingerprint"],
+        result=snapshot["result"],
+        export_format="json",
+    )
+    report = json.loads(exported["content"])
+    normalized = {item["label"]: item for item in report["normalized_engine_inputs_summary"]}
+
+    assert normalized[label] == {"label": label, "value": 15, "unit": "min"}
+
+
 @pytest.mark.parametrize("unit_system", ("metric", "imperial"))
 @pytest.mark.parametrize("export_format", ("json", "markdown", "csv", "xlsx"))
 def test_chapter18_reports_keep_displayed_and_normalized_sections_in_all_formats(
@@ -502,6 +523,10 @@ def test_chapter18_reports_keep_displayed_and_normalized_sections_in_all_formats
         assert "inputs_summary" in report and "normalized_engine_inputs_summary" in report
         displayed = {item["label"]: item for item in report["inputs_summary"]}
         normalized = {item["label"]: item for item in report["normalized_engine_inputs_summary"]}
+        for label in ("analysis_period_min", "external_analysis_period_min"):
+            assert displayed[label] == {"label": label, "value": 15, "unit": "min"}
+        for label in ("analysis_period_min", "external_through.analysis_period_min"):
+            assert normalized[label] == {"label": label, "value": 15, "unit": "min"}
         assert displayed["segment_length"] == {"label": "segment_length", "value": displayed_length, "unit": length_unit}
         assert displayed["posted_speed_limit"]["value"] == pytest.approx(displayed_speed)
         assert displayed["posted_speed_limit"]["unit"] == speed_unit
@@ -524,18 +549,36 @@ def test_chapter18_reports_keep_displayed_and_normalized_sections_in_all_formats
     elif export_format == "markdown":
         text = exported["content"]
         assert "## Key Inputs" in text and "## Normalized Engine Inputs" in text
+        for label in (
+            "analysis_period_min",
+            "external_analysis_period_min",
+            "external_through.analysis_period_min",
+        ):
+            assert f"| {label} | 15 | min |" in text
         assert f"| segment_length | {displayed_length_text} | {length_unit} |" in text
         assert f"| posted_speed_limit | {displayed_speed_text} | {speed_unit} |" in text
         assert f"| segment_length_ft | {normalized_length} | ft (HCM-native) |" in text
     elif export_format == "csv":
         rows = list(csv.reader(StringIO(exported["content"])))
         assert ["Inputs"] in rows and ["Normalized Engine Inputs"] in rows
+        for label in (
+            "analysis_period_min",
+            "external_analysis_period_min",
+            "external_through.analysis_period_min",
+        ):
+            assert [label, "15", "min"] in rows
         assert ["segment_length", displayed_length_text, length_unit] in rows
         assert ["posted_speed_limit", displayed_speed_text, speed_unit] in rows
         assert ["segment_length_ft", str(normalized_length), "ft (HCM-native)"] in rows
     else:
         workbook = load_workbook(BytesIO(base64.b64decode(exported["content_base64"])), data_only=False)
         rows = list(workbook["Inputs"].values)
+        for label in (
+            "analysis_period_min",
+            "external_analysis_period_min",
+            "external_through.analysis_period_min",
+        ):
+            assert (label, 15, "min") in rows
         displayed_rows = {row[0]: row for row in rows if row[0] in {"segment_length", "posted_speed_limit"}}
         assert displayed_rows["segment_length"][1] == pytest.approx(displayed_length)
         assert displayed_rows["segment_length"][2] == length_unit

@@ -130,6 +130,8 @@ def _field_schema() -> list[dict[str, Any]]:
             field.update(unit_metric="km/h", unit_imperial="mi/h")
         elif key.endswith("_veh_h"):
             field["unit"] = "veh/h"
+        elif key in {"analysis_period_min", "external_analysis_period_min"}:
+            field["unit"] = "min"
         elif "delay" in key or key.endswith("d_t_s_veh") or key == "d_other_s_veh":
             field["unit"] = "s/veh"
         result.append(field)
