@@ -34,7 +34,7 @@ The Chapter 18/NCHRP evidence confirms that the free-flow-speed coefficients are
 - the parking adjustment uses on-street parking available on the **right-hand side**;
 - the model was calibrated from U.S. urban-street data.
 
-Most importantly, the NCHRP Project 3-79 final report used to develop the methodology states that curb presence is based on the **right-hand side of the traveled way**, while curb presence on the **left-hand side is represented through median type**. The calibration data tables likewise record right-hand-side parking and right-hand-side/accessibility-based access variables.
+Most importantly, the NCHRP Project 3-79 final report used to develop the methodology states that curb presence is based on the **right-hand side of the traveled way**, while curb presence on the **left-hand side is represented through median type**. The calibration data tables record right-hand-side parking. For access, the calibration-site definition includes right-hand-side approaches plus left-side approaches only when they are accessible across the median; the later HCM canonical input expresses the directional counts as right-side approaches in the subject and opposing directions.
 
 Therefore changing a Thai input from physical right to physical left can change Eq. 18-3 and LOS for asymmetric streets. No metamorphic software test can prove that this methodological substitution is valid; such a test would only encode the assumption being tested.
 
