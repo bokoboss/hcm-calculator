@@ -23,10 +23,12 @@ The qualification remains bounded to the already accepted signalized 15-minute C
 
 The HCM/NCHRP source uses physical right/left language because the development context is U.S. right-hand traffic. The relevant model structure, however, distinguishes the **outside/roadside edge** from the **median-side edge**:
 
-- NCHRP Project 3-79 defines curb presence from the right side of the traveled way in its U.S. RHT calibration sites and states that left-side curb presence is represented through median type. In RHT operation, the right side is the outside/kerbside edge and the left side is the median-side edge.
-- The NCHRP calibration tables record parking on the right side and lateral clearance from the right edge of the outside through lane. This again ties the observed variable to the outside roadway edge in the RHT study context.
-- A later Bonneson working paper describing the HCM 2010 urban-street method summarizes the predictor as **outside curb presence**, which supports the functional-roadside interpretation rather than an intrinsic physical-right effect.
-- HCM directional access counts are defined on the right side of each direction of travel. For a two-way RHT street, those two direction-relative right sides represent the two outside roadsides. The current bounded Eq. 18-3 term uses their sum, so the numerical access-density effect is already symmetric across the two outside roadsides.
+- NCHRP Project 3-79 Appendix B defines the free-flow-speed curb indicator as curb on the **right-hand side of the traveled way** (p. B-9) and then states explicitly that curb presence is based on the right-hand side while curb presence on the **left-hand side is specified through median type** (p. B-10). In the U.S. RHT development context, this is the outside/kerbside edge versus the median-side edge.
+- NCHRP Project 3-79 Table B-3 records **on-street parking on the right-hand side** and measures horizontal clearance from the **right edge of the outside through traffic lane** to the curb/obstruction (p. B-15). This ties the observed variables to the outside roadway edge in the RHT calibration sites.
+- Bonneson, *Comparison of Urban Streets Methodologies in HCM 2000 and HCM 2010*, Working Paper 3 (2013), describes the HCM 2010 free-flow-speed predictor as using speed limit, median type, **outside curb presence**, access-point density, and number of lanes (p. WP 3.0-5). The author-hosted HCM report/paper index lists Working Paper 3 at https://sites.google.com/site/jbreportsandtools/home/reports/hcm .
+- HCM 7 Chapter 18 Exhibit 18-11 / Eq. 18-3 (p. 18-28) retains the same source-side structure: `p_curb` is the right-side curb proportion and the access-density term uses direction-relative right-side counts `N_ap,s` and `N_ap,o`. For a two-way RHT street, the direction-relative right sides are the two outside roadsides. The bounded engine uses their sum in the access-density term.
+
+These pinpoint sources support a functional outside-versus-median interpretation. They do **not** prove Thai empirical calibration; they establish the traffic-side semantic role being mapped.
 
 Therefore the adapter should mirror **physical geometry into the same functional role**. It must not mirror numbers blindly, swap unrelated source-side variables, or change coefficients.
 
@@ -59,21 +61,25 @@ Malaysia provides useful corroboration: the U.S. HCM was historically used exten
 
 Bonneson, Pratt, and Vandehey, *Predicting the Performance of Automobile Traffic on Urban Streets*, Final Report, NCHRP Project 3-79, Texas Transportation Institute / TRB, January 2008.
 
-The model-development material establishes:
+Pinpoint locations used by this qualification:
 
-- U.S. calibration using right-side curb presence;
-- left-side curb represented through median type;
-- right-side/outside parking observations;
-- lateral clearance measured from the outside through lane;
-- access observations tied to the roadside geometry of the RHT study sites.
+- Appendix B, p. **B-9**: the free-flow-speed model defines `I_curb` from curb presence on the right-hand side of the traveled way.
+- Appendix B, p. **B-10**: curb presence is based on the right-hand side and left-side curb presence is represented through median type.
+- Appendix B, Table B-3, p. **B-15**, notes 3, 5, 6, and 7: access observations, right-side parking, outside-edge curb presence, and horizontal clearance from the right edge of the outside through lane are documented for calibration sites.
+- HCM 7 Chapter 18, Exhibit 18-11 / Eq. 18-3, p. **18-28**: the current HCM-reference free-flow-speed chain retains right-side curb/access definitions used by the accepted engine mapping.
+
+The NCHRP report is indexed on James Bonneson's report site at https://sites.google.com/site/jbreportsandtools/home/reports/hcm .
 
 This evidence is interpreted as an outside-versus-median functional distinction, not as proof that the behavioral effect is inherently tied to the word “right.”
 
 ### Method-author terminology
 
-J. Bonneson, *Comparison of Urban Streets Methodologies in HCM 2000 and HCM 2010*, Working Paper 3, 2013, describes the HCM 2010 free-flow-speed procedure as using speed limit, median type, **outside curb presence**, access-point density, and number of lanes.
+J. Bonneson, *Comparison of Urban Streets Methodologies in HCM 2000 and HCM 2010*, Working Paper 3, April 25, 2013.
 
-This is important supporting evidence for the functional-roadside interpretation.
+- **WP 3.0-5**, “HCM Methodology — Free-Flow Speed”: the predictor is described as depending on speed limit, median type, **outside curb presence**, access-point density, and number of lanes.
+- Author-hosted HCM reports/papers index: https://sites.google.com/site/jbreportsandtools/home/reports/hcm
+
+This is supporting evidence for the functional-roadside interpretation and is not used as a substitute for Thai calibration.
 
 ### HCM international-use guidance
 
