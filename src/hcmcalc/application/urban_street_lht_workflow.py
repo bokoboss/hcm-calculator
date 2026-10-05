@@ -106,6 +106,13 @@ class ThailandLHTUrbanStreetWorkflow(UrbanStreetWorkflow):
                 message_key="api.invalid_input",
                 details={"field": "calibration_status"},
             )
+        if note is not None and not isinstance(note, str):
+            raise ApplicationWorkflowError(
+                "Calibration source note must be text or null.",
+                code="invalid_input",
+                message_key="api.invalid_input",
+                details={"field": "calibration_source_note"},
+            )
         if status == "hcm_reference_uncalibrated" and normalized["s_calib_mph"] != 0:
             raise ApplicationWorkflowError(
                 "HCM reference uncalibrated requires s_calib = 0.",

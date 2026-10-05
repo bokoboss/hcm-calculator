@@ -239,6 +239,28 @@ def test_thailand_lht_public_contract_api_project_and_all_current_exports():
     assert scenario["result_status"] == "current"
 
 
+def test_thailand_lht_api_rejects_nontext_uncalibrated_source_note():
+    client = TestClient(create_app())
+    method = "urban_street_segment_th_lht"
+    template = "USS-TH-LHT-CH30-EP1"
+    displayed = client.get(
+        f"/api/v1/analyses/{method}/starting-values",
+        params={"template_id": template, "unit_system": "imperial"},
+    ).json()["displayed_inputs"]
+    displayed["calibration_source_note"] = {"unexpected": "object"}
+
+    response = client.post(
+        f"/api/v1/analyses/{method}/validate",
+        json={"template_id": template, "unit_system": "imperial", "displayed_inputs": displayed},
+    )
+
+    body = response.json()
+    assert response.status_code == 200
+    assert body["valid"] is False
+    assert body["ready"] is False
+    assert body["errors"][0]["field"] == "calibration_source_note"
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     [

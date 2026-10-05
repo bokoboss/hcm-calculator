@@ -140,6 +140,65 @@ def test_asymmetric_mapping_and_calibration_contract():
     assert next_snapshot["input_snapshot_fingerprint"] != accepted["input_snapshot_fingerprint"]
 
 
+@pytest.mark.parametrize("status", ("hcm_reference_uncalibrated", "user_local_calibration"))
+@pytest.mark.parametrize("note", (123, 1.25, True, [], {}))
+def test_calibration_source_note_rejects_non_text_values_for_both_statuses(status, note):
+    workflow = lht()
+    values = starter()
+    values["calibration_status"] = status
+    values["calibration_source_note"] = note
+    if status == "user_local_calibration":
+        values["s_calib"] = 1.0
+
+    validation = workflow.validate(
+        template_id=TEMPLATE,
+        unit_system="imperial",
+        displayed_inputs=values,
+    )
+
+    assert validation["valid"] is False
+    assert validation["ready"] is False
+    assert validation["errors"][0]["field"] == "calibration_source_note"
+
+
+@pytest.mark.parametrize("note", (None, "", "   ", "Operator supplied source note"))
+def test_uncalibrated_status_accepts_null_or_any_string_note_at_zero_s_calib(note):
+    workflow = lht()
+    values = starter()
+    values["calibration_source_note"] = note
+
+    validation = workflow.validate(
+        template_id=TEMPLATE,
+        unit_system="imperial",
+        displayed_inputs=values,
+    )
+
+    assert validation["valid"] is True
+    assert validation["ready"] is True
+    assert validation["displayed_inputs"]["calibration_source_note"] == note
+
+
+@pytest.mark.parametrize("note", (None, "", "   "))
+def test_local_calibration_still_requires_nonblank_source_note(note):
+    workflow = lht()
+    values = starter()
+    values.update({
+        "calibration_status": "user_local_calibration",
+        "calibration_source_note": note,
+        "s_calib": 1.0,
+    })
+
+    validation = workflow.validate(
+        template_id=TEMPLATE,
+        unit_system="imperial",
+        displayed_inputs=values,
+    )
+
+    assert validation["valid"] is False
+    assert validation["ready"] is False
+    assert validation["errors"][0]["field"] == "calibration_source_note"
+
+
 def test_project_v2_roundtrip_stale_and_exports_without_rerun(monkeypatch):
     workflow = lht()
     values = starter()
