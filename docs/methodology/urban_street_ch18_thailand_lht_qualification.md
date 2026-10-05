@@ -54,7 +54,9 @@ The report's free-flow-speed model development states, in substance:
 - calibration-site access data include right-hand-side approaches and left-side approaches only where accessible across the median;
 - calibration-site parking data record parking on the right-hand side in the direction of travel.
 
-This is stronger evidence than a generic LHT road-role analogy and blocks an automatic right-to-left coefficient transfer.
+A later working paper by Bonneson describes the predictor at a high level as **outside curb presence**. That wording is consistent with a functional-roadside interpretation, but it is not an explicit statement that the calibrated Chapter 18 coefficient may be mirrored unchanged into an LHT system. It therefore remains supporting context rather than sufficient qualification evidence.
+
+This primary evidence is stronger than a generic LHT road-role analogy and blocks an automatic right-to-left coefficient transfer without further interpretation or validation.
 
 ### HCM Chapter 18
 
