@@ -59,7 +59,7 @@ Austroads road-management guidance uses **kerbside** and **median-side** lane ro
 
 - Austroads Guide to Traffic Management Part 5: https://austroads.com.au/__data/assets/pdf_file/0023/342770/AGTM05-19_Guide_to_Traffic_Management_Part_5_Road_Management.pdf
 - NZTA keeping-left guidance: https://www.nzta.govt.nz/driving-skills/learn-to-drive/roadcode/general-road-code/about-driving/key-driving-skills/keeping-left
-- NZTA lane-use guidance: https://www.nzta.govt.nz/driving-skills/learn-to-drive/roadcode/motorcycle-code/about-riding/key-driving-skills/using-lanes-correctly
+- NZTA lane-use guidance: https://www.nzta.govt.nz/driving-skills/learn-to-drive/roadcode/motorcycle-code/about-riding/key-riding-skills/using-lanes-correctly
 
 These sources support role-based terminology such as **kerbside**, **median-side**, **subject roadside**, and **opposite roadside** rather than blind left/right substitution.
 
@@ -69,7 +69,9 @@ A 2024 Thai field study comparing HCM 2010/2016 estimates with measured capacity
 
 - Srisurin & Amprayn (2024), DOI `10.14456/easr.2024.70`: https://murex.mahidol.ac.th/en/publications/evaluation-of-the-highway-capacity-manual-hcm-and-thailands-depar/
 
-Research on Bangkok signalized intersections also shows motorcycle composition can materially affect saturation flow. The bounded architecture appropriately leaves downstream through capacity/delay external and qualified rather than embedding an unvalidated Thailand-specific intersection solver.
+Research using Bangkok signalized-intersection field data also shows motorcycle composition can materially affect saturation flow and start-up lost time. The bounded architecture appropriately leaves downstream through capacity/delay external and qualified rather than embedding an unvalidated Thailand-specific intersection solver.
+
+- Nakatsuji, T., Hai, N. G., Taweesilp, S., & Tanaboriboon, Y. (2001), “Effects of Motorcycle on Capacity of Signalized Intersections,” *Doboku Gakkai Ronbunshu / Infrastructure Planning Review*, Vol. 18, pp. 935–942, DOI `10.2208/journalip.18.935`: https://doi.org/10.2208/journalip.18.935
 
 ## Qualified mapping for the bounded Thailand/LHT adapter
 
