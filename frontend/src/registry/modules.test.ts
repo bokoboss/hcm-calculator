@@ -92,4 +92,15 @@ describe('frontend delivery registry', () => {
     expect(isFrontendModuleContractCompatible(definition, undefined)).toBe(false);
     expect(getActionableMethods([definition])).toEqual([]);
   });
+
+  it('keeps backend Chapter 18 available but frontend not delivered or route eligible', () => {
+    const backendMethod = method(
+      'urban_street_segment',
+      'hcm7_ch18_bounded_signalized_15min_rht_reference_v1',
+    );
+
+    expect(frontendModuleRegistry.urban_street_segment).toBeUndefined();
+    expect(getMethodActionabilityStatus(backendMethod)).toBe('not_delivered');
+    expect(isMethodRouteEligible(backendMethod)).toBe(false);
+  });
 });

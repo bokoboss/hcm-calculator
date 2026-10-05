@@ -44,6 +44,16 @@ def test_packaged_rebuilt_spa_entrypoint_references_packaged_assets() -> None:
         )
 
 
+def test_packaged_spa_contains_current_chapter18_reference_only_discovery() -> None:
+    static_root = files("hcmcalc.ui").joinpath("static")
+    bundles = list(static_root.joinpath("assets").glob("*.js"))
+    assert bundles, "Missing packaged SPA JavaScript bundle"
+    bundle_text = "\n".join(bundle.read_text(encoding="utf-8") for bundle in bundles)
+
+    assert "urban_street_segment" in bundle_text
+    assert "Reference only" in bundle_text
+
+
 def test_public_asset_resolvers_return_existing_packaged_paths() -> None:
     for segment_type in ("passing_constrained", "passing_zone", "passing_lane"):
         schematic = get_segment_schematic_path(segment_type)

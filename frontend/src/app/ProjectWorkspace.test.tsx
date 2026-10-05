@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MethodDefinition } from '../api/types';
 import { I18nProvider } from '../i18n';
 import { ProjectWorkspace } from './ProjectWorkspace';
@@ -54,6 +54,47 @@ const migratedReferenceOnlyProject: Record<string, unknown> = {
   ],
 };
 
+const chapter18Method: MethodDefinition = {
+  ...referenceOnlyMethod,
+  method_id: 'urban_street_segment',
+  family: 'urban_streets',
+  name_key: 'method.urban_street_segment.name',
+  description_key: 'method.urban_street_segment.description',
+  method_identifier: 'hcm7_urban_street_segment',
+  engine_method_identifier: 'urban_street_segment_ch18_v0_1',
+  input_contract: 'hcm7_ch18_bounded_signalized_15min_rht_reference_v1',
+  project_type: 'manual_urban_street_segment_v1',
+  hcm_chapter: '18',
+  chapter_reference: 'HCM 7.0 Chapter 18; Chapter 30 Example Problem 1',
+};
+
+const chapter18ComparisonProject: Record<string, unknown> = {
+  project_id: 'project_chapter18',
+  project_name: 'Chapter 18 study',
+  schema_version: '2.0',
+  updated_at: '2026-01-01T00:00:00+00:00',
+  analyses: [{
+    analysis_id: 'analysis_chapter18',
+    analysis_name: 'Urban street',
+    method_id: 'urban_street_segment',
+    method_identifier: 'hcm7_urban_street_segment',
+    input_contract: 'hcm7_ch18_bounded_signalized_15min_rht_reference_v1',
+    scenarios: ['a', 'b'].map((suffix) => ({
+      scenario_id: `scenario_${suffix}`,
+      scenario_name: `Scenario ${suffix.toUpperCase()}`,
+      kind: suffix === 'a' ? 'base' : 'duplicate',
+      result_status: 'current',
+      calculation_fingerprint: `fingerprint_${suffix}`,
+      unit_system: 'imperial',
+      template_id: 'USS-CH30-EP1',
+      displayed_inputs: {},
+      result: { engine_result: { outputs: { level_of_service: 'C' } } },
+    })),
+  }],
+};
+
+afterEach(() => vi.unstubAllGlobals());
+
 describe('ProjectWorkspace method actionability', () => {
   it('keeps migrated delivered methods actionable for Calculate and Edit', () => {
     render(
@@ -73,5 +114,53 @@ describe('ProjectWorkspace method actionability', () => {
     expect(screen.getByRole('button', { name: 'Calculate scenario' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Edit scenario' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Duplicate scenario' })).not.toBeDisabled();
+  });
+});
+
+describe('ProjectWorkspace Chapter 18 comparison vocabulary', () => {
+  it('renders canonical Chapter 18 metric labels and units returned by the generic comparison API', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        comparison: {
+          los_grade_transition: { from: 'C', to: 'C', changed: false },
+          recalculated: false,
+          numeric_deltas: [
+            { key: 'travel_speed_mph', left: 23, right: 24, delta: 1 },
+            { key: 'running_speed_mph', left: 36, right: 37, delta: 1 },
+            { key: 'through_v_c', left: 0.52, right: 0.53, delta: 0.01 },
+            { key: 'running_time_s', left: 33, right: 32, delta: -1 },
+            { key: 'total_travel_time_s', left: 51, right: 50, delta: -1 },
+          ],
+        },
+      }),
+    }));
+    render(
+      <I18nProvider>
+        <ProjectWorkspace
+          project={chapter18ComparisonProject}
+          methods={[chapter18Method]}
+          onProjectChange={() => undefined}
+          onNewAnalysis={() => undefined}
+          onEditScenario={() => undefined}
+        />
+      </I18nProvider>,
+    );
+
+    fireEvent.change(screen.getByLabelText('Left scenario'), { target: { value: 'scenario_a' } });
+    fireEvent.change(screen.getByLabelText('Right scenario'), { target: { value: 'scenario_b' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Compare' }));
+
+    const result = await screen.findByTestId('comparison-result');
+    await waitFor(() => expect(result.querySelectorAll('tbody tr')).toHaveLength(5));
+    expect(result).toHaveTextContent('C → C');
+    expect(result).toHaveTextContent('Travel speed');
+    expect(result).toHaveTextContent('Running speed');
+    expect(result).toHaveTextContent('Through v/c');
+    expect(result).toHaveTextContent('Running time');
+    expect(result).toHaveTextContent('Total travel time');
+    expect(result).toHaveTextContent('mi/h');
+    expect(result).toHaveTextContent('ratio');
+    expect(result).toHaveTextContent('s');
   });
 });

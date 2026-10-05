@@ -89,4 +89,54 @@ describe('localization catalog', () => {
     expect(translate('th', 'method.merge_segment.scope')).toContain('ยังไม่ผ่านการรับรอง');
   });
 
+  it('localizes bounded Chapter 18 discovery metadata without leaking catalog keys', () => {
+    const keys = [
+      'method.urban_streets',
+      'method.urban_street_segment.name',
+      'method.urban_street_segment.description',
+      'method.urban_street_segment.scope',
+    ];
+    for (const locale of ['en', 'th'] as const) {
+      for (const key of keys) {
+        expect(catalogs[locale][key]).toBeTruthy();
+        expect(translate(locale, key)).not.toBe(key);
+      }
+      expect(translate(locale, 'method.urban_street_segment.description')).toContain('15');
+      expect(translate(locale, 'method.urban_street_segment.scope')).toContain('RHT');
+      expect(translate(locale, 'method.urban_street_segment.scope')).toContain('LHT');
+    }
+    expect(translate('en', 'method.urban_street_segment.scope')).toContain('signalized');
+    expect(translate('en', 'method.urban_street_segment.scope')).toMatch(/bounded/i);
+    expect(translate('th', 'method.urban_street_segment.scope')).toContain('สัญญาณไฟ');
+    expect(translate('th', 'method.urban_street_segment.scope')).toContain('ขอบเขตจำกัด');
+  });
+
+  it('translates every advertised Chapter 18 field and group label key in both locales', () => {
+    const fieldKeys = [
+      'segment_length', 'upstream_intersection_width', 'signal_control_spacing',
+      'through_lane_count', 'subject_direction', 'through_movement_id',
+      'posted_speed_limit', 's_calib', 'restrictive_median_proportion',
+      'curb_proportion', 'parking_proportion', 'subject_side_access_count',
+      'opposing_side_access_count', 'v_m_veh_h', 'access_point_delays_s_veh',
+      'd_other_s_veh', 'analysis_period_min', 'control_type', 'demand_balanced',
+      'demand_adjustments_resolved', 'capacity_effects_resolved', 'spillback_present',
+      'external_source_class', 'external_source_tool', 'external_source_method_note',
+      'external_hcm_edition_note', 'external_direction', 'external_control_type',
+      'external_through_movement_id', 'external_analysis_period_min',
+      'external_scenario_note', 'v_th_veh_h', 'c_th_veh_h', 'd_t_s_veh',
+    ];
+    const keys = [
+      ...fieldKeys.map((field) => `urban_street_segment.${field}`),
+      'urban_street_segment.group_segment',
+      'urban_street_segment.group_external_through',
+    ];
+
+    for (const locale of ['en', 'th'] as const) {
+      for (const key of keys) {
+        expect(catalogs[locale][key]).toBeTruthy();
+        expect(translate(locale, key)).not.toBe(key);
+      }
+    }
+  });
+
 });

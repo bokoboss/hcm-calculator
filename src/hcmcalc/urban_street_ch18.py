@@ -132,6 +132,80 @@ class UrbanStreetSegmentInputs:
         )
 
 
+@dataclass(frozen=True)
+class _DerivedOperationalValues:
+    f_v: float
+    total_access_delay: float
+    running_time: float
+    total_travel_time: float
+    through_v_c: float
+
+
+def _free_flow_speed_components(
+    inputs: UrbanStreetSegmentInputs,
+) -> tuple[float, float, int, float, float, float, float, float, float, float, float]:
+    length = inputs.segment_length_ft
+    link_length = length - inputs.upstream_intersection_width_ft
+    lanes = inputs.through_lane_count
+    access_density = 5280.0 * (
+        inputs.subject_side_access_count + inputs.opposing_side_access_count
+    ) / link_length
+    s0 = 25.6 + 0.47 * inputs.posted_speed_limit_mph
+    f_cs = (
+        1.5 * inputs.restrictive_median_proportion
+        - 0.47 * inputs.curb_proportion
+        - 3.7 * inputs.curb_proportion * inputs.restrictive_median_proportion
+    )
+    f_a = -0.078 * access_density / lanes
+    f_pk = -3.0 * inputs.parking_proportion
+    s_fo = inputs.s_calib_mph + s0 + f_cs + f_a + f_pk
+    f_l = min(
+        1.0,
+        1.02 - 4.7 * (s_fo - 19.5) / max(inputs.signal_control_spacing_ft, 400.0),
+    )
+    s_f = max(s_fo * f_l, inputs.posted_speed_limit_mph)
+    return length, link_length, lanes, access_density, s0, f_cs, f_a, f_pk, s_fo, f_l, s_f
+
+
+def _derived_operational_values(
+    inputs: UrbanStreetSegmentInputs,
+    *,
+    length: float,
+    lanes: int,
+    free_flow_speed: float,
+) -> _DerivedOperationalValues:
+    """Calculate the existing operational chain once for readiness and results."""
+    try:
+        external = inputs.external_through
+        f_v = vehicle_proximity_factor(inputs.v_m_veh_h, lanes, free_flow_speed)
+        total_access_delay = sum(inputs.access_point_delays_s_veh)
+        if not isfinite(total_access_delay):
+            raise HCMCalcError("access_point_delays_s_veh aggregate must be finite.")
+        running_time = (
+            (6.0 - 2.0) / (0.0025 * length)
+            + 3600.0 * length / (5280.0 * free_flow_speed) * f_v
+            + total_access_delay
+            + inputs.d_other_s_veh
+        )
+        if running_time <= 0 or not isfinite(running_time):
+            raise HCMCalcError("Computed running time must be finite and positive.")
+        total_travel_time = running_time + external.d_t_s_veh
+        if total_travel_time <= 0 or not isfinite(total_travel_time):
+            raise HCMCalcError("Computed travel time must be finite and positive.")
+        through_v_c = external.v_th_veh_h / external.c_th_veh_h
+        if not isfinite(through_v_c):
+            raise HCMCalcError("Computed through v/c must be finite.")
+        return _DerivedOperationalValues(
+            f_v=f_v,
+            total_access_delay=total_access_delay,
+            running_time=running_time,
+            total_travel_time=total_travel_time,
+            through_v_c=through_v_c,
+        )
+    except (OverflowError, ZeroDivisionError) as exc:
+        raise HCMCalcError("Derived Chapter 18 operational arithmetic must be finite.") from exc
+
+
 class UrbanStreetSegmentMethod:
     """HCM 7 signalized-boundary segment calculation for the qualified scope."""
 
@@ -142,43 +216,20 @@ class UrbanStreetSegmentMethod:
         inputs = UrbanStreetSegmentInputs.from_mapping(values)
         _validate_inputs(inputs)
 
-        length = inputs.segment_length_ft
-        link_length = length - inputs.upstream_intersection_width_ft
-        lanes = inputs.through_lane_count
+        length, link_length, lanes, access_density, s0, f_cs, f_a, f_pk, s_fo, f_l, s_f = (
+            _free_flow_speed_components(inputs)
+        )
         external = inputs.external_through
-        access_density = 5280.0 * (
-            inputs.subject_side_access_count + inputs.opposing_side_access_count
-        ) / link_length
-        s0 = 25.6 + 0.47 * inputs.posted_speed_limit_mph
-        f_cs = (
-            1.5 * inputs.restrictive_median_proportion
-            - 0.47 * inputs.curb_proportion
-            - 3.7 * inputs.curb_proportion * inputs.restrictive_median_proportion
+        derived = _derived_operational_values(
+            inputs, length=length, lanes=lanes, free_flow_speed=s_f
         )
-        f_a = -0.078 * access_density / lanes
-        f_pk = -3.0 * inputs.parking_proportion
-        s_fo = inputs.s_calib_mph + s0 + f_cs + f_a + f_pk
-        f_l = min(
-            1.0,
-            1.02 - 4.7 * (s_fo - 19.5) / max(inputs.signal_control_spacing_ft, 400.0),
-        )
-        s_f = max(s_fo * f_l, inputs.posted_speed_limit_mph)
-        f_v = vehicle_proximity_factor(inputs.v_m_veh_h, lanes, s_f)
-        access_delay = sum(inputs.access_point_delays_s_veh)
-        running_time = (
-            (6.0 - 2.0) / (0.0025 * length)
-            + 3600.0 * length / (5280.0 * s_f) * f_v
-            + access_delay
-            + inputs.d_other_s_veh
-        )
-        if running_time <= 0 or not isfinite(running_time):
-            raise HCMCalcError("Computed running time must be finite and positive.")
+        f_v = derived.f_v
+        access_delay = derived.total_access_delay
+        running_time = derived.running_time
         running_speed = 3600.0 * length / (5280.0 * running_time)
-        total_travel_time = running_time + external.d_t_s_veh
-        if total_travel_time <= 0 or not isfinite(total_travel_time):
-            raise HCMCalcError("Computed travel time must be finite and positive.")
+        total_travel_time = derived.total_travel_time
         travel_speed = 3600.0 * length / (5280.0 * total_travel_time)
-        through_v_c = external.v_th_veh_h / external.c_th_veh_h
+        through_v_c = derived.through_v_c
         los_thresholds = interpolated_los_thresholds(s_fo)
         los = level_of_service(travel_speed, s_fo, through_v_c)
 
@@ -378,38 +429,56 @@ def _validate_inputs(inputs: UrbanStreetSegmentInputs) -> None:
         "scenario_note",
     ):
         _nonempty_text("external_through." + name, getattr(external, name))
+    _positive_integer("external_through.analysis_period_min", external.analysis_period_min)
     if external.control_type != inputs.control_type:
         raise HCMCalcError(
-            "External through control type must match the segment boundary control type."
+            "external_through.control_type must match the segment boundary control type."
         )
     if external.direction != inputs.subject_direction:
-        raise HCMCalcError("External through direction must match subject direction.")
+        raise HCMCalcError("external_through.direction must match subject direction.")
     if external.through_movement_id != inputs.through_movement_id:
-        raise HCMCalcError("External through movement must match the subject through movement.")
+        raise HCMCalcError(
+            "external_through.through_movement_id must match the subject through movement."
+        )
     if external.analysis_period_min != inputs.analysis_period_min:
-        raise HCMCalcError("External through analysis period must match the segment period.")
-    _positive_integer("external_through.analysis_period_min", external.analysis_period_min)
+        raise HCMCalcError(
+            "external_through.analysis_period_min must match the segment period."
+        )
     _finite_number("v_th_veh_h", external.v_th_veh_h, minimum=0.0)
     _finite_number("c_th_veh_h", external.c_th_veh_h, minimum=0.0, strict=True)
     _finite_number("d_t_s_veh", external.d_t_s_veh, minimum=0.0)
-    # Validate the accepted table domain before returning any qualified result.
-    base_speed = inputs.s_calib_mph + 25.6 + 0.47 * inputs.posted_speed_limit_mph
-    link_length = inputs.segment_length_ft - inputs.upstream_intersection_width_ft
-    access_density = 5280.0 * (inputs.subject_side_access_count + inputs.opposing_side_access_count) / link_length
-    base_speed += (
-        1.5 * inputs.restrictive_median_proportion
-        - 0.47 * inputs.curb_proportion
-        - 3.7 * inputs.curb_proportion * inputs.restrictive_median_proportion
-        - 0.078 * access_density / inputs.through_lane_count
-        - 3.0 * inputs.parking_proportion
+    try:
+        (
+            _,
+            _,
+            lanes,
+            _,
+            _,
+            _,
+            _,
+            _,
+            base_free_flow_speed,
+            _,
+            free_flow_speed,
+        ) = _free_flow_speed_components(inputs)
+    except (OverflowError, ZeroDivisionError) as exc:
+        raise HCMCalcError("Chapter 18 free-flow arithmetic could not be evaluated.") from exc
+    interpolated_los_thresholds(base_free_flow_speed)
+    _derived_operational_values(
+        inputs, length=inputs.segment_length_ft, lanes=lanes,
+        free_flow_speed=free_flow_speed,
     )
-    interpolated_los_thresholds(base_speed)
 
 
 def _finite_number(name: str, value: Any, *, minimum: float | None = None, strict: bool = False) -> float:
-    if isinstance(value, bool) or not isinstance(value, Real) or not isfinite(float(value)):
+    if isinstance(value, bool) or not isinstance(value, Real):
         raise HCMCalcError(f"{name} must be a finite number.")
-    number = float(value)
+    try:
+        number = float(value)
+    except (OverflowError, ValueError) as exc:
+        raise HCMCalcError(f"{name} must be a finite number.") from exc
+    if not isfinite(number):
+        raise HCMCalcError(f"{name} must be a finite number.")
     if minimum is not None and (number <= minimum if strict else number < minimum):
         bound = "greater than" if strict else "at least"
         raise HCMCalcError(f"{name} must be {bound} {minimum}.")

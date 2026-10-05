@@ -1,7 +1,10 @@
 import json
 import math
-from io import BytesIO
+import csv
+from copy import deepcopy
+from io import BytesIO, StringIO
 from pathlib import Path
+import re
 
 import pytest
 from openpyxl import load_workbook
@@ -285,6 +288,186 @@ def test_facility_report_exports_do_not_emit_inactive_opposing_nan() -> None:
     json.dumps(json.loads(exported_json), allow_nan=False)
     assert "nan" not in exported_json.lower()
     assert "nan" not in exported_csv.lower()
+
+
+def test_spreadsheet_exports_neutralize_formula_like_text_without_mutating_other_formats():
+    report = _single_report()
+    dangerous = [
+        '=WEBSERVICE("https://example.invalid")',
+        "+SUM(1,1)",
+        "-1+1",
+        "@SUM(A1:A2)",
+        " \t=1+1",
+        "\t+1+1",
+    ]
+    report["title"] = dangerous[0]
+    report["results_summary"][0]["value"] = dangerous[1]
+    report["inputs_summary"][0]["label"] = dangerous[2]
+    report["normalized_engine_inputs_summary"] = [
+        {"label": dangerous[3], "value": dangerous[3], "unit": dangerous[4]}
+    ]
+    report["segment_results"] = [{dangerous[2]: dangerous[4], "Numeric result": -0.329}]
+    report["assumptions"] = [dangerous[4]]
+    report["warnings"] = [dangerous[5]]
+    report["limitations"] = [dangerous[1]]
+    report["audit_summary"][0]["value"] = dangerous[0]
+    report["intermediate_values"] = [{"Component": dangerous[4], "Value": -0.329}]
+    original_report = deepcopy(report)
+
+    csv_rows = list(csv.reader(StringIO(export_report(report, "csv"))))
+    csv_cells = [cell for row in csv_rows for cell in row]
+    for value in dangerous:
+        assert "'" + value in csv_cells
+    assert -0.329 not in csv_cells
+    assert "-0.329" in csv_cells
+
+    workbook = load_workbook(BytesIO(export_report(report, "xlsx")), data_only=False)
+    workbook_cells = [cell for sheet in workbook.worksheets for row in sheet.iter_rows() for cell in row]
+    for cell in workbook_cells:
+        if isinstance(cell.value, str):
+            assert not cell.value.lstrip().startswith(("=", "+", "-", "@"))
+            assert cell.data_type != "f"
+    for value in dangerous:
+        literal = next(cell for cell in workbook_cells if cell.value == "'" + value)
+        assert literal.data_type == "s"
+    assert any(cell.value == -0.329 and cell.data_type == "n" for cell in workbook_cells)
+
+    json_report = json.loads(export_report(report, "json"))
+    assert json_report["title"] == dangerous[0]
+    assert json_report["results_summary"][0]["value"] == dangerous[1]
+    markdown = export_report(report, "markdown")
+    assert dangerous[0] in markdown
+    assert dangerous[1] in markdown
+    assert "'" + dangerous[0] not in markdown
+    assert report == original_report
+
+
+@pytest.mark.parametrize("control", ("\u0000", "\u0001", "\u0008", "\u000b", "\u000c", "\u000e", "\u001f"))
+def test_xlsx_escapes_xml_illegal_controls_without_mutating_report(control):
+    report = _single_report()
+    value = f"before{control}after"
+    report["warnings"] = [value]
+    original = deepcopy(report)
+
+    workbook = load_workbook(BytesIO(export_report(report, "xlsx")))
+    exported = next(
+        cell
+        for sheet in workbook.worksheets
+        for row in sheet.iter_rows()
+        for cell in row
+        if cell.value == f"before\\u{ord(control):04X}after"
+    )
+
+    assert exported.data_type == "s"
+    assert control not in exported.value
+    assert report == original
+
+
+@pytest.mark.parametrize("control", ("\ufffe", "\uffff", "\ud800", "\udfff"))
+def test_xlsx_escapes_xml_forbidden_unicode_values(control):
+    report = _single_report()
+    report["warnings"] = [f"before{control}after"]
+
+    workbook = load_workbook(BytesIO(export_report(report, "xlsx")))
+    exported = next(
+        cell
+        for sheet in workbook.worksheets
+        for row in sheet.iter_rows()
+        for cell in row
+        if cell.value == f"before\\u{ord(control):04X}after"
+    )
+
+    assert exported.data_type == "s"
+    assert control not in exported.value
+
+
+@pytest.mark.parametrize("control", ("\t", "\n", "\r"))
+def test_xlsx_preserves_xml_allowed_controls(control):
+    report = _single_report()
+    value = f"before{control}after"
+    report["warnings"] = [value]
+    expected = value.replace("\r", "\n") if control == "\r" else value
+
+    workbook = load_workbook(BytesIO(export_report(report, "xlsx")))
+    exported = next(
+        cell
+        for sheet in workbook.worksheets
+        for row in sheet.iter_rows()
+        for cell in row
+        if cell.value == expected
+    )
+
+    assert exported.data_type == "s"
+    assert exported.value == expected
+    assert r"\u000D" not in exported.value
+
+
+def test_xlsx_formula_neutralization_precedes_xml_control_escaping():
+    report = _single_report()
+    value = "=HCS\u000b7"
+    report["warnings"] = [value]
+
+    workbook = load_workbook(BytesIO(export_report(report, "xlsx")), data_only=False)
+    exported = next(
+        cell
+        for sheet in workbook.worksheets
+        for row in sheet.iter_rows()
+        for cell in row
+        if cell.value == r"'=HCS\u000B7"
+    )
+
+    assert exported.data_type == "s"
+    assert "\u000b" not in exported.value
+    assert not exported.value.lstrip().startswith(("=", "+", "-", "@"))
+
+
+def test_xlsx_only_control_escaping_preserves_json_markdown_csv_and_source():
+    report = _single_report()
+    value = "HCS\u000b7"
+    report["warnings"] = [value]
+    original = deepcopy(report)
+
+    csv_cells = [cell for row in csv.reader(StringIO(export_report(report, "csv"))) for cell in row]
+    json_report = json.loads(export_report(report, "json"))
+    markdown = export_report(report, "markdown")
+
+    assert value in csv_cells
+    assert json_report["warnings"] == [value]
+    assert value in markdown
+    assert r"HCS\u000B7" not in markdown
+    assert report == original
+
+
+@pytest.mark.parametrize("line_ending", ("\r", "\n", "\r\n"))
+def test_markdown_exports_normalize_line_endings_in_dynamic_text_without_mutating_source(line_ending):
+    report = _single_report()
+    injected = f"trusted{line_ending}# Approved"
+    report["title"] = injected
+    report["report_type"] = injected
+    report["method_identifier"] = injected
+    report["method_version"] = injected
+    report["inputs_summary"] = [{"label": injected, "value": injected, "unit": injected}]
+    report["normalized_engine_inputs_summary"] = [
+        {"label": injected, "value": injected, "unit": injected}
+    ]
+    report["results_summary"] = [{"label": injected, "value": injected, "unit": injected}]
+    report["segment_results"] = [{injected: injected}]
+    report["audit_summary"] = [{"label": injected, "value": injected, "unit": None}]
+    report["intermediate_values"] = [{"Value": injected}]
+    report["assumptions"] = [injected]
+    report["warnings"] = [injected]
+    report["limitations"] = [injected]
+    original = deepcopy(report)
+
+    markdown = export_report(report, "markdown")
+    json_report = json.loads(export_report(report, "json"))
+
+    assert "trusted # Approved" in markdown
+    assert not re.search(r"(?m)^# Approved$", markdown)
+    assert "\r" not in markdown
+    assert original["inputs_summary"][0]["value"] == injected
+    assert json_report["title"] == injected
+    assert report == original
 
 
 def test_multilane_metric_and_imperial_exports_use_selected_display_units() -> None:

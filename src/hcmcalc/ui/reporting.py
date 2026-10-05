@@ -7,6 +7,7 @@ from copy import deepcopy
 import json
 from datetime import datetime, timezone
 from io import BytesIO, StringIO
+import re
 from typing import Any
 
 from openpyxl import Workbook
@@ -29,7 +30,7 @@ from hcmcalc.ui.manual_ramp_influence import (
     MANUAL_MERGE_PROJECT_TYPE,
     ramp_display_outputs,
 )
-from hcmcalc.ui.units import MILES_TO_KILOMETERS, display_outputs
+from hcmcalc.ui.units import FEET_TO_METERS, MILES_TO_KILOMETERS, display_outputs
 from hcmcalc.ui.i18n import field_label, normalize_locale, translate
 
 
@@ -43,6 +44,7 @@ SUPPORTED_CALCULATION_TYPES = {
     "manual_freeway_weaving_segment_v1",
     MANUAL_MERGE_PROJECT_TYPE,
     MANUAL_DIVERGE_PROJECT_TYPE,
+    "manual_urban_street_segment_v1",
 }
 SUPPORTED_EXPORT_FORMATS = {"csv", "xlsx", "markdown", "json"}
 
@@ -124,6 +126,10 @@ def build_report(
         report = _weaving_report(
             result, outputs, unit_system, inputs, audit_record, template_id, timestamp
         )
+    elif calculation_type == "manual_urban_street_segment_v1":
+        report = _urban_street_report(
+            result, outputs, unit_system, inputs, audit_record, template_id, timestamp
+        )
     else:
         report = _ramp_report(
             calculation_type, result, outputs, unit_system, inputs, audit_record, template_id, timestamp
@@ -171,8 +177,9 @@ def report_filename(report: dict[str, Any], extension: str) -> str:
         "manual_freeway_weaving_segment_v1": "weaving_segment",
         MANUAL_MERGE_PROJECT_TYPE: "merge_segment",
         MANUAL_DIVERGE_PROJECT_TYPE: "diverge_segment",
+        "manual_urban_street_segment_v1": "urban_street_segment",
     }[calculation_type]
-    chapter = "14" if calculation_type in {MANUAL_MERGE_PROJECT_TYPE, MANUAL_DIVERGE_PROJECT_TYPE} else "13" if calculation_type == "manual_freeway_weaving_segment_v1" else "15"
+    chapter = "18" if calculation_type == "manual_urban_street_segment_v1" else "14" if calculation_type in {MANUAL_MERGE_PROJECT_TYPE, MANUAL_DIVERGE_PROJECT_TYPE} else "13" if calculation_type == "manual_freeway_weaving_segment_v1" else "15"
     return f"hcm_ch{chapter}_{workflow}_report_{timestamp:%Y%m%d_%H%M%S}.{extension}"
 
 
@@ -180,7 +187,7 @@ def report_to_csv(report: dict[str, Any]) -> str:
     """Render report sections into a copy-ready CSV document."""
 
     output = StringIO(newline="")
-    writer = csv.writer(output)
+    writer = _SafeCsvWriter(csv.writer(output))
     writer.writerow([report["title"]])
     for key in (
         "report_type", "calculation_type", "method_identifier", "method_version",
@@ -209,12 +216,12 @@ def report_to_markdown(report: dict[str, Any]) -> str:
     """Render a clean copy-ready Markdown report."""
 
     lines = [
-        f"# {report['title']}",
+        f"# {_markdown_inline_text(report['title'])}",
         "",
-        f"- **Calculation type:** {report['calculation_type']}",
-        f"- **Method:** {report['method_identifier']} ({report['method_version']})",
-        f"- **Unit system:** {report['unit_system']}",
-        f"- **Generated at:** {report['generated_at']}",
+        f"- **Calculation type:** {_markdown_inline_text(report['calculation_type'])}",
+        f"- **Method:** {_markdown_inline_text(report['method_identifier'])} ({_markdown_inline_text(report['method_version'])})",
+        f"- **Unit system:** {_markdown_inline_text(report['unit_system'])}",
+        f"- **Generated at:** {_markdown_inline_text(report['generated_at'])}",
         "",
         f"## {_report_text(report, 'report.summary', 'Summary Result')}",
         "",
@@ -241,7 +248,7 @@ def report_to_markdown(report: dict[str, Any]) -> str:
         (_report_text(report, "report.limitations", "Limitations"), "limitations"),
     ):
         values = report[key] or [f"No {heading.lower()} reported."]
-        lines.extend(["", f"## {heading}", "", *(f"- {value}" for value in values)])
+        lines.extend(["", f"## {heading}", "", *(f"- {_markdown_inline_text(value)}" for value in values)])
     lines.extend(
         [
             "",
@@ -275,8 +282,8 @@ def report_to_xlsx(report: dict[str, Any]) -> bytes:
     inputs = workbook.create_sheet(_report_text(report, "report.inputs", "Inputs")[:31])
     _append_key_values(inputs, report["inputs_summary"], report)
     if report.get("normalized_engine_inputs_summary"):
-        inputs.append([])
-        inputs.append([_report_text(report, "report.normalized_inputs", "Normalized Engine Inputs")])
+        _append_spreadsheet_row(inputs, [])
+        _append_spreadsheet_row(inputs, [_report_text(report, "report.normalized_inputs", "Normalized Engine Inputs")])
         _append_key_values(inputs, report["normalized_engine_inputs_summary"], report)
 
     segments = workbook.create_sheet(_report_text(report, "report.segment_results", "Segment Results")[:31])
@@ -288,16 +295,16 @@ def report_to_xlsx(report: dict[str, Any]) -> bytes:
         else "Assumptions Warnings Limits"
     )
     context = workbook.create_sheet(context_name[:31])
-    context.append([_report_text(report, "report.category", "Category"), _report_text(report, "report.text", "Text")])
+    _append_spreadsheet_row(context, [_report_text(report, "report.category", "Category"), _report_text(report, "report.text", "Text")])
     for key in ("assumptions", "warnings", "limitations"):
         for value in report[key]:
-            context.append([_label(key), value])
+            _append_spreadsheet_row(context, [_label(key), value])
 
     audit = workbook.create_sheet(_worksheet_title(_report_text(report, "report.audit", "Audit")))
     _append_key_values(audit, report["audit_summary"], report)
     if report.get("intermediate_values"):
-        audit.append([])
-        audit.append([_report_text(report, "report.intermediate_values", "Intermediate Values")])
+        _append_spreadsheet_row(audit, [])
+        _append_spreadsheet_row(audit, [_report_text(report, "report.intermediate_values", "Intermediate Values")])
         _append_table(audit, report["intermediate_values"])
 
     for worksheet in workbook.worksheets:
@@ -338,6 +345,121 @@ def _single_segment_report(
         audit_record=audit_record,
         limitations=SINGLE_SEGMENT_LIMITATIONS,
     )
+
+
+def _urban_street_report(
+    result: dict[str, Any],
+    outputs: dict[str, Any],
+    unit_system: str,
+    inputs: Any,
+    audit_record: dict[str, Any] | None,
+    template_id: str | None,
+    timestamp: str,
+) -> dict[str, Any]:
+    metric = unit_system == "metric"
+    speed_factor = MILES_TO_KILOMETERS if metric else 1.0
+    speed_unit = "km/h" if metric else "mi/h"
+    length_factor = FEET_TO_METERS if metric else 1.0
+    length_unit = "m" if metric else "ft"
+    summary = [
+        {"label": "Level of service", "value": outputs["level_of_service"], "unit": None},
+        {"label": f"Travel speed ({speed_unit})", "value": outputs["travel_speed_mph"] * speed_factor, "unit": speed_unit},
+        {"label": f"Running speed ({speed_unit})", "value": outputs["running_speed_mph"] * speed_factor, "unit": speed_unit},
+        {"label": "Through v/c", "value": outputs["through_v_c"], "unit": "ratio"},
+        {"label": "Running time", "value": outputs["running_time_s"], "unit": "s"},
+        {"label": "Total travel time", "value": outputs["total_travel_time_s"], "unit": "s"},
+        {"label": f"Base free-flow speed ({speed_unit})", "value": outputs["base_free_flow_speed_mph"] * speed_factor, "unit": speed_unit},
+    ]
+    report = _base_report(
+        title="HCM7 Chapter 18 Urban Street Segment Report",
+        report_type="HCM Chapter 18 bounded signalized segment calculation report",
+        calculation_type="manual_urban_street_segment_v1",
+        unit_system=unit_system,
+        timestamp=timestamp,
+        inputs=_displayed_urban_street_input_records(inputs or {}, unit_system),
+        results=summary,
+        segment_results=[{
+            f"Segment length ({length_unit})": outputs["segment_length_ft"] * length_factor,
+            f"Travel speed ({speed_unit})": outputs["travel_speed_mph"] * speed_factor,
+            f"Running speed ({speed_unit})": outputs["running_speed_mph"] * speed_factor,
+            "Through v/c": outputs["through_v_c"],
+            "Level of service": outputs["level_of_service"],
+        }],
+        result=result,
+        audit_record=audit_record,
+        limitations=[
+            "Bounded HCM 7 signalized 15-minute motorized segment workflow; maximum segment length is 2 mi.",
+            "HCM right-hand-traffic reference only; Thailand/LHT qualification is deferred.",
+            "Downstream through demand, capacity, delay, and source qualification are external inputs.",
+        ],
+    )
+    provenance = outputs.get("external_through_provenance", {})
+    if isinstance(provenance, dict):
+        report["audit_summary"].extend(
+            {"label": f"external_through_provenance.{key}", "value": value, "unit": None}
+            for key, value in provenance.items()
+        )
+    report["selected_validated_template"] = template_id
+    report["support_scope"] = "HCM 7.0 Chapter 18; signalized 15-minute RHT-reference segment only."
+    report["normalized_engine_inputs_summary"] = _normalized_urban_street_input_records(
+        outputs.get("input_summary")
+    )
+    return report
+
+
+def _displayed_urban_street_input_records(
+    inputs: Any, unit_system: str
+) -> list[dict[str, Any]]:
+    if not isinstance(inputs, dict):
+        raise ReportingError("Urban Street displayed inputs must be an object.")
+    metric = unit_system == "metric"
+    units = {
+        "segment_length": "m" if metric else "ft",
+        "upstream_intersection_width": "m" if metric else "ft",
+        "signal_control_spacing": "m" if metric else "ft",
+        "posted_speed_limit": "km/h" if metric else "mi/h",
+        "s_calib": "km/h" if metric else "mi/h",
+        "analysis_period_min": "min",
+        "external_analysis_period_min": "min",
+    }
+    records = []
+    for key, value in inputs.items():
+        unit = units.get(key)
+        if unit is None and key.endswith("_veh_h"):
+            unit = "veh/h"
+        elif unit is None and (key.endswith("_s_veh") or key == "access_point_delays_s_veh"):
+            unit = "s/veh"
+        records.append({"label": key, "value": value, "unit": unit})
+    return records
+
+
+def _normalized_urban_street_input_records(inputs: Any) -> list[dict[str, Any]]:
+    if not isinstance(inputs, dict):
+        raise ReportingError("Urban Street engine input summary must be an object.")
+    records: list[dict[str, Any]] = []
+    for key, value in inputs.items():
+        if key == "external_through" and isinstance(value, dict):
+            records.extend(
+                {"label": f"external_through.{child_key}", "value": child_value, "unit": _urban_input_unit(child_key)}
+                for child_key, child_value in value.items()
+            )
+        else:
+            records.append({"label": key, "value": value, "unit": _urban_input_unit(key)})
+    return records
+
+
+def _urban_input_unit(key: str) -> str | None:
+    if key == "analysis_period_min":
+        return "min"
+    if key.endswith("_ft"):
+        return "ft (HCM-native)"
+    if key.endswith("_mph"):
+        return "mi/h (HCM-native)"
+    if key.endswith("_veh_h"):
+        return "veh/h"
+    if key.endswith("_s_veh") or key == "access_point_delays_s_veh":
+        return "s/veh"
+    return None
 
 
 def _facility_report(
@@ -876,6 +998,14 @@ def _write_list_csv(writer: Any, heading: str, values: list[Any]) -> None:
         writer.writerow([_cell(value)])
 
 
+class _SafeCsvWriter:
+    def __init__(self, writer: Any) -> None:
+        self._writer = writer
+
+    def writerow(self, values: Any) -> None:
+        self._writer.writerow([_formula_safe_cell(value) for value in values])
+
+
 def _markdown_key_value_table(records: list[dict[str, Any]]) -> list[str]:
     rows = [{"Item": record["label"], "Value": record.get("value"), "Unit": record.get("unit") or ""} for record in records]
     return _markdown_table(rows)
@@ -886,7 +1016,7 @@ def _markdown_table(rows: list[dict[str, Any]]) -> list[str]:
         return ["No rows reported."]
     headers = list(rows[0])
     return [
-        "| " + " | ".join(headers) + " |",
+        "| " + " | ".join(_markdown_cell(header) for header in headers) + " |",
         "| " + " | ".join("---" for _ in headers) + " |",
         *["| " + " | ".join(_markdown_cell(row.get(header)) for header in headers) + " |" for row in rows],
     ]
@@ -894,27 +1024,27 @@ def _markdown_table(rows: list[dict[str, Any]]) -> list[str]:
 
 def _append_metadata(worksheet: Any, report: dict[str, Any]) -> None:
     for key in ("title", "report_type", "calculation_type", "unit_system", "generated_at"):
-        worksheet.append([_label(key), report[key]])
-    worksheet.append([])
+        _append_spreadsheet_row(worksheet, [_label(key), report[key]])
+    _append_spreadsheet_row(worksheet, [])
 
 
 def _append_key_values(worksheet: Any, records: list[dict[str, Any]], report: dict[str, Any]) -> None:
-    worksheet.append([
+    _append_spreadsheet_row(worksheet, [
         _report_text(report, "report.label", "Label"),
         _report_text(report, "report.value", "Value"),
         _report_text(report, "report.unit", "Unit"),
     ])
     for record in records:
-        worksheet.append([record["label"], _cell(record.get("value")), record.get("unit")])
+        _append_spreadsheet_row(worksheet, [record["label"], _cell(record.get("value")), record.get("unit")])
 
 
 def _append_table(worksheet: Any, rows: list[dict[str, Any]]) -> None:
     if not rows:
-        worksheet.append(["No rows"])
+        _append_spreadsheet_row(worksheet, ["No rows"])
         return
-    worksheet.append(list(rows[0]))
+    _append_spreadsheet_row(worksheet, list(rows[0]))
     for row in rows:
-        worksheet.append([_cell(value) for value in row.values()])
+        _append_spreadsheet_row(worksheet, [_cell(value) for value in row.values()])
 
 
 def _validate_result(calculation_type: str, result: dict[str, Any] | None) -> None:
@@ -1012,6 +1142,11 @@ def _validate_result(calculation_type: str, result: dict[str, Any] | None) -> No
             "adjusted_v12_pc_h",
             "maximum_desirable_influence_flow_exceeded",
         },
+        "manual_urban_street_segment_v1": {
+            "level_of_service", "travel_speed_mph", "running_speed_mph",
+            "base_free_flow_speed_mph", "through_v_c", "running_time_s",
+            "total_travel_time_s", "external_through_provenance",
+        },
     }
     required = required_by_type[calculation_type]
     if not required.issubset(result["outputs"]):
@@ -1052,8 +1187,34 @@ def _cell(value: Any) -> Any:
     return value
 
 
+def _append_spreadsheet_row(worksheet: Any, values: list[Any]) -> None:
+    worksheet.append([_xlsx_cell(value) for value in values])
+
+
+def _formula_safe_cell(value: Any) -> Any:
+    cell = _cell(value)
+    if isinstance(cell, str) and cell.lstrip().startswith(("=", "+", "-", "@")):
+        return "'" + cell
+    return cell
+
+
+def _xlsx_cell(value: Any) -> Any:
+    cell = _formula_safe_cell(value)
+    if isinstance(cell, str):
+        return re.sub(
+            r"[\x00-\x08\x0B\x0C\x0E-\x1F\uD800-\uDFFF\uFFFE\uFFFF]",
+            lambda match: f"\\u{ord(match[0]):04X}",
+            cell,
+        )
+    return cell
+
+
 def _markdown_cell(value: Any) -> str:
-    return str(_cell(value) if value is not None else "").replace("|", r"\|").replace("\n", " ")
+    return _markdown_inline_text(_cell(value) if value is not None else "").replace("|", r"\|")
+
+
+def _markdown_inline_text(value: Any) -> str:
+    return str(value).replace("\r\n", " ").replace("\r", " ").replace("\n", " ")
 
 
 _SOURCE_SIDE_REPORT_LABEL_KEYS = {

@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 from fastapi.testclient import TestClient
 
@@ -58,3 +59,22 @@ def test_hashed_frontend_assets_are_long_lived_and_immutable(tmp_path: Path) -> 
     missing_api = client.get("/api/v1/not-a-route")
     assert missing_api.status_code == 404
     assert missing_api.headers["content-type"].startswith("application/json")
+
+
+def test_packaged_fallback_serves_current_reference_only_spa_and_api() -> None:
+    packaged_static = Path(__file__).resolve().parents[2] / "src" / "hcmcalc" / "ui" / "static"
+    client = TestClient(create_app(static_dir=packaged_static))
+
+    shell = client.get("/")
+    deep_link = client.get("/analysis/urban_street_segment")
+    asset_paths = re.findall(r'(?:src|href)="(/assets/[^\"]+\.js)"', shell.text)
+    assert shell.status_code == 200
+    assert asset_paths
+    assert deep_link.text == shell.text
+    bundle = client.get(asset_paths[0])
+    assert bundle.status_code == 200
+    assert "urban_street_segment" in bundle.text
+    assert "Reference only" in bundle.text
+
+    methods = client.get("/api/v1/methods").json()["methods"]
+    assert any(method["method_id"] == "urban_street_segment" for method in methods)
