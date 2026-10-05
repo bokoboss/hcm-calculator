@@ -144,69 +144,102 @@ class UrbanStreetWorkflow:
     """Flat displayed inputs, canonical engine mapping, and current result evidence."""
 
     method_id = METHOD_ID
+    template_id = TEMPLATE_ID
+    display_fields = DISPLAY_FIELDS
+    side_field_names = {
+        "curb_proportion": "curb_proportion",
+        "parking_proportion": "parking_proportion",
+        "subject_side_access_count": "subject_side_access_count",
+        "opposing_side_access_count": "opposing_side_access_count",
+    }
+    template_label = "HCM Chapter 30 Example Problem 1"
+    template_description = "Qualified HCM RHT-reference, signalized 15-minute case."
+    blank_label = "Blank worksheet"
+    blank_description = "Supply every engineering input and external qualification explicitly."
+    scope_notes = (
+        "HCM 7.0 Chapter 18 bounded signalized 15-minute operational workflow; segment length is limited to 2 mi.",
+        "HCM right-hand-traffic reference semantics only; no Thailand/LHT qualification or sided-value mirroring.",
+        "Python calls the qualified Chapter 18 engine; external downstream through performance is required.",
+    )
+    workflow_scope = "bounded_hcm7_signalized_15min_rht_reference"
+    audit_metadata: Mapping[str, Any] = {}
+
+    def _field_schema(self) -> list[dict[str, Any]]:
+        return _field_schema()
+
+    def _example_values(self, unit: str) -> dict[str, Any]:
+        return _example_inputs(unit)
+
+    def extra_segment_fields(self) -> tuple[str, ...]:
+        return ()
+
+    def external_group_fields(self) -> tuple[str, ...]:
+        return self.display_fields[22:]
+
+    def _validate_application_fields(self, values: Mapping[str, Any], normalized: Mapping[str, Any]) -> None:
+        return None
+
+    def _audit_metadata_for(self, displayed_inputs: Mapping[str, Any]) -> dict[str, Any]:
+        return deepcopy(dict(self.audit_metadata))
 
     def __init__(self) -> None:
-        self.definition = get_analysis_definition(METHOD_ID)
+        self.definition = get_analysis_definition(self.method_id)
         if self.definition is None:
-            raise KeyError(METHOD_ID)
+            raise KeyError(self.method_id)
 
     def templates(self) -> dict[str, Any]:
         return {
-            "method_id": METHOD_ID,
+            "method_id": self.method_id,
             "unit_systems": ["metric", "imperial"],
-            "default_template_id": TEMPLATE_ID,
+            "default_template_id": self.template_id,
             "templates": [
-                {"template_id": TEMPLATE_ID, "label": "HCM Chapter 30 Example Problem 1", "description": "Qualified HCM RHT-reference, signalized 15-minute case.", "validation_status": "reference_fixture", "starter_kind": "example"},
-                {"template_id": "blank_custom", "label": "Blank worksheet", "description": "Supply every engineering input and external qualification explicitly.", "validation_status": "ui_starter_only", "starter_kind": "blank"},
+                {"template_id": self.template_id, "label": self.template_label, "description": self.template_description, "validation_status": "reference_fixture", "starter_kind": "example"},
+                {"template_id": "blank_custom", "label": self.blank_label, "description": self.blank_description, "validation_status": "ui_starter_only", "starter_kind": "blank"},
             ],
-            "fields": _field_schema(),
+            "fields": self._field_schema(),
             "groups": [
                 {
                     "key": "segment",
-                    "label_key": "urban_street_segment.group_segment",
-                    "field_keys": list(DISPLAY_FIELDS[:22]),
+                    "label_key": f"{self.method_id}.group_segment",
+                    "field_keys": list(self.display_fields[:22]) + list(self.extra_segment_fields()),
                 },
                 {
                     "key": "external_through",
-                    "label_key": "urban_street_segment.group_external_through",
-                    "field_keys": list(DISPLAY_FIELDS[22:]),
+                    "label_key": f"{self.method_id}.group_external_through",
+                    "field_keys": list(self.external_group_fields()),
                 },
             ],
             "branches": {"validation_without_calculation": True, "bounded": True},
-            "scope_notes": [
-                "HCM 7.0 Chapter 18 bounded signalized 15-minute operational workflow; segment length is limited to 2 mi.",
-                "HCM right-hand-traffic reference semantics only; no Thailand/LHT qualification or sided-value mirroring.",
-                "Python calls the qualified Chapter 18 engine; external downstream through performance is required.",
-            ],
+            "scope_notes": list(self.scope_notes),
         }
 
     def starting_values(self, template_id: str, unit_system: str) -> dict[str, Any]:
         from hcmcalc.application.workflows import _normalize_unit_system
 
         unit = _normalize_unit_system(unit_system)
-        if template_id == TEMPLATE_ID:
-            displayed = _example_inputs(unit)
-            label = "HCM Chapter 30 Example Problem 1"
+        if template_id == self.template_id:
+            displayed = self._example_values(unit)
+            label = self.template_label
             validation_status = "reference_fixture"
         elif template_id == "blank_custom":
-            displayed = {key: None for key in DISPLAY_FIELDS}
+            displayed = {key: None for key in self.display_fields}
             displayed["access_point_delays_s_veh"] = None
-            label = "Blank worksheet"
+            label = self.blank_label
             validation_status = "ui_starter_only"
         else:
             raise self._application_error(f"Unknown Chapter 18 template: {template_id}.", "invalid_template", "api.invalid_template", {"template_id": template_id})
         from hcmcalc.application.workflows import _json_ready
 
         return _json_ready({
-            "method_id": METHOD_ID,
+            "method_id": self.method_id,
             "template_id": template_id,
             "template_label": label,
-            "template_description": self.templates()["templates"][0 if template_id == TEMPLATE_ID else 1]["description"],
+            "template_description": self.templates()["templates"][0 if template_id == self.template_id else 1]["description"],
             "validation_status": validation_status,
-            "starter_kind": "example" if template_id == TEMPLATE_ID else "blank",
+            "starter_kind": "example" if template_id == self.template_id else "blank",
             "unit_system": unit,
             "displayed_inputs": displayed,
-            "fields": _field_schema(),
+            "fields": self._field_schema(),
             "groups": deepcopy(self.templates()["groups"]),
             "scope_notes": self.templates()["scope_notes"],
         })
@@ -215,55 +248,21 @@ class UrbanStreetWorkflow:
         from hcmcalc.application.workflows import _normalize_unit_system
 
         unit = _normalize_unit_system(unit_system)
-        if template_id not in {TEMPLATE_ID, "blank_custom"}:
+        if template_id not in {self.template_id, "blank_custom"}:
             raise self._application_error(f"Unknown Chapter 18 template: {template_id}.", "invalid_template", "api.invalid_template", {"template_id": template_id})
         if not isinstance(displayed_inputs, Mapping):
             raise self._application_error("displayed_inputs must be an object.", "invalid_input", "api.invalid_input", {"field": "displayed_inputs"})
-        unknown = set(displayed_inputs) - set(DISPLAY_FIELDS)
+        unknown = set(displayed_inputs) - set(self.display_fields)
         if unknown:
             field = sorted(unknown)[0]
             raise self._application_error(f"Unsupported Chapter 18 input: {field}.", "invalid_input", "api.invalid_input", {"field": field})
-        values = dict(displayed_inputs)
-        length_factor = 1 / FEET_TO_METERS if unit == "metric" else 1.0
-        speed_factor = 1 / MILES_TO_KILOMETERS if unit == "metric" else 1.0
-        normalized = {
-            "segment_length_ft": _scaled("segment_length", values.get("segment_length"), length_factor),
-            "upstream_intersection_width_ft": _scaled("upstream_intersection_width", values.get("upstream_intersection_width"), length_factor),
-            "signal_control_spacing_ft": _scaled("signal_control_spacing", values.get("signal_control_spacing"), length_factor),
-            "through_lane_count": values.get("through_lane_count"),
-            "subject_direction": values.get("subject_direction"),
-            "through_movement_id": values.get("through_movement_id"),
-            "posted_speed_limit_mph": _scaled("posted_speed_limit", values.get("posted_speed_limit"), speed_factor),
-            "s_calib_mph": _scaled("s_calib", values.get("s_calib"), speed_factor),
-            "restrictive_median_proportion": values.get("restrictive_median_proportion"),
-            "curb_proportion": values.get("curb_proportion"),
-            "parking_proportion": values.get("parking_proportion"),
-            "subject_side_access_count": values.get("subject_side_access_count"),
-            "opposing_side_access_count": values.get("opposing_side_access_count"),
-            "v_m_veh_h": values.get("v_m_veh_h"),
-            "access_point_delays_s_veh": values.get("access_point_delays_s_veh"),
-            "d_other_s_veh": values.get("d_other_s_veh"),
-            "analysis_period_min": values.get("analysis_period_min"),
-            "control_type": values.get("control_type"),
-            "demand_balanced": values.get("demand_balanced"),
-            "demand_adjustments_resolved": values.get("demand_adjustments_resolved"),
-            "capacity_effects_resolved": values.get("capacity_effects_resolved"),
-            "spillback_present": values.get("spillback_present"),
-            "external_through": {
-                engine_key: values.get(display_key)
-                for display_key, engine_key in EXTERNAL_FIELDS.items()
-            },
-        }
-        try:
-            parsed = UrbanStreetSegmentInputs.from_mapping(normalized)
-            _validate_inputs(parsed)
-        except Exception as exc:
-            code = "unsupported_scope" if isinstance(exc, UnsupportedScopeError) else "invalid_input"
-            field = _validation_display_field(exc, normalized)
-            raise self._application_error(str(exc), code, f"api.{code}", {"field": field}) from exc
-        from hcmcalc.application.workflows import _json_ready
-
-        return _json_ready(normalized)
+        normalized = _normalize_and_validate_chapter18_inputs(
+            dict(displayed_inputs),
+            unit,
+            side_field_names=self.side_field_names,
+        )
+        self._validate_application_fields(displayed_inputs, normalized)
+        return normalized
 
     def validate(self, *, template_id: str, unit_system: str, displayed_inputs: Mapping[str, Any]) -> dict[str, Any]:
         from hcmcalc.application.workflows import _error_issue, _json_ready, _normalize_unit_system, _snapshot
@@ -274,7 +273,7 @@ class UrbanStreetWorkflow:
         except Exception as exc:
             issue = _error_issue(exc)
             return {
-                "method_id": METHOD_ID, "template_id": template_id, "unit_system": str(unit_system).lower(),
+            "method_id": self.method_id, "template_id": template_id, "unit_system": str(unit_system).lower(),
                 "valid": False, "ready": False, "validation_status": issue["code"], "errors": [issue],
                 "displayed_inputs": deepcopy(dict(displayed_inputs)) if isinstance(displayed_inputs, Mapping) else {},
                 "normalized_inputs": None,
@@ -320,7 +319,7 @@ class UrbanStreetWorkflow:
             "warning": None,
             "interpretations": _interpretation_mappings(state),
             "evidence": {"intermediate_values": result["intermediate_values"], "assumptions": result["assumptions"], "external_through_provenance": out["external_through_provenance"], "warnings": result["warnings"]},
-            "workflow": {"scope": "bounded_hcm7_signalized_15min_rht_reference", "spillback_present": normalized["spillback_present"]},
+            "workflow": {"scope": self.workflow_scope, "spillback_present": normalized["spillback_present"]},
         }
         audit = {
             "calculation_type": self.definition.project_type,
@@ -337,6 +336,7 @@ class UrbanStreetWorkflow:
             "intermediate_values": deepcopy(result["intermediate_values"]),
             "external_through_provenance": deepcopy(out["external_through_provenance"]),
         }
+        audit.update(self._audit_metadata_for(displayed_inputs))
         return _result_envelope(self.definition, snapshot=snapshot, result=result, state=state, presentation=presentation, audit=audit)
 
     @staticmethod
@@ -392,3 +392,65 @@ def _validation_display_field(exc: Exception, normalized: Mapping[str, Any]) -> 
             ) if normalized.get(field) is False
         ), None)
     return None
+
+
+def _normalize_and_validate_chapter18_inputs(
+    values: Mapping[str, Any],
+    unit: str,
+    *,
+    side_field_names: Mapping[str, str],
+) -> dict[str, Any]:
+    """Normalize displayed Chapter 18 values and validate through the sole engine parser.
+
+    ``side_field_names`` maps canonical HCM role names to the public field that
+    carries that role. It performs semantic field selection only; unit handling
+    and engine validation stay shared by the RHT and LHT application methods.
+    """
+
+    from hcmcalc.application.workflows import _json_ready
+
+    length_factor = 1 / FEET_TO_METERS if unit == "metric" else 1.0
+    speed_factor = 1 / MILES_TO_KILOMETERS if unit == "metric" else 1.0
+    normalized = {
+        "segment_length_ft": _scaled("segment_length", values.get("segment_length"), length_factor),
+        "upstream_intersection_width_ft": _scaled("upstream_intersection_width", values.get("upstream_intersection_width"), length_factor),
+        "signal_control_spacing_ft": _scaled("signal_control_spacing", values.get("signal_control_spacing"), length_factor),
+        "through_lane_count": values.get("through_lane_count"),
+        "subject_direction": values.get("subject_direction"),
+        "through_movement_id": values.get("through_movement_id"),
+        "posted_speed_limit_mph": _scaled("posted_speed_limit", values.get("posted_speed_limit"), speed_factor),
+        "s_calib_mph": _scaled("s_calib", values.get("s_calib"), speed_factor),
+        "restrictive_median_proportion": values.get("restrictive_median_proportion"),
+        "curb_proportion": values.get(side_field_names["curb_proportion"]),
+        "parking_proportion": values.get(side_field_names["parking_proportion"]),
+        "subject_side_access_count": values.get(side_field_names["subject_side_access_count"]),
+        "opposing_side_access_count": values.get(side_field_names["opposing_side_access_count"]),
+        "v_m_veh_h": values.get("v_m_veh_h"),
+        "access_point_delays_s_veh": values.get("access_point_delays_s_veh"),
+        "d_other_s_veh": values.get("d_other_s_veh"),
+        "analysis_period_min": values.get("analysis_period_min"),
+        "control_type": values.get("control_type"),
+        "demand_balanced": values.get("demand_balanced"),
+        "demand_adjustments_resolved": values.get("demand_adjustments_resolved"),
+        "capacity_effects_resolved": values.get("capacity_effects_resolved"),
+        "spillback_present": values.get("spillback_present"),
+        "external_through": {
+            engine_key: values.get(display_key)
+            for display_key, engine_key in EXTERNAL_FIELDS.items()
+        },
+    }
+    try:
+        parsed = UrbanStreetSegmentInputs.from_mapping(normalized)
+        _validate_inputs(parsed)
+    except Exception as exc:
+        from hcmcalc.application.workflows import ApplicationWorkflowError
+
+        code = "unsupported_scope" if isinstance(exc, UnsupportedScopeError) else "invalid_input"
+        field = _validation_display_field(exc, normalized)
+        inverse = {engine: display for engine, display in side_field_names.items()}
+        if field in inverse:
+            field = inverse[field]
+        raise ApplicationWorkflowError(
+            str(exc), code=code, message_key=f"api.{code}", details={"field": field}
+        ) from exc
+    return _json_ready(normalized)

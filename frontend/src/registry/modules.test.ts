@@ -103,4 +103,16 @@ describe('frontend delivery registry', () => {
     expect(getMethodActionabilityStatus(backendMethod)).toBe('not_delivered');
     expect(isMethodRouteEligible(backendMethod)).toBe(false);
   });
+
+  it('keeps the Thailand/LHT backend adapter reference-only until its worksheet is delivered', () => {
+    const backendMethod = method(
+      'urban_street_segment_th_lht',
+      'hcm7_ch18_bounded_signalized_15min_th_lht_semantic_v1',
+    );
+    expect(frontendModuleRegistry.urban_street_segment_th_lht).toBeUndefined();
+    expect(isEngineSupported(backendMethod)).toBe(true);
+    expect(getMethodActionabilityStatus(backendMethod)).toBe('not_delivered');
+    expect(isMethodActionable(backendMethod)).toBe(false);
+    expect(isMethodRouteEligible(backendMethod)).toBe(false);
+  });
 });

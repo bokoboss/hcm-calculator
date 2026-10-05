@@ -97,6 +97,7 @@ def test_registry_adds_frozen_chapter_18_identity_without_changing_existing_seve
         "merge_segment",
         "diverge_segment",
         METHOD_ID,
+        "urban_street_segment_th_lht",
     }
     assert definition.capabilities == ("segment", "audit", "external_through_performance")
     assert definition.scope_summary_keys == (
@@ -422,6 +423,40 @@ def test_project_v2_roundtrip_retains_result_without_engine_rerun_and_edit_stale
     assert stale_scenario["result"] is None
     current = record_result(stale, analysis_id=analysis["analysis_id"], scenario_id=scenario["scenario_id"], snapshot=changed)
     assert current["analyses"][0]["scenarios"][0]["result_status"] == "current"
+
+
+def test_rht_chapter30_golden_fingerprints_result_and_report_profile_are_unchanged():
+    import hashlib
+
+    from hcmcalc.ui.reporting import build_report
+
+    workflow = workflow_for_method(METHOD_ID)
+    inputs = workflow.starting_values(TEMPLATE_ID, "imperial")["displayed_inputs"]
+    snapshot = workflow.calculate(template_id=TEMPLATE_ID, unit_system="imperial", displayed_inputs=inputs)
+    result = snapshot["result"]
+    assert snapshot["calculation_fingerprint"] == "1e388747e33e9e4bab1e30b269ecf0ef4be1b72bf97acd5958caa86563493169"
+    assert snapshot["input_snapshot_fingerprint"] == "a49a1f1e78e7673ed1762ce5ab84d1853533039ae710358fee37a9daedef1939"
+    assert hashlib.sha256(json.dumps(result, sort_keys=True, separators=(",", ":")).encode()).hexdigest() == (
+        "74d03aeb961dc39daf91d03729848e547ac1d5384d4d19d8d24b975d7e6a40a9"
+    )
+    assert result["outputs"]["travel_speed_mph"] == pytest.approx(23.668435690711537)
+    assert result["outputs"]["running_time_s"] == pytest.approx(33.54271824932475)
+    assert result["outputs"]["level_of_service"] == "C"
+    report = build_report(
+        "manual_urban_street_segment_v1",
+        result,
+        "imperial",
+        inputs=inputs,
+        template_id=TEMPLATE_ID,
+        generated_at="2000-01-01T00:00:00Z",
+    )
+    assert report["calculation_type"] == "manual_urban_street_segment_v1"
+    assert report["title"] == "HCM7 Chapter 18 Urban Street Segment Report"
+    assert report["limitations"] == [
+        "Bounded HCM 7 signalized 15-minute motorized segment workflow; maximum segment length is 2 mi.",
+        "HCM right-hand-traffic reference only; Thailand/LHT qualification is deferred.",
+        "Downstream through demand, capacity, delay, and source qualification are external inputs.",
+    ]
 
 
 @pytest.mark.parametrize("tamper", ("method_identifier", "engine_method_identifier", "input_contract", "calculation_fingerprint", "engine_result", "engine_result_method", "result_contract"))
