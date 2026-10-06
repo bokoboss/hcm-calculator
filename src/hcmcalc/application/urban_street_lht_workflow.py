@@ -110,6 +110,14 @@ class ThailandLHTUrbanStreetWorkflow(UrbanStreetWorkflow):
         })
         return values
 
+    def starting_values(self, template_id: str, unit_system: str) -> dict[str, Any]:
+        starting = super().starting_values(template_id, unit_system)
+        if template_id == "blank_custom":
+            displayed = starting["displayed_inputs"]
+            displayed["control_type"] = "signalized"
+            displayed["external_control_type"] = "signalized"
+        return starting
+
     def _validate_application_fields(
         self, values: Mapping[str, Any], normalized: Mapping[str, Any]
     ) -> None:

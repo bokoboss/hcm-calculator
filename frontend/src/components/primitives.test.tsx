@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   AppShell,
   AppHeader,
@@ -9,6 +9,7 @@ import {
   EngineeringAssessment,
   ErrorSummary,
   Field,
+  FixedCondition,
   HandoffPanel,
   InputWithUnit,
   PageHeader,
@@ -22,6 +23,22 @@ import {
 import { I18nProvider } from '../i18n';
 
 describe('R0 shared design-system primitives', () => {
+  it('presents a fixed method condition as text and exposes a keyboard recovery action only on error', () => {
+    const onRecover = vi.fn();
+    const { rerender } = render(<FixedCondition id="fixed-control" label="Downstream boundary control" value="Signalized" description="Fixed by current qualified method" recoveryLabel="Use required value: Signalized" onRecover={onRecover} />);
+    expect(screen.getByRole('group', { name: 'Downstream boundary control' })).toBeVisible();
+    expect(screen.getByRole('status')).toHaveTextContent('Fixed by current qualified method');
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    rerender(<FixedCondition id="fixed-control" label="Downstream boundary control" value="Signalized" description="Fixed by current qualified method" error="The qualified downstream boundary must be signalized." recoveryLabel="Use required value: Signalized" onRecover={onRecover} />);
+    expect(screen.getByRole('alert')).toHaveTextContent('must be signalized');
+    const recovery = screen.getByRole('button', { name: 'Use required value: Signalized' });
+    recovery.focus();
+    expect(recovery).toHaveFocus();
+    fireEvent.click(recovery);
+    expect(onRecover).toHaveBeenCalledOnce();
+  });
+
   it('classifies runtime hosts without build-time configuration', () => {
     expect(runtimeStatusKey('localhost')).toBe('status.local_runtime');
     expect(runtimeStatusKey('127.0.0.1')).toBe('status.local_runtime');
