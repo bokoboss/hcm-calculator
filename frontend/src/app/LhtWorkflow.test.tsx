@@ -65,6 +65,20 @@ describe('LHT production controls', () => {
     expect(screen.getAllByRole('radio', { name: 'Signalized' })).toHaveLength(2);
   });
 
+  it('shows HCM control spacing and upstream geometry help without changing field identities', async () => {
+    await worksheet();
+    expect(screen.getByLabelText(/Control spacing, L_s/)).toBeVisible();
+    expect(screen.getByText(/Distance between the applicable bracketing controls that require the subject through movement to stop or yield/i)).toBeVisible();
+    expect(screen.getByText(/immediate upstream boundary intersection/i)).toBeVisible();
+    expect(fixture.starting.fields.map((field) => field.key)).toContain('control_type');
+    expect(fixture.starting.fields.map((field) => field.key)).toContain('external_control_type');
+    expect(fixture.starting.fields.map((field) => field.key)).toContain('signal_control_spacing');
+    expect(fixture.starting.fields.map((field) => field.key)).not.toContain('upstream_control_type');
+    fireEvent.click(screen.getByRole('button', { name: 'Thai' }));
+    expect(screen.getByLabelText(/ระยะระหว่างจุดควบคุม L_s/)).toBeVisible();
+    expect(screen.getByText(/ระหว่างจุดควบคุมที่เกี่ยวข้องซึ่งบังคับให้การเคลื่อนที่ตรงในทิศทางที่วิเคราะห์ต้องหยุดหรือให้ทาง/)).toBeVisible();
+  });
+
   it('reveals the local source conditionally and preserves hidden values', async () => {
     await worksheet();
     fireEvent.click(screen.getByRole('button', { name: 'Calibration' }));

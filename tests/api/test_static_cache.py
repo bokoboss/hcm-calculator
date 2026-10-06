@@ -92,7 +92,10 @@ def test_packaged_lht_worksheet_handbook_and_dist_are_synchronized() -> None:
     bundle = client.get(assets[0]).text
     for evidence in (
         "hcm7_ch18_bounded_signalized_15min_th_lht_semantic_v1",
-        "number-list-editor", "Evaluate one bounded signalized 15-minute urban street segment",
+        "number-list-editor", "downstream boundary must be signalized",
+        "upstream boundary may be signalized or non-signalized",
+        "Distance between the applicable bracketing controls that require the subject through movement to stop or yield",
+        "ระยะระหว่างจุดควบคุม L_s",
         "Travel speed", "ความเร็วเดินทาง", "semantic-mirror / adapter-verification fixture",
     ):
         assert evidence in bundle or json.dumps(evidence, ensure_ascii=True)[1:-1] in bundle

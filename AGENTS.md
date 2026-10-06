@@ -22,29 +22,31 @@ The accepted R0 authority is under `docs/application_rebuild/`, in this order:
 
 R0 and the application rebuild through Phase 3 / PR #141 are merged.
 Chapter 18 engine, RHT application integration, Thailand/LHT semantic
-qualification and LHT backend adapter are accepted through PRs #175, #177,
-#180 and #183. Issue #184 implements the LHT production worksheet and
-Handbook; its release evidence and independent acceptance gate remain
-authoritative before that candidate is merged.
+qualification, LHT backend adapter, and production worksheet/Handbook are
+accepted through PRs #175, #177, #180, #183 and #185. The LHT worksheet requires
+a signalized downstream boundary; the immediate upstream boundary may be
+signalized or non-signalized. Downstream unsignalized control types remain
+deferred.
 
 ## Current Scope
 
 - Python 3.12 package
 - pytest test suite
 - Calculation logic independent from UI
-- Qualified workflows currently cover Two-Lane Segment, Two-Lane Facility,
+- Accepted workflows currently cover Two-Lane Segment, Two-Lane Facility,
   Multilane Segment, Basic Freeway Segment, Weaving Segment, Merge Segment,
   Diverge Segment, and the bounded Thailand/LHT Urban Street Segment.
-  Eight production React workflows are implemented in this tree. Preserve
+  Eight production React workflows are accepted. Preserve
   their existing calculation contracts and validation evidence.
 - React/FastAPI is the normal installed-use architecture; Streamlit remains
   the qualified compatibility UI.
 - HCM RHT Urban Street Segment remains backend-qualified/reference-only,
   with no delivered/actionable React worksheet.
 - The Chapter 18 LHT adapter uses HCM-reference coefficients and is not
-  Thai-calibrated by default. Only the accepted bounded signalized 15-minute
-  scope is supported; deferred Chapter 18/30 turn/intersection methods remain
-  unavailable. Project v2 schema remains `2.0`.
+  Thai-calibrated by default. Its accepted 15-minute scope has a signalized
+  downstream boundary; the immediate upstream boundary may be non-signalized.
+  Downstream unsignalized controls and internal intersection methods remain
+  deferred. Project v2 schema remains `2.0`.
 
 ## Constraints
 

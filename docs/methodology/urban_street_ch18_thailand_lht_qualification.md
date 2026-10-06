@@ -17,7 +17,9 @@ Thailand/LHT support may proceed as a **functional-role semantic adapter** that 
 
 The accepted RHT-reference application contract remains immutable. Thailand/LHT therefore requires a new application/persistence identity and explicit audit of the physical-side-to-functional-role mapping.
 
-The qualification remains bounded to the already accepted signalized 15-minute Chapter 18 workflow using explicit access-point delays and externally qualified downstream through performance. It does not authorize deferred turn-dependent Chapter 18/30 procedures.
+The qualification remains bounded to the already accepted 15-minute Chapter 18 workflow with a signalized downstream boundary, explicit access-point delays and externally qualified downstream through performance. It does not authorize deferred turn-dependent Chapter 18/30 procedures.
+
+Issue #186 clarification: the immediate upstream boundary intersection may be signalized or non-signalized. Its width still describes that immediate intersection geometry for link length. No upstream intersection delay is calculated or included in final downstream through delay `d_t`. For Eq. 18-4, `L_s` is the distance between applicable bracketing controls that require the subject through movement to stop or yield; it is not automatically the analyzed segment length. If a through-uncontrolled TWSC lies immediately upstream, the applicable upstream bracketing control for `L_s` may lie farther upstream. Downstream unsignalized controls remain deferred.
 
 ## Why functional-role mirroring is different from numerical mirroring
 
@@ -103,7 +105,7 @@ The mapping is by **functional road-side role**, not by copying a physical right
 |---|---|---|
 | Segment length | `segment_length_ft` | Orientation-neutral; unit conversion only. |
 | Upstream intersection width | `upstream_intersection_width_ft` | Orientation-neutral; unit conversion only. |
-| Signal/control spacing | `signal_control_spacing_ft` | Orientation-neutral; unit conversion only. |
+| HCM bracketing-control spacing `L_s` | `signal_control_spacing_ft` | User-supplied Eq. 18-4 spacing between the applicable controls that require the subject through movement to stop/yield; not automatically segment length and may extend upstream past a through-uncontrolled immediate intersection. |
 | Through lane count | `through_lane_count` | Orientation-neutral. |
 | Subject direction / through movement | existing identity fields | Preserve actual movement identity; no compass mirroring. |
 | Posted speed | `posted_speed_limit_mph` | Orientation-neutral; unit conversion only. |
@@ -146,7 +148,7 @@ This qualification does **not** authorize:
 - Thailand-specific saturation-flow, PCE, motorcycle, or capacity factors;
 - a claim that the HCM-reference result is locally validated for Thailand.
 
-The bounded signalized workflow can proceed because per-access-point delays and downstream through performance remain explicit/external.
+The workflow with a signalized downstream boundary can proceed because per-access-point delays and downstream through performance remain explicit/external; the immediate upstream boundary need not be signalized.
 
 ## Architecture decision
 
@@ -224,4 +226,4 @@ An authoritative contrary interpretation would trigger re-evaluation of this qua
 
 This authorizes semantic mapping of the outside/kerbside roadside from physical right under the HCM RHT reference to physical left under Thai LHT, while keeping the equations/coefficients unchanged and explicitly labeling the result as HCM-reference unless locally calibrated.
 
-It does not authorize Thai empirical calibration claims, automatic turn-side algorithms, new Chapter 30 access-delay procedures, or expansion beyond the already bounded signalized 15-minute workflow.
+It does not authorize Thai empirical calibration claims, automatic turn-side algorithms, new Chapter 30 access-delay procedures, or expansion beyond the already bounded 15-minute workflow with a signalized downstream boundary.

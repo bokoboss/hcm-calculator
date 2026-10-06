@@ -153,11 +153,11 @@ class UrbanStreetWorkflow:
         "opposing_side_access_count": "opposing_side_access_count",
     }
     template_label = "HCM Chapter 30 Example Problem 1"
-    template_description = "Qualified HCM RHT-reference, signalized 15-minute case."
+    template_description = "Qualified HCM RHT-reference 15-minute case with a signalized downstream boundary."
     blank_label = "Blank worksheet"
     blank_description = "Supply every engineering input and external qualification explicitly."
     scope_notes = (
-        "HCM 7.0 Chapter 18 bounded signalized 15-minute operational workflow; segment length is limited to 2 mi.",
+        "HCM 7.0 Chapter 18 15-minute operational workflow with a signalized downstream boundary; the immediate upstream boundary may be signalized or non-signalized. Segment length is limited to 2 mi.",
         "HCM right-hand-traffic reference semantics only; no Thailand/LHT qualification or sided-value mirroring.",
         "Python calls the qualified Chapter 18 engine; external downstream through performance is required.",
     )

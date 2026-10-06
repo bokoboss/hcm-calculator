@@ -44,6 +44,8 @@ def test_production_presentation_groups_and_conditional_source():
         "kerbside_curb_proportion", "kerbside_parking_proportion",
     ]
     fields = {field["key"]: field for field in templates["fields"]}
+    assert {"control_type", "external_control_type", "signal_control_spacing"} <= fields.keys()
+    assert "upstream_control_type" not in fields
     assert fields["calibration_source_note"]["required_if"] == {
         "calibration_status": "user_local_calibration",
     }
@@ -51,7 +53,7 @@ def test_production_presentation_groups_and_conditional_source():
 
 
 def test_presentation_changes_preserve_baseline_fingerprints_and_result():
-    # Values from accepted main 089af22; presentation metadata is not identity.
+    # Values from accepted main 01a1d60; presentation metadata is not identity.
     snapshot = lht().calculate(template_id=TEMPLATE, unit_system="metric",
                                displayed_inputs=lht().starting_values(TEMPLATE, "metric")["displayed_inputs"])
     from pathlib import Path
@@ -60,6 +62,7 @@ def test_presentation_changes_preserve_baseline_fingerprints_and_result():
                 "input_snapshot_fingerprint", "result", "method_identifier",
                 "engine_method_identifier", "method_version", "input_contract", "project_type"):
         assert snapshot[key] == baseline[key]
+    assert snapshot["result"]["outputs"]["level_of_service"] == "C"
 
 
 def test_registry_and_frozen_lht_identity():

@@ -41,7 +41,7 @@ class ThailandLHTUrbanStreetWorkflow(UrbanStreetWorkflow):
     blank_label = "Blank custom analysis"
     blank_description = "Supply every bounded engineering input and external qualification explicitly."
     scope_notes = (
-        "Bounded HCM 7.0 Chapter 18 signalized 15-minute segment; external downstream through performance is required.",
+        "HCM 7.0 Chapter 18 15-minute segment with a signalized downstream boundary; the immediate upstream boundary may be signalized or non-signalized. Qualified external downstream through performance is required.",
         "Thailand/LHT functional-role semantic adapter: kerbside is physical left for each travel direction.",
         "HCM-reference coefficients; not locally calibrated by default. Turn-side and planning procedures remain unavailable.",
     )

@@ -47,14 +47,14 @@ test('backend-only Chapter 18 stays reference-only and localized without a false
   await expect(thailandChapter18Card.getByRole('button', { name: 'Start analysis' })).toBeEnabled();
   await expect(chapter18Card.getByRole('button', { name: 'Analysis guide' })).toHaveCount(0);
   await expect(chapter18Card.getByText('Urban Street Segment')).toBeVisible();
-  await expect(chapter18Card.getByText(/Bounded signalized 15-minute segment/i)).toBeVisible();
+  await expect(chapter18Card).toContainText('signalized downstream boundary');
   await expect(chapter18Card).not.toContainText('method.urban_street_segment.name');
   await expect(chapter18Card).not.toContainText('method.urban_streets');
   await expect(thailandChapter18Card.getByRole('heading', { name: /Urban Street Segment — Thailand\/LHT/ })).toBeVisible();
 
   await page.getByRole('button', { name: 'Thai', exact: true }).click();
   await expect(chapter18Card.getByText('ช่วงถนนเขตเมือง')).toBeVisible();
-  await expect(chapter18Card).toContainText('สัญญาณไฟ 15 นาที');
+  await expect(chapter18Card).toContainText('ทางแยกเขตปลายทางควบคุมด้วยสัญญาณไฟ');
   await expect(thailandChapter18Card).toContainText('ทางซ้าย');
   await expect(chapter18Card).not.toContainText('method.urban_street_segment.name');
   await expect(chapter18Card).not.toContainText('method.urban_streets');

@@ -377,7 +377,7 @@ def _urban_street_report(
     ]
     report = _base_report(
         title=("HCM7 Chapter 18 Thailand/LHT Urban Street Segment Report" if lht else "HCM7 Chapter 18 Urban Street Segment Report"),
-        report_type="HCM Chapter 18 bounded signalized segment calculation report",
+        report_type="HCM Chapter 18 segment with signalized downstream boundary calculation report",
         calculation_type=("manual_urban_street_segment_th_lht_v1" if lht else "manual_urban_street_segment_v1"),
         unit_system=unit_system,
         timestamp=timestamp,
@@ -394,13 +394,13 @@ def _urban_street_report(
         audit_record=audit_record,
         limitations=(
             [
-                "Bounded HCM 7 signalized 15-minute motorized segment workflow; maximum segment length is 2 mi.",
+                "HCM 7 15-minute motorized segment workflow with a signalized downstream boundary; maximum segment length is 2 mi. The immediate upstream boundary may be signalized or non-signalized.",
                 "Thailand/LHT functional-role semantic adapter maps physical-left kerbside to HCM-reference outside-roadside roles for each travel direction.",
                 "HCM-reference coefficients; not Thai empirically calibrated by default.",
                 "Turn-side algorithms and planning access-delay procedures remain outside this qualified scope.",
                 "Downstream through demand, capacity, delay, and source qualification are external inputs.",
             ] if lht else [
-                "Bounded HCM 7 signalized 15-minute motorized segment workflow; maximum segment length is 2 mi.",
+                "HCM 7 15-minute motorized segment workflow with a signalized downstream boundary; maximum segment length is 2 mi. The immediate upstream boundary may be signalized or non-signalized.",
                 "HCM right-hand-traffic reference only; Thailand/LHT qualification is deferred.",
                 "Downstream through demand, capacity, delay, and source qualification are external inputs.",
             ]
@@ -414,8 +414,8 @@ def _urban_street_report(
         )
     report["selected_validated_template"] = template_id
     report["support_scope"] = (
-        "HCM 7.0 Chapter 18; bounded signalized 15-minute Thailand/LHT functional-role adapter using HCM-reference coefficients."
-        if lht else "HCM 7.0 Chapter 18; signalized 15-minute RHT-reference segment only."
+        "HCM 7.0 Chapter 18; 15-minute Thailand/LHT segment with a signalized downstream boundary, functional-role adapter using HCM-reference coefficients."
+        if lht else "HCM 7.0 Chapter 18; 15-minute RHT-reference segment with a signalized downstream boundary only."
     )
     report["normalized_engine_inputs_summary"] = _normalized_urban_street_input_records(
         outputs.get("input_summary")
