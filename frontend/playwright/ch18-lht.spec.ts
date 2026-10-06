@@ -44,6 +44,11 @@ test.describe('Chapter 18 Thailand/LHT production qualification', () => {
     await expect(guide).toContainText('Physical left for each direction');
     await expect(guide).toContainText('already coordinated final delay');
     await expect(guide).toContainText('upstream boundary may be signalized or non-signalized');
+    await expect(guide).toContainText('The immediate upstream boundary may be signalized, STOP-controlled, YIELD-controlled (including subject through movements that must stop or yield), or through-uncontrolled.');
+    await expect(guide).toContainText('No upstream intersection performance or delay is calculated');
+    await expect(guide).toContainText('d_t remains qualified downstream through delay');
+    await expect(guide).toContainText('Case A: STOP/YIELD-controlled upstream');
+    await expect(guide).toContainText('Case B: through-uncontrolled TWSC upstream');
     await expect(guide).toContainText('through-uncontrolled TWSC upstream');
     await expect(guide).toContainText('urban street segment → signalized downstream boundary');
     await expect(guide).toContainText('Downstream unsignalized control types remain deferred');
@@ -51,8 +56,12 @@ test.describe('Chapter 18 Thailand/LHT production qualification', () => {
     await expect(guide).toContainText('ด้านซ้ายกายภาพ');
     await expect(guide).toContainText('ไม่ใช่การสอบเทียบเชิงประจักษ์');
     await expect(guide).toContainText('ทางแยกต้นน้ำที่ติดกับช่วงทางโดยตรงอาจมีหรือไม่มีสัญญาณไฟ');
+    await expect(guide).toContainText('รวมถึงกรณี STOP/YIELD ที่บังคับให้จราจรตรงที่วิเคราะห์หยุดหรือให้ทาง');
+    await expect(guide).toContainText('ไม่มีการคำนวณสมรรถนะหรือความล่าช้าของทางแยกต้นน้ำ');
+    await expect(guide).toContainText('d_t คือความล่าช้าจราจรตรงปลายทางสุดท้ายที่ผ่านการประเมิน');
+    await expect(guide).toContainText('กรณี A: ทางแยก STOP/YIELD ต้นน้ำ');
+    await expect(guide).toContainText('กรณี B: TWSC ต้นน้ำที่จราจรตรงไม่ถูกควบคุม');
     await expect(guide).toContainText('TWSC ต้นน้ำไม่บังคับให้จราจรตรงหยุดหรือให้ทาง');
-    await expect(guide).toContainText('TWSC ต้นน้ำที่ไม่บังคับให้จราจรตรงหยุดหรือให้ทาง → ช่วงถนนเขตเมือง → ทางแยกสัญญาณไฟปลายทาง');
     await expect(guide).toContainText('การควบคุมปลายทางที่ไม่มีสัญญาณไฟยังอยู่ระหว่างรอการพัฒนา');
     await expect(guide).not.toContainText(`guide.${id}`);
     await page.getByRole('button', { name: 'อังกฤษ' }).click();

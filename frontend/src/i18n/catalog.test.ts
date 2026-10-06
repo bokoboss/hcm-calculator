@@ -184,10 +184,25 @@ describe('localization catalog', () => {
     expect(translate('th', `method.${id}.description`)).toContain('ทางแยกเขตปลายทาง');
     expect(translate('en', `guide.${id}.decision`)).toMatch(/upstream boundary may be signalized or non-signalized/i);
     expect(translate('th', `guide.${id}.decision`)).toContain('ทางแยกต้นน้ำที่ติดกับช่วงทางโดยตรงอาจมีหรือไม่มีสัญญาณไฟ');
+    expect(translate('en', `guide.${id}.avoid`)).toMatch(/immediate upstream boundary may be signalized, STOP-controlled, YIELD-controlled.*or through-uncontrolled/i);
+    expect(translate('en', `guide.${id}.avoid`)).toMatch(/does not calculate upstream intersection performance or delay/i);
+    expect(translate('en', `guide.${id}.avoid`)).not.toMatch(/allowed when they do not require the subject through movement to stop or yield/i);
+    expect(translate('th', `guide.${id}.avoid`)).toContain('ทางแยกต้นน้ำที่ติดกับช่วงทางโดยตรงอาจควบคุมด้วยสัญญาณไฟ STOP หรือ YIELD');
+    expect(translate('th', `guide.${id}.avoid`)).toContain('โปรแกรมนี้ไม่ได้คำนวณสมรรถนะหรือความล่าช้าของทางแยกต้นน้ำ');
+    expect(translate('th', `guide.${id}.avoid`)).not.toMatch(/ใช้ได้เมื่อ.*ไม่บังคับให้จราจรตรงที่วิเคราะห์หยุดหรือให้ทาง/);
+    expect(translate('en', `guide.${id}.overview`)).toMatch(/No upstream intersection performance or delay is calculated.*neither is included in d_t.*d_t remains qualified downstream through delay/i);
+    expect(translate('th', `guide.${id}.overview`)).toMatch(/ไม่มีการคำนวณสมรรถนะหรือความล่าช้าของทางแยกต้นน้ำ.*ไม่รวมใน d_t.*d_t คือความล่าช้าจราจรตรงปลายทางสุดท้าย/);
     expect(translate('en', `guide.${id}.limit.4`)).toMatch(/downstream unsignalized control types remain deferred/i);
+    expect(translate('en', `guide.${id}.limit.4`)).toMatch(/including STOP- or YIELD-controlled subject through movements.*upstream intersection performance is not calculated/i);
+    expect(translate('en', `guide.${id}.limit.4`)).not.toMatch(/when the subject through movement is through-uncontrolled there/i);
     expect(translate('th', `guide.${id}.limit.4`)).toContain('การควบคุมปลายทางที่ไม่มีสัญญาณไฟยังอยู่ระหว่างรอการพัฒนา');
+    expect(translate('th', `guide.${id}.limit.4`)).toContain('รวมถึงกรณี STOP/YIELD ที่บังคับให้จราจรตรงที่วิเคราะห์หยุดหรือให้ทาง');
+    expect(translate('th', `guide.${id}.limit.4`)).toContain('ไม่ได้คำนวณสมรรถนะของทางแยกต้นน้ำ');
+    expect(translate('th', `guide.${id}.limit.4`)).not.toMatch(/เมื่อจราจรตรงที่วิเคราะห์ไม่ต้องหยุดหรือให้ทาง/);
     expect(translate('en', `guide.${id}.glossary.description.7`)).toMatch(/through-uncontrolled TWSC upstream/i);
     expect(translate('th', `guide.${id}.glossary.description.7`)).toContain('TWSC ต้นน้ำไม่บังคับให้จราจรตรงหยุดหรือให้ทาง');
+    expect(translate('en', `guide.${id}.step.8`)).toMatch(/Case A: STOP\/YIELD-controlled upstream.*Case B: through-uncontrolled TWSC upstream.*L_s.*user supplies/i);
+    expect(translate('th', `guide.${id}.step.8`)).toMatch(/กรณี A: ทางแยก STOP\/YIELD ต้นน้ำ.*กรณี B: TWSC ต้นน้ำที่จราจรตรงไม่ถูกควบคุม.*L_s.*ผู้ใช้ระบุ/);
   });
 
   it('explains L_s and the immediate upstream width in both locales', () => {
