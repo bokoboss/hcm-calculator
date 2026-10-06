@@ -957,7 +957,15 @@ function Phase3Form({
                 const id = `${methodId}-${field.key}`;
                 if (field.kind === 'number_list') return <NumberListEditor key={field.key} id={id} label={t(field.label_key)} value={inputs[field.key]} unit={field.item_unit ?? unitFor(field, unitSystem)} required={required} error={fieldErrors.get(field.key)} onTouched={() => onFieldTouch(field.key)} onChange={(value) => onChange(field.key, value)} />;
                 return (
-                  <Field key={field.key} id={id} label={t(field.label_key)} required={required} error={fieldErrors.get(field.key)} onBlur={() => onFieldTouch(field.key)}>
+                  <Field
+                    key={field.key}
+                    id={id}
+                    label={t(field.label_key)}
+                    required={required}
+                    hint={methodId === 'urban_street_segment_th_lht' && ['upstream_intersection_width', 'signal_control_spacing'].includes(field.key) ? t(`${methodId}.${field.key}.help`) : undefined}
+                    error={fieldErrors.get(field.key)}
+                    onBlur={() => onFieldTouch(field.key)}
+                  >
                     {(controlProps) => <InputWithUnit {...controlProps} type={field.kind === 'text' ? 'text' : 'number'} unit={unitFor(field, unitSystem)} value={rawControlValue(inputs[field.key])} formatValue={field.kind === 'text' ? undefined : (value) => formatInputValue(field, value)} onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(field.key, parseInput(field, event.target.value))} />}
                   </Field>
                 );

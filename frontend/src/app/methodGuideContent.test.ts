@@ -4,10 +4,10 @@ import { frontendModuleRegistry } from '../registry/modules';
 import { methodGuideIds, methodGuideSpecs } from './methodGuideContent';
 
 describe('HCM analysis handbook content', () => {
-  it('provides an LHT production guide with six glossary entries and seven steps', () => {
+  it('provides an LHT production guide with seven glossary entries and eight steps', () => {
     expect(methodGuideSpecs.urban_street_segment_th_lht).toBeDefined();
-    expect(methodGuideSpecs.urban_street_segment_th_lht?.glossaryItems).toHaveLength(6);
-    expect(methodGuideSpecs.urban_street_segment_th_lht?.stepKeys).toHaveLength(7);
+    expect(methodGuideSpecs.urban_street_segment_th_lht?.glossaryItems).toHaveLength(7);
+    expect(methodGuideSpecs.urban_street_segment_th_lht?.stepKeys).toHaveLength(8);
   });
   it('covers every delivered frontend workflow exactly once', () => {
     expect([...methodGuideIds].sort()).toEqual(Object.keys(frontendModuleRegistry).sort());

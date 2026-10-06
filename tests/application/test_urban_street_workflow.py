@@ -453,7 +453,7 @@ def test_rht_chapter30_golden_fingerprints_result_and_report_profile_are_unchang
     assert report["calculation_type"] == "manual_urban_street_segment_v1"
     assert report["title"] == "HCM7 Chapter 18 Urban Street Segment Report"
     assert report["limitations"] == [
-        "Bounded HCM 7 signalized 15-minute motorized segment workflow; maximum segment length is 2 mi.",
+        "HCM 7 15-minute motorized segment workflow with a signalized downstream boundary; maximum segment length is 2 mi. The immediate upstream boundary may be signalized or non-signalized.",
         "HCM right-hand-traffic reference only; Thailand/LHT qualification is deferred.",
         "Downstream through demand, capacity, delay, and source qualification are external inputs.",
     ]

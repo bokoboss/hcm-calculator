@@ -54,7 +54,7 @@ function guide(
 }
 
 export const methodGuideSpecs: Readonly<Record<string, MethodGuideSpec>> = {
-  urban_street_segment_th_lht: guide('urban_street_segment_th_lht', 6, 7, 6, 5, 5, 6),
+  urban_street_segment_th_lht: guide('urban_street_segment_th_lht', 7, 8, 6, 5, 5, 6),
   two_lane_segment: guide('two_lane_segment', 4),
   two_lane_facility: guide('two_lane_facility', 4),
   multilane_segment: guide('multilane_segment', 4),

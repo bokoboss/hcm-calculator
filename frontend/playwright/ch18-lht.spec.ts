@@ -43,9 +43,17 @@ test.describe('Chapter 18 Thailand/LHT production qualification', () => {
     const guide = page.getByTestId(`reference-${id}`);
     await expect(guide).toContainText('Physical left for each direction');
     await expect(guide).toContainText('already coordinated final delay');
+    await expect(guide).toContainText('upstream boundary may be signalized or non-signalized');
+    await expect(guide).toContainText('through-uncontrolled TWSC upstream');
+    await expect(guide).toContainText('urban street segment → signalized downstream boundary');
+    await expect(guide).toContainText('Downstream unsignalized control types remain deferred');
     await page.getByRole('button', { name: 'Thai', exact: true }).click();
     await expect(guide).toContainText('ด้านซ้ายกายภาพ');
     await expect(guide).toContainText('ไม่ใช่การสอบเทียบเชิงประจักษ์');
+    await expect(guide).toContainText('ทางแยกต้นน้ำที่ติดกับช่วงทางโดยตรงอาจมีหรือไม่มีสัญญาณไฟ');
+    await expect(guide).toContainText('TWSC ต้นน้ำไม่บังคับให้จราจรตรงหยุดหรือให้ทาง');
+    await expect(guide).toContainText('TWSC ต้นน้ำที่ไม่บังคับให้จราจรตรงหยุดหรือให้ทาง → ช่วงถนนเขตเมือง → ทางแยกสัญญาณไฟปลายทาง');
+    await expect(guide).toContainText('การควบคุมปลายทางที่ไม่มีสัญญาณไฟยังอยู่ระหว่างรอการพัฒนา');
     await expect(guide).not.toContainText(`guide.${id}`);
     await page.getByRole('button', { name: 'อังกฤษ' }).click();
     await page.goBack();
@@ -55,6 +63,15 @@ test.describe('Chapter 18 Thailand/LHT production qualification', () => {
     await expect(page).toHaveURL(/\/new-analysis$/);
     await page.goForward();
     await expect(field(page, 'segment_length')).toBeVisible();
+    await page.getByRole('button', { name: 'Thai', exact: true }).click();
+    await expect(page.getByRole('group', { name: 'ประเภทการควบคุมที่ทางแยกเขตปลายทาง' })).toContainText('ควบคุมด้วยสัญญาณไฟ');
+    await expect(page.getByLabel('ระยะระหว่างจุดควบคุม L_s')).toBeVisible();
+    await expect(page.getByText(/จุดควบคุมที่เกี่ยวข้องซึ่งบังคับให้การเคลื่อนที่ตรงในทิศทางที่วิเคราะห์ต้องหยุดหรือให้ทาง/)).toBeVisible();
+    await page.getByRole('button', { name: 'อังกฤษ', exact: true }).click();
+    await expect(page.getByRole('group', { name: 'Downstream boundary control type' })).toContainText('Signalized');
+    await expect(page.getByLabel('Control spacing, L_s')).toBeVisible();
+    await expect(page.getByText(/Distance between the applicable bracketing controls that require the subject through movement to stop or yield/i)).toBeVisible();
+    await expect(page.getByText(/Geometry of the immediate upstream boundary intersection/i)).toBeVisible();
     await page.goto('/analysis/urban_street_segment');
     await expect(page).toHaveURL(/\/new-analysis$/);
   });
@@ -163,7 +180,13 @@ test.describe('Chapter 18 Thailand/LHT production qualification', () => {
     await open(page);
     for (const [key, bad] of [['external_direction', 'westbound'], ['external_through_movement_id', 'WB_TH'], ['external_analysis_period_min', '60'], ['analysis_period_min', '60']]) {
       await field(page, key).fill(bad);
-      await invalid(page, key);
+      if (key === 'external_direction') {
+        await field(page, key).press('Tab');
+        await expect(field(page, key)).toHaveAttribute('aria-invalid', 'true');
+        await expect(page.getByRole('alert')).toContainText('Qualified downstream direction must match the subject direction.');
+      } else {
+        await invalid(page, key);
+      }
       await field(page, key).fill(String(values[key]));
     }
     const provenance = page.locator(`#workflow-section-${id}-provenance`);

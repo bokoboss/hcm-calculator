@@ -12,12 +12,14 @@
 - Authoritative remote `main` at Phase 3 preflight: `da64a662094458738f8c9cae7213bcf04a6f5007`.
 - Accepted Phase 2 implementation ancestor: `868c00616b6cb3b74308777c4753e1af80bb863e`.
 - Phase 3 / PR #141 is merged (`28c1a76ad379c332a5c50fc756bdcdf6975cd957`).
-- Current accepted main at Issue #184 start: `089af22f9b8e1dfd3fb5c35153574f26ebbaae26`.
-  Chapter 18 engine, RHT integration, Thailand/LHT qualification and backend
-  adapter are accepted through PRs #175, #177, #180 and #183.
-- Issue #184 delivers the eighth React worksheet and EN/TH Handbook in this
-  tree. Its PR remains a candidate pending independent acceptance; do not merge
-  based on implementation self-review.
+- Current accepted main at Issue #186 start: `01a1d605bcbd3d8a98300b8e2390fc3d4840c182`.
+  Chapter 18 engine, RHT integration, Thailand/LHT qualification, backend
+  adapter, and LHT production worksheet/Handbook are accepted through PRs
+  #175, #177, #180, #183, and #185.
+- PR #185 is accepted and merged. All eight React production workflows are
+  accepted. The Chapter 18 LHT scope has a signalized downstream boundary; its
+  immediate upstream boundary may be signalized or non-signalized. Downstream
+  unsignalized control remains deferred.
 - The rebuilt React/FastAPI launcher is the current normal installed-use path.
   Streamlit remains available as the qualified compatibility path.
 - The owner-authorized stale local `.agent/` and `mockups/` paths were removed
@@ -86,9 +88,8 @@ evidence for PR #141.
   React does not maintain a duplicate engineering asset set.
 
 ## Phase 3 delivery scope
-The rebuilt application implements eight production calculation worksheets
-through one persistent bilingual workspace navigation model. The eighth,
-Issue #184, remains subject to its fresh independent acceptance gate:
+The rebuilt application implements eight accepted production calculation
+worksheets through one persistent bilingual workspace navigation model:
 
 - Two-Lane Segment
 - Two-Lane Facility (distinct locked Facility template semantics)
@@ -97,8 +98,9 @@ Issue #184, remains subject to its fresh independent acceptance gate:
 - Weaving Segment
 - Merge Segment
 - Diverge Segment
-- Urban Street Segment — Thailand/LHT (bounded HCM Chapter 18 signalized
-  15-minute semantic adapter; HCM-reference, not Thai-calibrated by default)
+- Urban Street Segment — Thailand/LHT (HCM Chapter 18 15-minute semantic
+  adapter with a signalized downstream boundary; HCM-reference, not
+  Thai-calibrated by default)
 
 HCM RHT Urban Street Segment remains backend-qualified/reference-only and
 non-actionable in React. Project v2 remains schema `2.0`. This delivery does
@@ -131,9 +133,9 @@ rebuilt launcher. Detailed evidence is maintained in
   in `docs/application_rebuild/issue184_release_qualification.md`.
 
 ## Validation and release policy
-- Every change goes through a reviewable PR. Issue #184 links its implementation
-  to parent #172 and follow-up #181 and requires fresh independent acceptance
-  before merge. Historical PR #141 linked Phase 3 to Issue #139.
+- Every change goes through a reviewable PR. Issue #186 links its implementation
+  to parent #172 and follow-up #181 and requires fresh-context methodology and
+  UX acceptance before merge. Historical PR #141 linked Phase 3 to Issue #139.
 - Release claims require objective local and CI evidence, including the full
   pytest suite, frontend tests/build, full Playwright coverage, package/runtime
   smoke, both launchers, OpenAPI drift, compileall, and diff checks.
