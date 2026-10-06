@@ -11,9 +11,14 @@
 ## Current accepted baseline and release state
 - Authoritative remote `main` at Phase 3 preflight: `da64a662094458738f8c9cae7213bcf04a6f5007`.
 - Accepted Phase 2 implementation ancestor: `868c00616b6cb3b74308777c4753e1af80bb863e`.
-- Phase 3 is an implementation candidate carried by PR #141; it is not merged
-  or accepted until the owner completes ChatGPT application-rebuild acceptance.
-- The rebuilt React/FastAPI launcher is the intended normal installed-use path.
+- Phase 3 / PR #141 is merged (`28c1a76ad379c332a5c50fc756bdcdf6975cd957`).
+- Current accepted main at Issue #184 start: `089af22f9b8e1dfd3fb5c35153574f26ebbaae26`.
+  Chapter 18 engine, RHT integration, Thailand/LHT qualification and backend
+  adapter are accepted through PRs #175, #177, #180 and #183.
+- Issue #184 delivers the eighth React worksheet and EN/TH Handbook in this
+  tree. Its PR remains a candidate pending independent acceptance; do not merge
+  based on implementation self-review.
+- The rebuilt React/FastAPI launcher is the current normal installed-use path.
   Streamlit remains available as the qualified compatibility path.
 - The owner-authorized stale local `.agent/` and `mockups/` paths were removed
   during preflight and are not Phase 3 authority; neither is recreated here.
@@ -81,8 +86,9 @@ evidence for PR #141.
   React does not maintain a duplicate engineering asset set.
 
 ## Phase 3 delivery scope
-The rebuilt application now exposes all seven delivered calculation methods
-through one persistent bilingual workspace navigation model:
+The rebuilt application implements eight production calculation worksheets
+through one persistent bilingual workspace navigation model. The eighth,
+Issue #184, remains subject to its fresh independent acceptance gate:
 
 - Two-Lane Segment
 - Two-Lane Facility (distinct locked Facility template semantics)
@@ -91,6 +97,12 @@ through one persistent bilingual workspace navigation model:
 - Weaving Segment
 - Merge Segment
 - Diverge Segment
+- Urban Street Segment — Thailand/LHT (bounded HCM Chapter 18 signalized
+  15-minute semantic adapter; HCM-reference, not Thai-calibrated by default)
+
+HCM RHT Urban Street Segment remains backend-qualified/reference-only and
+non-actionable in React. Project v2 remains schema `2.0`. This delivery does
+not enable deferred Chapter 18/30 turn-side or intersection methodology.
 
 Phase 3 also qualifies direct method routing, safe draft/project transitions,
 explicit validated starters and blank/custom semantics, structured horizontal
@@ -114,15 +126,18 @@ rebuilt launcher. Detailed evidence is maintained in
   FastAPI with no Node/Vite runtime dependency.
 - Deterministic 1920, 1366, 1024, and 390 px evidence, browser UAT, wheel,
   isolated runtime, and both Windows launcher results are indexed in the Phase
-  3 qualification record. PR #141 remains an unmerged candidate pending the
-  final GitHub CI pass and owner product/visual acceptance.
+  3 qualification record. PR #141 is now merged; this historical evidence is
+  retained. Current Chapter 18 LHT release evidence is maintained separately
+  in `docs/application_rebuild/issue184_release_qualification.md`.
 
 ## Validation and release policy
-- Every change goes through a reviewable PR; PR #141 links the Phase 3 work to
-  Issue #139 with `Closes #139` and is intentionally not merged by this task.
+- Every change goes through a reviewable PR. Issue #184 links its implementation
+  to parent #172 and follow-up #181 and requires fresh independent acceptance
+  before merge. Historical PR #141 linked Phase 3 to Issue #139.
 - Release claims require objective local and CI evidence, including the full
   pytest suite, frontend tests/build, full Playwright coverage, package/runtime
   smoke, both launchers, OpenAPI drift, compileall, and diff checks.
-- HCM Chapter 26/27/28 evidence and existing qualified engine fixtures remain
+- HCM Chapter 26/27/28 evidence, accepted bounded Chapter 18 / Chapter 30
+  Example 1 evidence, and existing qualified engine fixtures remain
   the authority for supported calculation paths. UI work must not be used to
   imply broader methodology support.

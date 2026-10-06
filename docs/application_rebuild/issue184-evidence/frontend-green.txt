@@ -1,0 +1,21 @@
+$ vitest run
+
+ RUN  v3.2.7 D:/R&D/hcm-calculator/.worktrees/issue184/frontend
+
+ ✓ src/registry/modules.test.ts (5 tests) 7ms
+ ✓ src/i18n/catalog.test.ts (9 tests) 22ms
+ ✓ src/app/methodGuideContent.test.ts (3 tests) 10ms
+ ✓ src/i18n/context.test.tsx (1 test) 111ms
+ ✓ src/components/primitives.test.tsx (8 tests) 281ms
+ ✓ src/app/AnalysisWorkflow.test.tsx (5 tests) 225ms
+ ✓ src/app/ProjectWorkspace.test.tsx (2 tests) 349ms
+ ✓ src/app/App.test.tsx (12 tests) 444ms
+ ✓ src/app/LhtWorkflow.test.tsx (9 tests) 2913ms
+   ✓ LHT production controls > edits an ordered numeric delay list with decimal values and item units  817ms
+   ✓ LHT production controls > offers localized boolean choices and sends both true and false as booleans  1036ms
+   ✓ LHT production controls > reveals the local source conditionally and preserves hidden values  871ms
+
+ Test Files  9 passed (9)
+      Tests  54 passed (54)
+   Start at  17:22:59
+   Duration  18.83s (transform 4.21s, setup 40.33s, collect 5.99s, tests 4.36s, environment 65.33s, prepare 10.79s)

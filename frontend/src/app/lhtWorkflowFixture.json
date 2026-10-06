@@ -1,0 +1,738 @@
+{
+  "templates": {
+    "method_id": "urban_street_segment_th_lht",
+    "unit_systems": [
+      "metric",
+      "imperial"
+    ],
+    "default_template_id": "USS-TH-LHT-CH30-EP1",
+    "templates": [
+      {
+        "template_id": "USS-TH-LHT-CH30-EP1",
+        "label": "HCM Chapter 30 Example Problem 1 \u2014 Thailand/LHT semantic mirror",
+        "description": "HCM Chapter 30 Example Problem 1 represented through Thailand/LHT functional kerbside semantics for adapter verification; not a published Thai example.",
+        "validation_status": "reference_fixture",
+        "starter_kind": "example"
+      },
+      {
+        "template_id": "blank_custom",
+        "label": "Blank custom analysis",
+        "description": "Supply every bounded engineering input and external qualification explicitly.",
+        "validation_status": "ui_starter_only",
+        "starter_kind": "blank"
+      }
+    ],
+    "fields": [
+      {
+        "key": "segment_length",
+        "label_key": "urban_street_segment_th_lht.segment_length",
+        "kind": "number",
+        "required": true,
+        "unit_metric": "m",
+        "unit_imperial": "ft"
+      },
+      {
+        "key": "upstream_intersection_width",
+        "label_key": "urban_street_segment_th_lht.upstream_intersection_width",
+        "kind": "number",
+        "required": true,
+        "unit_metric": "m",
+        "unit_imperial": "ft"
+      },
+      {
+        "key": "signal_control_spacing",
+        "label_key": "urban_street_segment_th_lht.signal_control_spacing",
+        "kind": "number",
+        "required": true,
+        "unit_metric": "m",
+        "unit_imperial": "ft"
+      },
+      {
+        "key": "through_lane_count",
+        "label_key": "urban_street_segment_th_lht.through_lane_count",
+        "kind": "integer",
+        "required": true
+      },
+      {
+        "key": "subject_direction",
+        "label_key": "urban_street_segment_th_lht.subject_direction",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "key": "through_movement_id",
+        "label_key": "urban_street_segment_th_lht.through_movement_id",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "key": "posted_speed_limit",
+        "label_key": "urban_street_segment_th_lht.posted_speed_limit",
+        "kind": "number",
+        "required": true,
+        "unit_metric": "km/h",
+        "unit_imperial": "mi/h"
+      },
+      {
+        "key": "s_calib",
+        "label_key": "urban_street_segment_th_lht.s_calib",
+        "kind": "number",
+        "required": true,
+        "unit_metric": "km/h",
+        "unit_imperial": "mi/h"
+      },
+      {
+        "key": "restrictive_median_proportion",
+        "label_key": "urban_street_segment_th_lht.restrictive_median_proportion",
+        "kind": "number",
+        "required": true
+      },
+      {
+        "key": "kerbside_curb_proportion",
+        "label_key": "urban_street_segment_th_lht.kerbside_curb_proportion",
+        "kind": "number",
+        "required": true
+      },
+      {
+        "key": "kerbside_parking_proportion",
+        "label_key": "urban_street_segment_th_lht.kerbside_parking_proportion",
+        "kind": "number",
+        "required": true
+      },
+      {
+        "key": "subject_kerbside_access_count",
+        "label_key": "urban_street_segment_th_lht.subject_kerbside_access_count",
+        "kind": "integer",
+        "required": true
+      },
+      {
+        "key": "opposing_kerbside_access_count",
+        "label_key": "urban_street_segment_th_lht.opposing_kerbside_access_count",
+        "kind": "integer",
+        "required": true
+      },
+      {
+        "key": "v_m_veh_h",
+        "label_key": "urban_street_segment_th_lht.v_m_veh_h",
+        "kind": "number",
+        "required": true,
+        "unit": "veh/h"
+      },
+      {
+        "key": "access_point_delays_s_veh",
+        "label_key": "urban_street_segment_th_lht.access_point_delays_s_veh",
+        "kind": "number_list",
+        "required": true,
+        "unit": "s/veh",
+        "item_unit": "s/veh"
+      },
+      {
+        "key": "d_other_s_veh",
+        "label_key": "urban_street_segment_th_lht.d_other_s_veh",
+        "kind": "number",
+        "required": true,
+        "unit": "s/veh"
+      },
+      {
+        "key": "analysis_period_min",
+        "label_key": "urban_street_segment_th_lht.analysis_period_min",
+        "kind": "integer",
+        "required": true,
+        "unit": "min"
+      },
+      {
+        "key": "control_type",
+        "label_key": "urban_street_segment_th_lht.control_type",
+        "kind": "choice",
+        "required": true,
+        "options": [
+          "signalized"
+        ]
+      },
+      {
+        "key": "demand_balanced",
+        "label_key": "urban_street_segment_th_lht.demand_balanced",
+        "kind": "boolean",
+        "required": true
+      },
+      {
+        "key": "demand_adjustments_resolved",
+        "label_key": "urban_street_segment_th_lht.demand_adjustments_resolved",
+        "kind": "boolean",
+        "required": true
+      },
+      {
+        "key": "capacity_effects_resolved",
+        "label_key": "urban_street_segment_th_lht.capacity_effects_resolved",
+        "kind": "boolean",
+        "required": true
+      },
+      {
+        "key": "spillback_present",
+        "label_key": "urban_street_segment_th_lht.spillback_present",
+        "kind": "boolean",
+        "required": true
+      },
+      {
+        "key": "external_source_class",
+        "label_key": "urban_street_segment_th_lht.external_source_class",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "key": "external_source_tool",
+        "label_key": "urban_street_segment_th_lht.external_source_tool",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "key": "external_source_method_note",
+        "label_key": "urban_street_segment_th_lht.external_source_method_note",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "key": "external_hcm_edition_note",
+        "label_key": "urban_street_segment_th_lht.external_hcm_edition_note",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "key": "external_direction",
+        "label_key": "urban_street_segment_th_lht.external_direction",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "key": "external_control_type",
+        "label_key": "urban_street_segment_th_lht.external_control_type",
+        "kind": "choice",
+        "required": true,
+        "options": [
+          "signalized"
+        ]
+      },
+      {
+        "key": "external_through_movement_id",
+        "label_key": "urban_street_segment_th_lht.external_through_movement_id",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "key": "external_analysis_period_min",
+        "label_key": "urban_street_segment_th_lht.external_analysis_period_min",
+        "kind": "integer",
+        "required": true,
+        "unit": "min"
+      },
+      {
+        "key": "external_scenario_note",
+        "label_key": "urban_street_segment_th_lht.external_scenario_note",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "key": "v_th_veh_h",
+        "label_key": "urban_street_segment_th_lht.v_th_veh_h",
+        "kind": "number",
+        "required": true,
+        "unit": "veh/h"
+      },
+      {
+        "key": "c_th_veh_h",
+        "label_key": "urban_street_segment_th_lht.c_th_veh_h",
+        "kind": "number",
+        "required": true,
+        "unit": "veh/h"
+      },
+      {
+        "key": "d_t_s_veh",
+        "label_key": "urban_street_segment_th_lht.d_t_s_veh",
+        "kind": "number",
+        "required": true,
+        "unit": "s/veh"
+      },
+      {
+        "key": "calibration_status",
+        "label_key": "urban_street_segment_th_lht.calibration_status",
+        "kind": "choice",
+        "required": true,
+        "options": [
+          "hcm_reference_uncalibrated",
+          "user_local_calibration"
+        ]
+      },
+      {
+        "key": "calibration_source_note",
+        "label_key": "urban_street_segment_th_lht.calibration_source_note",
+        "kind": "text",
+        "required": false,
+        "required_if": {
+          "calibration_status": "user_local_calibration"
+        }
+      }
+    ],
+    "groups": [
+      {
+        "key": "geometry",
+        "label_key": "urban_street_segment_th_lht.group_geometry",
+        "field_keys": [
+          "segment_length",
+          "upstream_intersection_width",
+          "signal_control_spacing",
+          "through_lane_count",
+          "posted_speed_limit",
+          "restrictive_median_proportion",
+          "kerbside_curb_proportion",
+          "kerbside_parking_proportion"
+        ]
+      },
+      {
+        "key": "traffic_access",
+        "label_key": "urban_street_segment_th_lht.group_traffic_access",
+        "field_keys": [
+          "subject_direction",
+          "through_movement_id",
+          "v_m_veh_h",
+          "subject_kerbside_access_count",
+          "opposing_kerbside_access_count",
+          "access_point_delays_s_veh",
+          "d_other_s_veh",
+          "analysis_period_min"
+        ]
+      },
+      {
+        "key": "conditions",
+        "label_key": "urban_street_segment_th_lht.group_conditions",
+        "field_keys": [
+          "control_type",
+          "demand_balanced",
+          "demand_adjustments_resolved",
+          "capacity_effects_resolved",
+          "spillback_present"
+        ]
+      },
+      {
+        "key": "downstream_through",
+        "label_key": "urban_street_segment_th_lht.group_downstream_through",
+        "field_keys": [
+          "external_direction",
+          "external_control_type",
+          "external_through_movement_id",
+          "external_analysis_period_min",
+          "v_th_veh_h",
+          "c_th_veh_h",
+          "d_t_s_veh"
+        ]
+      },
+      {
+        "key": "provenance",
+        "label_key": "urban_street_segment_th_lht.group_provenance",
+        "field_keys": [
+          "external_source_class",
+          "external_source_tool",
+          "external_source_method_note",
+          "external_hcm_edition_note",
+          "external_scenario_note"
+        ]
+      },
+      {
+        "key": "calibration",
+        "label_key": "urban_street_segment_th_lht.group_calibration",
+        "field_keys": [
+          "calibration_status",
+          "s_calib",
+          "calibration_source_note"
+        ]
+      }
+    ],
+    "branches": {
+      "validation_without_calculation": true,
+      "bounded": true
+    },
+    "scope_notes": [
+      "Bounded HCM 7.0 Chapter 18 signalized 15-minute segment; external downstream through performance is required.",
+      "Thailand/LHT functional-role semantic adapter: kerbside is physical left for each travel direction.",
+      "HCM-reference coefficients; not locally calibrated by default. Turn-side and planning procedures remain unavailable."
+    ]
+  },
+  "starting": {
+    "method_id": "urban_street_segment_th_lht",
+    "template_id": "USS-TH-LHT-CH30-EP1",
+    "template_label": "HCM Chapter 30 Example Problem 1 \u2014 Thailand/LHT semantic mirror",
+    "template_description": "HCM Chapter 30 Example Problem 1 represented through Thailand/LHT functional kerbside semantics for adapter verification; not a published Thai example.",
+    "validation_status": "reference_fixture",
+    "starter_kind": "example",
+    "unit_system": "metric",
+    "displayed_inputs": {
+      "segment_length": 548.64,
+      "upstream_intersection_width": 15.24,
+      "signal_control_spacing": 548.64,
+      "through_lane_count": 2,
+      "subject_direction": "eastbound",
+      "through_movement_id": "EB_TH",
+      "posted_speed_limit": 56.327040000000004,
+      "s_calib": 0.0,
+      "restrictive_median_proportion": 0,
+      "kerbside_curb_proportion": 0.7,
+      "kerbside_parking_proportion": 0,
+      "subject_kerbside_access_count": 4,
+      "opposing_kerbside_access_count": 4,
+      "v_m_veh_h": 1150,
+      "access_point_delays_s_veh": [
+        0.193,
+        0.194
+      ],
+      "d_other_s_veh": 0,
+      "analysis_period_min": 15,
+      "control_type": "signalized",
+      "demand_balanced": true,
+      "demand_adjustments_resolved": true,
+      "capacity_effects_resolved": true,
+      "spillback_present": false,
+      "external_source_class": "qualified_external_signal_analysis",
+      "external_source_tool": "HCM 7 Chapter 30 Example Problem 1",
+      "external_source_method_note": "HCM 7 Chapter 30 Example Problem 1",
+      "external_hcm_edition_note": "HCM 7.0",
+      "external_direction": "eastbound",
+      "external_control_type": "signalized",
+      "external_through_movement_id": "EB_TH",
+      "external_analysis_period_min": 15,
+      "external_scenario_note": "Chapter 30 Example Problem 1",
+      "v_th_veh_h": 968,
+      "c_th_veh_h": 1848,
+      "d_t_s_veh": 18.31,
+      "calibration_status": "hcm_reference_uncalibrated",
+      "calibration_source_note": null
+    },
+    "fields": [
+      {
+        "key": "segment_length",
+        "label_key": "urban_street_segment_th_lht.segment_length",
+        "kind": "number",
+        "required": true,
+        "unit_metric": "m",
+        "unit_imperial": "ft"
+      },
+      {
+        "key": "upstream_intersection_width",
+        "label_key": "urban_street_segment_th_lht.upstream_intersection_width",
+        "kind": "number",
+        "required": true,
+        "unit_metric": "m",
+        "unit_imperial": "ft"
+      },
+      {
+        "key": "signal_control_spacing",
+        "label_key": "urban_street_segment_th_lht.signal_control_spacing",
+        "kind": "number",
+        "required": true,
+        "unit_metric": "m",
+        "unit_imperial": "ft"
+      },
+      {
+        "key": "through_lane_count",
+        "label_key": "urban_street_segment_th_lht.through_lane_count",
+        "kind": "integer",
+        "required": true
+      },
+      {
+        "key": "subject_direction",
+        "label_key": "urban_street_segment_th_lht.subject_direction",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "key": "through_movement_id",
+        "label_key": "urban_street_segment_th_lht.through_movement_id",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "key": "posted_speed_limit",
+        "label_key": "urban_street_segment_th_lht.posted_speed_limit",
+        "kind": "number",
+        "required": true,
+        "unit_metric": "km/h",
+        "unit_imperial": "mi/h"
+      },
+      {
+        "key": "s_calib",
+        "label_key": "urban_street_segment_th_lht.s_calib",
+        "kind": "number",
+        "required": true,
+        "unit_metric": "km/h",
+        "unit_imperial": "mi/h"
+      },
+      {
+        "key": "restrictive_median_proportion",
+        "label_key": "urban_street_segment_th_lht.restrictive_median_proportion",
+        "kind": "number",
+        "required": true
+      },
+      {
+        "key": "kerbside_curb_proportion",
+        "label_key": "urban_street_segment_th_lht.kerbside_curb_proportion",
+        "kind": "number",
+        "required": true
+      },
+      {
+        "key": "kerbside_parking_proportion",
+        "label_key": "urban_street_segment_th_lht.kerbside_parking_proportion",
+        "kind": "number",
+        "required": true
+      },
+      {
+        "key": "subject_kerbside_access_count",
+        "label_key": "urban_street_segment_th_lht.subject_kerbside_access_count",
+        "kind": "integer",
+        "required": true
+      },
+      {
+        "key": "opposing_kerbside_access_count",
+        "label_key": "urban_street_segment_th_lht.opposing_kerbside_access_count",
+        "kind": "integer",
+        "required": true
+      },
+      {
+        "key": "v_m_veh_h",
+        "label_key": "urban_street_segment_th_lht.v_m_veh_h",
+        "kind": "number",
+        "required": true,
+        "unit": "veh/h"
+      },
+      {
+        "key": "access_point_delays_s_veh",
+        "label_key": "urban_street_segment_th_lht.access_point_delays_s_veh",
+        "kind": "number_list",
+        "required": true,
+        "unit": "s/veh",
+        "item_unit": "s/veh"
+      },
+      {
+        "key": "d_other_s_veh",
+        "label_key": "urban_street_segment_th_lht.d_other_s_veh",
+        "kind": "number",
+        "required": true,
+        "unit": "s/veh"
+      },
+      {
+        "key": "analysis_period_min",
+        "label_key": "urban_street_segment_th_lht.analysis_period_min",
+        "kind": "integer",
+        "required": true,
+        "unit": "min"
+      },
+      {
+        "key": "control_type",
+        "label_key": "urban_street_segment_th_lht.control_type",
+        "kind": "choice",
+        "required": true,
+        "options": [
+          "signalized"
+        ]
+      },
+      {
+        "key": "demand_balanced",
+        "label_key": "urban_street_segment_th_lht.demand_balanced",
+        "kind": "boolean",
+        "required": true
+      },
+      {
+        "key": "demand_adjustments_resolved",
+        "label_key": "urban_street_segment_th_lht.demand_adjustments_resolved",
+        "kind": "boolean",
+        "required": true
+      },
+      {
+        "key": "capacity_effects_resolved",
+        "label_key": "urban_street_segment_th_lht.capacity_effects_resolved",
+        "kind": "boolean",
+        "required": true
+      },
+      {
+        "key": "spillback_present",
+        "label_key": "urban_street_segment_th_lht.spillback_present",
+        "kind": "boolean",
+        "required": true
+      },
+      {
+        "key": "external_source_class",
+        "label_key": "urban_street_segment_th_lht.external_source_class",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "key": "external_source_tool",
+        "label_key": "urban_street_segment_th_lht.external_source_tool",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "key": "external_source_method_note",
+        "label_key": "urban_street_segment_th_lht.external_source_method_note",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "key": "external_hcm_edition_note",
+        "label_key": "urban_street_segment_th_lht.external_hcm_edition_note",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "key": "external_direction",
+        "label_key": "urban_street_segment_th_lht.external_direction",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "key": "external_control_type",
+        "label_key": "urban_street_segment_th_lht.external_control_type",
+        "kind": "choice",
+        "required": true,
+        "options": [
+          "signalized"
+        ]
+      },
+      {
+        "key": "external_through_movement_id",
+        "label_key": "urban_street_segment_th_lht.external_through_movement_id",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "key": "external_analysis_period_min",
+        "label_key": "urban_street_segment_th_lht.external_analysis_period_min",
+        "kind": "integer",
+        "required": true,
+        "unit": "min"
+      },
+      {
+        "key": "external_scenario_note",
+        "label_key": "urban_street_segment_th_lht.external_scenario_note",
+        "kind": "text",
+        "required": true
+      },
+      {
+        "key": "v_th_veh_h",
+        "label_key": "urban_street_segment_th_lht.v_th_veh_h",
+        "kind": "number",
+        "required": true,
+        "unit": "veh/h"
+      },
+      {
+        "key": "c_th_veh_h",
+        "label_key": "urban_street_segment_th_lht.c_th_veh_h",
+        "kind": "number",
+        "required": true,
+        "unit": "veh/h"
+      },
+      {
+        "key": "d_t_s_veh",
+        "label_key": "urban_street_segment_th_lht.d_t_s_veh",
+        "kind": "number",
+        "required": true,
+        "unit": "s/veh"
+      },
+      {
+        "key": "calibration_status",
+        "label_key": "urban_street_segment_th_lht.calibration_status",
+        "kind": "choice",
+        "required": true,
+        "options": [
+          "hcm_reference_uncalibrated",
+          "user_local_calibration"
+        ]
+      },
+      {
+        "key": "calibration_source_note",
+        "label_key": "urban_street_segment_th_lht.calibration_source_note",
+        "kind": "text",
+        "required": false,
+        "required_if": {
+          "calibration_status": "user_local_calibration"
+        }
+      }
+    ],
+    "groups": [
+      {
+        "key": "geometry",
+        "label_key": "urban_street_segment_th_lht.group_geometry",
+        "field_keys": [
+          "segment_length",
+          "upstream_intersection_width",
+          "signal_control_spacing",
+          "through_lane_count",
+          "posted_speed_limit",
+          "restrictive_median_proportion",
+          "kerbside_curb_proportion",
+          "kerbside_parking_proportion"
+        ]
+      },
+      {
+        "key": "traffic_access",
+        "label_key": "urban_street_segment_th_lht.group_traffic_access",
+        "field_keys": [
+          "subject_direction",
+          "through_movement_id",
+          "v_m_veh_h",
+          "subject_kerbside_access_count",
+          "opposing_kerbside_access_count",
+          "access_point_delays_s_veh",
+          "d_other_s_veh",
+          "analysis_period_min"
+        ]
+      },
+      {
+        "key": "conditions",
+        "label_key": "urban_street_segment_th_lht.group_conditions",
+        "field_keys": [
+          "control_type",
+          "demand_balanced",
+          "demand_adjustments_resolved",
+          "capacity_effects_resolved",
+          "spillback_present"
+        ]
+      },
+      {
+        "key": "downstream_through",
+        "label_key": "urban_street_segment_th_lht.group_downstream_through",
+        "field_keys": [
+          "external_direction",
+          "external_control_type",
+          "external_through_movement_id",
+          "external_analysis_period_min",
+          "v_th_veh_h",
+          "c_th_veh_h",
+          "d_t_s_veh"
+        ]
+      },
+      {
+        "key": "provenance",
+        "label_key": "urban_street_segment_th_lht.group_provenance",
+        "field_keys": [
+          "external_source_class",
+          "external_source_tool",
+          "external_source_method_note",
+          "external_hcm_edition_note",
+          "external_scenario_note"
+        ]
+      },
+      {
+        "key": "calibration",
+        "label_key": "urban_street_segment_th_lht.group_calibration",
+        "field_keys": [
+          "calibration_status",
+          "s_calib",
+          "calibration_source_note"
+        ]
+      }
+    ],
+    "scope_notes": [
+      "Bounded HCM 7.0 Chapter 18 signalized 15-minute segment; external downstream through performance is required.",
+      "Thailand/LHT functional-role semantic adapter: kerbside is physical left for each travel direction.",
+      "HCM-reference coefficients; not locally calibrated by default. Turn-side and planning procedures remain unavailable."
+    ]
+  }
+}

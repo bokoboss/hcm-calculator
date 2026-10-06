@@ -222,7 +222,7 @@ test.describe('Phase 3 remediation journeys', () => {
 
     await page.getByRole('button', { name: 'Recalculate', exact: true }).click();
     await expect(page.getByTestId('workflow-results')).toBeVisible();
-    await page.getByRole('button', { name: 'Thai' }).click();
+    await page.getByRole('button', { name: 'Thai', exact: true }).click();
     await expect(page.getByText('ระดับการให้บริการ', { exact: true }).first()).toBeVisible();
     await capture(page, 'phase3-remediation-thai-result.png');
 

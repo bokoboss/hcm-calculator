@@ -1,6 +1,6 @@
 # HCM Calculator — Application Rebuild
 
-Status: **Phase 2 accepted and merged; Phase 3 implementation candidate pending Issue #139 review and final acceptance**
+Status: **Application rebuild through Phase 3 / PR #141 merged; Issue #184 LHT worksheet candidate pending independent acceptance**
 Date: 2026-08-27
 Accepted R0 commit: `6482808c06fd4bfc3f6d6ef246bd6efdc58c4e65`
 Accepted Phase 1 commit: `cfcfe7af14d821dadc04c4f067322ef5d3760c1c`
@@ -61,7 +61,7 @@ The final review found no blocker requiring a change of product direction or tec
 - context-aware application actions;
 - the Project v2 schema gate.
 
-R1 Application Foundation and Phase 2 Prototype & Architecture Validation have both been accepted and merged. The next authorized implementation step is Phase 3 — Full Migration & Release.
+R1 Application Foundation, Phase 2 Prototype & Architecture Validation, and Phase 3 / PR #141 are merged. React/FastAPI is the current normal application architecture. Issue #184 implements the eighth production worksheet and EN/TH Handbook for the bounded Thailand/LHT Urban Street Segment; its candidate must pass fresh independent acceptance before merge. RHT remains reference-only, HCM-reference LHT coefficients are not Thai-calibrated by default, and Project v2 remains `2.0`. Current evidence is indexed in [`issue184_release_qualification.md`](issue184_release_qualification.md).
 
 ## Authority and conflict order
 
@@ -183,7 +183,7 @@ The branch `codex/phase-17-planning` is retained as historical reference only. I
 
 Phase 2 is complete and accepted at `868c00616b6cb3b74308777c4753e1af80bb863e`.
 
-The Phase 3 implementation candidate records:
+The historical Phase 3 implementation record describes:
 
 1. The authoritative preflight fast-forwarded local `main` to
    `da64a662094458738f8c9cae7213bcf04a6f5007` and created the Phase 3 branch
@@ -196,5 +196,6 @@ The Phase 3 implementation candidate records:
    actionability.
 4. The remaining release gates and exact command results are indexed in
    [`phase3_release_qualification.md`](phase3_release_qualification.md).
-5. The Phase 3 branch will be pushed as one reviewable PR with `Closes #139`
-   and will remain unmerged for ChatGPT/GitHub final acceptance.
+5. The Phase 3 branch was reviewed through PR #141 with `Closes #139`
+   and merged at `28c1a76ad379c332a5c50fc756bdcdf6975cd957`. This historical
+   record does not replace the independent acceptance gate for Issue #184.

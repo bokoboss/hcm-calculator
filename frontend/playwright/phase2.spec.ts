@@ -163,7 +163,7 @@ test.describe('Phase 2 representative workflows', () => {
     const fingerprint = await page.locator('.evidence-grid code').innerText();
     expect(fingerprint).toMatch(/^[0-9a-f]{64}$/);
 
-    await page.getByRole('button', { name: 'Thai' }).click();
+    await page.getByRole('button', { name: 'Thai', exact: true }).click();
     await expect(page.getByText('ไม่คาดการณ์ในสถานะนี้', { exact: true })).toHaveCount(2);
     await expect(page.getByText('ในสถานะนี้จะไม่คาดการณ์ความเร็วและความหนาแน่น', { exact: true })).toBeVisible();
     await expect(page.locator('.evidence-grid code')).toHaveText(fingerprint);
@@ -201,7 +201,7 @@ test.describe('Phase 2 representative workflows', () => {
     await expect(page.getByTestId('workflow-results')).toContainText('km/h');
     await expect(page.getByTestId('workflow-results')).toContainText('fol/km/ln');
 
-    await page.getByRole('button', { name: 'Thai' }).click();
+    await page.getByRole('button', { name: 'Thai', exact: true }).click();
     await expect(page.getByText('ระดับการให้บริการของสิ่งอำนวยความสะดวก', { exact: true })).toBeVisible();
     await expect(page.getByText('ความเร็วเฉลี่ยสิ่งอำนวยความสะดวก', { exact: true })).toBeVisible();
   });

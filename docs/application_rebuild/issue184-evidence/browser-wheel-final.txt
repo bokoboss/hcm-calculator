@@ -1,0 +1,22 @@
+
+Running 15 tests using 1 worker
+
+(node:49648) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  1 [chromium] › playwright\ch18-lht.spec.ts:36:3 › Chapter 18 Thailand/LHT production qualification › delivers only LHT, opens direct/history routes and bilingual Handbook (961ms)
+  ok  2 [chromium] › playwright\ch18-lht.spec.ts:62:3 › Chapter 18 Thailand/LHT production qualification › calculates the accepted fixture, orders metrics, preserves locale, marks stale and exports all four formats (1.2s)
+  ok  3 [chromium] › playwright\ch18-lht.spec.ts:91:3 › Chapter 18 Thailand/LHT production qualification › keyboard list editing and backend boolean/list validation recover without coercion (1.5s)
+  ok  4 [chromium] › playwright\ch18-lht.spec.ts:115:3 › Chapter 18 Thailand/LHT production qualification › calibration reveals errors in closed disclosure, retains source and adjustment, then recovers (2.0s)
+  ok  5 [chromium] › playwright\ch18-lht.spec.ts:140:3 › Chapter 18 Thailand/LHT production qualification › blank custom starts fail-closed and can be completed entirely with production controls (1.5s)
+  ok  6 [chromium] › playwright\ch18-lht.spec.ts:162:3 › Chapter 18 Thailand/LHT production qualification › attributes mismatched downstream inputs and reveals closed provenance for recovery (1.3s)
+  ok  7 [chromium] › playwright\ch18-lht.spec.ts:178:3 › Chapter 18 Thailand/LHT production qualification › saves, restores exact Project inputs without rerun, edits a scenario and compares (2.0s)
+  ok  8 [chromium] › playwright\ch18-lht.spec.ts:224:5 › Chapter 18 Thailand/LHT production qualification › en responsive worksheet, list, results and Handbook at 1920px (953ms)
+  ok  9 [chromium] › playwright\ch18-lht.spec.ts:224:5 › Chapter 18 Thailand/LHT production qualification › th responsive worksheet, list, results and Handbook at 1920px (1.0s)
+  ok 10 [chromium] › playwright\ch18-lht.spec.ts:224:5 › Chapter 18 Thailand/LHT production qualification › en responsive worksheet, list, results and Handbook at 1366px (894ms)
+  ok 11 [chromium] › playwright\ch18-lht.spec.ts:224:5 › Chapter 18 Thailand/LHT production qualification › th responsive worksheet, list, results and Handbook at 1366px (1.0s)
+  ok 12 [chromium] › playwright\ch18-lht.spec.ts:224:5 › Chapter 18 Thailand/LHT production qualification › en responsive worksheet, list, results and Handbook at 1024px (831ms)
+  ok 13 [chromium] › playwright\ch18-lht.spec.ts:224:5 › Chapter 18 Thailand/LHT production qualification › th responsive worksheet, list, results and Handbook at 1024px (953ms)
+  ok 14 [chromium] › playwright\ch18-lht.spec.ts:224:5 › Chapter 18 Thailand/LHT production qualification › en responsive worksheet, list, results and Handbook at 390px (780ms)
+  ok 15 [chromium] › playwright\ch18-lht.spec.ts:224:5 › Chapter 18 Thailand/LHT production qualification › th responsive worksheet, list, results and Handbook at 390px (926ms)
+
+  15 passed (19.1s)

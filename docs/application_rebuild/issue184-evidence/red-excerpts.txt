@@ -1,0 +1,68 @@
+Extracted actual RED output; full originals remain in .tmp/evidence/.
+
+controls-baseline-red.txt
+-------------------------
+ ❯ src/app/LhtWorkflow.test.tsx (9 tests | 3 failed | 6 skipped) 1146ms
+     → Unable to find an accessible element with the role "group" and name `/Access-point delays/`
+     → Unable to find an accessible element with the role "radio" and name "No"
+     → Unable to find an accessible element with the role "radio" and name "HCM reference — not locally calibrated"
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/app/LhtWorkflow.test.tsx > LHT production controls > edits an ordered numeric delay list with decimal values and item units
+TestingLibraryElementError: Unable to find an accessible element with the role "group" and name `/Access-point delays/`
+ FAIL  src/app/LhtWorkflow.test.tsx > LHT production controls > offers localized boolean choices and sends both true and false as booleans
+TestingLibraryElementError: Unable to find an accessible element with the role "radio" and name "No"
+ FAIL  src/app/LhtWorkflow.test.tsx > LHT production controls > resolves field-aware calibration choices through the production form
+TestingLibraryElementError: Unable to find an accessible element with the role "radio" and name "HCM reference — not locally calibrated"
+ Test Files  1 failed (1)
+      Tests  3 failed | 6 skipped (9)
+
+frontend-red.txt
+----------------
+ ❯ src/registry/modules.test.ts (5 tests | 2 failed) 20ms
+ ❯ src/app/methodGuideContent.test.ts (3 tests | 1 failed) 21ms
+ ❯ src/app/LhtWorkflow.test.tsx (6 tests | 6 failed) 1352ms
+     → Unable to find an accessible element with the role "group" and name "Qualified access-point delays"
+     → Unable to find an accessible element with the role "group" and name "Demand balanced"
+     → Unable to find an accessible element with the role "radio" and name "HCM reference — not locally calibrated"
+     → Unable to find an accessible element with the role "button" and name "Calibration"
+     → Unable to find an accessible element with the role "button" and name "Analysis guide"
+ ❯ src/app/App.test.tsx (12 tests | 2 failed) 2316ms
+⎯⎯⎯⎯⎯⎯ Failed Tests 11 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/app/App.test.tsx > direct analysis route containment > opens the delivered Thailand/LHT direct route
+ FAIL  src/app/App.test.tsx > direct analysis route containment > enters the LHT worksheet from restored scenario-edit history
+ FAIL  src/app/LhtWorkflow.test.tsx > LHT production controls > edits an ordered numeric delay list with decimal values and item units
+TestingLibraryElementError: Unable to find an accessible element with the role "group" and name "Qualified access-point delays"
+ FAIL  src/app/LhtWorkflow.test.tsx > LHT production controls > offers localized boolean choices and sends both true and false as booleans
+TestingLibraryElementError: Unable to find an accessible element with the role "group" and name "Demand balanced"
+ FAIL  src/app/LhtWorkflow.test.tsx > LHT production controls > resolves field-aware calibration choices through the production form
+TestingLibraryElementError: Unable to find an accessible element with the role "radio" and name "HCM reference — not locally calibrated"
+ FAIL  src/app/LhtWorkflow.test.tsx > LHT production controls > reveals the local source conditionally and preserves hidden values
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Calibration"
+ FAIL  src/app/LhtWorkflow.test.tsx > LHT production controls > localizes every Chapter 18 result metric
+ FAIL  src/app/LhtWorkflow.test.tsx > LHT production controls > exposes the production Handbook from the LHT method card
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Analysis guide"
+ FAIL  src/app/methodGuideContent.test.ts > HCM analysis handbook content > provides an LHT production guide with six glossary entries and seven steps
+ FAIL  src/registry/modules.test.ts > frontend delivery registry > registers every delivered Phase 3 method with its backend input contract
+ FAIL  src/registry/modules.test.ts > frontend delivery registry > delivers only LHT with the exact contract handshake
+ Test Files  4 failed | 5 passed (9)
+      Tests  11 failed | 40 passed (51)
+
+backend-red.txt
+---------------
+FAILED tests/application/test_urban_street_lht_workflow.py::test_production_presentation_groups_and_conditional_source
+1 failed, 27 passed, 2 warnings in 2.62s
+
+csv-red.txt
+-----------
+ ❯ src/app/LhtWorkflow.test.tsx (9 tests | 1 failed | 8 skipped) 126ms
+     → Unable to find an accessible element with the role "menuitem" and name "Export CSV"
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/app/LhtWorkflow.test.tsx > LHT production controls > offers all four current LHT exports
+TestingLibraryElementError: Unable to find an accessible element with the role "menuitem" and name "Export CSV"
+ Test Files  1 failed (1)
+      Tests  1 failed | 8 skipped (9)
+
+static-red.txt
+--------------
+FAILED tests/api/test_static_cache.py::test_packaged_lht_worksheet_handbook_and_dist_are_synchronized
+1 failed, 3 passed in 8.47s

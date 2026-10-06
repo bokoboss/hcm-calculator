@@ -18,7 +18,8 @@ export type MethodNavigationId =
   | 'basic_freeway_segment'
   | 'weaving_segment'
   | 'merge_segment'
-  | 'diverge_segment';
+  | 'diverge_segment'
+  | 'urban_street_segment_th_lht';
 
 function isIpv4Loopback(hostname: string): boolean {
   const octets = hostname.split('.');
@@ -77,6 +78,7 @@ export function SidebarNavigation({
         { id: 'two_lane_segment', label: t('method.two_lane_segment.name') },
         { id: 'two_lane_facility', label: t('method.two_lane_facility.name') },
         { id: 'multilane_segment', label: t('method.multilane_segment.name') },
+        { id: 'urban_street_segment_th_lht', label: t('method.urban_street_segment_th_lht.name') },
       ],
     },
     {
@@ -389,6 +391,7 @@ export function InputWithUnit({
       <input
         id={id}
         type={type}
+        step={type === 'number' ? 'any' : undefined}
         value={displayedValue}
         onFocus={() => {
           if (formatValue) {
@@ -436,7 +439,7 @@ export function ChoiceGroup({
   onTouched?: () => void;
 }): ReactElement {
   return (
-    <fieldset className={`choice-group ${error ? 'choice-group-invalid' : ''}`} data-slot="choice-group" aria-invalid={error ? 'true' : undefined}>
+    <fieldset id={name} tabIndex={-1} className={`choice-group ${error ? 'choice-group-invalid' : ''}`} data-slot="choice-group" aria-describedby={error ? `${name}-error` : undefined} aria-invalid={error ? 'true' : undefined}>
       <legend>{legend}</legend>
       <div className="choice-options">
         {options.map((option) => (
@@ -448,6 +451,8 @@ export function ChoiceGroup({
               checked={value === option.value}
               onChange={() => { onTouched?.(); onChange?.(option.value); }}
               onBlur={onTouched}
+              aria-describedby={error ? `${name}-error` : undefined}
+              aria-invalid={error ? 'true' : undefined}
             />
             <span>
               <strong>{option.label}</strong>
@@ -456,7 +461,7 @@ export function ChoiceGroup({
           </label>
         ))}
       </div>
-      {error ? <span className="field-error" role="alert">{error}</span> : null}
+      {error ? <span id={`${name}-error`} className="field-error" role="alert">{error}</span> : null}
     </fieldset>
   );
 }
@@ -487,8 +492,11 @@ export function ErrorSummary({
       const target = document.getElementById(targetId);
       if (!target) return;
       event.preventDefault();
-      target.focus();
-      target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      revealDisclosure(target);
+      window.requestAnimationFrame(() => {
+        target.focus();
+        target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      });
     }}>{message}</a> : message}</li>;
   })}</ul></div>;
 }
@@ -571,14 +579,25 @@ export function DetailsDisclosure({
   title,
   children,
   defaultOpen = false,
+  reveal = false,
+  keepMounted = false,
 }: {
   title: string;
   children: ReactNode;
   defaultOpen?: boolean;
+  reveal?: boolean;
+  keepMounted?: boolean;
 }): ReactElement {
   const [open, setOpen] = useState(defaultOpen);
   const contentId = useId();
-  return <div className="details-disclosure" data-slot="details-disclosure"><button className="disclosure-trigger" type="button" aria-expanded={open} aria-controls={contentId} onClick={() => setOpen((current) => !current)}><span>{title}</span><span aria-hidden="true">{open ? '−' : '+'}</span></button>{open ? <div className="disclosure-content" id={contentId}>{children}</div> : null}</div>;
+  useEffect(() => { if (reveal) setOpen(true); }, [reveal]);
+  return <div className="details-disclosure" data-slot="details-disclosure"><button className="disclosure-trigger" type="button" aria-expanded={open} aria-controls={contentId} onClick={() => setOpen((current) => !current)}><span>{title}</span><span aria-hidden="true">{open ? '−' : '+'}</span></button>{open || keepMounted ? <div className="disclosure-content" id={contentId} hidden={!open}>{children}</div> : null}</div>;
+}
+
+export function revealDisclosure(target: HTMLElement): void {
+  const disclosure = target.closest('[data-slot="details-disclosure"]');
+  const trigger = disclosure?.querySelector<HTMLButtonElement>('.disclosure-trigger');
+  if (trigger?.getAttribute('aria-expanded') === 'false') trigger.click();
 }
 
 export function StaleResultPanel(): ReactElement {

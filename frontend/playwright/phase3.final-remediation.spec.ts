@@ -40,7 +40,7 @@ test.describe('Final bounded remediation evidence', () => {
     expect(overflow.width).toBeLessThanOrEqual(overflow.viewport + 1);
 
     await page.setViewportSize({ width: 1366, height: 768 });
-    await page.getByRole('button', { name: 'Thai' }).click();
+    await page.getByRole('button', { name: 'Thai', exact: true }).click();
     await expect(page.getByRole('columnheader', { name: 'ความชัน (%)', exact: true })).toBeVisible();
     await capture(page, 'final-facility-th-1366.png');
 
@@ -71,7 +71,7 @@ test.describe('Final bounded remediation evidence', () => {
       ramp_ffs: 64.37376,
       auxiliary_lane_length: 182.88,
     });
-    await page.getByRole('button', { name: 'Thai' }).click();
+    await page.getByRole('button', { name: 'Thai', exact: true }).click();
     const warning = page.locator('[data-slot="warning-panel"]');
     await expect(warning).toContainText('เกินระดับที่พึงประสงค์สูงสุด');
     await expect(warning).not.toContainText('Maximum desirable merge influence-area flow');
@@ -101,7 +101,7 @@ test.describe('Final bounded remediation evidence', () => {
 
     await page.setViewportSize({ width: 390, height: 844 });
     await calculate(page, 'multilane_segment');
-    await page.getByRole('button', { name: 'Thai' }).click();
+    await page.getByRole('button', { name: 'Thai', exact: true }).click();
     await page.getByRole('button', { name: 'ส่งออก' }).click();
     await expect(page.locator('.export-menu-content')).toBeVisible();
     const overflow = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, viewport: window.innerWidth }));

@@ -12,10 +12,10 @@ const phase3Methods = [
 const phase3ReferenceDirectory = path.resolve('..', 'docs', 'application_rebuild', 'visual-reference');
 
 test.describe('Phase 3 full migration', () => {
-  test('all seven registered methods are actionable from the normal method chooser', async ({ page }) => {
+  test('all eight registered methods are actionable from the normal method chooser', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('button', { name: 'New Analysis' }).first().click();
-    await expect(page.getByText('7 calculation methods available', { exact: true })).toBeVisible();
+    await expect(page.getByText('8 calculation methods available', { exact: true })).toBeVisible();
     for (const methodId of [
       'two_lane_segment',
       'two_lane_facility',
@@ -24,6 +24,7 @@ test.describe('Phase 3 full migration', () => {
       'weaving_segment',
       'merge_segment',
       'diverge_segment',
+      'urban_street_segment_th_lht',
     ]) {
       await expect(page.getByTestId(`method-card-${methodId}`).getByRole('button', { name: 'Start analysis' })).toBeEnabled();
     }

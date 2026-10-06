@@ -7,11 +7,10 @@ Rebuild R0 baseline is the authority for the target application architecture.
 Treat engineering correctness, traceability, and validation as primary product
 requirements.
 
-The target architecture is React + TypeScript + Vite -> FastAPI -> a
+The current normal application architecture is React + TypeScript + Vite -> FastAPI -> a
 framework-independent Python application layer -> the existing qualified HCM
 engines. Python remains the calculation authority. TypeScript must not
-duplicate HCM formulas. The qualified Streamlit UI remains available during
-migration, but it is not the target architecture.
+duplicate HCM formulas. The qualified Streamlit UI remains available as a compatibility path.
 
 The accepted R0 authority is under `docs/application_rebuild/`, in this order:
 
@@ -21,8 +20,12 @@ The accepted R0 authority is under `docs/application_rebuild/`, in this order:
 4. `r0_technology_architecture.md`
 5. remaining R0 specification documents
 
-R0 is accepted and merged. R1 Application Foundation is authorized, but PR
-#133 is still in progress and is not an accepted baseline.
+R0 and the application rebuild through Phase 3 / PR #141 are merged.
+Chapter 18 engine, RHT application integration, Thailand/LHT semantic
+qualification and LHT backend adapter are accepted through PRs #175, #177,
+#180 and #183. Issue #184 implements the LHT production worksheet and
+Handbook; its release evidence and independent acceptance gate remain
+authoritative before that candidate is merged.
 
 ## Current Scope
 
@@ -31,10 +34,17 @@ R0 is accepted and merged. R1 Application Foundation is authorized, but PR
 - Calculation logic independent from UI
 - Qualified workflows currently cover Two-Lane Segment, Two-Lane Facility,
   Multilane Segment, Basic Freeway Segment, Weaving Segment, Merge Segment,
-  and Diverge Segment. Preserve their existing calculation contracts and
-  validation evidence.
-- Streamlit remains the qualified migration UI while the accepted rebuild is
-  implemented beside it.
+  Diverge Segment, and the bounded Thailand/LHT Urban Street Segment.
+  Eight production React workflows are implemented in this tree. Preserve
+  their existing calculation contracts and validation evidence.
+- React/FastAPI is the normal installed-use architecture; Streamlit remains
+  the qualified compatibility UI.
+- HCM RHT Urban Street Segment remains backend-qualified/reference-only,
+  with no delivered/actionable React worksheet.
+- The Chapter 18 LHT adapter uses HCM-reference coefficients and is not
+  Thai-calibrated by default. Only the accepted bounded signalized 15-minute
+  scope is supported; deferred Chapter 18/30 turn/intersection methods remain
+  unavailable. Project v2 schema remains `2.0`.
 
 ## Constraints
 

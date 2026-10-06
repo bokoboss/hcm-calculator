@@ -31,6 +31,37 @@ def starter():
     return lht().starting_values(TEMPLATE, "imperial")["displayed_inputs"]
 
 
+def test_production_presentation_groups_and_conditional_source():
+    templates = lht().templates()
+    groups = templates["groups"]
+    assert [group["key"] for group in groups] == [
+        "geometry", "traffic_access", "conditions", "downstream_through",
+        "provenance", "calibration",
+    ]
+    assert groups[0]["field_keys"] == [
+        "segment_length", "upstream_intersection_width", "signal_control_spacing",
+        "through_lane_count", "posted_speed_limit", "restrictive_median_proportion",
+        "kerbside_curb_proportion", "kerbside_parking_proportion",
+    ]
+    fields = {field["key"]: field for field in templates["fields"]}
+    assert fields["calibration_source_note"]["required_if"] == {
+        "calibration_status": "user_local_calibration",
+    }
+    assert fields["access_point_delays_s_veh"]["item_unit"] == "s/veh"
+
+
+def test_presentation_changes_preserve_baseline_fingerprints_and_result():
+    # Values from accepted main 089af22; presentation metadata is not identity.
+    snapshot = lht().calculate(template_id=TEMPLATE, unit_system="metric",
+                               displayed_inputs=lht().starting_values(TEMPLATE, "metric")["displayed_inputs"])
+    from pathlib import Path
+    baseline = json.loads((Path(__file__).parents[1] / "fixtures" / "urban_street_lht_application_baseline.json").read_text(encoding="utf-8"))
+    for key in ("displayed_inputs", "normalized_inputs", "calculation_fingerprint",
+                "input_snapshot_fingerprint", "result", "method_identifier",
+                "engine_method_identifier", "method_version", "input_contract", "project_type"):
+        assert snapshot[key] == baseline[key]
+
+
 def test_registry_and_frozen_lht_identity():
     definition = get_analysis_definition(METHOD)
     assert definition is not None

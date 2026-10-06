@@ -67,9 +67,27 @@ class ThailandLHTUrbanStreetWorkflow(UrbanStreetWorkflow):
                 "label_key": f"{METHOD_ID}.calibration_source_note",
                 "kind": "text",
                 "required": False,
+                "required_if": {"calibration_status": "user_local_calibration"},
             },
         ])
         return fields
+
+    def templates(self) -> dict[str, Any]:
+        response = super().templates()
+        # Presentation only: field identities, snapshots and engine inputs stay fixed.
+        sections = {
+            "geometry": ["segment_length", "upstream_intersection_width", "signal_control_spacing", "through_lane_count", "posted_speed_limit", "restrictive_median_proportion", "kerbside_curb_proportion", "kerbside_parking_proportion"],
+            "traffic_access": ["subject_direction", "through_movement_id", "v_m_veh_h", "subject_kerbside_access_count", "opposing_kerbside_access_count", "access_point_delays_s_veh", "d_other_s_veh", "analysis_period_min"],
+            "conditions": ["control_type", "demand_balanced", "demand_adjustments_resolved", "capacity_effects_resolved", "spillback_present"],
+            "downstream_through": ["external_direction", "external_control_type", "external_through_movement_id", "external_analysis_period_min", "v_th_veh_h", "c_th_veh_h", "d_t_s_veh"],
+            "provenance": ["external_source_class", "external_source_tool", "external_source_method_note", "external_hcm_edition_note", "external_scenario_note"],
+            "calibration": ["calibration_status", "s_calib", "calibration_source_note"],
+        }
+        response["groups"] = [
+            {"key": key, "label_key": f"{METHOD_ID}.group_{key}", "field_keys": fields}
+            for key, fields in sections.items()
+        ]
+        return response
 
     def extra_segment_fields(self) -> tuple[str, ...]:
         return ("calibration_status", "calibration_source_note")

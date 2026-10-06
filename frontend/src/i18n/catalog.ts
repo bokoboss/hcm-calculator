@@ -1,3 +1,4 @@
+import { chapter18Catalog } from './chapter18Catalog';
 import type { Locale } from '../api/types';
 
 type Catalog = Record<string, string>;
@@ -879,11 +880,10 @@ export const catalogs: Record<Locale, Catalog> = {
     'urban_street_segment_th_lht.calibration_status.hcm_reference_uncalibrated': 'HCM reference — not locally calibrated',
     'urban_street_segment_th_lht.calibration_status.user_local_calibration': 'User local calibration',
     'method.urban_street_segment_th_lht.name': 'Urban Street Segment — Thailand/LHT',
-    'method.urban_street_segment_th_lht.description': 'Bounded HCM 7.0 Chapter 18 backend adapter using Thailand/LHT functional kerbside semantics and HCM-reference coefficients; not locally calibrated by default.',
     'method.urban_street_segment_th_lht.scope': 'Bounded signalized 15-minute segment using the physical-left kerbside for each travel direction as the functional outside roadside; HCM-reference coefficients are not Thai empirical calibration.',
     'method.urban_street_segment_th_lht.scope.bounded_signalized_15min': 'Bounded HCM 7.0 Chapter 18 signalized 15-minute operational segment with qualified external downstream through performance.',
     'method.urban_street_segment_th_lht.scope.th_lht_reference': 'Thailand/LHT semantic adapter maps each direction-relative outside roadside to physical-left kerbside; no Thai default calibration or deferred turn-side method is enabled.',
-    'method.urban_street_segment_th_lht.scope.reference_only': 'Backend adapter metadata is available for reference; the production calculation worksheet has not been delivered.',
+    ...chapter18Catalog.en,
   },
   th: {
     'app.title': 'เครื่องคำนวณ HCM',
@@ -1761,11 +1761,10 @@ export const catalogs: Record<Locale, Catalog> = {
     'urban_street_segment_th_lht.calibration_status.hcm_reference_uncalibrated': 'อ้างอิง HCM — ยังไม่ได้สอบเทียบในพื้นที่',
     'urban_street_segment_th_lht.calibration_status.user_local_calibration': 'การสอบเทียบในพื้นที่โดยผู้ใช้',
     'method.urban_street_segment_th_lht.name': 'ช่วงถนนเขตเมือง — ประเทศไทย/LHT',
-    'method.urban_street_segment_th_lht.description': 'อะแดปเตอร์ฝั่งแบ็กเอนด์ตาม HCM 7.0 บทที่ 18 ในขอบเขตจำกัด ใช้ความหมายเชิงหน้าที่ของขอบทางด้านนอกสำหรับประเทศไทย/LHT และสัมประสิทธิ์อ้างอิง HCM โดยค่าเริ่มต้นยังไม่ได้สอบเทียบในพื้นที่',
     'method.urban_street_segment_th_lht.scope': 'ช่วงทางสัญญาณไฟ 15 นาทีในขอบเขตจำกัด โดยใช้ขอบทางด้านนอกที่อยู่ทางซ้ายของแต่ละทิศทางเป็นความหมายเชิงหน้าที่; สัมประสิทธิ์อ้างอิง HCM ยังไม่ใช่การสอบเทียบเชิงประจักษ์สำหรับไทย',
     'method.urban_street_segment_th_lht.scope.bounded_signalized_15min': 'ช่วงถนนปฏิบัติการตาม HCM 7.0 บทที่ 18 ในขอบเขตจำกัด 15 นาที พร้อมสมรรถนะจราจรตรงปลายทางที่ผ่านการประเมินจากแหล่งภายนอก',
     'method.urban_street_segment_th_lht.scope.th_lht_reference': 'อะแดปเตอร์ความหมายสำหรับประเทศไทย/LHT จับคู่ขอบทางด้านนอกของแต่ละทิศทางกับขอบทางกายภาพด้านซ้าย; ไม่มีค่าเริ่มต้นสอบเทียบไทยหรือวิธีวิเคราะห์การเลี้ยวที่ยังไม่ผ่านการรับรอง',
-    'method.urban_street_segment_th_lht.scope.reference_only': 'มีข้อมูลอะแดปเตอร์ฝั่งแบ็กเอนด์สำหรับใช้อ้างอิง; ยังไม่ได้ส่งมอบแบบฟอร์มคำนวณสำหรับการใช้งานจริง',
+    ...chapter18Catalog.th,
   },
 };
 

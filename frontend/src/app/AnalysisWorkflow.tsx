@@ -24,6 +24,7 @@ import type {
   ValidationIssue,
 } from '../api/types';
 import { useI18n } from '../i18n';
+import { NumberListEditor } from '../components/NumberListEditor';
 import {
   ActionToast,
   AnalysisHeader,
@@ -163,6 +164,21 @@ function isVisible(field: WorkflowField, inputs: DisplayedInputs): boolean {
   return Object.entries(field.required_if).every(([key, value]) => inputs[key] === value);
 }
 
+export function workflowOptionLabel(methodId: string, field: WorkflowField, option: string, translate: Translate): string {
+  if (field.kind === 'boolean') return translate(option === 'true' ? 'form.yes' : 'form.no');
+  const legacy: Record<string, string> = {
+    weaving_segment: 'weaving', basic_freeway_segment: 'basic_freeway',
+    two_lane_segment: 'two_lane_segment', merge_segment: 'ramp', diverge_segment: 'ramp',
+  };
+  const keys = [`${methodId}.${field.key}.${option}`, `${methodId}.option.${option}`];
+  if (legacy[methodId]) keys.push(`${legacy[methodId]}.option.${option}`);
+  for (const key of keys) {
+    const label = translate(key);
+    if (label !== key) return label;
+  }
+  return option.replaceAll('_', ' ');
+}
+
 function downloadText(filename: string, content: string, mediaType: string): void {
   const blob = new Blob([content], { type: mediaType });
   const url = window.URL.createObjectURL(blob);
@@ -241,7 +257,7 @@ export function ResultPanel({
           label={t('result.level_of_service')}
           value={answer.available && answer.value ? answer.value : handoff ? t('state.handoff_title') : t('result.not_calculated')}
           state={stale ? 'stale' : handoff ? 'handoff' : capacityFailure ? 'capacity' : showWarning ? 'warning' : 'current'}
-          supporting={answer.source}
+          supporting={result.method_id === 'urban_street_segment_th_lht' ? t('urban_street_segment_th_lht.result_source') : answer.source}
         />
         {stale ? <StaleResultPanel /> : handoff ? <HandoffPanel /> : capacityFailure ? <CapacityFailurePanel metricsUnavailable={metricsUnavailable} /> : showWarning ? <WarningPanel message={warningSummary(result, t)} /> : null}
         {handoff && result.presentation.handoff?.reason ? <p className="handoff-reason">{String(result.presentation.handoff.reason)}</p> : null}
@@ -258,7 +274,7 @@ export function ResultPanel({
         <div className="result-actions">
           {stale ? <button className="button button-primary" type="button" disabled={workingAction === 'calculate'} aria-busy={workingAction === 'calculate' || undefined} onClick={onRecalculate}>{workingAction === 'calculate' ? t('status.calculating') : t('action.recalculate')}</button> : <>
             <button className="button button-primary" type="button" disabled={workingAction === 'save'} aria-busy={workingAction === 'save' || undefined} onClick={onSave}>{workingAction === 'save' ? t('status.saving') : saveLabel ?? t('action.save_project')}</button>
-            <ExportMenu busy={workingAction === 'export'} stale={false} onExport={onExport} />
+            <ExportMenu busy={workingAction === 'export'} stale={false} onExport={onExport} includeCsv={result.method_id === 'urban_street_segment_th_lht'} />
           </>}
         </div>
     </section>
@@ -324,6 +340,7 @@ function scopeFor(method: MethodDefinition, translate: (key: string) => string):
 
 function selectKeyMetrics(methodId: string, metrics: ResultMetric[]): ResultMetric[] {
   const preferred: Record<string, string[]> = {
+    urban_street_segment_th_lht: ['travel_speed', 'through_v_c', 'running_speed', 'total_travel_time', 'running_time'],
     two_lane_segment: ['follower_density', 'average_speed', 'percent_followers'],
     multilane_segment: ['density', 'speed_used_for_density', 'demand_flow_rate', 'adjusted_capacity'],
     basic_freeway_segment: ['density', 'speed_used_for_density', 'demand_flow_rate', 'adjusted_capacity'],
@@ -361,6 +378,13 @@ function DetailedResultSection({
           <div><span className="section-label">{t('result.fingerprint')}</span><code>{result.calculation_fingerprint}</code></div>
         </div>
       </DetailsDisclosure>
+      {result.method_id === 'urban_street_segment_th_lht' ? <DetailsDisclosure title={t('urban_street_segment_th_lht.audit_title')}>
+        <dl className="technical-facts">
+          {Object.entries((result.audit.semantic_field_mappings ?? {}) as Record<string, string>).map(([publicField, canonicalField]) => <div key={publicField}><dt>{t(`urban_street_segment_th_lht.${publicField}`)}</dt><dd><code>{publicField} → {canonicalField}</code></dd></div>)}
+          <div><dt>{t('result.fingerprint')}</dt><dd><code>{result.calculation_fingerprint}</code><code>{result.input_snapshot_fingerprint}</code></dd></div>
+          {['external_source_class', 'external_source_tool', 'external_source_method_note', 'external_hcm_edition_note', 'external_scenario_note', 'calibration_status', 'calibration_source_note'].map((key) => <div key={key}><dt>{t(`urban_street_segment_th_lht.${key}`)}</dt><dd><code>{String(result.displayed_inputs[key] ?? '—')}</code></dd></div>)}
+        </dl>
+      </DetailsDisclosure> : null}
     </EngineeringSection>
   );
 }
@@ -396,10 +420,10 @@ function displayNumber(value: unknown, suffix = ''): string {
 function StarterNotice({ starting }: { starting: WorkflowStartingValuesResponse }): ReactElement | null {
   const { t } = useI18n();
   if (starting.starter_kind === 'example') {
-    return <ScopeNotice title={t('workflow.example_loaded_title')}>{t('workflow.example_loaded_supporting')}</ScopeNotice>;
+    return <ScopeNotice title={t('workflow.example_loaded_title')}>{t(starting.method_id === 'urban_street_segment_th_lht' ? 'urban_street_segment_th_lht.example_note' : 'workflow.example_loaded_supporting')}</ScopeNotice>;
   }
   if (starting.starter_kind === 'blank' || starting.starter_kind === 'custom_starter') {
-    return <ScopeNotice title={starting.template_label}>{t('workflow.custom_starter_note')}</ScopeNotice>;
+    return <ScopeNotice title={starting.method_id === 'urban_street_segment_th_lht' ? t('urban_street_segment_th_lht.starter.blank_custom') : starting.template_label}>{t(starting.method_id === 'urban_street_segment_th_lht' ? 'urban_street_segment_th_lht.blank_note' : 'workflow.custom_starter_note')}</ScopeNotice>;
   }
   return null;
 }
@@ -615,10 +639,12 @@ function ExportMenu({
   stale,
   onExport,
   busy = false,
+  includeCsv = false,
 }: {
   stale: boolean;
   onExport: (format: 'csv' | 'xlsx' | 'markdown' | 'json') => void;
   busy?: boolean;
+  includeCsv?: boolean;
 }): ReactElement {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
@@ -686,7 +712,7 @@ function ExportMenu({
             items[next]?.focus();
           }
         }}>
-          {(['json', 'markdown', 'xlsx'] as const).map((format) => <button className="button button-quiet" type="button" role="menuitem" key={format} onClick={() => { onExport(format); setOpen(false); }}>{t(`action.export_${format}`)}</button>)}
+          {(['json', 'markdown', 'xlsx', ...(includeCsv ? ['csv' as const] : [])] as const).map((format) => <button className="button button-quiet" type="button" role="menuitem" key={format} onClick={() => { onExport(format); setOpen(false); }}>{t(`action.export_${format}`)}</button>)}
         </div>,
         document.body,
       ) : null}
@@ -749,9 +775,14 @@ function SectionNavigator({
     <nav className="section-checklist" aria-label={t('workflow.section_navigator')} data-testid="section-checklist">
       {sections.map((section) => {
         const count = issueCounts.get(section.key) ?? 0;
-        return <button type="button" className={count ? 'section-checklist-item section-checklist-item-pending' : 'section-checklist-item'} key={section.key} onClick={() => document.getElementById(`workflow-section-${methodId}-${section.key}`)?.scrollIntoView({ block: 'start', behavior: 'smooth' })}>
+        return <button type="button" className={count ? 'section-checklist-item section-checklist-item-pending' : 'section-checklist-item'} key={section.key} onClick={() => {
+          const sectionElement = document.getElementById(`workflow-section-${methodId}-${section.key}`);
+          const trigger = sectionElement?.querySelector<HTMLButtonElement>('.disclosure-trigger');
+          if (trigger?.getAttribute('aria-expanded') === 'false') trigger.click();
+          sectionElement?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        }}>
           <span>{section.title}</span>
-          <small>{section.optional ? t('workflow.optional') : count ? t('workflow.section_required', { count }) : t('workflow.section_complete')}</small>
+          <small>{count ? t('workflow.section_required', { count }) : section.optional ? t(methodId === 'urban_street_segment_th_lht' ? 'workflow.advanced' : 'workflow.optional') : t('workflow.section_complete')}</small>
         </button>;
       })}
     </nav>
@@ -877,24 +908,12 @@ function Phase3Form({
     fields: group.field_keys,
     optional: /advanced|provenance|calibration/i.test(group.key),
   }));
-  const optionLabel = (option: string): string => {
-    const namespace = methodId === 'weaving_segment'
-      ? 'weaving'
-      : methodId === 'basic_freeway_segment'
-        ? 'basic_freeway'
-        : methodId === 'two_lane_segment'
-          ? 'two_lane_segment'
-          : 'ramp';
-    const key = `${namespace}.option.${option}`;
-    const translated = t(key);
-    return translated === key ? option.replaceAll('_', ' ') : translated;
-  };
   return (
     <div className="workflow-form phase3-form" data-testid={`phase3-form-${methodId}`}>
       <div className="workflow-controls">
         <Field id={`${methodId}-template`} label={t('workflow.start_with')} required>
           <select id={`${methodId}-template`} value={starting.template_id} onChange={(event) => onTemplate(event.target.value)}>
-            {templates.templates.map((template) => <option value={template.template_id} key={template.template_id}>{template.label}</option>)}
+            {templates.templates.map((template) => <option value={template.template_id} key={template.template_id}>{methodId === 'urban_street_segment_th_lht' ? t(`${methodId}.starter.${template.template_id}`) : template.label}</option>)}
           </select>
         </Field>
         <Field id={`${methodId}-unit-system`} label={t('workflow.unit_system')} required>
@@ -905,6 +924,7 @@ function Phase3Form({
         </Field>
       </div>
       <StarterNotice starting={starting} />
+      {methodId === 'urban_street_segment_th_lht' ? <ScopeNotice title={t(`${methodId}.semantic_title`)}>{t(`${methodId}.semantic_note`)}</ScopeNotice> : null}
       <SectionNavigator methodId={methodId} sections={sections} issueCounts={sectionIssues} />
       {groups.map((group) => {
         const groupContent = (
@@ -916,17 +936,17 @@ function Phase3Form({
               {group.field_keys.map((key) => {
                 const field = fieldsByKey.get(key);
                 if (key === 'horizontal_alignment_subsegments') return null;
-                if (!field || !isVisible(field, inputs)) return null;
+                if (!field || (!isVisible(field, inputs) && !fieldErrors.has(field.key))) return null;
                 const required = Boolean(field.required || field.required_if);
                 if (field.kind === 'choice' || field.kind === 'boolean') {
-                  const options = field.options ?? [];
+                  const options = field.kind === 'boolean' ? ['true', 'false'] : field.options ?? [];
                   return (
                     <ChoiceGroup
                       key={field.key}
                       legend={t(field.label_key)}
                       name={`${methodId}-${field.key}`}
                       value={valueForField(field, inputs[field.key]) as string}
-                      options={options.map((option) => ({ value: option, label: optionLabel(option) }))}
+                      options={options.map((option) => ({ value: option, label: workflowOptionLabel(methodId, field, option, t) }))}
                       error={fieldErrors.get(field.key)}
                       onChange={(value) => onChange(field.key, parseInput(field, value))}
                       onTouched={() => onFieldTouch(field.key)}
@@ -935,6 +955,7 @@ function Phase3Form({
                 }
                 if (field.kind === 'json') return null;
                 const id = `${methodId}-${field.key}`;
+                if (field.kind === 'number_list') return <NumberListEditor key={field.key} id={id} label={t(field.label_key)} value={inputs[field.key]} unit={field.item_unit ?? unitFor(field, unitSystem)} required={required} error={fieldErrors.get(field.key)} onTouched={() => onFieldTouch(field.key)} onChange={(value) => onChange(field.key, value)} />;
                 return (
                   <Field key={field.key} id={id} label={t(field.label_key)} required={required} error={fieldErrors.get(field.key)} onBlur={() => onFieldTouch(field.key)}>
                     {(controlProps) => <InputWithUnit {...controlProps} type={field.kind === 'text' ? 'text' : 'number'} unit={unitFor(field, unitSystem)} value={rawControlValue(inputs[field.key])} formatValue={field.kind === 'text' ? undefined : (value) => formatInputValue(field, value)} onChange={(event: ChangeEvent<HTMLInputElement>) => onChange(field.key, parseInput(field, event.target.value))} />}
@@ -946,7 +967,7 @@ function Phase3Form({
           </>
         );
         const advanced = /advanced|provenance|calibration/i.test(group.key);
-        return <div className="workflow-group" id={`workflow-section-${methodId}-${group.key}`} key={group.key}>{advanced ? <DetailsDisclosure title={t(group.label_key)}>{groupContent}</DetailsDisclosure> : <EngineeringSection title={t(group.label_key)}>{groupContent}</EngineeringSection>}</div>;
+        return <div className="workflow-group" id={`workflow-section-${methodId}-${group.key}`} key={group.key}>{advanced ? <DetailsDisclosure title={t(group.label_key)} keepMounted={methodId === 'urban_street_segment_th_lht'} reveal={group.field_keys.some((key) => fieldErrors.has(key))}>{groupContent}</DetailsDisclosure> : <EngineeringSection title={t(group.label_key)}>{groupContent}</EngineeringSection>}</div>;
       })}
     </div>
   );
@@ -1135,6 +1156,12 @@ function validationFieldLabel(issue: ValidationIssue, fields: WorkflowField[], i
 
 export function validationMessage(issue: ValidationIssue, fields: WorkflowField[], inputs: DisplayedInputs, translate: Translate): string {
   const field = validationFieldLabel(issue, fields, inputs, translate);
+  const metadata = fields.find((candidate) => candidate.key === issue.field);
+  if (metadata?.label_key.startsWith('urban_street_segment_th_lht.')) {
+    const key = `urban_street_segment_th_lht.validation.${metadata.key}`;
+    const message = translate(key);
+    if (message !== key) return message;
+  }
   if (issue.code === 'unsupported_scope') return translate('validation.outside_qualified_scope', { field });
   if (issue.code === 'invalid_template') return translate('api.invalid_template');
   return translate('validation.invalid_value', { field });
@@ -1520,7 +1547,7 @@ export function AnalysisWorkflow({ method, onBack, onDirtyChange, onProjectSaved
   return (
     <div className={`page-stack workflow-page ${isFacility ? 'facility-workflow' : ''}`} data-testid={`workflow-${method.method_id}`}>
       <div className="workflow-toolbar"><button className="button button-quiet" type="button" onClick={onBack}>← {t('action.back_to_methods')}</button></div>
-      <AnalysisHeader title={t(method.name_key)} method={`${method.chapter_reference} · ${scopeFor(method, t)}`} status={status} tone={statusTone} context={initialScenario ? t('workflow.project_context') : undefined} />
+      <AnalysisHeader title={t(method.name_key)} method={`${method.method_id === 'urban_street_segment_th_lht' ? t('urban_street_segment_th_lht.chapter_reference') : method.chapter_reference} · ${scopeFor(method, t)}`} status={status} tone={statusTone} context={initialScenario ? t('workflow.project_context') : undefined} />
       {loading ? <ScopeNotice title={t('status.loading')}>{t('workflow.loading')}</ScopeNotice> : null}
       {error ? <ScopeNotice title={t('workflow.error_title')} tone="warning">{error}</ScopeNotice> : null}
       {templates && starting && isFacility ? <div className="facility-workspace">

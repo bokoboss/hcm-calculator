@@ -49,7 +49,7 @@ const module = (
 
 describe('frontend delivery registry', () => {
   it('registers every delivered Phase 3 method with its backend input contract', () => {
-    expect(Object.keys(frontendModuleRegistry)).toHaveLength(7);
+    expect(Object.keys(frontendModuleRegistry)).toHaveLength(8);
     expect(frontendModuleRegistry.two_lane_segment).toMatchObject({ status: 'delivered', moduleContract: 'phase_5_product_integration' });
     expect(frontendModuleRegistry.multilane_segment).toMatchObject({ status: 'delivered', moduleContract: 'phase_8' });
     expect(frontendModuleRegistry.two_lane_facility).toMatchObject({ status: 'delivered', moduleContract: 'phase_5_product_integration' });
@@ -104,15 +104,17 @@ describe('frontend delivery registry', () => {
     expect(isMethodRouteEligible(backendMethod)).toBe(false);
   });
 
-  it('keeps the Thailand/LHT backend adapter reference-only until its worksheet is delivered', () => {
+  it('delivers only LHT with the exact contract handshake', () => {
     const backendMethod = method(
       'urban_street_segment_th_lht',
       'hcm7_ch18_bounded_signalized_15min_th_lht_semantic_v1',
     );
-    expect(frontendModuleRegistry.urban_street_segment_th_lht).toBeUndefined();
+    expect(frontendModuleRegistry.urban_street_segment_th_lht).toMatchObject({ status: 'delivered', moduleContract: backendMethod.input_contract, route: '/analysis/urban_street_segment_th_lht' });
     expect(isEngineSupported(backendMethod)).toBe(true);
-    expect(getMethodActionabilityStatus(backendMethod)).toBe('not_delivered');
-    expect(isMethodActionable(backendMethod)).toBe(false);
-    expect(isMethodRouteEligible(backendMethod)).toBe(false);
+    expect(getMethodActionabilityStatus(backendMethod)).toBe('actionable');
+    expect(isMethodActionable(backendMethod)).toBe(true);
+    expect(isMethodRouteEligible(backendMethod)).toBe(true);
+    expect(isMethodActionable({ ...backendMethod, input_contract: 'mismatch' })).toBe(false);
+    expect(isMethodRouteEligible({ ...backendMethod, engineering_available: false })).toBe(false);
   });
 });
