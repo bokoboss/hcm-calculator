@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as apiClient from '../api/client';
 import type { MethodDefinition } from '../api/types';
@@ -145,7 +145,7 @@ describe('direct analysis route containment', () => {
     render(<I18nProvider><App /></I18nProvider>);
 
     expect(await screen.findByTestId('method-card-urban_street_segment')).toBeVisible();
-    expect(window.location.pathname).toBe('/new-analysis');
+    await waitFor(() => expect(window.location.pathname).toBe('/new-analysis'));
     expect(screen.queryByTestId('workflow-urban_street_segment')).not.toBeInTheDocument();
   });
 });
