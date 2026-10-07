@@ -969,6 +969,7 @@ function Phase3Form({
                     id={`${methodId}-${field.key}`}
                     label={t(`${methodId}.fixed.${key}`)}
                     value={t(`${methodId}.fixed.value`)}
+                    invalidValue={t(`${methodId}.fixed.required_value`)}
                     description={description}
                     error={fieldErrors.get(field.key)}
                     recoveryLabel={t(`${methodId}.fixed.recovery`)}

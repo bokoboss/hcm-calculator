@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import {
   AppShell,
@@ -30,13 +30,28 @@ describe('R0 shared design-system primitives', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Fixed by current qualified method');
     expect(screen.queryByRole('radio')).not.toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    rerender(<FixedCondition id="fixed-control" label="Downstream boundary control" value="Signalized" description="Fixed by current qualified method" error="The qualified downstream boundary must be signalized." recoveryLabel="Use required value: Signalized" onRecover={onRecover} />);
+    rerender(<FixedCondition id="fixed-control" label="Downstream boundary control" value="Signalized" invalidValue="Required value: Signalized" description="Fixed by current qualified method" error="The qualified downstream boundary must be signalized." recoveryLabel="Use required value: Signalized" onRecover={onRecover} />);
+    const invalidGroup = screen.getByRole('group', { name: 'Downstream boundary control' });
+    expect(invalidGroup).toHaveAttribute('aria-invalid', 'true');
+    expect(invalidGroup).toHaveAttribute('aria-describedby', 'fixed-control-value fixed-control-error');
+    expect(within(invalidGroup).getByText('Required value: Signalized')).toBeVisible();
+    expect(within(invalidGroup).queryByRole('status')).not.toBeInTheDocument();
     expect(screen.getByRole('alert')).toHaveTextContent('must be signalized');
     const recovery = screen.getByRole('button', { name: 'Use required value: Signalized' });
     recovery.focus();
     expect(recovery).toHaveFocus();
     fireEvent.click(recovery);
     expect(onRecover).toHaveBeenCalledOnce();
+  });
+
+  it('keeps the required fixed value localized when invalid and restores the ordinary value when valid', () => {
+    const { rerender } = render(<FixedCondition id="fixed-control" label="Downstream boundary control" value="Signalized" invalidValue="Required value: Signalized" description="Fixed by current qualified method" error="The qualified downstream boundary must be signalized." recoveryLabel="Use required value: Signalized" onRecover={() => undefined} />);
+    expect(screen.getByText('Required value: Signalized')).toBeVisible();
+    rerender(<FixedCondition id="fixed-control" label="การควบคุมที่ทางแยกปลายทาง" value="สัญญาณไฟ" invalidValue="ค่าที่วิธีกำหนด: สัญญาณไฟ" description="กำหนดโดยขอบเขตของวิธีที่ผ่านการรับรอง" error="ขอบเขตปลายทางต้องควบคุมด้วยสัญญาณไฟ" recoveryLabel="ใช้ค่าที่วิธีกำหนด: สัญญาณไฟ" onRecover={() => undefined} />);
+    expect(screen.getByText('ค่าที่วิธีกำหนด: สัญญาณไฟ')).toBeVisible();
+    rerender(<FixedCondition id="fixed-control" label="Downstream boundary control" value="Signalized" invalidValue="Required value: Signalized" description="Fixed by current qualified method" recoveryLabel="Use required value: Signalized" onRecover={() => undefined} />);
+    expect(screen.getByText('Signalized', { exact: true })).toBeVisible();
+    expect(screen.getByRole('status')).toHaveTextContent('Fixed by current qualified method');
   });
 
   it('classifies runtime hosts without build-time configuration', () => {

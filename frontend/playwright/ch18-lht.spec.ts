@@ -64,8 +64,15 @@ test.describe('Chapter 18 Thailand/LHT production qualification', () => {
       await page.goto(route);
       const before = (await beforeValidation).postDataJSON().displayed_inputs as Record<string, unknown>;
       const fixed = page.locator(`#${id}-${key}`);
+      await expect(fixed).toContainText('Required value: Signalized');
+      await expect(fixed.getByText('Signalized', { exact: true })).toHaveCount(0);
+      await expect(fixed.getByRole('status')).toHaveCount(0);
       await expect(fixed).toContainText(/must be signalized/i);
       await expect(fixed.getByRole('button', { name: 'Use required value: Signalized', exact: true })).toBeVisible();
+      await page.getByRole('button', { name: 'Thai', exact: true }).click();
+      await expect(fixed).toContainText('ค่าที่วิธีกำหนด: สัญญาณไฟ');
+      await expect(fixed.getByText('สัญญาณไฟ', { exact: true })).toHaveCount(0);
+      await page.getByRole('button', { name: 'อังกฤษ', exact: true }).click();
       await page.getByRole('button', { name: 'Calculate', exact: true }).click();
       const summaryLink = page.locator(`#error-summary a[href="#${id}-${key}"]`).first();
       await expect(summaryLink).toBeVisible();
@@ -73,12 +80,16 @@ test.describe('Chapter 18 Thailand/LHT production qualification', () => {
       await summaryLink.press('Enter');
       await expect(fixed).toBeFocused();
       const validation = page.waitForRequest((request) => request.url().endsWith(`/${id}/validate`) && request.method() === 'POST');
-      await fixed.getByRole('button', { name: 'Use required value: Signalized', exact: true }).click();
+      const recovery = fixed.getByRole('button', { name: 'Use required value: Signalized', exact: true });
+      await recovery.focus();
+      await recovery.press('Enter');
       const restored = (await (await validation).postDataJSON()).displayed_inputs as Record<string, unknown>;
       expect(restored[key]).toBe('signalized');
       expect(restored[key === 'control_type' ? 'external_control_type' : 'control_type']).toBe('signalized');
       expect(Object.fromEntries(Object.entries(restored).filter(([name]) => name !== key))).toEqual(Object.fromEntries(Object.entries(before).filter(([name]) => name !== key)));
       await expect(fixed.getByRole('button')).toHaveCount(0);
+      await expect(fixed.getByText('Signalized', { exact: true })).toBeVisible();
+      await expect(fixed.getByRole('status')).toHaveText(key === 'control_type' ? 'Fixed by current qualified method' : 'Must match downstream boundary');
       await page.unroute(`**/api/v1/analyses/${id}/starting-values?**`);
     }
   });
