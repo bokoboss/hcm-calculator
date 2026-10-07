@@ -248,4 +248,17 @@ describe('localization catalog', () => {
     ]);
   });
 
+  it('defines overview L_s spacing by functional stop/yield controls in English and Thai', () => {
+    const id = 'urban_street_segment_th_lht';
+    const english = translate('en', `${id}.boundary.segment_note`);
+    expect(english).toContain('controls that require the subject through movement to stop or yield');
+    expect(english).toContain('It may differ from segment length.');
+    expect(english).not.toMatch(/bracketing stop\/yield controls/i);
+
+    const thai = translate('th', `${id}.boundary.segment_note`);
+    expect(thai).toContain('จุดควบคุมต้นและปลายที่เกี่ยวข้องซึ่งบังคับให้จราจรตรงในทิศทางที่วิเคราะห์ต้องหยุดหรือให้ทาง');
+    expect(thai).toContain('อาจไม่เท่ากับความยาวช่วงทาง');
+    expect(thai).not.toContain('จุดควบคุม STOP/YIELD');
+  });
+
 });

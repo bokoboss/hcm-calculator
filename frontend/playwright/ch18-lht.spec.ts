@@ -43,6 +43,7 @@ test.describe('Chapter 18 Thailand/LHT production qualification', () => {
     await expect(worksheet.getByRole('region', { name: 'Boundary overview' })).toBeVisible();
     await expect(worksheet.getByText('Upstream boundary', { exact: true })).toBeVisible();
     await expect(worksheet.getByText('Analyzed segment', { exact: true })).toBeVisible();
+    await expect(worksheet).toContainText('L_s is the spacing between the applicable bracketing controls that require the subject through movement to stop or yield. It may differ from segment length.');
     await expect(worksheet.getByText('Downstream boundary', { exact: true })).toBeVisible();
     await expect(worksheet.getByRole('status').filter({ hasText: 'Fixed by current qualified method' })).toBeVisible();
     await expect(worksheet.getByRole('group', { name: 'Downstream boundary control type' })).toHaveCount(0);
@@ -142,6 +143,7 @@ test.describe('Chapter 18 Thailand/LHT production qualification', () => {
     await expect(field(page, 'segment_length')).toBeVisible();
     await page.getByRole('button', { name: 'Thai', exact: true }).click();
     await expect(page.locator(`#${id}-control_type`)).toContainText('สัญญาณไฟ');
+    await expect(page.getByText(/L_s คือระยะระหว่างจุดควบคุมต้นและปลายที่เกี่ยวข้องซึ่งบังคับให้จราจรตรงในทิศทางที่วิเคราะห์ต้องหยุดหรือให้ทาง และอาจไม่เท่ากับความยาวช่วงทาง/)).toBeVisible();
     await expect(page.getByLabel('ระยะระหว่างจุดควบคุม L_s')).toBeVisible();
     await expect(page.getByText(/จุดควบคุมที่เกี่ยวข้องซึ่งบังคับให้การเคลื่อนที่ตรงในทิศทางที่วิเคราะห์ต้องหยุดหรือให้ทาง/)).toBeVisible();
     await page.getByRole('button', { name: 'อังกฤษ', exact: true }).click();
