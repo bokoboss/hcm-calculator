@@ -90,6 +90,13 @@ test.describe('Chapter 18 Thailand/LHT production qualification', () => {
       await expect(fixed.getByRole('button')).toHaveCount(0);
       await expect(fixed.getByText('Signalized', { exact: true })).toBeVisible();
       await expect(fixed.getByRole('status')).toHaveText(key === 'control_type' ? 'Fixed by current qualified method' : 'Must match downstream boundary');
+      await expect(fixed.getByText('Required value: Signalized', { exact: true })).toHaveCount(0);
+      await page.getByRole('button', { name: 'Thai', exact: true }).click();
+      await expect(fixed.getByText('สัญญาณไฟ', { exact: true })).toBeVisible();
+      await expect(fixed.getByText('ค่าที่วิธีกำหนด: สัญญาณไฟ', { exact: true })).toHaveCount(0);
+      await expect(fixed.getByRole('status')).toHaveText(key === 'control_type' ? 'กำหนดโดยขอบเขตของวิธีที่ผ่านการรับรอง' : 'ต้องตรงกับทางแยกปลายทาง');
+      await expect(fixed.getByRole('button')).toHaveCount(0);
+      await page.getByRole('button', { name: 'อังกฤษ', exact: true }).click();
       await page.unroute(`**/api/v1/analyses/${id}/starting-values?**`);
     }
   });
