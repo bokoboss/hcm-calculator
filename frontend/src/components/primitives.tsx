@@ -478,6 +478,42 @@ export function ScopeNotice({
   return <aside className={`scope-notice scope-notice-${tone}`} data-slot="scope-notice"><strong>{title}</strong><span>{children}</span></aside>;
 }
 
+export function FixedCondition({
+  id,
+  label,
+  value,
+  invalidValue = value,
+  description,
+  error,
+  recoveryLabel,
+  onRecover,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  invalidValue?: string;
+  description: string;
+  error?: string;
+  recoveryLabel: string;
+  onRecover: () => void;
+}): ReactElement {
+  const labelId = `${id}-label`;
+  const valueId = `${id}-value`;
+  const descriptionId = `${id}-description`;
+  const errorId = `${id}-error`;
+  return (
+    <div className={`fixed-condition${error ? ' fixed-condition-invalid' : ''}`} id={id} role="group" aria-labelledby={labelId} aria-describedby={error ? `${valueId} ${errorId}` : descriptionId} tabIndex={-1} aria-invalid={error ? 'true' : undefined}>
+      <span className="fixed-condition-label" id={labelId}>{label}</span>
+      <strong className="fixed-condition-value" id={valueId}>{error ? invalidValue : value}</strong>
+      {!error ? <span className="fixed-condition-description" id={descriptionId} role="status">{description}</span> : null}
+      {error ? <>
+        <span className="field-error" id={errorId} role="alert">{error}</span>
+        <button className="button button-secondary fixed-condition-recovery" type="button" onClick={onRecover}>{recoveryLabel}</button>
+      </> : null}
+    </div>
+  );
+}
+
 export function ErrorSummary({
   errors,
 }: {

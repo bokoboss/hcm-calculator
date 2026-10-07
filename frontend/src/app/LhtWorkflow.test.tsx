@@ -30,6 +30,27 @@ async function worksheet() {
 }
 
 describe('LHT production controls', () => {
+  it('shows both method invariants in the blank starter while leaving readiness assertions unset', async () => {
+    const blank: WorkflowStartingValuesResponse = {
+      ...starting,
+      template_id: 'blank_custom',
+      starter_kind: 'blank',
+      displayed_inputs: Object.fromEntries(starting.fields.map((field) => [field.key, null])),
+    };
+    (blank.displayed_inputs as Record<string, unknown>).control_type = 'signalized';
+    (blank.displayed_inputs as Record<string, unknown>).external_control_type = 'signalized';
+    vi.mocked(api.fetchWorkflowStartingValues).mockImplementation(async (_methodId, templateId) => templateId === 'blank_custom' ? blank : starting);
+    await worksheet();
+    fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'blank_custom' } });
+    await waitFor(() => expect((screen.getByLabelText(/Segment length/) as HTMLInputElement).value).toBe(''));
+    expect(screen.getByText('Downstream boundary control')).toBeVisible();
+    expect(screen.getByText('External downstream result control')).toBeVisible();
+    for (const key of ['demand_balanced', 'demand_adjustments_resolved', 'capacity_effects_resolved', 'spillback_present']) {
+      const group = screen.getByRole('group', { name: translate('en', `${id}.${key}`) });
+      expect(within(group).queryByRole('radio', { checked: true })).not.toBeInTheDocument();
+    }
+  });
+
   it('edits an ordered numeric delay list with decimal values and item units', async () => {
     await worksheet();
     const list = screen.getByRole('group', { name: /Access-point delays/ });
@@ -62,7 +83,10 @@ describe('LHT production controls', () => {
     if (disclosure) fireEvent.click(disclosure);
     expect(screen.getByRole('radio', { name: 'HCM reference — not locally calibrated' })).toBeVisible();
     expect(screen.getByRole('radio', { name: 'User local calibration' })).toBeVisible();
-    expect(screen.getAllByRole('radio', { name: 'Signalized' })).toHaveLength(2);
+    expect(screen.getByText('Downstream boundary control')).toBeVisible();
+    expect(screen.getByText('External downstream result control')).toBeVisible();
+    expect(screen.getAllByRole('status').filter((element) => element.textContent?.includes('Fixed by current qualified method'))).toHaveLength(1);
+    expect(screen.queryAllByRole('radio', { name: 'Signalized' })).toHaveLength(0);
   });
 
   it('shows HCM control spacing and upstream geometry help without changing field identities', async () => {

@@ -124,6 +124,22 @@ def test_lht_starter_schema_and_old_rht_fields_are_rejected():
     assert validation["errors"][0]["field"] == "curb_proportion"
 
 
+def test_blank_lht_starter_prefills_only_the_two_method_invariants():
+    workflow = lht()
+    values = workflow.starting_values("blank_custom", "metric")["displayed_inputs"]
+    assert values["control_type"] == "signalized"
+    assert values["external_control_type"] == "signalized"
+    assert all(values[key] is None for key in (
+        "demand_balanced",
+        "demand_adjustments_resolved",
+        "capacity_effects_resolved",
+        "spillback_present",
+    ))
+    assert workflow.validate(
+        template_id="blank_custom", unit_system="metric", displayed_inputs=values
+    )["valid"] is False
+
+
 def test_role_mirror_canonical_inputs_and_engine_result_match_rht():
     lht_workflow = lht()
     lht_inputs = starter()

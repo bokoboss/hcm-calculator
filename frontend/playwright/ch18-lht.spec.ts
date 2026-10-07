@@ -33,6 +33,75 @@ async function invalid(page: Page, key: string) {
 test.describe('Chapter 18 Thailand/LHT production qualification', () => {
   test.setTimeout(90_000);
 
+  test('shows boundary overview and fixed method conditions without one-option radios', async ({ page }) => {
+    const initialValidation = page.waitForRequest((request) => request.url().endsWith(`/${id}/validate`) && request.method() === 'POST');
+    await open(page);
+    const validationInputs = (await initialValidation).postDataJSON().displayed_inputs as Record<string, unknown>;
+    expect(validationInputs.control_type).toBe('signalized');
+    expect(validationInputs.external_control_type).toBe('signalized');
+    const worksheet = page.getByTestId(`phase3-form-${id}`);
+    await expect(worksheet.getByRole('region', { name: 'Boundary overview' })).toBeVisible();
+    await expect(worksheet.getByText('Upstream boundary', { exact: true })).toBeVisible();
+    await expect(worksheet.getByText('Analyzed segment', { exact: true })).toBeVisible();
+    await expect(worksheet).toContainText('L_s is the spacing between the applicable bracketing controls that require the subject through movement to stop or yield. It may differ from segment length.');
+    await expect(worksheet.getByText('Downstream boundary', { exact: true })).toBeVisible();
+    await expect(worksheet.getByRole('status').filter({ hasText: 'Fixed by current qualified method' })).toBeVisible();
+    await expect(worksheet.getByRole('group', { name: 'Downstream boundary control type' })).toHaveCount(0);
+    await expect(worksheet.getByRole('group', { name: 'External downstream control type' })).toHaveCount(0);
+    await expect(worksheet.getByRole('radio', { name: 'Signalized', exact: true })).toHaveCount(0);
+    await expect(worksheet).toContainText('Upstream intersection performance and delay are not calculated');
+    await expect(worksheet).toContainText('v_th, c_th and d_t come from qualified external downstream analysis');
+  });
+
+  test('restored invalid fixed controls expose backend errors and recover only the affected field', async ({ page }) => {
+    for (const key of ['control_type', 'external_control_type']) {
+      await page.route(`**/api/v1/analyses/${id}/starting-values?**`, async (route) => {
+        const response = await route.fetch();
+        const body = await response.json();
+        body.displayed_inputs[key] = null;
+        await route.fulfill({ response, json: body });
+      });
+      const beforeValidation = page.waitForRequest((request) => request.url().endsWith(`/${id}/validate`) && request.method() === 'POST');
+      await page.goto(route);
+      const before = (await beforeValidation).postDataJSON().displayed_inputs as Record<string, unknown>;
+      const fixed = page.locator(`#${id}-${key}`);
+      await expect(fixed).toContainText('Required value: Signalized');
+      await expect(fixed.getByText('Signalized', { exact: true })).toHaveCount(0);
+      await expect(fixed.getByRole('status')).toHaveCount(0);
+      await expect(fixed).toContainText(/must be signalized/i);
+      await expect(fixed.getByRole('button', { name: 'Use required value: Signalized', exact: true })).toBeVisible();
+      await page.getByRole('button', { name: 'Thai', exact: true }).click();
+      await expect(fixed).toContainText('ค่าที่วิธีกำหนด: สัญญาณไฟ');
+      await expect(fixed.getByText('สัญญาณไฟ', { exact: true })).toHaveCount(0);
+      await page.getByRole('button', { name: 'อังกฤษ', exact: true }).click();
+      await page.getByRole('button', { name: 'Calculate', exact: true }).click();
+      const summaryLink = page.locator(`#error-summary a[href="#${id}-${key}"]`).first();
+      await expect(summaryLink).toBeVisible();
+      await summaryLink.focus();
+      await summaryLink.press('Enter');
+      await expect(fixed).toBeFocused();
+      const validation = page.waitForRequest((request) => request.url().endsWith(`/${id}/validate`) && request.method() === 'POST');
+      const recovery = fixed.getByRole('button', { name: 'Use required value: Signalized', exact: true });
+      await recovery.focus();
+      await recovery.press('Enter');
+      const restored = (await (await validation).postDataJSON()).displayed_inputs as Record<string, unknown>;
+      expect(restored[key]).toBe('signalized');
+      expect(restored[key === 'control_type' ? 'external_control_type' : 'control_type']).toBe('signalized');
+      expect(Object.fromEntries(Object.entries(restored).filter(([name]) => name !== key))).toEqual(Object.fromEntries(Object.entries(before).filter(([name]) => name !== key)));
+      await expect(fixed.getByRole('button')).toHaveCount(0);
+      await expect(fixed.getByText('Signalized', { exact: true })).toBeVisible();
+      await expect(fixed.getByRole('status')).toHaveText(key === 'control_type' ? 'Fixed by current qualified method' : 'Must match downstream boundary');
+      await expect(fixed.getByText('Required value: Signalized', { exact: true })).toHaveCount(0);
+      await page.getByRole('button', { name: 'Thai', exact: true }).click();
+      await expect(fixed.getByText('สัญญาณไฟ', { exact: true })).toBeVisible();
+      await expect(fixed.getByText('ค่าที่วิธีกำหนด: สัญญาณไฟ', { exact: true })).toHaveCount(0);
+      await expect(fixed.getByRole('status')).toHaveText(key === 'control_type' ? 'กำหนดโดยขอบเขตของวิธีที่ผ่านการรับรอง' : 'ต้องตรงกับทางแยกปลายทาง');
+      await expect(fixed.getByRole('button')).toHaveCount(0);
+      await page.getByRole('button', { name: 'อังกฤษ', exact: true }).click();
+      await page.unroute(`**/api/v1/analyses/${id}/starting-values?**`);
+    }
+  });
+
   test('delivers only LHT, opens direct/history routes and bilingual Handbook', async ({ page }) => {
     await page.goto('/new-analysis');
     await expect(page.getByText('8 calculation methods available', { exact: true })).toBeVisible();
@@ -73,11 +142,12 @@ test.describe('Chapter 18 Thailand/LHT production qualification', () => {
     await page.goForward();
     await expect(field(page, 'segment_length')).toBeVisible();
     await page.getByRole('button', { name: 'Thai', exact: true }).click();
-    await expect(page.getByRole('group', { name: 'ประเภทการควบคุมที่ทางแยกเขตปลายทาง' })).toContainText('ควบคุมด้วยสัญญาณไฟ');
+    await expect(page.locator(`#${id}-control_type`)).toContainText('สัญญาณไฟ');
+    await expect(page.getByText(/L_s คือระยะระหว่างจุดควบคุมต้นและปลายที่เกี่ยวข้องซึ่งบังคับให้จราจรตรงในทิศทางที่วิเคราะห์ต้องหยุดหรือให้ทาง และอาจไม่เท่ากับความยาวช่วงทาง/)).toBeVisible();
     await expect(page.getByLabel('ระยะระหว่างจุดควบคุม L_s')).toBeVisible();
     await expect(page.getByText(/จุดควบคุมที่เกี่ยวข้องซึ่งบังคับให้การเคลื่อนที่ตรงในทิศทางที่วิเคราะห์ต้องหยุดหรือให้ทาง/)).toBeVisible();
     await page.getByRole('button', { name: 'อังกฤษ', exact: true }).click();
-    await expect(page.getByRole('group', { name: 'Downstream boundary control type' })).toContainText('Signalized');
+    await expect(page.locator(`#${id}-control_type`)).toContainText('Signalized');
     await expect(page.getByLabel('Control spacing, L_s')).toBeVisible();
     await expect(page.getByText(/Distance between the applicable bracketing controls that require the subject through movement to stop or yield/i)).toBeVisible();
     await expect(page.getByText(/Geometry of the immediate upstream boundary intersection/i)).toBeVisible();
@@ -165,12 +235,21 @@ test.describe('Chapter 18 Thailand/LHT production qualification', () => {
 
   test('blank custom starts fail-closed and can be completed entirely with production controls', async ({ page }) => {
     await open(page);
+    const blankStarting = page.waitForResponse((response) => response.url().includes(`/${id}/starting-values`) && response.url().includes('template_id=blank_custom'));
     await field(page, 'template').selectOption('blank_custom');
+    const blankValues = (await (await blankStarting).json()).displayed_inputs as Record<string, unknown>;
+    expect(blankValues.control_type).toBe('signalized');
+    expect(blankValues.external_control_type).toBe('signalized');
+    for (const key of ['demand_balanced', 'demand_adjustments_resolved', 'capacity_effects_resolved', 'spillback_present']) expect(blankValues[key]).toBeNull();
     await expect(field(page, 'segment_length')).toHaveValue('');
+    await expect(page.locator(`#${id}-control_type`)).toContainText('Signalized');
+    await expect(page.locator(`#${id}-external_control_type`)).toContainText('Signalized');
+    await expect(page.getByRole('button', { name: 'Use required value: Signalized', exact: true })).toHaveCount(0);
     for (const key of ['demand_balanced', 'demand_adjustments_resolved', 'capacity_effects_resolved', 'spillback_present']) await expect(field(page, key).getByRole('radio', { checked: true })).toHaveCount(0);
     for (const group of ['provenance', 'calibration']) await page.locator(`#workflow-section-${id}-${group} .disclosure-trigger`).click();
     for (const metadata of fields) {
       const value = values[metadata.key];
+      if (metadata.key === 'control_type' || metadata.key === 'external_control_type') continue;
       if (value === null || value === undefined) continue;
       if (metadata.kind === 'boolean' || metadata.kind === 'choice') {
         await field(page, metadata.key).locator(`input[value="${String(value)}"]`).check();
@@ -227,8 +306,11 @@ test.describe('Chapter 18 Thailand/LHT production qualification', () => {
     await page.getByRole('button', { name: 'Edit scenario', exact: true }).click();
     expect((await restoredValidation).postDataJSON().displayed_inputs).toEqual(values);
     await expect(field(page, 'segment_length')).toHaveValue(String(values.segment_length));
+    await expect(field(page, 'control_type')).toContainText('Signalized');
+    await expect(field(page, 'external_control_type')).toContainText('Signalized');
     for (const metadata of fields) {
       if (metadata.key === 'calibration_source_note') continue;
+      if (metadata.key === 'control_type' || metadata.key === 'external_control_type') continue;
       const value = values[metadata.key];
       if (metadata.kind === 'boolean' || metadata.kind === 'choice') await expect(field(page, metadata.key).locator(`input[value="${String(value)}"]`)).toBeChecked();
       else if (metadata.kind === 'number_list') expect(await field(page, metadata.key).getByRole('spinbutton').evaluateAll((items) => items.map((item) => (item as HTMLInputElement).valueAsNumber))).toEqual(value);

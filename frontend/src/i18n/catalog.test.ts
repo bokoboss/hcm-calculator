@@ -223,4 +223,42 @@ describe('localization catalog', () => {
     expect(translate('th', `${id}.validation.external_control_type`)).toContain('ต้องเป็นสัญญาณไฟและตรงกับทางแยกเขตปลายทาง');
   });
 
+  it('localizes the LHT boundary overview, fixed constraints, and external evidence', () => {
+    const id = 'urban_street_segment_th_lht';
+    expect(translate('en', `${id}.boundary.upstream_value`)).toMatch(/Signalized, STOP, YIELD, or through-uncontrolled/);
+    expect(translate('en', `${id}.boundary.upstream_note`)).toContain('delay are not calculated');
+    expect(translate('en', `${id}.boundary.downstream_value`)).toContain('Signalized only');
+    expect(translate('en', `${id}.boundary.downstream_note`)).toContain('qualified external downstream analysis');
+    expect(translate('en', `${id}.fixed.method`)).toBe('Fixed by current qualified method');
+    expect(translate('en', `${id}.fixed.recovery`)).toBe('Use required value: Signalized');
+    expect(translate('en', `${id}.group_downstream_through`)).toBe('Qualified downstream through inputs');
+    expect(['group_geometry', 'group_traffic_access', 'group_conditions', 'group_downstream_through', 'group_provenance', 'group_calibration'].map((key) => translate('en', `${id}.${key}`))).toEqual([
+      'Roadway / segment geometry', 'Traffic and access', 'Readiness and method conditions',
+      'Qualified downstream through inputs', 'External source / provenance', 'Calibration',
+    ]);
+    expect(translate('th', `${id}.boundary.upstream_value`)).toContain('STOP, YIELD');
+    expect(translate('th', `${id}.boundary.upstream_note`)).toContain('ไม่คำนวณ');
+    expect(translate('th', `${id}.boundary.downstream_value`)).toContain('สัญญาณไฟ');
+    expect(translate('th', `${id}.fixed.method`)).toBe('กำหนดโดยขอบเขตของวิธีที่ผ่านการรับรอง');
+    expect(translate('th', `${id}.fixed.recovery`)).toBe('ใช้ค่าที่วิธีกำหนด: สัญญาณไฟ');
+    expect(translate('th', `${id}.group_downstream_through`)).toBe('ข้อมูลจราจรตรงปลายทางที่ผ่านการประเมิน');
+    expect(['group_geometry', 'group_traffic_access', 'group_conditions', 'group_downstream_through', 'group_provenance', 'group_calibration'].map((key) => translate('th', `${id}.${key}`))).toEqual([
+      'เรขาคณิตถนนและช่วงทาง', 'จราจรและจุดเข้าออก', 'ความพร้อมและเงื่อนไขของวิธี',
+      'ข้อมูลจราจรตรงปลายทางที่ผ่านการประเมิน', 'แหล่งข้อมูลภายนอกและที่มา', 'การสอบเทียบ',
+    ]);
+  });
+
+  it('defines overview L_s spacing by functional stop/yield controls in English and Thai', () => {
+    const id = 'urban_street_segment_th_lht';
+    const english = translate('en', `${id}.boundary.segment_note`);
+    expect(english).toContain('controls that require the subject through movement to stop or yield');
+    expect(english).toContain('It may differ from segment length.');
+    expect(english).not.toMatch(/bracketing stop\/yield controls/i);
+
+    const thai = translate('th', `${id}.boundary.segment_note`);
+    expect(thai).toContain('จุดควบคุมต้นและปลายที่เกี่ยวข้องซึ่งบังคับให้จราจรตรงในทิศทางที่วิเคราะห์ต้องหยุดหรือให้ทาง');
+    expect(thai).toContain('อาจไม่เท่ากับความยาวช่วงทาง');
+    expect(thai).not.toContain('จุดควบคุม STOP/YIELD');
+  });
+
 });

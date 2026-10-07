@@ -34,6 +34,7 @@ import {
   EngineeringSection,
   ErrorSummary,
   Field,
+  FixedCondition,
   InputWithUnit,
   HandoffPanel,
   MetricCard,
@@ -426,6 +427,25 @@ function StarterNotice({ starting }: { starting: WorkflowStartingValuesResponse 
     return <ScopeNotice title={starting.method_id === 'urban_street_segment_th_lht' ? t('urban_street_segment_th_lht.starter.blank_custom') : starting.template_label}>{t(starting.method_id === 'urban_street_segment_th_lht' ? 'urban_street_segment_th_lht.blank_note' : 'workflow.custom_starter_note')}</ScopeNotice>;
   }
   return null;
+}
+
+function LhtBoundaryOverview({ translate }: { translate: Translate }): ReactElement {
+  const id = 'urban_street_segment_th_lht';
+  const part = (name: string) => translate(`${id}.boundary.${name}`);
+  return (
+    <section className="lht-boundary-overview" aria-labelledby={`${id}-boundary-title`} data-testid="lht-boundary-overview">
+      <h2 id={`${id}-boundary-title`}>{part('title')}</h2>
+      <ol className="lht-boundary-steps">
+        {(['upstream', 'segment', 'downstream'] as const).map((boundary) => (
+          <li key={boundary}>
+            <h3>{part(boundary)}</h3>
+            <p>{part(`${boundary}_value`)}</p>
+            <p>{part(`${boundary}_note`)}</p>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
 }
 
 function TwoLaneSchematic({
@@ -925,6 +945,7 @@ function Phase3Form({
       </div>
       <StarterNotice starting={starting} />
       {methodId === 'urban_street_segment_th_lht' ? <ScopeNotice title={t(`${methodId}.semantic_title`)}>{t(`${methodId}.semantic_note`)}</ScopeNotice> : null}
+      {methodId === 'urban_street_segment_th_lht' ? <LhtBoundaryOverview translate={t} /> : null}
       <SectionNavigator methodId={methodId} sections={sections} issueCounts={sectionIssues} />
       {groups.map((group) => {
         const groupContent = (
@@ -932,12 +953,29 @@ function Phase3Form({
             {methodId === 'two_lane_segment' && group.key === 'roadway' ? <TwoLaneSchematic inputs={inputs} unitSystem={unitSystem} assets={assets} /> : null}
             {methodId === 'weaving_segment' && /geometry|weaving/i.test(group.key) ? <WeavingReference inputs={inputs} assets={assets} /> : null}
             {(methodId === 'merge_segment' || methodId === 'diverge_segment') && group.key === 'geometry' ? <RampReference methodId={methodId} assets={assets} /> : null}
+            {methodId === 'urban_street_segment_th_lht' && group.key === 'downstream_through' ? <p className="lht-external-evidence-note">{t(`${methodId}.group_downstream_through_note`)}</p> : null}
             <div className="form-grid">
               {group.field_keys.map((key) => {
                 const field = fieldsByKey.get(key);
                 if (key === 'horizontal_alignment_subsegments') return null;
                 if (!field || (!isVisible(field, inputs) && !fieldErrors.has(field.key))) return null;
                 const required = Boolean(field.required || field.required_if);
+                if (methodId === 'urban_street_segment_th_lht' && (key === 'control_type' || key === 'external_control_type')) {
+                  const description = key === 'control_type'
+                    ? t(`${methodId}.fixed.method`)
+                    : t(`${methodId}.fixed.match`);
+                  return <FixedCondition
+                    key={field.key}
+                    id={`${methodId}-${field.key}`}
+                    label={t(`${methodId}.fixed.${key}`)}
+                    value={t(`${methodId}.fixed.value`)}
+                    invalidValue={t(`${methodId}.fixed.required_value`)}
+                    description={description}
+                    error={fieldErrors.get(field.key)}
+                    recoveryLabel={t(`${methodId}.fixed.recovery`)}
+                    onRecover={() => onChange(field.key, 'signalized')}
+                  />;
+                }
                 if (field.kind === 'choice' || field.kind === 'boolean') {
                   const options = field.kind === 'boolean' ? ['true', 'false'] : field.options ?? [];
                   return (
@@ -1521,7 +1559,9 @@ export function AnalysisWorkflow({ method, onBack, onDirtyChange, onProjectSaved
       .filter((issue) => issue.field)
       .map((issue) => [issue.field as string, validationMessage(issue, validationFields, inputs, t)]),
   );
-  const fieldErrors = new Map([...allFieldErrors].filter(([field]) => submitAttempted || touchedFields.has(field)));
+  const fieldErrors = new Map([...allFieldErrors].filter(([field]) => submitAttempted
+    || touchedFields.has(field)
+    || (method.method_id === 'urban_street_segment_th_lht' && ['control_type', 'external_control_type'].includes(field))));
   const errors = submitAttempted
     ? (validation?.errors.map((issue) => ({ message: validationMessage(issue, validationFields, inputs, t), targetId: targetIdForIssue(issue.field) })) ?? [])
     : [];
